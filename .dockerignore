@@ -1,0 +1,8 @@
+bin/
+.env
+.git/
+.gitignore
+.vscode/
+.idea/
+baml_client/
+*.exe
