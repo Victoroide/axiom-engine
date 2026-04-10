@@ -1,0 +1,165 @@
+// Package api implements the HTTP transport layer for the AxiomEngine
+// microservice using the Fiber v2 framework. It defines request validation,
+// error mapping, structured logging, and route registration for all public
+// API endpoints.
+package api
+
+import (
+	"context"
+	"errors"
+	"log/slog"
+	"strings"
+	"time"
+
+	"axiom-reasoning-svc/internal/domain"
+	"axiom-reasoning-svc/internal/graph"
+	"axiom-reasoning-svc/internal/service"
+
+	"github.com/gofiber/fiber/v2"
+	"github.com/google/uuid"
+)
+
+// requestTimeout is the maximum duration allowed for a single adaptive-plan
+// request, including all pipeline stages and parallel LLM calls. If exceeded,
+// the handler returns HTTP 504 Gateway Timeout.
+const requestTimeout = 20 * time.Second
+
+// Handler aggregates the dependencies required by all HTTP endpoint handlers.
+// It holds a reference to the ReasoningService (for adaptive-plan generation)
+// and the InMemoryGraph (for cognitive shadow graph queries).
+type Handler struct {
+	reasoning *service.ReasoningService
+	graph     *graph.InMemoryGraph
+}
+
+// NewHandler constructs a Handler with the given ReasoningService and
+// InMemoryGraph. Both dependencies are required and must not be nil.
+func NewHandler(r *service.ReasoningService, g *graph.InMemoryGraph) *Handler {
+	return &Handler{reasoning: r, graph: g}
+}
+
+// RegisterRoutes attaches all versioned API routes to the given Fiber
+// application under the /api/v1 prefix. Routes registered:
+//   - POST /api/v1/adaptive-plan          (handleAdaptivePlan)
+//   - GET  /api/v1/tutor/student/:student_id/cognitive-graph (handleCognitiveGraph)
+func (h *Handler) RegisterRoutes(app *fiber.App) {
+	v1 := app.Group("/api/v1")
+	v1.Post("/adaptive-plan", h.handleAdaptivePlan)
+	v1.Get("/tutor/student/:student_id/cognitive-graph", h.handleCognitiveGraph)
+}
+
+// handleAdaptivePlan processes POST /api/v1/adaptive-plan. It validates the
+// request body, enforces a 20-second context deadline, delegates to the
+// reasoning pipeline, and maps pipeline errors to appropriate HTTP status
+// codes (400, 503, 504, 500).
+func (h *Handler) handleAdaptivePlan(c *fiber.Ctx) error {
+	requestID := uuid.New().String()
+	logger := slog.With("request_id", requestID)
+
+	var req domain.AdaptivePlanRequest
+	if err := c.BodyParser(&req); err != nil {
+		logger.Warn("request.parse_failed", "error", err.Error())
+		return c.Status(fiber.StatusBadRequest).JSON(domain.ErrorResponse{
+			Error:   "invalid_request_body",
+			Details: err.Error(),
+		})
+	}
+
+	if len(req.FailedTopics) == 0 {
+		return c.Status(fiber.StatusBadRequest).JSON(domain.ErrorResponse{
+			Error:   "validation_error",
+			Details: "failed_topics must contain at least one topic",
+		})
+	}
+
+	if req.VARKProfile == "" {
+		return c.Status(fiber.StatusBadRequest).JSON(domain.ErrorResponse{
+			Error:   "validation_error",
+			Details: "vark_profile is required (visual, auditory, read_write, kinesthetic)",
+		})
+	}
+
+	logger.Info("request.received",
+		"student_id", req.StudentID,
+		"failed_topics", req.FailedTopics,
+		"vark_profile", req.VARKProfile,
+	)
+
+	ctx, cancel := context.WithTimeout(c.UserContext(), requestTimeout)
+	defer cancel()
+
+	start := time.Now()
+	plan, err := h.reasoning.GeneratePlan(ctx, req)
+	elapsed := time.Since(start)
+
+	if err != nil {
+		if errors.Is(err, context.DeadlineExceeded) {
+			logger.Error("request.timeout", "elapsed_ms", elapsed.Milliseconds())
+			return c.Status(fiber.StatusGatewayTimeout).JSON(domain.ErrorResponse{
+				Error:   "gateway_timeout",
+				Details: "LLM reasoning exceeded deadline",
+			})
+		}
+		if errors.Is(err, service.ErrCircuitOpen) {
+			logger.Error("request.circuit_open", "elapsed_ms", elapsed.Milliseconds())
+			return c.Status(fiber.StatusServiceUnavailable).JSON(domain.ErrorResponse{
+				Error:   "service_unavailable",
+				Details: "LLM backend circuit breaker is open; try again later",
+			})
+		}
+		logger.Error("request.failed", "error", err.Error(), "elapsed_ms", elapsed.Milliseconds())
+		return c.Status(fiber.StatusInternalServerError).JSON(domain.ErrorResponse{
+			Error:   "reasoning_failed",
+			Details: err.Error(),
+		})
+	}
+
+	logger.Info("request.success",
+		"items", len(plan.Items),
+		"elapsed_ms", elapsed.Milliseconds(),
+	)
+
+	return c.Status(fiber.StatusOK).JSON(plan)
+}
+
+// handleCognitiveGraph processes GET /api/v1/tutor/student/:student_id/cognitive-graph.
+// It extracts the student_id path parameter and the comma-separated topics query
+// parameter, then delegates to InMemoryGraph.GenerateCognitiveShadow to produce
+// a Cytoscape/D3-compatible graph topology.
+func (h *Handler) handleCognitiveGraph(c *fiber.Ctx) error {
+	studentID := c.Params("student_id")
+	if studentID == "" {
+		return c.Status(fiber.StatusBadRequest).JSON(domain.ErrorResponse{
+			Error:   "validation_error",
+			Details: "student_id path parameter is required",
+		})
+	}
+
+	topicsParam := c.Query("topics")
+	if topicsParam == "" {
+		return c.Status(fiber.StatusBadRequest).JSON(domain.ErrorResponse{
+			Error:   "validation_error",
+			Details: "topics query parameter is required (comma-separated, e.g. ?topics=Polymorphism,Recursion)",
+		})
+	}
+
+	topics := strings.Split(topicsParam, ",")
+	for i := range topics {
+		topics[i] = strings.TrimSpace(topics[i])
+	}
+
+	slog.Info("cognitive_graph.requested",
+		"student_id", studentID,
+		"topics", topics,
+	)
+
+	resp := h.graph.GenerateCognitiveShadow(studentID, topics)
+
+	slog.Info("cognitive_graph.generated",
+		"student_id", studentID,
+		"nodes", len(resp.Nodes),
+		"edges", len(resp.Edges),
+	)
+
+	return c.Status(fiber.StatusOK).JSON(resp)
+}
