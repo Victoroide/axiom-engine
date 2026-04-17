@@ -28,7 +28,7 @@ RUN CGO_ENABLED=1 GOOS=linux go build -o /bin/axiom-server ./cmd/server
 FROM debian:bookworm-slim
 
 RUN apt-get update \
-    && apt-get install -y --no-install-recommends ca-certificates \
+    && apt-get install -y --no-install-recommends ca-certificates curl \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
