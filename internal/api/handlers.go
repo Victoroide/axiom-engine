@@ -48,10 +48,23 @@ func (h *Handler) RegisterRoutes(app *fiber.App) {
 	v1.Get("/tutor/student/:student_id/cognitive-graph", h.handleCognitiveGraph)
 }
 
-// handleAdaptivePlan processes POST /api/v1/adaptive-plan. It validates the
-// request body, enforces a 20-second context deadline, delegates to the
-// reasoning pipeline, and maps pipeline errors to appropriate HTTP status
-// codes (400, 503, 504, 500).
+// handleAdaptivePlan godoc
+// @Summary      Generate adaptive study plan
+// @Description  Accepts a student VARK profile and a list of failed concept IDs.
+// @Description  Executes GraphRAG subgraph extraction, topological sort, and
+// @Description  parallel BAML fan-out to Amazon Nova Micro. Returns a structured
+// @Description  study plan ordered by prerequisite depth.
+// @Tags         Adaptive Plan
+// @Accept       json
+// @Produce      json
+// @Param        body  body      domain.AdaptivePlanRequest  true  "Student profile and failed concepts"
+// @Success      200   {object}  domain.PlanResponse
+// @Failure      400   {object}  domain.ErrorResponse
+// @Failure      429   {object}  domain.ErrorResponse
+// @Failure      500   {object}  domain.ErrorResponse
+// @Failure      503   {object}  domain.ErrorResponse
+// @Failure      504   {object}  domain.ErrorResponse
+// @Router       /api/v1/adaptive-plan [post]
 func (h *Handler) handleAdaptivePlan(c *fiber.Ctx) error {
 	requestID := uuid.New().String()
 	logger := slog.With("request_id", requestID)
@@ -122,10 +135,18 @@ func (h *Handler) handleAdaptivePlan(c *fiber.Ctx) error {
 	return c.Status(fiber.StatusOK).JSON(plan)
 }
 
-// handleCognitiveGraph processes GET /api/v1/tutor/student/:student_id/cognitive-graph.
-// It extracts the student_id path parameter and the comma-separated topics query
-// parameter, then delegates to InMemoryGraph.GenerateCognitiveShadow to produce
-// a Cytoscape/D3-compatible graph topology.
+// handleCognitiveGraph godoc
+// @Summary      Get cognitive shadow graph
+// @Description  Returns a complete directed graph of all curriculum concepts annotated
+// @Description  with the student's mastery status (failed, learning, mastered).
+// @Description  Output is directly consumable by Cytoscape.js and D3.js renderers.
+// @Tags         Tutor
+// @Produce      json
+// @Param        student_id  path   string  true  "Student identifier"                          example(student-42)
+// @Param        topics      query  string  true  "Comma-separated failed topic names"          example(Polymorphism,Recursion)
+// @Success      200  {object}  domain.CognitiveGraphResponse
+// @Failure      400  {object}  domain.ErrorResponse
+// @Router       /api/v1/tutor/student/{student_id}/cognitive-graph [get]
 func (h *Handler) handleCognitiveGraph(c *fiber.Ctx) error {
 	studentID := c.Params("student_id")
 	if studentID == "" {

@@ -1,3 +1,12 @@
+// @title           AxiomEngine API
+// @version         1.0
+// @description     GraphRAG reasoning microservice. Generates adaptive study plans
+// @description     from student failed concepts using Amazon Nova Micro via BAML.
+// @contact.name    AxiomLMS Engineering
+// @host            localhost:8080
+// @BasePath        /
+// @schemes         http https
+
 // Package main is the entrypoint for the axiom-reasoning-svc binary. It
 // initializes structured JSON logging, constructs the dependency graph
 // (knowledge graph, reasoning service, HTTP handler), configures the Fiber
@@ -16,8 +25,11 @@ import (
 	"time"
 
 	"axiom-reasoning-svc/internal/api"
+	"axiom-reasoning-svc/internal/domain"
 	"axiom-reasoning-svc/internal/graph"
 	"axiom-reasoning-svc/internal/service"
+
+	_ "axiom-reasoning-svc/docs"
 
 	"github.com/goccy/go-json"
 	"github.com/gofiber/fiber/v2"
@@ -25,6 +37,7 @@ import (
 	"github.com/gofiber/fiber/v2/middleware/limiter"
 	"github.com/gofiber/fiber/v2/middleware/logger"
 	"github.com/gofiber/fiber/v2/middleware/recover"
+	fiberSwagger "github.com/swaggo/fiber-swagger"
 )
 
 func main() {
@@ -93,10 +106,8 @@ func main() {
 
 	// ── Routes ───────────────────────────────────────────────────────
 
-	// Health check
-	app.Get("/health", func(c *fiber.Ctx) error {
-		return c.JSON(fiber.Map{"status": "ok"})
-	})
+	app.Get("/health", healthHandler)
+	app.Get("/swagger/*", fiberSwagger.WrapHandler)
 
 	handler.RegisterRoutes(app)
 
@@ -120,6 +131,17 @@ func main() {
 		os.Exit(1)
 	}
 	slog.Info("server.shutdown_complete")
+}
+
+// healthHandler godoc
+// @Summary      Health check
+// @Description  Returns 200 if the service is running. Used by Railway and Docker health checks.
+// @Tags         System
+// @Produce      json
+// @Success      200  {object}  domain.HealthResponse
+// @Router       /health [get]
+func healthHandler(c *fiber.Ctx) error {
+	return c.JSON(domain.HealthResponse{Status: "ok"})
 }
 
 // customErrorHandler is the Fiber-level catch-all error handler. It maps
