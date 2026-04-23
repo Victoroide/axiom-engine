@@ -59,12 +59,12 @@ function GenerateTopicPlan(
     INSTRUCTIONS:
     1. Create one StudyItem per node in the prerequisite order PLUS the target topic.
     2. priority = position in prerequisite order (1=first). Target topic gets highest number.
-    3. prerequisite_chain = all topics that must be learned before this one.
-    4. ALL resources MUST match the VARK style:
-       - kinesthetic: exercise, lab, coding-challenge
-       - visual: video, diagram, infographic
-       - auditory: podcast, lecture, audio-course
-       - read_write: article, textbook, documentation
+    3. prerequisite_chain = all topics that must be learned before this one. This MUST ALWAYS be a JSON array of strings, even if there is exactly one item (e.g., ["SingleTopic"]).
+    4. For ALL resources, the resource_type field MUST be a concrete format (leaf type), NOT the VARK category name itself. Choose based on the VARK style:
+       - If kinesthetic: choose "exercise", "lab", or "coding-challenge"
+       - If visual: choose "video", "diagram", or "infographic"
+       - If auditory: choose "podcast", "lecture", or "audio-course"
+       - If read_write: choose "article", "textbook", or "documentation"
     5. Every topic MUST exist in the knowledge graph. Do NOT invent topics.
     6. student_id = "{{ student_id }}", course_id = "{{ course_id }}".
 
