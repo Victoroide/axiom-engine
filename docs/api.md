@@ -148,7 +148,7 @@ Executes the six-stage reasoning pipeline to produce a personalized study plan.
 
 ### `GET /api/v1/tutor/student/:student_id/cognitive-graph`
 
-Generates a full knowledge-graph visualization annotated with per-student mastery status.
+Generates a **filtered** subgraph of the curriculum knowledge graph, centered on a target topic's depth-1 neighborhood. Each node is annotated with the student's cognitive state. The response is directly consumable by Cytoscape.js and D3.js — no frontend transformation required. Only nodes that participate in at least one edge are included (no orphan/isolated nodes).
 
 ### Path Parameters
 
@@ -160,34 +160,49 @@ Generates a full knowledge-graph visualization annotated with per-student master
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
-| `topics` | string | **Yes** | Comma-separated list of failed topic names (e.g., `Polymorphism,Recursion`). |
+| `topics` | string | **Yes** | Comma-separated list of failed topic names (e.g., `Polymorphism,Recursion`). Used for cognitive state classification. |
+| `target_topic` | string | No | Single topic name to center the subgraph on. When provided, only the depth-1 neighborhood of this topic is returned. When omitted, the depth-1 neighborhoods of **all** failed topics are merged. |
 
 ### Response Body Schema (200 OK)
 
 ```json
 {
-  "student_id": "student-001",
   "nodes": [
     {
-      "id": "Polymorphism",
-      "label": "Polymorphism",
-      "status": "failed"
+      "id": "Recursion",
+      "label": "Recursion",
+      "cognitive_state": "failed"
     },
     {
-      "id": "Inheritance",
-      "label": "Inheritance",
-      "status": "learning"
+      "id": "Functions",
+      "label": "Functions",
+      "cognitive_state": "learning"
     },
     {
-      "id": "Arrays",
-      "label": "Arrays",
-      "status": "mastered"
+      "id": "Merge Sort",
+      "label": "Merge Sort",
+      "cognitive_state": "mastered"
+    },
+    {
+      "id": "Dynamic Programming",
+      "label": "Dynamic Programming",
+      "cognitive_state": "mastered"
     }
   ],
   "edges": [
     {
-      "source": "Polymorphism",
-      "target": "Inheritance",
+      "source": "Recursion",
+      "target": "Functions",
+      "relation": "depends_on"
+    },
+    {
+      "source": "Merge Sort",
+      "target": "Recursion",
+      "relation": "depends_on"
+    },
+    {
+      "source": "Dynamic Programming",
+      "target": "Recursion",
       "relation": "depends_on"
     }
   ]
@@ -196,23 +211,31 @@ Generates a full knowledge-graph visualization annotated with per-student master
 
 | Field | Type | Description |
 |-------|------|-------------|
-| `student_id` | string | Echoed from path parameter. |
-| `nodes` | VisualNode[] | Every node in the knowledge graph. |
+| `nodes` | VisualNode[] | Filtered nodes in the depth-1 subgraph. Only includes nodes with at least one edge. |
 | `nodes[].id` | string | Unique node identifier (equals the graph node name). |
-| `nodes[].label` | string | Display label for the frontend. |
-| `nodes[].status` | string | One of: `"failed"`, `"learning"`, `"mastered"`. |
-| `edges` | VisualEdge[] | Every directed edge in the knowledge graph. |
-| `edges[].source` | string | ID of the originating node. |
-| `edges[].target` | string | ID of the destination node. |
+| `nodes[].label` | string | Display label for the frontend (same as `id`). |
+| `nodes[].cognitive_state` | string | One of: `"failed"`, `"learning"`, `"mastered"`. |
+| `edges` | VisualEdge[] | Directed edges in the filtered subgraph. Both source and target are guaranteed to be in the node list. |
+| `edges[].source` | string | ID of the dependent concept. |
+| `edges[].target` | string | ID of the prerequisite concept. |
 | `edges[].relation` | string | Edge label (`"depends_on"` or `"is_a"`). |
 
-### Node Status Classification Logic
+### Cognitive State Classification Logic
 
-| Status | Condition |
-|--------|-----------|
+| State | Condition |
+|-------|-----------|
 | `"failed"` | The node name appears in the `topics` query parameter. |
-| `"learning"` | The node is a transitive prerequisite of any failed node (determined by DFS). |
+| `"learning"` | The node is a transitive prerequisite of any failed node (determined by DFS over the full graph). |
 | `"mastered"` | The node is neither failed nor a prerequisite of a failed node. |
+
+### Subgraph Filtering Logic
+
+The endpoint uses BFS with depth 1 from the seed topic(s), traversing both forward (`depends_on` outgoing) and reverse (`depends_on` incoming) edges. This returns:
+- The target topic itself
+- Its direct prerequisites (one level up)
+- Topics that directly depend on it (one level down)
+
+Nodes that exist in the full knowledge graph but have no direct edge to the seed topic(s) are excluded.
 
 ---
 

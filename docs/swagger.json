@@ -81,7 +81,7 @@
         },
         "/api/v1/tutor/student/{student_id}/cognitive-graph": {
             "get": {
-                "description": "Returns a complete directed graph of all curriculum concepts annotated\nwith the student's mastery status (failed, learning, mastered).\nOutput is directly consumable by Cytoscape.js and D3.js renderers.",
+                "description": "Returns a filtered directed subgraph of curriculum concepts annotated\nwith the student's cognitive state (failed, learning, mastered).\nWhen target_topic is provided, only the depth-1 neighborhood of that\ntopic is returned. Otherwise, the depth-1 neighborhoods of all failed\ntopics are merged. Only nodes with at least one edge are included.\nOutput is directly consumable by Cytoscape.js and D3.js renderers.",
                 "produces": [
                     "application/json"
                 ],
@@ -105,6 +105,13 @@
                         "name": "topics",
                         "in": "query",
                         "required": true
+                    },
+                    {
+                        "type": "string",
+                        "example": "Recursion",
+                        "description": "Single topic to center the subgraph on",
+                        "name": "target_topic",
+                        "in": "query"
                     }
                 ],
                 "responses": {
@@ -184,23 +191,18 @@
             "type": "object",
             "properties": {
                 "edges": {
-                    "description": "Edges contains every directed relationship in the knowledge graph.",
+                    "description": "Edges contains directed relationships between nodes in the subgraph.",
                     "type": "array",
                     "items": {
                         "$ref": "#/definitions/domain.VisualEdge"
                     }
                 },
                 "nodes": {
-                    "description": "Nodes contains every concept in the knowledge graph, each annotated\nwith the student's mastery status.",
+                    "description": "Nodes contains the filtered concept nodes, each annotated\nwith the student's cognitive state.",
                     "type": "array",
                     "items": {
                         "$ref": "#/definitions/domain.VisualNode"
                     }
-                },
-                "student_id": {
-                    "description": "StudentID identifies the learner whose cognitive state is represented.",
-                    "type": "string",
-                    "example": "student-42"
                 }
             }
         },
@@ -398,6 +400,11 @@
         "domain.VisualNode": {
             "type": "object",
             "properties": {
+                "cognitive_state": {
+                    "description": "CognitiveState indicates the student's cognitive state for this concept.\nPossible values:\n  \"failed\"   -- the student explicitly failed this topic.\n  \"learning\" -- this topic is a prerequisite of a failed topic.\n  \"mastered\" -- no evidence of deficit; presumed mastered.",
+                    "type": "string",
+                    "example": "failed"
+                },
                 "id": {
                     "description": "ID is the unique identifier for this node, equal to the knowledge-graph node name.",
                     "type": "string",
@@ -407,11 +414,6 @@
                     "description": "Label is the human-readable display text for the node.",
                     "type": "string",
                     "example": "Polymorphism"
-                },
-                "status": {
-                    "description": "Status indicates the student's cognitive state for this concept.\nPossible values:\n  \"failed\"   -- the student explicitly failed this topic.\n  \"learning\" -- this topic is a prerequisite of a failed topic.\n  \"mastered\" -- no evidence of deficit; presumed mastered.",
-                    "type": "string",
-                    "example": "failed"
                 }
             }
         }

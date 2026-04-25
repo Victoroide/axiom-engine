@@ -19,7 +19,12 @@ The HTTP transport layer (`internal/api`) and the reasoning pipeline (`internal/
 | `internal/graph/memory_test.go` | `TestAdd` | Tuple insertion: verifies `All()` count increments by exactly 1 |
 | `internal/graph/memory_test.go` | `TestNodeExists` | Node presence lookup: 5 cases including two false cases (unknown node, empty string) |
 | `internal/graph/memory_test.go` | `TestGetPrerequisiteChain` | DFS prerequisite ordering: 4 cases (deep chain, leaf node, single dependency, unknown topic) |
-| `internal/graph/cognitive_test.go` | `TestGenerateCognitiveShadow` | Cognitive graph generation: 4 cases (single failed topic, multiple failed topics, no failed topics → all mastered, unknown topic → no crash) |
+| `internal/graph/cognitive_test.go` | `TestGenerateCognitiveShadow_TargetTopic` | Subgraph filtering with `target_topic`: verifies depth-1 neighbors, cognitive state preservation, no orphan nodes, no unrelated nodes |
+| `internal/graph/cognitive_test.go` | `TestGenerateCognitiveShadow_NoTargetTopic` | Multi-topic BFS seeds (no target): verifies merged neighborhoods, cognitive states, filtered node count |
+| `internal/graph/cognitive_test.go` | `TestGenerateCognitiveShadow_EmptyFailedTopics` | Empty input: verifies 0 nodes and 0 edges returned |
+| `internal/graph/cognitive_test.go` | `TestGenerateCognitiveShadow_UnknownTopic` | Unknown topic: verifies 0 nodes and 0 edges (no crash) |
+| `internal/graph/cognitive_test.go` | `TestGenerateCognitiveShadow_NoStudentIDInResponse` | Response struct: verifies `student_id` is not in the response payload |
+| `internal/graph/cognitive_test.go` | `TestGenerateCognitiveShadow_CognitiveStateFieldName` | Field naming: verifies `cognitive_state` field is populated on all nodes |
 
 ## How to Run
 

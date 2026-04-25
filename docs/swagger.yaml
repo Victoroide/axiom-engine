@@ -36,21 +36,17 @@ definitions:
   domain.CognitiveGraphResponse:
     properties:
       edges:
-        description: Edges contains every directed relationship in the knowledge graph.
+        description: Edges contains directed relationships between nodes in the subgraph.
         items:
           $ref: '#/definitions/domain.VisualEdge'
         type: array
       nodes:
         description: |-
-          Nodes contains every concept in the knowledge graph, each annotated
-          with the student's mastery status.
+          Nodes contains the filtered concept nodes, each annotated
+          with the student's cognitive state.
         items:
           $ref: '#/definitions/domain.VisualNode'
         type: array
-      student_id:
-        description: StudentID identifies the learner whose cognitive state is represented.
-        example: student-42
-        type: string
     type: object
   domain.ErrorResponse:
     properties:
@@ -235,6 +231,15 @@ definitions:
     type: object
   domain.VisualNode:
     properties:
+      cognitive_state:
+        description: |-
+          CognitiveState indicates the student's cognitive state for this concept.
+          Possible values:
+            "failed"   -- the student explicitly failed this topic.
+            "learning" -- this topic is a prerequisite of a failed topic.
+            "mastered" -- no evidence of deficit; presumed mastered.
+        example: failed
+        type: string
       id:
         description: ID is the unique identifier for this node, equal to the knowledge-graph
           node name.
@@ -243,15 +248,6 @@ definitions:
       label:
         description: Label is the human-readable display text for the node.
         example: Polymorphism
-        type: string
-      status:
-        description: |-
-          Status indicates the student's cognitive state for this concept.
-          Possible values:
-            "failed"   -- the student explicitly failed this topic.
-            "learning" -- this topic is a prerequisite of a failed topic.
-            "mastered" -- no evidence of deficit; presumed mastered.
-        example: failed
         type: string
     type: object
 host: localhost:8080
@@ -313,8 +309,11 @@ paths:
   /api/v1/tutor/student/{student_id}/cognitive-graph:
     get:
       description: |-
-        Returns a complete directed graph of all curriculum concepts annotated
-        with the student's mastery status (failed, learning, mastered).
+        Returns a filtered directed subgraph of curriculum concepts annotated
+        with the student's cognitive state (failed, learning, mastered).
+        When target_topic is provided, only the depth-1 neighborhood of that
+        topic is returned. Otherwise, the depth-1 neighborhoods of all failed
+        topics are merged. Only nodes with at least one edge are included.
         Output is directly consumable by Cytoscape.js and D3.js renderers.
       parameters:
       - description: Student identifier
@@ -328,6 +327,11 @@ paths:
         in: query
         name: topics
         required: true
+        type: string
+      - description: Single topic to center the subgraph on
+        example: Recursion
+        in: query
+        name: target_topic
         type: string
       produces:
       - application/json

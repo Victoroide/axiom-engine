@@ -148,9 +148,9 @@ curl -s -X POST http://localhost:8080/api/v1/adaptive-plan \
 
 ## GET /api/v1/tutor/student/{student_id}/cognitive-graph
 
-**Summary**: Get the full cognitive shadow graph for a student.
+**Summary**: Get a filtered cognitive shadow subgraph for a student.
 
-**Description**: Returns all curriculum concept nodes annotated with the student's mastery status (`failed`, `learning`, `mastered`), plus all directed edges. Suitable for direct consumption by Cytoscape.js or D3.js.
+**Description**: Returns a depth-1 neighborhood of curriculum concept nodes centered on a target topic (or all failed topics), annotated with the student's cognitive state (`failed`, `learning`, `mastered`). Only nodes that participate in at least one edge are included (no orphan nodes). The response is directly consumable by Cytoscape.js or D3.js without frontend transformation.
 
 **Permission**: Internal only
 
@@ -164,18 +164,18 @@ curl -s -X POST http://localhost:8080/api/v1/adaptive-plan \
 
 | Parameter | Type | Required | Description | Example |
 |-----------|------|----------|-------------|---------|
-| `topics` | string | **Yes** | Comma-separated list of failed topic names | `Polymorphism,Recursion` |
+| `topics` | string | **Yes** | Comma-separated list of failed topic names. Used for cognitive state classification. | `Polymorphism,Recursion` |
+| `target_topic` | string | No | Single topic to center the subgraph on. When omitted, all `topics` are used as BFS seeds. | `Recursion` |
 
 **Response body** — `200 OK`
 
 | Field | Type | Description |
 |-------|------|-------------|
-| `student_id` | string | Echoed path parameter |
-| `nodes` | []VisualNode | All nodes in the knowledge graph |
+| `nodes` | []VisualNode | Filtered nodes in the depth-1 subgraph (only nodes with edges) |
 | `nodes[].id` | string | Concept name (knowledge-graph node) |
 | `nodes[].label` | string | Display label (same as `id`) |
-| `nodes[].status` | string | `"failed"`, `"learning"`, or `"mastered"` |
-| `edges` | []VisualEdge | All directed edges in the knowledge graph |
+| `nodes[].cognitive_state` | string | `"failed"`, `"learning"`, or `"mastered"` |
+| `edges` | []VisualEdge | Directed edges in the filtered subgraph |
 | `edges[].source` | string | Dependent concept (VisualNode id) |
 | `edges[].target` | string | Prerequisite concept (VisualNode id) |
 | `edges[].relation` | string | Edge type: `"depends_on"` or `"is_a"` |
@@ -190,7 +190,7 @@ curl -s -X POST http://localhost:8080/api/v1/adaptive-plan \
 **Example request**
 
 ```bash
-curl -s "http://localhost:8080/api/v1/tutor/student/student-42/cognitive-graph?topics=Polymorphism,Recursion"
+curl -s "http://localhost:8080/api/v1/tutor/student/student-42/cognitive-graph?topics=Recursion&target_topic=Recursion"
 ```
 
 ---

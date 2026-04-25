@@ -170,12 +170,12 @@ type VisualNode struct {
 	// Label is the human-readable display text for the node.
 	Label string `json:"label" example:"Polymorphism"`
 
-	// Status indicates the student's cognitive state for this concept.
+	// CognitiveState indicates the student's cognitive state for this concept.
 	// Possible values:
 	//   "failed"   -- the student explicitly failed this topic.
 	//   "learning" -- this topic is a prerequisite of a failed topic.
 	//   "mastered" -- no evidence of deficit; presumed mastered.
-	Status string `json:"status" example:"failed"`
+	CognitiveState string `json:"cognitive_state" example:"failed"`
 }
 
 // VisualEdge represents a directed relationship between two nodes in the
@@ -193,17 +193,15 @@ type VisualEdge struct {
 
 // CognitiveGraphResponse is the payload returned by the
 // GET /api/v1/tutor/student/:student_id/cognitive-graph endpoint.
-// It provides a complete, frontend-ready graph topology compatible with
-// Cytoscape.js and D3.js visualization libraries.
+// It provides a filtered, frontend-ready graph topology compatible with
+// Cytoscape.js and D3.js visualization libraries. Only nodes with at least
+// one edge in the filtered subgraph are included (no orphan nodes).
 type CognitiveGraphResponse struct {
-	// StudentID identifies the learner whose cognitive state is represented.
-	StudentID string `json:"student_id" example:"student-42"`
-
-	// Nodes contains every concept in the knowledge graph, each annotated
-	// with the student's mastery status.
+	// Nodes contains the filtered concept nodes, each annotated
+	// with the student's cognitive state.
 	Nodes []VisualNode `json:"nodes"`
 
-	// Edges contains every directed relationship in the knowledge graph.
+	// Edges contains directed relationships between nodes in the subgraph.
 	Edges []VisualEdge `json:"edges"`
 }
 

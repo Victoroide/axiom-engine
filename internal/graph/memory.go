@@ -172,20 +172,23 @@ func (g *InMemoryGraph) GetLocalSubgraph(failedTopics []string, depth int) []dom
 	return result
 }
 
-// GenerateCognitiveShadow constructs a complete Cognitive Shadow Graph for
-// teacher-dashboard visualization. It iterates over every node in the
-// knowledge graph and classifies each into one of three cognitive states:
+// GenerateCognitiveShadow constructs a filtered Cognitive Shadow Graph for
+// frontend visualization (Cytoscape.js / D3.js). Given a target topic, it
+// extracts a depth-1 local subgraph around each failed topic, classifies
+// every node into one of three cognitive states, and prunes orphan nodes
+// (nodes with no edges in the filtered subgraph).
 //
+// Cognitive state classification:
 //   - "failed":   the node name appears in the failedTopics input.
 //   - "learning": the node is a transitive prerequisite of at least one
 //     failed topic (determined via GetPrerequisiteChain) but is not itself
 //     in the failed set.
 //   - "mastered": all remaining nodes for which no deficit evidence exists.
 //
-// The returned CognitiveGraphResponse contains the full set of VisualNodes
-// and VisualEdges, making it directly consumable by Cytoscape.js or D3.js
-// frontend renderers.
-func (g *InMemoryGraph) GenerateCognitiveShadow(studentID string, failedTopics []string) domain.CognitiveGraphResponse {
+// The targetTopic parameter selects which failed topic's local neighborhood
+// to visualize. If targetTopic is empty, all failedTopics are used as BFS
+// seeds. The subgraph is limited to depth 1 (direct neighbors only).
+func (g *InMemoryGraph) GenerateCognitiveShadow(studentID string, failedTopics []string, targetTopic string) domain.CognitiveGraphResponse {
 	failedSet := make(map[string]bool, len(failedTopics))
 	for _, t := range failedTopics {
 		failedSet[t] = true
@@ -201,36 +204,49 @@ func (g *InMemoryGraph) GenerateCognitiveShadow(studentID string, failedTopics [
 		}
 	}
 
-	// Build nodes from the full node set
-	nodes := make([]domain.VisualNode, 0, len(g.nodes))
-	for name := range g.nodes {
-		status := "mastered"
-		if failedSet[name] {
-			status = "failed"
-		} else if learningSet[name] {
-			status = "learning"
-		}
-		nodes = append(nodes, domain.VisualNode{
-			ID:     name,
-			Label:  name,
-			Status: status,
-		})
+	// ── Determine BFS seeds for subgraph extraction ─────────────────
+	// If a target topic is specified, use only that topic as the seed.
+	// Otherwise, use all failed topics.
+	seeds := failedTopics
+	if targetTopic != "" {
+		seeds = []string{targetTopic}
 	}
 
-	// Build edges from all tuples
-	edges := make([]domain.VisualEdge, len(g.all))
-	for i, t := range g.all {
-		edges[i] = domain.VisualEdge{
+	// ── Extract depth-1 local subgraph ──────────────────────────────
+	subgraphTuples := g.GetLocalSubgraph(seeds, 1)
+
+	// Build edges from the filtered subgraph tuples
+	edges := make([]domain.VisualEdge, 0, len(subgraphTuples))
+	connectedNodes := make(map[string]bool, len(subgraphTuples)*2)
+	for _, t := range subgraphTuples {
+		edges = append(edges, domain.VisualEdge{
 			Source:   t.Subject,
 			Target:   t.Object,
 			Relation: t.Relation,
+		})
+		connectedNodes[t.Subject] = true
+		connectedNodes[t.Object] = true
+	}
+
+	// Build nodes ONLY for nodes that appear in at least one edge
+	nodes := make([]domain.VisualNode, 0, len(connectedNodes))
+	for name := range connectedNodes {
+		state := "mastered"
+		if failedSet[name] {
+			state = "failed"
+		} else if learningSet[name] {
+			state = "learning"
 		}
+		nodes = append(nodes, domain.VisualNode{
+			ID:             name,
+			Label:          name,
+			CognitiveState: state,
+		})
 	}
 
 	return domain.CognitiveGraphResponse{
-		StudentID: studentID,
-		Nodes:     nodes,
-		Edges:     edges,
+		Nodes: nodes,
+		Edges: edges,
 	}
 }
 

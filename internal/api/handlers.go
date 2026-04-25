@@ -137,13 +137,17 @@ func (h *Handler) handleAdaptivePlan(c *fiber.Ctx) error {
 
 // handleCognitiveGraph godoc
 // @Summary      Get cognitive shadow graph
-// @Description  Returns a complete directed graph of all curriculum concepts annotated
-// @Description  with the student's mastery status (failed, learning, mastered).
+// @Description  Returns a filtered directed subgraph of curriculum concepts annotated
+// @Description  with the student's cognitive state (failed, learning, mastered).
+// @Description  When target_topic is provided, only the depth-1 neighborhood of that
+// @Description  topic is returned. Otherwise, the depth-1 neighborhoods of all failed
+// @Description  topics are merged. Only nodes with at least one edge are included.
 // @Description  Output is directly consumable by Cytoscape.js and D3.js renderers.
 // @Tags         Tutor
 // @Produce      json
-// @Param        student_id  path   string  true  "Student identifier"                          example(student-42)
-// @Param        topics      query  string  true  "Comma-separated failed topic names"          example(Polymorphism,Recursion)
+// @Param        student_id    path   string  true   "Student identifier"                          example(student-42)
+// @Param        topics        query  string  true   "Comma-separated failed topic names"          example(Polymorphism,Recursion)
+// @Param        target_topic  query  string  false  "Single topic to center the subgraph on"      example(Recursion)
 // @Success      200  {object}  domain.CognitiveGraphResponse
 // @Failure      400  {object}  domain.ErrorResponse
 // @Router       /api/v1/tutor/student/{student_id}/cognitive-graph [get]
@@ -169,12 +173,15 @@ func (h *Handler) handleCognitiveGraph(c *fiber.Ctx) error {
 		topics[i] = strings.TrimSpace(topics[i])
 	}
 
+	targetTopic := strings.TrimSpace(c.Query("target_topic"))
+
 	slog.Info("cognitive_graph.requested",
 		"student_id", studentID,
 		"topics", topics,
+		"target_topic", targetTopic,
 	)
 
-	resp := h.graph.GenerateCognitiveShadow(studentID, topics)
+	resp := h.graph.GenerateCognitiveShadow(studentID, topics, targetTopic)
 
 	slog.Info("cognitive_graph.generated",
 		"student_id", studentID,
