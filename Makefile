@@ -1,4 +1,4 @@
-.PHONY: generate build test run docker-build docker-up clean
+.PHONY: generate build test run docker-build docker-up docker-down clean fmt-check vet lint quality
 
 generate:
 	baml-cli generate
@@ -25,3 +25,17 @@ docker-down:
 
 clean:
 	rm -rf bin/ baml_client/
+
+fmt-check:
+	@diff=$$(gofmt -l .); \
+	if [ -n "$$diff" ]; then \
+	  echo "gofmt issues in:"; echo "$$diff"; exit 1; \
+	fi
+
+vet:
+	go vet ./...
+
+lint:
+	golangci-lint run
+
+quality: fmt-check vet lint

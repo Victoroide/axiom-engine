@@ -32,7 +32,7 @@ func TestGetLocalSubgraph(t *testing.T) {
 			},
 		},
 		{
-			name:       "single topic depth 1 includes transitive neighbours",
+			name:       "single topic depth 1 includes transitive neighbors",
 			topics:     []string{"Polymorphism"},
 			depth:      1,
 			wantMinLen: 3,

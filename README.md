@@ -36,6 +36,19 @@ Swagger UI is available at `http://localhost:8080/swagger/index.html` when the s
 | `POST` | `/api/v1/adaptive-plan` | Generate adaptive study plan from failed topics and VARK profile |
 | `GET` | `/api/v1/tutor/student/:student_id/cognitive-graph?topics=...` | Cognitive shadow graph for teacher dashboard |
 
+## Code Quality
+
+This project enforces formatting and static analysis on every change. All targets are exposed via the `Makefile` (config: [`.golangci.yml`](.golangci.yml)).
+
+```bash
+make fmt-check     # gofmt -l . — must report no files
+make vet           # go vet ./...
+make lint          # golangci-lint run
+make quality       # runs all three
+```
+
+Expected: every command exits `0` with no output. Generated code in `baml_client/` and `docs/docs.go` is excluded from linting and is regenerated via `make generate`.
+
 ## Documentation
 
 | Document | Description |
