@@ -120,8 +120,25 @@ func main() {
 
 	// ── Routes ───────────────────────────────────────────────────────
 
+	// /health stays unauthenticated so Docker/K8s liveness probes work.
 	app.Get("/health", healthHandler)
 	app.Get("/swagger/*", fiberSwagger.WrapHandler)
+
+	// Optional shared-secret enforcement for /api/v1/* endpoints. When
+	// AXIOM_INTERNAL_TOKEN is set in the environment, every request to the
+	// reasoning API must carry the same value in the X-Internal-Token header
+	// (or HTTP basic-style "Authorization: Bearer <token>"). This blocks the
+	// frontend from talking to Go directly and forces traffic through the
+	// Django proxy, which is the trust boundary that holds JWT auth.
+	internalToken := os.Getenv("AXIOM_INTERNAL_TOKEN")
+	if internalToken != "" {
+		slog.Info("auth.internal_token.enabled")
+		app.Use("/api/v1", internalTokenMiddleware(internalToken))
+	} else {
+		slog.Warn("auth.internal_token.disabled",
+			"hint", "set AXIOM_INTERNAL_TOKEN to require shared-secret on /api/v1/*",
+		)
+	}
 
 	handler.RegisterRoutes(app)
 
@@ -171,4 +188,33 @@ func customErrorHandler(c *fiber.Ctx, err error) error {
 		"error":   "internal_error",
 		"details": err.Error(),
 	})
+}
+
+// internalTokenMiddleware returns a Fiber middleware that compares the
+// request's X-Internal-Token header (or "Authorization: Bearer <token>")
+// against the configured shared secret. Mismatches are logged and answered
+// with 401 Unauthorized; the request never reaches the route handler.
+func internalTokenMiddleware(expected string) fiber.Handler {
+	return func(c *fiber.Ctx) error {
+		provided := c.Get("X-Internal-Token")
+		if provided == "" {
+			authz := c.Get("Authorization")
+			const prefix = "Bearer "
+			if len(authz) > len(prefix) && authz[:len(prefix)] == prefix {
+				provided = authz[len(prefix):]
+			}
+		}
+		if provided != expected {
+			slog.Warn("auth.internal_token.rejected",
+				"ip", c.IP(),
+				"path", c.Path(),
+				"has_header", provided != "",
+			)
+			return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
+				"error":   "unauthorized",
+				"details": "missing or invalid internal token",
+			})
+		}
+		return c.Next()
+	}
 }
