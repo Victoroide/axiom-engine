@@ -10,7 +10,8 @@ generator target {
 
     // The version of the BAML package you have installed (e.g. same version as your baml-py or @boundaryml/baml).
     // The BAML VSCode extension version should also match this version.
-    version "0.221.0"
+    // KEEP IN SYNC with the baml-cli version pinned in Dockerfile (RUN go install ...@vX.Y.Z).
+    version "0.222.0"
 
     // Post-generation formatting (disabled on Windows; Docker build uses Linux)
     // on_generate "gofmt -w . && goimports -w ."

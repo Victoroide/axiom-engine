@@ -4,8 +4,10 @@ FROM golang:1.25-bookworm AS builder
 # Install goimports for BAML post-generation formatting
 RUN go install golang.org/x/tools/cmd/goimports@latest
 
-# Install BAML CLI
-RUN go install github.com/boundaryml/baml/baml-cli@latest
+# Install BAML CLI — pin to a specific version so builds stay reproducible.
+# Must match the `version` declared in baml_src/generators.baml; BAML rejects
+# generation when minor versions diverge.
+RUN go install github.com/boundaryml/baml/baml-cli@v0.222.0
 
 WORKDIR /src
 
