@@ -27,6 +27,7 @@ import (
 	"github.com/Victoroide/axiom-reasoning-svc/internal/api"
 	"github.com/Victoroide/axiom-reasoning-svc/internal/domain"
 	"github.com/Victoroide/axiom-reasoning-svc/internal/graph"
+	"github.com/Victoroide/axiom-reasoning-svc/internal/llm"
 	"github.com/Victoroide/axiom-reasoning-svc/internal/service"
 
 	_ "github.com/Victoroide/axiom-reasoning-svc/docs"
@@ -56,7 +57,7 @@ func main() {
 	g := graph.NewInMemoryGraph()
 	slog.Info("graph.loaded", "tuples", len(g.All()))
 
-	reasoningSvc := service.NewReasoningService(g)
+	reasoningSvc := service.NewReasoningService(g, llm.New(), service.Options{LLMTimeout: 15 * time.Second, MaxFailedTopics: 10})
 	handler := api.NewHandler(reasoningSvc, g)
 
 	// ── Fiber app (goccy/go-json for fast serialization) ─────────────
