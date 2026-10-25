@@ -20,10 +20,10 @@ import (
 	"sync"
 	"time"
 
-	baml "axiom-reasoning-svc/baml_client"
-	"axiom-reasoning-svc/baml_client/types"
-	"axiom-reasoning-svc/internal/domain"
-	"axiom-reasoning-svc/internal/graph"
+	baml "github.com/Victoroide/axiom-reasoning-svc/baml_client"
+	"github.com/Victoroide/axiom-reasoning-svc/baml_client/types"
+	"github.com/Victoroide/axiom-reasoning-svc/internal/domain"
+	"github.com/Victoroide/axiom-reasoning-svc/internal/graph"
 
 	"github.com/sony/gobreaker/v2"
 	"golang.org/x/sync/errgroup"

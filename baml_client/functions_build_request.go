@@ -17,60 +17,13 @@ import (
 	"context"
 	"fmt"
 
-	"axiom-reasoning-svc/baml_client/types"
-
+	"github.com/Victoroide/axiom-reasoning-svc/baml_client/types"
 	baml "github.com/boundaryml/baml/engine/language_client_go/pkg"
 )
 
 type build_request struct{}
 
 var Request = &build_request{}
-
-// Build HTTP request for GenerateAdaptivePlan (returns baml.HTTPRequest)
-func (*build_request) GenerateAdaptivePlan(graph_context []types.GraphTuple, failed_topics []string, vark_profile string, opts ...CallOptionFunc) (baml.HTTPRequest, error) {
-
-	var callOpts callOption
-	for _, opt := range opts {
-		opt(&callOpts)
-	}
-
-	// Resolve client option to clientRegistry (client takes precedence)
-	if callOpts.client != nil {
-		if callOpts.clientRegistry == nil {
-			callOpts.clientRegistry = baml.NewClientRegistry()
-		}
-		callOpts.clientRegistry.SetPrimaryClient(*callOpts.client)
-	}
-
-	args := baml.BamlFunctionArguments{
-		Kwargs: map[string]any{"graph_context": graph_context, "failed_topics": failed_topics, "vark_profile": vark_profile, "stream": false},
-		Env:    getEnvVars(callOpts.env),
-	}
-
-	if callOpts.clientRegistry != nil {
-		args.ClientRegistry = callOpts.clientRegistry
-	}
-
-	if callOpts.collectors != nil {
-		args.Collectors = callOpts.collectors
-	}
-
-	if callOpts.typeBuilder != nil {
-		args.TypeBuilder = callOpts.typeBuilder
-	}
-
-	if callOpts.tags != nil {
-		args.Tags = callOpts.tags
-	}
-
-	encoded, err := args.Encode()
-	if err != nil {
-		wrapped_err := fmt.Errorf("BAML INTERNAL ERROR: GenerateAdaptivePlan: %w", err)
-		panic(wrapped_err)
-	}
-
-	return bamlRuntime.BuildRequest(context.Background(), "GenerateAdaptivePlan", encoded)
-}
 
 // Build HTTP request for GenerateTopicPlan (returns baml.HTTPRequest)
 func (*build_request) GenerateTopicPlan(graph_context []types.GraphTuple, target_topic string, prerequisite_order []string, vark_profile string, student_id string, course_id string, opts ...CallOptionFunc) (baml.HTTPRequest, error) {

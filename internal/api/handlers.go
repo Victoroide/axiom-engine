@@ -11,9 +11,9 @@ import (
 	"strings"
 	"time"
 
-	"axiom-reasoning-svc/internal/domain"
-	"axiom-reasoning-svc/internal/graph"
-	"axiom-reasoning-svc/internal/service"
+	"github.com/Victoroide/axiom-reasoning-svc/internal/domain"
+	"github.com/Victoroide/axiom-reasoning-svc/internal/graph"
+	"github.com/Victoroide/axiom-reasoning-svc/internal/service"
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/google/uuid"
