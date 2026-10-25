@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"path/filepath"
 	"strings"
 
 	"github.com/Victoroide/axiom-reasoning-svc/internal/domain"
@@ -19,7 +20,7 @@ func Load(path string) (*InMemoryGraph, error) {
 	if path == "" {
 		return NewInMemoryGraph(), nil
 	}
-	f, err := os.Open(path)
+	f, err := os.Open(filepath.Clean(path)) //nolint:gosec // GRAPH_FILE is an operator-selected startup file.
 	if err != nil {
 		return nil, fmt.Errorf("open graph: %w", err)
 	}

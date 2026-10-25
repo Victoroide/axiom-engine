@@ -13,9 +13,10 @@ import (
 	"testing"
 	"time"
 
+	"github.com/sony/gobreaker/v2"
+
 	"github.com/Victoroide/axiom-reasoning-svc/internal/domain"
 	"github.com/Victoroide/axiom-reasoning-svc/internal/graph"
-	"github.com/sony/gobreaker/v2"
 )
 
 type plannerFunc func(context.Context, TopicRequest) ([]domain.PlanItem, error)
@@ -52,7 +53,7 @@ func TestOrderingDedupeAndHallucinationGuard(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		topics := []string{}
+		topics := make([]string, 0, len(got.Items))
 		for i, item := range got.Items {
 			topics = append(topics, item.Topic)
 			if item.Priority != i+1 {
@@ -66,7 +67,8 @@ func TestOrderingDedupeAndHallucinationGuard(t *testing.T) {
 }
 
 func TestValidationBeforePlanner(t *testing.T) {
-	cases := []domain.AdaptivePlanRequest{request(), request(" "), request("unknown"), request("Recursion", "unknown")}
+	cases := make([]domain.AdaptivePlanRequest, 0, 8)
+	cases = append(cases, request(), request(" "), request("unknown"), request("Recursion", "unknown"))
 	bad := request("Recursion")
 	bad.VARKProfile = "injected"
 	cases = append(cases, bad)
@@ -79,7 +81,7 @@ func TestValidationBeforePlanner(t *testing.T) {
 	bad = request("Recursion", "Polymorphism")
 	cases = append(cases, bad)
 	for _, req := range cases {
-		t.Run(req.VARKProfile+req.StudentID+req.CourseID+string(rune(len(req.FailedTopics))), func(t *testing.T) {
+		t.Run(req.VARKProfile+req.StudentID+req.CourseID+fmt.Sprint(len(req.FailedTopics)), func(t *testing.T) {
 			svc := newService(func(context.Context, TopicRequest) ([]domain.PlanItem, error) {
 				t.Error("planner called on invalid input")
 				return nil, nil

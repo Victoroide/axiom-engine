@@ -7,10 +7,11 @@ import (
 	"log/slog"
 	"time"
 
-	"github.com/Victoroide/axiom-reasoning-svc/internal/domain"
-	"github.com/Victoroide/axiom-reasoning-svc/internal/graph"
 	"github.com/sony/gobreaker/v2"
 	"golang.org/x/sync/errgroup"
+
+	"github.com/Victoroide/axiom-reasoning-svc/internal/domain"
+	"github.com/Victoroide/axiom-reasoning-svc/internal/graph"
 )
 
 // ErrCircuitOpen indicates that the upstream circuit rejects requests.

@@ -1,23 +1,21 @@
 {
-    "schemes": [
-        "http",
-        "https"
-    ],
     "swagger": "2.0",
     "info": {
-        "description": "GraphRAG reasoning microservice. Generates adaptive study plans\nfrom student failed concepts using Amazon Nova Micro via BAML.",
+        "description": "Graph-guided adaptive study plans using Amazon Bedrock.",
         "title": "AxiomEngine API",
-        "contact": {
-            "name": "AxiomLMS Engineering"
-        },
+        "contact": {},
         "version": "1.0"
     },
-    "host": "localhost:8080",
     "basePath": "/",
     "paths": {
         "/api/v1/adaptive-plan": {
             "post": {
-                "description": "Accepts a student VARK profile and a list of failed concept IDs.\nExecutes GraphRAG subgraph extraction, topological sort, and\nparallel BAML fan-out to Amazon Nova Micro. Returns a structured\nstudy plan ordered by prerequisite depth.",
+                "security": [
+                    {
+                        "InternalToken": []
+                    }
+                ],
+                "description": "Generate a graph-guided study plan for known topics and a VARK profile.",
                 "consumes": [
                     "application/json"
                 ],
@@ -28,6 +26,7 @@
                     "Adaptive Plan"
                 ],
                 "summary": "Generate adaptive study plan",
+                "operationId": "generateAdaptivePlan",
                 "parameters": [
                     {
                         "description": "Student profile and failed concepts",
@@ -52,14 +51,32 @@
                             "$ref": "#/definitions/domain.ErrorResponse"
                         }
                     },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/domain.ErrorResponse"
+                        }
+                    },
+                    "413": {
+                        "description": "Request Entity Too Large",
+                        "schema": {
+                            "$ref": "#/definitions/domain.ErrorResponse"
+                        }
+                    },
+                    "422": {
+                        "description": "Unprocessable Entity",
+                        "schema": {
+                            "$ref": "#/definitions/domain.ErrorResponse"
+                        }
+                    },
                     "429": {
                         "description": "Too Many Requests",
                         "schema": {
                             "$ref": "#/definitions/domain.ErrorResponse"
                         }
                     },
-                    "500": {
-                        "description": "Internal Server Error",
+                    "502": {
+                        "description": "Bad Gateway",
                         "schema": {
                             "$ref": "#/definitions/domain.ErrorResponse"
                         }
@@ -81,7 +98,12 @@
         },
         "/api/v1/tutor/student/{student_id}/cognitive-graph": {
             "get": {
-                "description": "Returns a filtered directed subgraph of curriculum concepts annotated\nwith the student's cognitive state (failed, learning, mastered).\nWhen target_topic is provided, only the depth-1 neighborhood of that\ntopic is returned. Otherwise, the depth-1 neighborhoods of all failed\ntopics are merged. Only nodes with at least one edge are included.\nOutput is directly consumable by Cytoscape.js and D3.js renderers.",
+                "security": [
+                    {
+                        "InternalToken": []
+                    }
+                ],
+                "description": "Return concept nodes annotated with failed, learning or mastered state.",
                 "produces": [
                     "application/json"
                 ],
@@ -89,6 +111,7 @@
                     "Tutor"
                 ],
                 "summary": "Get cognitive shadow graph",
+                "operationId": "getCognitiveGraph",
                 "parameters": [
                     {
                         "type": "string",
@@ -109,7 +132,7 @@
                     {
                         "type": "string",
                         "example": "Recursion",
-                        "description": "Single topic to center the subgraph on",
+                        "description": "Center the subgraph on one topic",
                         "name": "target_topic",
                         "in": "query"
                     }
@@ -126,13 +149,31 @@
                         "schema": {
                             "$ref": "#/definitions/domain.ErrorResponse"
                         }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/domain.ErrorResponse"
+                        }
+                    },
+                    "422": {
+                        "description": "Unprocessable Entity",
+                        "schema": {
+                            "$ref": "#/definitions/domain.ErrorResponse"
+                        }
+                    },
+                    "429": {
+                        "description": "Too Many Requests",
+                        "schema": {
+                            "$ref": "#/definitions/domain.ErrorResponse"
+                        }
                     }
                 }
             }
         },
         "/health": {
             "get": {
-                "description": "Returns 200 if the service is running. Used by Railway and Docker health checks.",
+                "description": "Return process liveness without requiring authorization.",
                 "produces": [
                     "application/json"
                 ],
@@ -140,6 +181,7 @@
                     "System"
                 ],
                 "summary": "Health check",
+                "operationId": "getHealth",
                 "responses": {
                     "200": {
                         "description": "OK",
@@ -178,7 +220,11 @@
                 },
                 "telemetry": {
                     "description": "Telemetry carries optional client-side diagnostic metadata.\nWhen nil, telemetry is omitted from the serialized payload.",
-                    "$ref": "#/definitions/domain.Telemetry"
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/domain.Telemetry"
+                        }
+                    ]
                 },
                 "vark_profile": {
                     "description": "VARKProfile specifies the student's dominant learning modality.\nAccepted values: \"visual\", \"auditory\", \"read_write\", \"kinesthetic\".",
@@ -288,7 +334,7 @@
                     ]
                 },
                 "priority": {
-                    "description": "Priority determines the recommended study order. 1 = highest priority\n(study first). Prerequisites always receive lower numbers than the\ntopics that depend on them.",
+                    "description": "Priority determines the recommended study order. 1 = highest priority\n(study first). Included prerequisites precede their dependent topics.",
                     "type": "integer",
                     "example": 1
                 },
@@ -311,7 +357,11 @@
             "properties": {
                 "_meta": {
                     "description": "Meta exposes internal pipeline metrics for observability dashboards.\nSerialized under the \"_meta\" key to distinguish it from domain data.",
-                    "$ref": "#/definitions/domain.PipelineMeta"
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/domain.PipelineMeta"
+                        }
+                    ]
                 },
                 "course_id": {
                     "description": "CourseID is echoed from the request for client-side correlation.",
@@ -416,6 +466,13 @@
                     "example": "Polymorphism"
                 }
             }
+        }
+    },
+    "securityDefinitions": {
+        "InternalToken": {
+            "type": "apiKey",
+            "name": "X-Internal-Token",
+            "in": "header"
         }
     }
 }

@@ -22,7 +22,8 @@ definitions:
         example: student-42
         type: string
       telemetry:
-        $ref: '#/definitions/domain.Telemetry'
+        allOf:
+        - $ref: '#/definitions/domain.Telemetry'
         description: |-
           Telemetry carries optional client-side diagnostic metadata.
           When nil, telemetry is omitted from the serialized payload.
@@ -134,8 +135,7 @@ definitions:
       priority:
         description: |-
           Priority determines the recommended study order. 1 = highest priority
-          (study first). Prerequisites always receive lower numbers than the
-          topics that depend on them.
+          (study first). Included prerequisites precede their dependent topics.
         example: 1
         type: integer
       resources:
@@ -153,7 +153,8 @@ definitions:
   domain.PlanResponse:
     properties:
       _meta:
-        $ref: '#/definitions/domain.PipelineMeta'
+        allOf:
+        - $ref: '#/definitions/domain.PipelineMeta'
         description: |-
           Meta exposes internal pipeline metrics for observability dashboards.
           Serialized under the "_meta" key to distinguish it from domain data.
@@ -250,13 +251,9 @@ definitions:
         example: Polymorphism
         type: string
     type: object
-host: localhost:8080
 info:
-  contact:
-    name: AxiomLMS Engineering
-  description: |-
-    GraphRAG reasoning microservice. Generates adaptive study plans
-    from student failed concepts using Amazon Nova Micro via BAML.
+  contact: {}
+  description: Graph-guided adaptive study plans using Amazon Bedrock.
   title: AxiomEngine API
   version: "1.0"
 paths:
@@ -264,11 +261,9 @@ paths:
     post:
       consumes:
       - application/json
-      description: |-
-        Accepts a student VARK profile and a list of failed concept IDs.
-        Executes GraphRAG subgraph extraction, topological sort, and
-        parallel BAML fan-out to Amazon Nova Micro. Returns a structured
-        study plan ordered by prerequisite depth.
+      description: Generate a graph-guided study plan for known topics and a VARK
+        profile.
+      operationId: generateAdaptivePlan
       parameters:
       - description: Student profile and failed concepts
         in: body
@@ -287,12 +282,24 @@ paths:
           description: Bad Request
           schema:
             $ref: '#/definitions/domain.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/domain.ErrorResponse'
+        "413":
+          description: Request Entity Too Large
+          schema:
+            $ref: '#/definitions/domain.ErrorResponse'
+        "422":
+          description: Unprocessable Entity
+          schema:
+            $ref: '#/definitions/domain.ErrorResponse'
         "429":
           description: Too Many Requests
           schema:
             $ref: '#/definitions/domain.ErrorResponse'
-        "500":
-          description: Internal Server Error
+        "502":
+          description: Bad Gateway
           schema:
             $ref: '#/definitions/domain.ErrorResponse'
         "503":
@@ -303,18 +310,16 @@ paths:
           description: Gateway Timeout
           schema:
             $ref: '#/definitions/domain.ErrorResponse'
+      security:
+      - InternalToken: []
       summary: Generate adaptive study plan
       tags:
       - Adaptive Plan
   /api/v1/tutor/student/{student_id}/cognitive-graph:
     get:
-      description: |-
-        Returns a filtered directed subgraph of curriculum concepts annotated
-        with the student's cognitive state (failed, learning, mastered).
-        When target_topic is provided, only the depth-1 neighborhood of that
-        topic is returned. Otherwise, the depth-1 neighborhoods of all failed
-        topics are merged. Only nodes with at least one edge are included.
-        Output is directly consumable by Cytoscape.js and D3.js renderers.
+      description: Return concept nodes annotated with failed, learning or mastered
+        state.
+      operationId: getCognitiveGraph
       parameters:
       - description: Student identifier
         example: student-42
@@ -328,7 +333,7 @@ paths:
         name: topics
         required: true
         type: string
-      - description: Single topic to center the subgraph on
+      - description: Center the subgraph on one topic
         example: Recursion
         in: query
         name: target_topic
@@ -344,13 +349,27 @@ paths:
           description: Bad Request
           schema:
             $ref: '#/definitions/domain.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/domain.ErrorResponse'
+        "422":
+          description: Unprocessable Entity
+          schema:
+            $ref: '#/definitions/domain.ErrorResponse'
+        "429":
+          description: Too Many Requests
+          schema:
+            $ref: '#/definitions/domain.ErrorResponse'
+      security:
+      - InternalToken: []
       summary: Get cognitive shadow graph
       tags:
       - Tutor
   /health:
     get:
-      description: Returns 200 if the service is running. Used by Railway and Docker
-        health checks.
+      description: Return process liveness without requiring authorization.
+      operationId: getHealth
       produces:
       - application/json
       responses:
@@ -361,7 +380,9 @@ paths:
       summary: Health check
       tags:
       - System
-schemes:
-- http
-- https
+securityDefinitions:
+  InternalToken:
+    in: header
+    name: X-Internal-Token
+    type: apiKey
 swagger: "2.0"

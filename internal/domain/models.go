@@ -1,8 +1,4 @@
-// Package domain defines the canonical data transfer objects (DTOs) shared
-// across all layers of the AxiomEngine microservice. These types form the
-// contract between the HTTP API boundary, the reasoning service layer, and
-// the in-memory knowledge graph. All JSON tags are authoritative for
-// serialization over the wire.
+// Package domain defines the request, response and graph types.
 package domain
 
 // AdaptivePlanRequest is the inbound HTTP request body accepted by the
@@ -93,8 +89,7 @@ type PlanItem struct {
 	Topic string `json:"topic" example:"Polymorphism"`
 
 	// Priority determines the recommended study order. 1 = highest priority
-	// (study first). Prerequisites always receive lower numbers than the
-	// topics that depend on them.
+	// (study first). Included prerequisites precede their dependent topics.
 	Priority int `json:"priority" example:"1"`
 
 	// PrerequisiteChain lists the ordered prerequisite path leading to this
@@ -158,10 +153,8 @@ type PipelineMeta struct {
 	TotalLatencyMs float64 `json:"total_latency_ms" example:"3312.8"`
 }
 
-// ── Cognitive Shadow Graph (Cytoscape/D3-compatible) ─────────────
-
 // VisualNode represents a single concept node in the Cognitive Shadow Graph
-// visualization. The Status field drives frontend rendering (e.g., color-coding
+// visualization. CognitiveState drives frontend rendering (e.g., color-coding
 // in a Cytoscape.js or D3.js force-directed layout).
 type VisualNode struct {
 	// ID is the unique identifier for this node, equal to the knowledge-graph node name.
@@ -205,9 +198,7 @@ type CognitiveGraphResponse struct {
 	Edges []VisualEdge `json:"edges"`
 }
 
-// ErrorResponse is the standard JSON error envelope returned by all AxiomEngine
-// endpoints for non-2xx HTTP responses. The structure is consistent across
-// 400, 429, 500, 503, and 504 status codes.
+// ErrorResponse is the JSON envelope for HTTP errors.
 type ErrorResponse struct {
 	// Error is a machine-readable error code (e.g., "validation_error",
 	// "rate_limit_exceeded", "service_unavailable").
