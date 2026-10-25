@@ -1,0 +1,56 @@
+# Security policy
+
+## Supported versions
+
+Security fixes are maintained on the `main` branch and the latest release tag. Older commits and unmerged forks are not supported.
+
+## Reporting a vulnerability
+
+Use GitHub private vulnerability reporting: open the repository's **Security** tab and select **Report a vulnerability**.
+
+If private vulnerability reporting is unavailable, use the contact details on Victoroide's GitHub profile to arrange a private report. Do not report vulnerabilities through public issues, pull requests, or public discussions.
+
+When submitting a report, include:
+- Affected commit SHA or release tag.
+- Detailed steps to reproduce the issue, including request payloads.
+- Expected behavior and actual observed behavior.
+- Assessment of potential security impact.
+- Proposed remediation or patch, if available.
+
+Use synthetic identifiers and test data. Redact credentials, API keys, AWS secret keys, and internal service tokens. Do not execute security testing against production deployments or infrastructure you do not own.
+
+## Response targets
+
+Victoroide aims to meet the following response targets:
+- **Acknowledgement**: Within three business days.
+- **Initial assessment**: Within seven business days.
+- **Remediation plan**: Within 30 days of confirmation.
+
+Remediation timing depends on severity and operational considerations. Critical issues may receive interim mitigations before a full release. Coordinate public disclosure timing after a fix or mitigation has been published.
+
+## Scope notes and boundaries
+
+### Service token authentication
+
+- Every `/api/v1` route requires authentication when `AXIOM_INTERNAL_TOKEN` is configured. Public routes (`/health` and `/swagger/*`) bypass token authentication.
+- Callers may authenticate using the `X-Internal-Token` header or an `Authorization: Bearer <token>` header (scheme matching is case-insensitive).
+- Token validation computes SHA-256 digests of the expected and provided tokens and evaluates them using `crypto/subtle.ConstantTimeCompare` (comparing two 32-byte digests) to prevent timing side-channel attacks.
+- Leaving `AXIOM_INTERNAL_TOKEN` unset disables authentication and logs a startup warning `auth.internal_token.disabled`. This mode is permitted only for local development and testing; deployed environments must configure a secret token.
+
+### Input validation and prompt injection defenses
+
+- Topics supplied to `POST /api/v1/adaptive-plan` (`failed_topics`) and `GET /api/v1/tutor/student/{student_id}/cognitive-graph` (`topics` and optional `target_topic`) are trimmed, non-empty, and deduplicated in order.
+- Topic lists must contain at least 1 topic and at most `MAX_FAILED_TOPICS` unique topics (default: 10). Empty or excess topic lists return HTTP 400 `validation_error`.
+- Topics are validated against the node taxonomy in the loaded curriculum graph. Unknown topics return HTTP 422 `validation_error` detailing the unknown topics.
+- Student and course identifiers (`student_id` and `course_id`), when present, must match regex `^[A-Za-z0-9._:-]{1,128}$`. Non-matching identifiers return HTTP 400 `validation_error`.
+- VARK learning styles are restricted to `visual`, `auditory`, `read_write`, and `kinesthetic`. Other values return HTTP 400 `validation_error`.
+- BAML structured generation parses model outputs into typed data. Validated plan items receive graph-derived prerequisite chains and stable-sort by graph prerequisite rank. Hallucinated or unknown topics returned by the planner are dropped and logged as a warning (`stage.validation`) with `items_dropped` and `request_id`.
+- Request bodies are limited to 64 KiB. Payloads exceeding this limit return HTTP 413 `payload_too_large`. Invalid JSON returns HTTP 400 `invalid_request_body`.
+- For error response formats and status code mappings, see [API reference](docs/api.md).
+
+### Rate limiting and network boundaries
+
+- An in-memory sliding window rate limiter restricts traffic per client IP address (`RATE_LIMIT_MAX`, default: 50 requests; `RATE_LIMIT_WINDOW`, default: 1 minute) across `/api/v1` routes. Exceeding this limit returns HTTP 429 `rate_limit_exceeded`. Public routes (`/health` and `/swagger/*`) bypass rate limiting and do not consume quota.
+- Proxy headers (`X-Forwarded-For`) are trusted only when connections originate from addresses listed in `TRUSTED_PROXIES`. Untrusted clients cannot bypass rate limiting by spoofing proxy headers.
+- Inbound HTTP transport is bounded by server timeouts: ReadTimeout (10s), IdleTimeout (1m), and WriteTimeout (`REQUEST_TIMEOUT + 10s`, default 30s).
+- Pipeline reasoning execution is bounded by `REQUEST_TIMEOUT` (default: 20s), and upstream model calls are bounded by `LLM_TIMEOUT` (default: 15s, where `LLM_TIMEOUT <= REQUEST_TIMEOUT`).
