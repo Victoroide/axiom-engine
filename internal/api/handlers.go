@@ -181,7 +181,7 @@ func (h *Handler) handleCognitiveGraph(c *fiber.Ctx) error {
 		"target_topic", targetTopic,
 	)
 
-	resp := h.graph.GenerateCognitiveShadow(studentID, topics, targetTopic)
+	resp := h.graph.GenerateCognitiveShadow(topics, targetTopic)
 
 	slog.Info("cognitive_graph.generated",
 		"student_id", studentID,
