@@ -1,44 +1,67 @@
+version: "2"
+
 run:
   timeout: 5m
   tests: true
-
-issues:
-  exclude-dirs:
-    - baml_client
-  exclude-files:
-    - docs/docs.go
-  max-issues-per-linter: 0
-  max-same-issues: 0
+  build-tags: [e2e]
+  relative-path-mode: gomod
 
 linters:
-  disable-all: true
+  default: none
   enable:
-    - errcheck
     - govet
-    - ineffassign
+    - errcheck
     - staticcheck
     - unused
+    - ineffassign
+    - bodyclose
+    - noctx
+    - gosec
+    - revive
+    - gocritic
+    - misspell
+    - errorlint
+    - contextcheck
+    - nilerr
+    - prealloc
+    - copyloopvar
+    - usestdlibvars
+  settings:
+    revive:
+      rules:
+        - name: exported
+        - name: package-comments
+        - name: var-naming
+        - name: error-return
+        - name: error-naming
+        - name: indent-error-flow
+    misspell:
+      locale: US
+  exclusions:
+    generated: lax
+    presets: []
+    rules:
+      - path: _test\.go$
+        linters: [gosec]
+        text: 'G404:'
+    paths:
+      - ^baml_client/
+      - ^docs/docs\.go$
+
+formatters:
+  enable:
     - gofmt
     - goimports
-    - misspell
-    - revive
-    - gosimple
-    - typecheck
+  settings:
+    goimports:
+      local-prefixes:
+        - github.com/Victoroide/axiom-reasoning-svc
+  exclusions:
+    generated: lax
+    paths:
+      - ^baml_client/
+      - ^docs/docs\.go$
 
-linters-settings:
-  gofmt:
-    simplify: true
-  goimports:
-    local-prefixes: axiom-reasoning-svc
-  misspell:
-    locale: US
-  revive:
-    severity: warning
-    rules:
-      - name: exported
-      - name: package-comments
-      - name: var-naming
-      - name: error-return
-      - name: error-naming
-      - name: indent-error-flow
-      - name: blank-imports
+issues:
+  max-issues-per-linter: 0
+  max-same-issues: 0

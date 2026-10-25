@@ -1,53 +1,109 @@
-.PHONY: generate build test run docker-build docker-up docker-down clean fmt-check vet lint lint-install quality
+.DEFAULT_GOAL := help
 
-GOLANGCI_LINT_VERSION := v1.64.8
+GOLANGCI_LINT_VERSION := v2.15.0
+GOVULNCHECK_VERSION := v1.9.0
+SWAG_VERSION := v1.16.6
+GOIMPORTS_VERSION := v0.52.0
+BAML_VERSION := $(shell sed -n 's/^[[:space:]]*version[[:space:]]*"\([^"]*\)".*/\1/p' baml_src/generators.baml)
+BIN_DIR := $(CURDIR)/bin
+BAML_CLI := $(BIN_DIR)/baml-cli-$(BAML_VERSION)
+BAML_LIB_VERSION := $(shell sed -n 's/^ARG BAML_LIB_VERSION=//p' Dockerfile)
+BAML_HOST_OS := $(shell go env GOHOSTOS)
+BAML_HOST_ARCH := $(shell go env GOHOSTARCH)
+BAML_LIB_EXT := $(if $(filter darwin,$(BAML_HOST_OS)),dylib,so)
+export BAML_LIBRARY_PATH := $(BIN_DIR)/libbaml_cffi.$(BAML_LIB_EXT)
+export BAML_LIBRARY_DISABLE_DOWNLOAD := true
+export BAML_LOG ?= off
+IMAGE ?= axiom-reasoning-svc:local
 
-generate:
-	baml-cli generate
+.PHONY: help generate swagger build run test cover test-e2e lint vuln fmt tidy-check generate-check docker-build clean tools-baml baml-check native-baml
+
+help: ## List available targets
+	@awk 'BEGIN {FS = ":.*## "} /^[a-zA-Z0-9_-]+:.*## / {printf "  %-18s %s\n", $$1, $$2}' $(MAKEFILE_LIST)
+
+$(BAML_CLI):
+	@test -n "$(BAML_VERSION)"
+	@mkdir -p "$(BIN_DIR)"
+	GOBIN="$(BIN_DIR)" go install github.com/boundaryml/baml/baml-cli@v$(BAML_VERSION)
+	mv "$(BIN_DIR)/baml-cli" "$@"
+
+tools-baml: $(BAML_CLI) ## Install the generator version declared in generators.baml
+
+baml-check: ## Check generator, module and native-library pins agree
+	@test "$(BAML_VERSION)" = "$(BAML_LIB_VERSION)"
+	@test "$$(go list -m -f '{{.Version}}' github.com/boundaryml/baml)" = "v$(BAML_VERSION)"
+
+native-baml: baml-check ## Download and verify the pinned native library for this host
+	@set -eu; \
+	case "$(BAML_HOST_OS)/$(BAML_HOST_ARCH)" in \
+	  linux/amd64) asset=libbaml_cffi-x86_64-unknown-linux-gnu.so; pin=AMD64 ;; \
+	  linux/arm64) asset=libbaml_cffi-aarch64-unknown-linux-gnu.so; pin=ARM64 ;; \
+	  darwin/amd64) asset=libbaml_cffi-x86_64-apple-darwin.dylib; pin=DARWIN_AMD64 ;; \
+	  darwin/arm64) asset=libbaml_cffi-aarch64-apple-darwin.dylib; pin=DARWIN_ARM64 ;; \
+	  *) echo "Unsupported BAML host: $(BAML_HOST_OS)/$(BAML_HOST_ARCH)" >&2; exit 1 ;; \
+	esac; \
+	checksum="$$(sed -n "s/^ARG BAML_LIB_SHA256_$${pin}=//p" Dockerfile)"; \
+	test "$${#checksum}" = 64; \
+	mkdir -p "$(BIN_DIR)"; \
+	if test ! -f "$(BAML_LIBRARY_PATH)"; then \
+	  tmp=$$(mktemp "$(BIN_DIR)/.baml-native.XXXXXX"); \
+	  trap 'rm -f "$$tmp"' EXIT HUP INT TERM; \
+	  curl --fail --silent --show-error --location --retry 3 --connect-timeout 10 \
+	    --speed-limit 1024 --speed-time 30 \
+	    "https://github.com/boundaryml/baml/releases/download/$(BAML_LIB_VERSION)/$$asset" \
+	    --output "$$tmp"; \
+	  printf '%s  %s\n' "$$checksum" "$$tmp" | shasum -a 256 -c -; \
+	  mv "$$tmp" "$(BAML_LIBRARY_PATH)"; \
+	fi; \
+	printf '%s  %s\n' "$$checksum" "$(BAML_LIBRARY_PATH)" | shasum -a 256 -c -
+
+generate: native-baml $(BAML_CLI) ## Regenerate and format the BAML client
+	"$(BAML_CLI)" generate --from baml_src
 	gofmt -w baml_client
-	goimports -w baml_client
+	go run golang.org/x/tools/cmd/goimports@$(GOIMPORTS_VERSION) -w baml_client
 
-build: generate
-	go build -o bin/axiom-server ./cmd/server
+swagger: ## Regenerate the Swagger specification and embedded docs
+	go run github.com/swaggo/swag/cmd/swag@$(SWAG_VERSION) init -g cmd/server/main.go -o docs --parseInternal
+	gofmt -w docs/docs.go
 
-test: generate
-	go test ./... -v
+build: ## Build the stripped service binary with CGO
+	@mkdir -p "$(BIN_DIR)"
+	CGO_ENABLED=1 go build -trimpath -ldflags='-s -w' -o "$(BIN_DIR)/axiom-server" ./cmd/server
 
-run: build
-	./bin/axiom-server
+run: native-baml ## Run the service using the current environment
+	CGO_ENABLED=1 go run ./cmd/server
 
-docker-build:
-	docker compose build
+test: native-baml ## Run unit tests with race detection
+	CGO_ENABLED=1 go test -race -count=1 ./...
 
-docker-up:
-	docker compose up
+cover: native-baml ## Run race tests and print total statement coverage
+	CGO_ENABLED=1 go test -race -count=1 -coverprofile=coverage.out -covermode=atomic ./...
+	go tool cover -func=coverage.out
 
-docker-down:
-	docker compose down
+test-e2e: native-baml ## Test the API documentation in Chrome or Chromium
+	CGO_ENABLED=1 go test -tags e2e -count=1 ./test/e2e/...
 
-clean:
-	rm -rf bin/ baml_client/
+lint: ## Vet all build variants and check lint rules and Go formatting
+	go vet ./...
+	go vet -tags e2e ./...
+	go run github.com/golangci/golangci-lint/v2/cmd/golangci-lint@$(GOLANGCI_LINT_VERSION) run ./...
 
-fmt-check:
-	@diff=$$(find . -name '*.go' -not -path './baml_client/*' | xargs gofmt -l); \
-	if [ -n "$$diff" ]; then \
-	  echo "gofmt issues in:"; echo "$$diff"; exit 1; \
-	fi
+vuln: ## Check reachable Go vulnerabilities
+	go run golang.org/x/vuln/cmd/govulncheck@$(GOVULNCHECK_VERSION) ./...
 
-vet:
-	go vet $$(go list ./... | grep -v /baml_client)
+fmt: ## Format maintained Go source files
+	go run github.com/golangci/golangci-lint/v2/cmd/golangci-lint@$(GOLANGCI_LINT_VERSION) fmt
 
-lint-install:
-	@which golangci-lint > /dev/null 2>&1 || { \
-	  echo "Installing golangci-lint $(GOLANGCI_LINT_VERSION)..."; \
-	  go install github.com/golangci/golangci-lint/cmd/golangci-lint@$(GOLANGCI_LINT_VERSION); \
-	}
+tidy-check: ## Fail if module metadata is not tidy
+	go mod tidy
+	git diff --exit-code -- go.mod go.sum
 
-lint: lint-install
-	@if command -v golangci-lint >/dev/null 2>&1; then \
-		golangci-lint run; \
-	else \
-		$$(go env GOPATH)/bin/golangci-lint run || { echo "Please add $$(go env GOPATH)/bin to your PATH"; exit 1; }; \
-	fi
+generate-check: generate swagger ## Fail if committed generated code is stale
+	git diff --exit-code
+	@test -z "$$(git ls-files --others --exclude-standard -- baml_client docs)"
 
-quality: fmt-check vet lint
+docker-build: ## Build the non-root runtime image
+	docker build --target runtime --build-arg BAML_VERSION=$(BAML_VERSION) -t $(IMAGE) .
+
+clean: ## Remove local binaries and coverage artifacts
+	rm -rf "$(BIN_DIR)" coverage.out coverage.html
