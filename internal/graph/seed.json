@@ -1,0 +1,102 @@
+[
+  {
+    "subject": "Polymorphism",
+    "relation": "depends_on",
+    "object": "Inheritance"
+  },
+  {
+    "subject": "Inheritance",
+    "relation": "depends_on",
+    "object": "Classes"
+  },
+  {
+    "subject": "Classes",
+    "relation": "depends_on",
+    "object": "Objects"
+  },
+  {
+    "subject": "Objects",
+    "relation": "depends_on",
+    "object": "Variables"
+  },
+  {
+    "subject": "Interfaces",
+    "relation": "depends_on",
+    "object": "Abstract Classes"
+  },
+  {
+    "subject": "Abstract Classes",
+    "relation": "is_a",
+    "object": "Classes"
+  },
+  {
+    "subject": "Generics",
+    "relation": "depends_on",
+    "object": "Polymorphism"
+  },
+  {
+    "subject": "Design Patterns",
+    "relation": "depends_on",
+    "object": "Polymorphism"
+  },
+  {
+    "subject": "Design Patterns",
+    "relation": "depends_on",
+    "object": "Interfaces"
+  },
+  {
+    "subject": "Binary Search",
+    "relation": "depends_on",
+    "object": "Arrays"
+  },
+  {
+    "subject": "Merge Sort",
+    "relation": "depends_on",
+    "object": "Recursion"
+  },
+  {
+    "subject": "Recursion",
+    "relation": "depends_on",
+    "object": "Functions"
+  },
+  {
+    "subject": "Dynamic Programming",
+    "relation": "depends_on",
+    "object": "Recursion"
+  },
+  {
+    "subject": "Graph Traversal",
+    "relation": "depends_on",
+    "object": "Graphs"
+  },
+  {
+    "subject": "Graphs",
+    "relation": "depends_on",
+    "object": "Linked Lists"
+  },
+  {
+    "subject": "Linked Lists",
+    "relation": "depends_on",
+    "object": "Pointers"
+  },
+  {
+    "subject": "Hash Tables",
+    "relation": "depends_on",
+    "object": "Arrays"
+  },
+  {
+    "subject": "Trees",
+    "relation": "depends_on",
+    "object": "Linked Lists"
+  },
+  {
+    "subject": "Binary Search Trees",
+    "relation": "is_a",
+    "object": "Trees"
+  },
+  {
+    "subject": "AVL Trees",
+    "relation": "is_a",
+    "object": "Binary Search Trees"
+  }
+]

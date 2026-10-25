@@ -1,6 +1,8 @@
 package graph
 
 import (
+	"bytes"
+	"encoding/json"
 	"testing"
 )
 
@@ -14,7 +16,7 @@ func TestGenerateCognitiveShadow_TargetTopic(t *testing.T) {
 	//   Dynamic Programming depends_on Recursion → Dynamic Programming
 	// So nodes: Recursion, Functions, Merge Sort, Dynamic Programming
 	// Edges: 3 edges (Recursion→Functions, MergeSort→Recursion, DP→Recursion)
-	resp := g.GenerateCognitiveShadow("student-001", []string{"Recursion"}, "Recursion")
+	resp := g.GenerateCognitiveShadow([]string{"Recursion"}, "Recursion")
 
 	statusMap := make(map[string]string, len(resp.Nodes))
 	for _, n := range resp.Nodes {
@@ -82,7 +84,7 @@ func TestGenerateCognitiveShadow_NoTargetTopic(t *testing.T) {
 	g := NewInMemoryGraph()
 
 	// Without target_topic, all failed topics are BFS seeds
-	resp := g.GenerateCognitiveShadow("student-002", []string{"Polymorphism", "Recursion"}, "")
+	resp := g.GenerateCognitiveShadow([]string{"Polymorphism", "Recursion"}, "")
 
 	statusMap := make(map[string]string, len(resp.Nodes))
 	for _, n := range resp.Nodes {
@@ -127,7 +129,7 @@ func TestGenerateCognitiveShadow_NoTargetTopic(t *testing.T) {
 func TestGenerateCognitiveShadow_EmptyFailedTopics(t *testing.T) {
 	g := NewInMemoryGraph()
 
-	resp := g.GenerateCognitiveShadow("student-003", []string{}, "")
+	resp := g.GenerateCognitiveShadow([]string{}, "")
 
 	// No failed topics → no seeds → empty subgraph
 	if len(resp.Nodes) != 0 {
@@ -141,7 +143,7 @@ func TestGenerateCognitiveShadow_EmptyFailedTopics(t *testing.T) {
 func TestGenerateCognitiveShadow_UnknownTopic(t *testing.T) {
 	g := NewInMemoryGraph()
 
-	resp := g.GenerateCognitiveShadow("student-004", []string{"QuantumComputing"}, "QuantumComputing")
+	resp := g.GenerateCognitiveShadow([]string{"QuantumComputing"}, "QuantumComputing")
 
 	// Unknown topic has no edges → empty result
 	if len(resp.Nodes) != 0 {
@@ -152,26 +154,30 @@ func TestGenerateCognitiveShadow_UnknownTopic(t *testing.T) {
 	}
 }
 
-func TestGenerateCognitiveShadow_NoStudentIDInResponse(t *testing.T) {
+func TestGenerateCognitiveShadow_OmitsIdentifiers(t *testing.T) {
 	g := NewInMemoryGraph()
 
-	// The response should NOT contain student_id (removed per Change 3)
-	resp := g.GenerateCognitiveShadow("student-005", []string{"Recursion"}, "Recursion")
+	resp := g.GenerateCognitiveShadow([]string{"Recursion"}, "Recursion")
 
-	// CognitiveGraphResponse no longer has StudentID field - this test verifies
-	// the struct compiles correctly without it
 	if resp.Nodes == nil {
 		t.Error("Nodes should not be nil")
 	}
 	if resp.Edges == nil {
 		t.Error("Edges should not be nil")
 	}
+	data, err := json.Marshal(resp)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if bytes.Contains(data, []byte("student_id")) {
+		t.Fatal(string(data))
+	}
 }
 
 func TestGenerateCognitiveShadow_CognitiveStateFieldName(t *testing.T) {
 	g := NewInMemoryGraph()
 
-	resp := g.GenerateCognitiveShadow("student-006", []string{"Recursion"}, "Recursion")
+	resp := g.GenerateCognitiveShadow([]string{"Recursion"}, "Recursion")
 
 	// Verify CognitiveState field is populated (not the old Status field)
 	for _, n := range resp.Nodes {

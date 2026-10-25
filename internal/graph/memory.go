@@ -4,12 +4,15 @@
 // topological prerequisite ordering (DFS), and cognitive shadow graph
 // generation for teacher-dashboard visualization.
 //
-// The graph is safe for concurrent reads but is NOT safe for concurrent
-// writes. In production, it is populated once at startup and treated as
-// immutable thereafter.
+// The graph is immutable after construction and safe for concurrent reads.
 package graph
 
-import "github.com/Victoroide/axiom-reasoning-svc/internal/domain"
+import (
+	"bytes"
+	"cmp"
+	"github.com/Victoroide/axiom-reasoning-svc/internal/domain"
+	"slices"
+)
 
 // bfsEntry is an internal queue element used by the breadth-first subgraph
 // extraction algorithm. It pairs a node name with the current traversal depth
@@ -24,9 +27,6 @@ type bfsEntry struct {
 //   - forward: subject -> []GraphTuple (outgoing edges)
 //   - reverse: object  -> []GraphTuple (incoming edges)
 //   - nodes:   set of all unique node names
-//
-// All map capacities are pre-allocated at construction time to minimize
-// runtime allocations during traversal.
 type InMemoryGraph struct {
 	forward map[string][]domain.GraphTuple // subject → tuples
 	reverse map[string][]domain.GraphTuple // object  → tuples
@@ -34,27 +34,16 @@ type InMemoryGraph struct {
 	all     []domain.GraphTuple
 }
 
-// NewInMemoryGraph constructs an InMemoryGraph pre-populated with the
-// default computer science curriculum tuples returned by defaultTuples().
-// All internal maps are pre-sized based on the tuple count.
+// NewInMemoryGraph returns the embedded curriculum graph.
 func NewInMemoryGraph() *InMemoryGraph {
-	tuples := defaultTuples()
-	g := &InMemoryGraph{
-		forward: make(map[string][]domain.GraphTuple, len(tuples)),
-		reverse: make(map[string][]domain.GraphTuple, len(tuples)),
-		nodes:   make(map[string]bool, len(tuples)*2),
-		all:     make([]domain.GraphTuple, 0, len(tuples)),
-	}
-	for _, t := range tuples {
-		g.Add(t)
+	g, err := Decode(bytes.NewReader(seed))
+	if err != nil {
+		panic(err)
 	}
 	return g
 }
 
-// Add inserts a GraphTuple into the forward index (keyed by Subject),
-// the reverse index (keyed by Object), the global node set, and the
-// ordered list of all tuples.
-func (g *InMemoryGraph) Add(t domain.GraphTuple) {
+func (g *InMemoryGraph) add(t domain.GraphTuple) {
 	g.forward[t.Subject] = append(g.forward[t.Subject], t)
 	g.reverse[t.Object] = append(g.reverse[t.Object], t)
 	g.nodes[t.Subject] = true
@@ -126,6 +115,9 @@ func (g *InMemoryGraph) GetPrerequisiteChain(topic string) []string {
 //     to avoid O(n) memory copies on each dequeue operation.
 //   - Tuples are deduplicated by a [3]string composite key.
 func (g *InMemoryGraph) GetLocalSubgraph(failedTopics []string, depth int) []domain.GraphTuple {
+	if depth < 0 {
+		return []domain.GraphTuple{}
+	}
 	estimatedNodes := len(failedTopics) * (depth + 1) * 4
 	visited := make(map[string]bool, estimatedNodes)
 	seen := make(map[[3]string]bool, estimatedNodes)
@@ -188,7 +180,7 @@ func (g *InMemoryGraph) GetLocalSubgraph(failedTopics []string, depth int) []dom
 // The targetTopic parameter selects which failed topic's local neighborhood
 // to visualize. If targetTopic is empty, all failedTopics are used as BFS
 // seeds. The subgraph is limited to depth 1 (direct neighbors only).
-func (g *InMemoryGraph) GenerateCognitiveShadow(studentID string, failedTopics []string, targetTopic string) domain.CognitiveGraphResponse {
+func (g *InMemoryGraph) GenerateCognitiveShadow(failedTopics []string, targetTopic string) domain.CognitiveGraphResponse {
 	failedSet := make(map[string]bool, len(failedTopics))
 	for _, t := range failedTopics {
 		failedSet[t] = true
@@ -204,7 +196,6 @@ func (g *InMemoryGraph) GenerateCognitiveShadow(studentID string, failedTopics [
 		}
 	}
 
-	// ── Determine BFS seeds for subgraph extraction ─────────────────
 	// If a target topic is specified, use only that topic as the seed.
 	// Otherwise, use all failed topics.
 	seeds := failedTopics
@@ -212,7 +203,6 @@ func (g *InMemoryGraph) GenerateCognitiveShadow(studentID string, failedTopics [
 		seeds = []string{targetTopic}
 	}
 
-	// ── Extract depth-1 local subgraph ──────────────────────────────
 	subgraphTuples := g.GetLocalSubgraph(seeds, 1)
 
 	// Build edges from the filtered subgraph tuples
@@ -244,37 +234,18 @@ func (g *InMemoryGraph) GenerateCognitiveShadow(studentID string, failedTopics [
 		})
 	}
 
+	slices.SortFunc(nodes, func(a, b domain.VisualNode) int { return cmp.Compare(a.ID, b.ID) })
+	slices.SortFunc(edges, func(a, b domain.VisualEdge) int {
+		if n := cmp.Compare(a.Source, b.Source); n != 0 {
+			return n
+		}
+		if n := cmp.Compare(a.Target, b.Target); n != 0 {
+			return n
+		}
+		return cmp.Compare(a.Relation, b.Relation)
+	})
 	return domain.CognitiveGraphResponse{
 		Nodes: nodes,
 		Edges: edges,
-	}
-}
-
-// defaultTuples returns the seed dataset of 20 computer science curriculum
-// triples used to bootstrap the in-memory knowledge graph. Each triple
-// represents a directed prerequisite or taxonomy relationship between
-// two CS concepts.
-func defaultTuples() []domain.GraphTuple {
-	return []domain.GraphTuple{
-		{Subject: "Polymorphism", Relation: "depends_on", Object: "Inheritance"},
-		{Subject: "Inheritance", Relation: "depends_on", Object: "Classes"},
-		{Subject: "Classes", Relation: "depends_on", Object: "Objects"},
-		{Subject: "Objects", Relation: "depends_on", Object: "Variables"},
-		{Subject: "Interfaces", Relation: "depends_on", Object: "Abstract Classes"},
-		{Subject: "Abstract Classes", Relation: "is_a", Object: "Classes"},
-		{Subject: "Generics", Relation: "depends_on", Object: "Polymorphism"},
-		{Subject: "Design Patterns", Relation: "depends_on", Object: "Polymorphism"},
-		{Subject: "Design Patterns", Relation: "depends_on", Object: "Interfaces"},
-		{Subject: "Binary Search", Relation: "depends_on", Object: "Arrays"},
-		{Subject: "Merge Sort", Relation: "depends_on", Object: "Recursion"},
-		{Subject: "Recursion", Relation: "depends_on", Object: "Functions"},
-		{Subject: "Dynamic Programming", Relation: "depends_on", Object: "Recursion"},
-		{Subject: "Graph Traversal", Relation: "depends_on", Object: "Graphs"},
-		{Subject: "Graphs", Relation: "depends_on", Object: "Linked Lists"},
-		{Subject: "Linked Lists", Relation: "depends_on", Object: "Pointers"},
-		{Subject: "Hash Tables", Relation: "depends_on", Object: "Arrays"},
-		{Subject: "Trees", Relation: "depends_on", Object: "Linked Lists"},
-		{Subject: "Binary Search Trees", Relation: "is_a", Object: "Trees"},
-		{Subject: "AVL Trees", Relation: "is_a", Object: "Binary Search Trees"},
 	}
 }
