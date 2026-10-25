@@ -2,16 +2,18 @@ services:
   axiom-reasoning:
     build:
       context: .
-      dockerfile: Dockerfile
+      target: runtime
     ports:
       - "8080:8080"
     env_file:
-      - .env
+      - path: .env
+        required: false
     environment:
-      - PORT=8080
+      PORT: "8080"
+      BAML_LOG: "${BAML_LOG:-off}"
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      test: ["CMD", "/app/axiom-server", "healthcheck"]
       interval: 10s
       timeout: 5s
       retries: 3
