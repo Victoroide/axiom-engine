@@ -1,0 +1,204 @@
+# Development
+
+For contribution workflow, commit conventions, and review procedures, see [CONTRIBUTING.md](../CONTRIBUTING.md). For security reporting, see [SECURITY.md](../SECURITY.md).
+
+## Prerequisites
+
+- **Go**: 1.27.3, matching `go.mod`.
+- **C compiler**: A standard C compiler toolchain (such as `gcc` or `clang`) with CGO enabled. CGO is required for BAML native CFFI bindings.
+- **Docker**: Engine 24+ for building runtime images and executing container health checks.
+- **Chrome or Chromium**: Required for browser end-to-end tests. The test runner detects local system installations or uses the path specified in `ROD_BROWSER_BIN`.
+
+## Pinned tool versions
+
+Tooling dependencies are pinned to specific versions:
+
+| Tool | Version | Description |
+| --- | --- | --- |
+| `golangci-lint` | `v2.15.0` | Go linter and formatter |
+| `govulncheck` | `v1.9.0` | Go vulnerability scanner |
+| `swag` | `v1.16.6` | Swagger 2.0 generator |
+| `goimports` | `v0.52.0` | Import organizer and formatter |
+| `baml-cli` | `0.226.2` | BAML client code generator |
+
+## Make targets
+
+Run `make help` to inspect available Makefile targets:
+
+| Target | Description |
+| --- | --- |
+| `help` | List available targets. |
+| `tools-baml` | Install the generator version declared in `generators.baml`. |
+| `baml-check` | Check generator, module, and native-library pins agree. |
+| `native-baml` | Download and verify the pinned native library for this host. |
+| `generate` | Regenerate and format the BAML client. |
+| `swagger` | Regenerate the Swagger specification and embedded docs. |
+| `build` | Build the stripped service binary with CGO. |
+| `run` | Run the service using the current environment. |
+| `test` | Run unit tests with race detection. |
+| `cover` | Run race tests and print total statement coverage. |
+| `test-e2e` | Test the API documentation in Chrome or Chromium. |
+| `lint` | Vet all build variants and check lint rules and Go formatting. |
+| `vuln` | Check reachable Go vulnerabilities. |
+| `fmt` | Format maintained Go source files. |
+| `tidy-check` | Fail if module metadata is not tidy. |
+| `generate-check` | Fail if committed generated code is stale. |
+| `docker-build` | Build the non-root runtime image. |
+| `clean` | Remove local binaries and coverage artifacts. |
+
+## Regenerating code
+
+### BAML client
+
+The BAML client in `baml_client/` is generated from definitions in `baml_src/`.
+
+To regenerate the client:
+
+```sh
+make generate
+```
+
+This target performs the following actions:
+1. Runs `make native-baml` to download and verify the host native library against pinned checksums declared in [Dockerfile](../Dockerfile).
+2. Runs `make baml-check` to verify that `baml_src/generators.baml`, `ARG BAML_LIB_VERSION` in [Dockerfile](../Dockerfile), and `github.com/boundaryml/baml` in [go.mod](../go.mod) all specify version `0.226.2`.
+3. Compiles `baml-cli` into `bin/baml-cli-0.226.2` via `make tools-baml`.
+4. Executes `bin/baml-cli-0.226.2 generate --from baml_src`.
+5. Formats generated source files with `gofmt -w baml_client`.
+6. Cleans and sorts import statements using `goimports -w baml_client`.
+
+### Swagger documentation
+
+The OpenAPI/Swagger specification in `docs/` is generated from declarative annotations on handlers and types in `cmd/server/main.go` and `internal/`.
+
+To regenerate the Swagger specification:
+
+```sh
+make swagger
+```
+
+This target runs:
+1. `swag init -g cmd/server/main.go -o docs --parseInternal`
+2. `gofmt -w docs/docs.go`
+
+Committed files produced include `docs/docs.go`, `docs/swagger.json`, and `docs/swagger.yaml`.
+
+## Test layers
+
+### Unit tests
+
+Unit tests execute in-process with race detection enabled:
+
+```sh
+make test
+```
+
+To run unit tests and report statement coverage:
+
+```sh
+make cover
+```
+
+Coverage areas include:
+- `internal/config`: validation of environment variables, timeouts, port numbers, log levels, CIDR proxy allowlists, and origin URLs.
+- `internal/graph`: in-memory graph construction, cycle-safe BFS traversal, topological sorting, prerequisite extraction, and JSON file parsing.
+- `internal/llm`: BAML adapter translation, context cancellation propagation, and error wrapping.
+- `internal/service`: reasoning pipeline orchestration, duplicate elimination, unknown topic rejection, VARK style validation, and circuit breaker state transitions.
+- `internal/server` and `internal/api`: Fiber v3 routing, constant-time token verification, sliding-window rate limiting, request ID propagation, structured access logging, panic recovery, and error response formatting.
+
+### Browser end-to-end tests
+
+Browser tests verify the Swagger UI interface using a real headless browser instance:
+
+```sh
+make test-e2e
+```
+
+The browser suite is located in `test/e2e/swagger_test.go` and guarded by the `//go:build e2e` build tag.
+
+Execution flow:
+1. Starts the HTTP server on a random local port (`127.0.0.1:0`) with an in-memory graph and a deterministic mock planner.
+2. Launches headless Chrome or Chromium through Rod. If Chrome is in a non-standard location, set `ROD_BROWSER_BIN=/path/to/chrome`.
+3. Navigates to `http://127.0.0.1:<port>/swagger/index.html`.
+4. Interacts with the Swagger UI DOM:
+   - Expands `GET /health`, clicks **Try it out**, executes the request, and verifies HTTP 200 with `{"status":"ok"}`.
+   - Expands `POST /api/v1/adaptive-plan`, executes without credentials, and verifies HTTP 401 Unauthorized.
+   - Opens the **Authorize** modal, enters the configured service token for the `InternalToken` (`X-Internal-Token`) scheme, and applies authorization.
+   - Re-executes `POST /api/v1/adaptive-plan` with topics, asserting HTTP 200 and verifying expected topics in the response payload.
+   - Expands `GET /api/v1/tutor/student/{student_id}/cognitive-graph`, provides student ID and topic parameters, executes the request, and verifies HTTP 200 with node and edge data.
+
+## Static analysis and checks
+
+### Lint
+
+Linting checks code quality and formatting against rules defined in [.golangci.yml](../.golangci.yml):
+
+```sh
+make lint
+```
+
+The `make lint` target executes `go vet ./...` and `go vet -tags e2e ./...` before running `golangci-lint`. Enabled linters include `govet`, `errcheck`, `staticcheck`, `unused`, `ineffassign`, `bodyclose`, `noctx`, `gosec`, `revive`, `gocritic`, `misspell`, `errorlint`, `contextcheck`, `nilerr`, `prealloc`, `copyloopvar`, and `usestdlibvars`.
+
+To automatically format source files:
+
+```sh
+make fmt
+```
+
+### Vulnerability scan
+
+Reachable vulnerabilities in dependencies are checked with `govulncheck`:
+
+```sh
+make vuln
+```
+
+### Cleanliness and generation verification
+
+CI verifies that committed generated files and module dependencies are completely up to date:
+
+```sh
+make tidy-check
+make generate-check
+```
+
+`tidy-check` runs `go mod tidy` and asserts no changes to `go.mod` or `go.sum`. `generate-check` regenerates BAML and Swagger artifacts and asserts no modified or untracked files remain.
+
+## Continuous integration jobs
+
+GitHub Actions workflows are defined in `.github/workflows/`.
+
+### `ci.yml`
+
+Runs on push to `main` and on pull requests:
+- **`lint`**: runs `make lint`.
+- **`test`**: runs `make cover` with data race detection and uploads `coverage.out` as a workflow artifact.
+- **`generated`**: runs `make tools-baml generate-check tidy-check` to enforce that generated code matches definitions.
+- **`vulnerabilities`**: runs `make vuln` to verify zero reachable vulnerability findings.
+- **`image`**: builds the binary via `make build`, builds the Docker runtime container `axiom-ci`, starts the container, polls the health status until healthy (up to 60 seconds), asserts `GET /health` returns 200, asserts unauthenticated `POST /api/v1/adaptive-plan` returns 401, and tears down the container.
+- **`browser`**: verifies or installs Google Chrome stable, sets `ROD_BROWSER_BIN`, and runs `make test-e2e`.
+
+### `codeql.yml`
+
+Runs on push to `main`, pull requests, and a weekly schedule (`31 7 * * 1`):
+- **`analyze`**: sets up CodeQL for Go (action v4.39.1), builds the binary via `make build`, and executes static security analysis.
+
+### `dependency-review.yml`
+
+Runs on pull requests:
+- Scans proposed dependency changes for known security advisories using `actions/dependency-review-action@v5.0.0`.
+
+### `pr-title.yml`
+
+Runs on pull request lifecycle events:
+- Validates that pull request titles adhere to Conventional Commits format using `amannn/action-semantic-pull-request@v6.1.1`.
+- Enforces allowed types (`build`, `ci`, `docs`, `feat`, `fix`, `perf`, `refactor`, `test`, `chore`, `revert`), non-capitalized subject, and a maximum length of 72 characters.
+
+### `release.yml`
+
+Runs on pushing a tag matching `v*`:
+- Sets up QEMU and Docker Buildx.
+- Logs in to GitHub Container Registry (`ghcr.io`).
+- Builds multi-architecture container images for `linux/amd64` and `linux/arm64`.
+- Pushes images to `ghcr.io/victoroide/axiom-reasoning-svc` tagged with release version, semantic version patterns, and tag name.
+- Generates SLSA provenance and container SBOM.
+- Publishes a GitHub Release with generated release notes.
