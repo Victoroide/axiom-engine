@@ -9,7 +9,7 @@
 // immutable thereafter.
 package graph
 
-import "axiom-reasoning-svc/internal/domain"
+import "github.com/Victoroide/axiom-reasoning-svc/internal/domain"
 
 // bfsEntry is an internal queue element used by the breadth-first subgraph
 // extraction algorithm. It pairs a node name with the current traversal depth

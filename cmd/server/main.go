@@ -24,12 +24,12 @@ import (
 	"syscall"
 	"time"
 
-	"axiom-reasoning-svc/internal/api"
-	"axiom-reasoning-svc/internal/domain"
-	"axiom-reasoning-svc/internal/graph"
-	"axiom-reasoning-svc/internal/service"
+	"github.com/Victoroide/axiom-reasoning-svc/internal/api"
+	"github.com/Victoroide/axiom-reasoning-svc/internal/domain"
+	"github.com/Victoroide/axiom-reasoning-svc/internal/graph"
+	"github.com/Victoroide/axiom-reasoning-svc/internal/service"
 
-	_ "axiom-reasoning-svc/docs"
+	_ "github.com/Victoroide/axiom-reasoning-svc/docs"
 
 	"github.com/goccy/go-json"
 	"github.com/gofiber/fiber/v2"

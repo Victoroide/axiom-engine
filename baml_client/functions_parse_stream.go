@@ -17,61 +17,13 @@ import (
 	"context"
 	"fmt"
 
-	"axiom-reasoning-svc/baml_client/stream_types"
-
+	"github.com/Victoroide/axiom-reasoning-svc/baml_client/stream_types"
 	baml "github.com/boundaryml/baml/engine/language_client_go/pkg"
 )
 
 type parse_stream struct{}
 
 var ParseStream = &parse_stream{}
-
-// / Parse version of GenerateAdaptivePlan (Takes in string and returns stream_types.AdaptiveStudyPlan)
-func (*parse_stream) GenerateAdaptivePlan(text string, opts ...CallOptionFunc) (stream_types.AdaptiveStudyPlan, error) {
-
-	var callOpts callOption
-	for _, opt := range opts {
-		opt(&callOpts)
-	}
-
-	args := baml.BamlFunctionArguments{
-		Kwargs: map[string]any{"text": text, "stream": true},
-		Env:    getEnvVars(callOpts.env),
-	}
-
-	if callOpts.clientRegistry != nil {
-		args.ClientRegistry = callOpts.clientRegistry
-	}
-
-	if callOpts.collectors != nil {
-		args.Collectors = callOpts.collectors
-	}
-
-	if callOpts.typeBuilder != nil {
-		args.TypeBuilder = callOpts.typeBuilder
-	}
-
-	if callOpts.tags != nil {
-		args.Tags = callOpts.tags
-	}
-
-	encoded, err := args.Encode()
-	if err != nil {
-		// This should never happen. if it does, please file an issue at https://github.com/boundaryml/baml/issues
-		// and include the type of the args you're passing in.
-		wrapped_err := fmt.Errorf("BAML INTERNAL ERROR: GenerateAdaptivePlan: %w", err)
-		panic(wrapped_err)
-	}
-
-	result, err := bamlRuntime.CallFunctionParse(context.Background(), "GenerateAdaptivePlan", encoded)
-	if err != nil {
-		return stream_types.AdaptiveStudyPlan{}, err
-	}
-
-	casted := (result).(stream_types.AdaptiveStudyPlan)
-
-	return casted, nil
-}
 
 // / Parse version of GenerateTopicPlan (Takes in string and returns stream_types.AdaptiveStudyPlan)
 func (*parse_stream) GenerateTopicPlan(text string, opts ...CallOptionFunc) (stream_types.AdaptiveStudyPlan, error) {

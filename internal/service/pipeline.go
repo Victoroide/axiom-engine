@@ -1,9 +1,9 @@
 package service
 
 import (
-	"axiom-reasoning-svc/baml_client/types"
-	"axiom-reasoning-svc/internal/domain"
-	"axiom-reasoning-svc/internal/graph"
+	"github.com/Victoroide/axiom-reasoning-svc/baml_client/types"
+	"github.com/Victoroide/axiom-reasoning-svc/internal/domain"
+	"github.com/Victoroide/axiom-reasoning-svc/internal/graph"
 )
 
 // mapBAMLItemToDomain converts a single BAML-generated StudyItem (from the

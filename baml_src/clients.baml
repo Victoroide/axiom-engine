@@ -1,6 +1,3 @@
-// Learn more about clients at https://docs.boundaryml.com/docs/snippets/clients/overview
-
-// Amazon Bedrock client for Nova Micro reasoning model
 client<llm> BedrockNovaMicro {
   provider aws-bedrock
   retry_policy BedrockRetry

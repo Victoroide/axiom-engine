@@ -27,11 +27,11 @@
 package baml_client
 
 import (
-	"axiom-reasoning-svc/baml_client/type_builder"
 	"fmt"
 	"os"
 	"strings"
 
+	"github.com/Victoroide/axiom-reasoning-svc/baml_client/type_builder"
 	baml "github.com/boundaryml/baml/engine/language_client_go/pkg"
 )
 
