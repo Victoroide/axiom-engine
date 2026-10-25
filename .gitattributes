@@ -1,0 +1,5 @@
+* text=auto eol=lf
+baml_client/** linguist-generated=true
+docs/docs.go linguist-generated=true
+docs/swagger.json linguist-generated=true
+docs/swagger.yaml linguist-generated=true

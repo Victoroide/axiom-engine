@@ -1,14 +1,16 @@
-# Binaries
 bin/
 *.exe
-
-# Environment
+*.test
+coverage.out
+coverage.html
+coverage*.txt
+*.prof
 .env
-
-# IDE
+.env.*
+!.env.example
 .idea/
 .vscode/
-
-# OS
+*.swp
+*.swo
 .DS_Store
 Thumbs.db
