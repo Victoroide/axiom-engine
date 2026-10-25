@@ -5,9 +5,11 @@ go 1.25.6
 require (
 	github.com/boundaryml/baml v0.220.0
 	github.com/goccy/go-json v0.10.6
-	github.com/gofiber/fiber/v2 v2.52.12
+	github.com/gofiber/fiber/v2 v2.52.14
 	github.com/google/uuid v1.6.0
 	github.com/sony/gobreaker/v2 v2.4.0
+	github.com/swaggo/fiber-swagger v1.3.0
+	github.com/swaggo/swag v1.8.1
 	golang.org/x/sync v0.20.0
 )
 
@@ -28,9 +30,7 @@ require (
 	github.com/mattn/go-runewidth v0.0.16 // indirect
 	github.com/philhofer/fwd v1.1.3-0.20240916144458-20a13a1f6b7c // indirect
 	github.com/rivo/uniseg v0.2.0 // indirect
-	github.com/swaggo/fiber-swagger v1.3.0 // indirect
 	github.com/swaggo/files v1.0.1 // indirect
-	github.com/swaggo/swag v1.8.1 // indirect
 	github.com/tinylib/msgp v1.2.5 // indirect
 	github.com/valyala/bytebufferpool v1.0.0 // indirect
 	github.com/valyala/fasthttp v1.51.0 // indirect
