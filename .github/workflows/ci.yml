@@ -1,0 +1,149 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+env:
+  BAML_LIBRARY_PATH: ${{ github.workspace }}/bin/libbaml_cffi.so
+  BAML_LIBRARY_DISABLE_DOWNLOAD: "true"
+  BAML_LOG: "off"
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  lint:
+    name: Lint
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: go.mod
+      - run: make lint
+  test:
+    name: Test with race detection
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: go.mod
+      - name: Prepare verified BAML native library
+        run: make native-baml
+      - run: make cover
+      - name: Upload coverage profile
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: coverage
+          path: coverage.out
+          if-no-files-found: error
+          retention-days: 14
+  generated:
+    name: Check generated code
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: go.mod
+      - name: Prepare verified BAML native library
+        run: make native-baml
+      - run: make tools-baml generate-check tidy-check
+  vulnerabilities:
+    name: Check reachable vulnerabilities
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: go.mod
+      - run: make vuln
+  image:
+    name: Build service and runtime image
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: go.mod
+      - run: make build
+      - name: Build runtime image
+        shell: bash
+        run: |
+          version=$(sed -n 's/^[[:space:]]*version[[:space:]]*"\([^"]*\)".*/\1/p' baml_src/generators.baml)
+          docker build --target runtime --build-arg BAML_VERSION="$version" -t axiom-ci .
+      - name: Check container health and authentication
+        shell: bash
+        run: |
+          docker run -d --name axiom-ci -p 8080:8080 \
+            -e AWS_REGION=us-east-1 -e AWS_ACCESS_KEY_ID=test \
+            -e AWS_SECRET_ACCESS_KEY=test -e AXIOM_INTERNAL_TOKEN=ci-internal-token axiom-ci
+          for _ in {1..30}; do
+            status=$(docker inspect --format '{{.State.Health.Status}}' axiom-ci)
+            if [ "$status" = healthy ]; then
+              break
+            fi
+            if [ "$status" = unhealthy ]; then
+              exit 1
+            fi
+            sleep 2
+          done
+          test "$status" = healthy
+          curl --fail --silent --show-error http://127.0.0.1:8080/health
+          status=$(curl --silent --output /dev/null --write-out '%{http_code}' \
+            --request POST http://127.0.0.1:8080/api/v1/adaptive-plan)
+          test "$status" = 401
+      - name: Print container logs on failure
+        if: failure()
+        run: docker logs axiom-ci || true
+      - name: Remove smoke-test container
+        if: always()
+        run: docker rm -f axiom-ci || true
+  browser:
+    name: Test API docs in browser
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: go.mod
+      - name: Install or verify Chrome
+        shell: bash
+        run: |
+          if ! command -v google-chrome >/dev/null; then
+            curl --fail --silent --show-error --location \
+              https://dl.google.com/linux/direct/google-chrome-stable_current_amd64.deb \
+              --output "$RUNNER_TEMP/google-chrome.deb"
+            sudo apt-get update
+            sudo apt-get install -y "$RUNNER_TEMP/google-chrome.deb"
+          fi
+          google-chrome --version
+          echo "ROD_BROWSER_BIN=$(command -v google-chrome)" >> "$GITHUB_ENV"
+      - name: Prepare verified BAML native library
+        run: make native-baml
+      - run: make test-e2e
