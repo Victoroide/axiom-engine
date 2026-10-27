@@ -22,12 +22,12 @@ import (
 	"github.com/gofiber/fiber/v3/middleware/requestid"
 	"github.com/google/uuid"
 
-	"github.com/Victoroide/axiom-reasoning-svc/docs"
-	"github.com/Victoroide/axiom-reasoning-svc/internal/api"
-	"github.com/Victoroide/axiom-reasoning-svc/internal/config"
-	"github.com/Victoroide/axiom-reasoning-svc/internal/domain"
-	"github.com/Victoroide/axiom-reasoning-svc/internal/graph"
-	"github.com/Victoroide/axiom-reasoning-svc/internal/service"
+	"github.com/Victoroide/axiom-engine/docs"
+	"github.com/Victoroide/axiom-engine/internal/api"
+	"github.com/Victoroide/axiom-engine/internal/config"
+	"github.com/Victoroide/axiom-engine/internal/domain"
+	"github.com/Victoroide/axiom-engine/internal/graph"
+	"github.com/Victoroide/axiom-engine/internal/service"
 )
 
 // Dependencies supplies the immutable graph, external planner and logger.
@@ -44,7 +44,7 @@ func New(cfg config.Config, deps Dependencies) *fiber.App {
 		logger = slog.Default()
 	}
 	errorHandler := newErrorHandler(logger)
-	app := fiber.New(fiber.Config{AppName: "axiom-reasoning-svc", BodyLimit: 64 * 1024, ReadTimeout: cfg.ReadTimeout, WriteTimeout: cfg.WriteTimeout, IdleTimeout: cfg.IdleTimeout, JSONEncoder: json.Marshal, JSONDecoder: json.Unmarshal, ErrorHandler: errorHandler, TrustProxy: true, TrustProxyConfig: fiber.TrustProxyConfig{Proxies: cfg.TrustedProxies}, ProxyHeader: fiber.HeaderXForwardedFor, EnableIPValidation: true})
+	app := fiber.New(fiber.Config{AppName: "axiom-engine", BodyLimit: 64 * 1024, ReadTimeout: cfg.ReadTimeout, WriteTimeout: cfg.WriteTimeout, IdleTimeout: cfg.IdleTimeout, JSONEncoder: json.Marshal, JSONDecoder: json.Unmarshal, ErrorHandler: errorHandler, TrustProxy: true, TrustProxyConfig: fiber.TrustProxyConfig{Proxies: cfg.TrustedProxies}, ProxyHeader: fiber.HeaderXForwardedFor, EnableIPValidation: true})
 	app.Use(requestid.New())
 	app.Use(func(c fiber.Ctx) error {
 		start := time.Now()

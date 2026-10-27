@@ -1,5 +1,5 @@
 services:
-  axiom-reasoning:
+  axiom-engine:
     build:
       context: .
       target: runtime

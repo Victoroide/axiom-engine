@@ -5,8 +5,8 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/Victoroide/axiom-reasoning-svc/internal/domain"
-	"github.com/Victoroide/axiom-reasoning-svc/internal/graph"
+	"github.com/Victoroide/axiom-engine/internal/domain"
+	"github.com/Victoroide/axiom-engine/internal/graph"
 )
 
 var identifierPattern = regexp.MustCompile(`^[A-Za-z0-9._:-]{1,128}$`)

@@ -16,8 +16,8 @@ package baml_client
 import (
 	"reflect"
 
-	"github.com/Victoroide/axiom-reasoning-svc/baml_client/stream_types"
-	"github.com/Victoroide/axiom-reasoning-svc/baml_client/types"
+	"github.com/Victoroide/axiom-engine/baml_client/stream_types"
+	"github.com/Victoroide/axiom-engine/baml_client/types"
 )
 
 var typeMap = map[string]reflect.Type{

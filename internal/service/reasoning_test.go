@@ -15,8 +15,8 @@ import (
 
 	"github.com/sony/gobreaker/v2"
 
-	"github.com/Victoroide/axiom-reasoning-svc/internal/domain"
-	"github.com/Victoroide/axiom-reasoning-svc/internal/graph"
+	"github.com/Victoroide/axiom-engine/internal/domain"
+	"github.com/Victoroide/axiom-engine/internal/graph"
 )
 
 type plannerFunc func(context.Context, TopicRequest) ([]domain.PlanItem, error)

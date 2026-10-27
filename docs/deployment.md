@@ -27,21 +27,21 @@ The service is packaged using a multi-stage [Dockerfile](../Dockerfile) that pro
 To build the runtime image locally:
 
 ```sh
-docker build --target runtime -t axiom-reasoning-svc:local .
+docker build --target runtime -t axiom-engine:local .
 ```
 
 To run the container:
 
 ```sh
 docker run -d \
-  --name axiom-reasoning-svc \
+  --name axiom-engine \
   --user 65532:65532 \
   -p 8080:8080 \
   -e AXIOM_INTERNAL_TOKEN="your-internal-token" \
   -e AWS_REGION="us-east-1" \
   -e AWS_ACCESS_KEY_ID="your-access-key-id" \
   -e AWS_SECRET_ACCESS_KEY="your-secret-access-key" \
-  axiom-reasoning-svc:local
+  axiom-engine:local
 ```
 
 ## Docker Compose
@@ -61,7 +61,7 @@ Tagging a commit with `v*` triggers the `.github/workflows/release.yml` workflow
 The workflow performs the following steps:
 1. Sets up QEMU for multi-architecture emulation and Docker Buildx.
 2. Authenticates against GitHub Container Registry (`ghcr.io`).
-3. Extracts image tags and OCI labels based on semantic versioning rules (`ghcr.io/victoroide/axiom-reasoning-svc:<tag>`, `:<major>.<minor>`, `:<version>`).
+3. Extracts image tags and OCI labels based on semantic versioning rules (`ghcr.io/victoroide/axiom-engine:<tag>`, `:<major>.<minor>`, `:<version>`).
 4. Compiles and pushes multi-architecture images for `linux/amd64` and `linux/arm64`.
 5. Attaches signed build provenance and Software Bill of Materials (SBOM).
 6. Creates a GitHub release corresponding to the tag and generates release notes.

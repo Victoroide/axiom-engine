@@ -3,7 +3,7 @@ package graph
 import (
 	"testing"
 
-	"github.com/Victoroide/axiom-reasoning-svc/internal/domain"
+	"github.com/Victoroide/axiom-engine/internal/domain"
 )
 
 func TestGetLocalSubgraph(t *testing.T) {

@@ -47,10 +47,10 @@ FROM gcr.io/distroless/cc-debian12:nonroot@sha256:9dac0a79194e45a7da0158a9c6da57
 ARG VERSION=dev
 ARG VCS_REF=unknown
 ARG BUILD_DATE
-LABEL org.opencontainers.image.title="axiom-reasoning-svc" \
+LABEL org.opencontainers.image.title="axiom-engine" \
     org.opencontainers.image.description="Adaptive learning reasoning service" \
-    org.opencontainers.image.source="https://github.com/Victoroide/axiom-reasoning-svc" \
-    org.opencontainers.image.url="https://github.com/Victoroide/axiom-reasoning-svc" \
+    org.opencontainers.image.source="https://github.com/Victoroide/axiom-engine" \
+    org.opencontainers.image.url="https://github.com/Victoroide/axiom-engine" \
     org.opencontainers.image.licenses="MIT" \
     org.opencontainers.image.version="$VERSION" \
     org.opencontainers.image.revision="$VCS_REF" \

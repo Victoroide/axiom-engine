@@ -15,8 +15,8 @@ Read [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md) before participating. Report secur
 Clone the repository and install tool dependencies:
 
 ```sh
-git clone https://github.com/Victoroide/axiom-reasoning-svc.git
-cd axiom-reasoning-svc
+git clone https://github.com/Victoroide/axiom-engine.git
+cd axiom-engine
 go mod download
 make tools-baml
 ```

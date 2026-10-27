@@ -6,9 +6,9 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/Victoroide/axiom-reasoning-svc/baml_client/types"
-	"github.com/Victoroide/axiom-reasoning-svc/internal/domain"
-	"github.com/Victoroide/axiom-reasoning-svc/internal/service"
+	"github.com/Victoroide/axiom-engine/baml_client/types"
+	"github.com/Victoroide/axiom-engine/internal/domain"
+	"github.com/Victoroide/axiom-engine/internal/service"
 )
 
 func TestBAMLTranslation(t *testing.T) {

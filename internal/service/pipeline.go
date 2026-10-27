@@ -4,8 +4,8 @@ import (
 	"cmp"
 	"slices"
 
-	"github.com/Victoroide/axiom-reasoning-svc/internal/domain"
-	"github.com/Victoroide/axiom-reasoning-svc/internal/graph"
+	"github.com/Victoroide/axiom-engine/internal/domain"
+	"github.com/Victoroide/axiom-engine/internal/graph"
 )
 
 func mergeAndDeduplicate(plans [][]domain.PlanItem) []domain.PlanItem {

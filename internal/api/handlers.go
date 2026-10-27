@@ -12,9 +12,9 @@ import (
 	"github.com/gofiber/fiber/v3"
 	"github.com/gofiber/fiber/v3/middleware/requestid"
 
-	"github.com/Victoroide/axiom-reasoning-svc/internal/domain"
-	"github.com/Victoroide/axiom-reasoning-svc/internal/graph"
-	"github.com/Victoroide/axiom-reasoning-svc/internal/service"
+	"github.com/Victoroide/axiom-engine/internal/domain"
+	"github.com/Victoroide/axiom-engine/internal/graph"
+	"github.com/Victoroide/axiom-engine/internal/service"
 )
 
 // Handler contains the dependencies of the versioned HTTP API.

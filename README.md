@@ -1,7 +1,7 @@
 # AxiomEngine
 
-[![CI](https://github.com/Victoroide/axiom-reasoning-svc/actions/workflows/ci.yml/badge.svg)](https://github.com/Victoroide/axiom-reasoning-svc/actions/workflows/ci.yml)
-[![CodeQL](https://github.com/Victoroide/axiom-reasoning-svc/actions/workflows/codeql.yml/badge.svg)](https://github.com/Victoroide/axiom-reasoning-svc/actions/workflows/codeql.yml)
+[![CI](https://github.com/Victoroide/axiom-engine/actions/workflows/ci.yml/badge.svg)](https://github.com/Victoroide/axiom-engine/actions/workflows/ci.yml)
+[![CodeQL](https://github.com/Victoroide/axiom-engine/actions/workflows/codeql.yml/badge.svg)](https://github.com/Victoroide/axiom-engine/actions/workflows/codeql.yml)
 [![Go Version](https://img.shields.io/badge/go-1.27.3-blue.svg)](https://golang.org)
 [![License: MIT](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 

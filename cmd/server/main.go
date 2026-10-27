@@ -17,10 +17,10 @@ import (
 	"os/signal"
 	"syscall"
 
-	"github.com/Victoroide/axiom-reasoning-svc/internal/config"
-	"github.com/Victoroide/axiom-reasoning-svc/internal/graph"
-	"github.com/Victoroide/axiom-reasoning-svc/internal/llm"
-	"github.com/Victoroide/axiom-reasoning-svc/internal/server"
+	"github.com/Victoroide/axiom-engine/internal/config"
+	"github.com/Victoroide/axiom-engine/internal/graph"
+	"github.com/Victoroide/axiom-engine/internal/llm"
+	"github.com/Victoroide/axiom-engine/internal/server"
 )
 
 func main() {
