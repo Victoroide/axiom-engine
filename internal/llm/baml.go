@@ -4,10 +4,10 @@ package llm
 import (
 	"context"
 
-	baml "github.com/Victoroide/axiom-reasoning-svc/baml_client"
-	"github.com/Victoroide/axiom-reasoning-svc/baml_client/types"
-	"github.com/Victoroide/axiom-reasoning-svc/internal/domain"
-	"github.com/Victoroide/axiom-reasoning-svc/internal/service"
+	baml "github.com/Victoroide/axiom-engine/baml_client"
+	"github.com/Victoroide/axiom-engine/baml_client/types"
+	"github.com/Victoroide/axiom-engine/internal/domain"
+	"github.com/Victoroide/axiom-engine/internal/service"
 )
 
 type generateFunc func(context.Context, []types.GraphTuple, string, []string, string, string, string) (types.AdaptiveStudyPlan, error)

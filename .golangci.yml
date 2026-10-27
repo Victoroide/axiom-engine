@@ -55,7 +55,7 @@ formatters:
   settings:
     goimports:
       local-prefixes:
-        - github.com/Victoroide/axiom-reasoning-svc
+        - github.com/Victoroide/axiom-engine
   exclusions:
     generated: lax
     paths:

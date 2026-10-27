@@ -17,7 +17,7 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/Victoroide/axiom-reasoning-svc/baml_client/stream_types"
+	"github.com/Victoroide/axiom-engine/baml_client/stream_types"
 	baml "github.com/boundaryml/baml/engine/language_client_go/pkg"
 )
 

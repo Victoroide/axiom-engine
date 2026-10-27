@@ -1,4 +1,4 @@
-module github.com/Victoroide/axiom-reasoning-svc
+module github.com/Victoroide/axiom-engine
 
 go 1.27.3
 

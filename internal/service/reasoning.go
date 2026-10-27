@@ -10,8 +10,8 @@ import (
 	"github.com/sony/gobreaker/v2"
 	"golang.org/x/sync/errgroup"
 
-	"github.com/Victoroide/axiom-reasoning-svc/internal/domain"
-	"github.com/Victoroide/axiom-reasoning-svc/internal/graph"
+	"github.com/Victoroide/axiom-engine/internal/domain"
+	"github.com/Victoroide/axiom-engine/internal/graph"
 )
 
 // ErrCircuitOpen indicates that the upstream circuit rejects requests.

@@ -9,7 +9,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/Victoroide/axiom-reasoning-svc/internal/domain"
+	"github.com/Victoroide/axiom-engine/internal/domain"
 )
 
 //go:embed seed.json

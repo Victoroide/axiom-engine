@@ -31,7 +31,7 @@ import (
 	"os"
 	"strings"
 
-	"github.com/Victoroide/axiom-reasoning-svc/baml_client/type_builder"
+	"github.com/Victoroide/axiom-engine/baml_client/type_builder"
 	baml "github.com/boundaryml/baml/engine/language_client_go/pkg"
 )
 

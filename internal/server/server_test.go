@@ -20,10 +20,10 @@ import (
 	"github.com/gofiber/fiber/v3"
 	"github.com/valyala/fasthttp"
 
-	"github.com/Victoroide/axiom-reasoning-svc/internal/config"
-	"github.com/Victoroide/axiom-reasoning-svc/internal/domain"
-	"github.com/Victoroide/axiom-reasoning-svc/internal/graph"
-	"github.com/Victoroide/axiom-reasoning-svc/internal/service"
+	"github.com/Victoroide/axiom-engine/internal/config"
+	"github.com/Victoroide/axiom-engine/internal/domain"
+	"github.com/Victoroide/axiom-engine/internal/graph"
+	"github.com/Victoroide/axiom-engine/internal/service"
 )
 
 type fakePlanner func(context.Context, service.TopicRequest) ([]domain.PlanItem, error)

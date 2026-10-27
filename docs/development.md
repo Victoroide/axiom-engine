@@ -199,6 +199,6 @@ Runs on pushing a tag matching `v*`:
 - Sets up QEMU and Docker Buildx.
 - Logs in to GitHub Container Registry (`ghcr.io`).
 - Builds multi-architecture container images for `linux/amd64` and `linux/arm64`.
-- Pushes images to `ghcr.io/victoroide/axiom-reasoning-svc` tagged with release version, semantic version patterns, and tag name.
+- Pushes images to `ghcr.io/victoroide/axiom-engine` tagged with release version, semantic version patterns, and tag name.
 - Generates SLSA provenance and container SBOM.
 - Publishes a GitHub Release with generated release notes.

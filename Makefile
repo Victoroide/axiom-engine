@@ -14,7 +14,7 @@ BAML_LIB_EXT := $(if $(filter darwin,$(BAML_HOST_OS)),dylib,so)
 export BAML_LIBRARY_PATH := $(BIN_DIR)/libbaml_cffi.$(BAML_LIB_EXT)
 export BAML_LIBRARY_DISABLE_DOWNLOAD := true
 export BAML_LOG ?= off
-IMAGE ?= axiom-reasoning-svc:local
+IMAGE ?= axiom-engine:local
 
 .PHONY: help generate swagger build run test cover test-e2e lint vuln fmt tidy-check generate-check docker-build clean tools-baml baml-check native-baml
 

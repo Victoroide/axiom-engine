@@ -12,7 +12,7 @@ import (
 	"cmp"
 	"slices"
 
-	"github.com/Victoroide/axiom-reasoning-svc/internal/domain"
+	"github.com/Victoroide/axiom-engine/internal/domain"
 )
 
 // bfsEntry is an internal queue element used by the breadth-first subgraph
