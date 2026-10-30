@@ -45,7 +45,7 @@ All non-2xx responses adhere to the standard `domain.ErrorResponse` envelope:
 }
 ```
 
-The `details` field provides context when available and is omitted when empty.
+The `details` field provides context when available and is omitted when empty. All HTTP 503 `service_unavailable` responses include an integer `Retry-After` header indicating the backoff duration in seconds.
 
 ### Error Codes and HTTP Statuses
 
@@ -64,7 +64,8 @@ The `details` field provides context when available and is omitted when empty.
 | `429 Too Many Requests` | `rate_limit_exceeded` | Client rate limit exceeded | Inbound requests exceed `RATE_LIMIT_MAX` within `RATE_LIMIT_WINDOW` |
 | `500 Internal Server Error` | `internal_error` | Unhandled server error | Unexpected internal failure or recovered panic |
 | `502 Bad Gateway` | `bad_gateway` | Upstream model failure | Amazon Bedrock invocation error or unparseable model response |
-| `503 Service Unavailable` | `service_unavailable` | Circuit breaker open | Upstream planner circuit tripped due to consecutive failures |
+| `503 Service Unavailable` | `service_unavailable` | Circuit breaker open | Upstream planner circuit tripped due to consecutive failures (`Retry-After: 15`, details `reasoning temporarily unavailable`) |
+| `503 Service Unavailable` | `service_unavailable` | Upstream throttling | Upstream capacity limit or rate throttling (`Retry-After: 5`, details `upstream throttled`) |
 | `504 Gateway Timeout` | `gateway_timeout` | Processing deadline exceeded | Pipeline execution exceeded `REQUEST_TIMEOUT` or `LLM_TIMEOUT` |
 
 ---

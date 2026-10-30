@@ -88,9 +88,15 @@
                         }
                     },
                     "503": {
-                        "description": "Service Unavailable",
+                        "description": "Temporary unavailability or upstream throttling",
                         "schema": {
                             "$ref": "#/definitions/domain.ErrorResponse"
+                        },
+                        "headers": {
+                            "Retry-After": {
+                                "type": "integer",
+                                "description": "Seconds to wait before retrying"
+                            }
                         }
                     },
                     "504": {

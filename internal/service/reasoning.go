@@ -14,6 +14,8 @@ import (
 	"github.com/Victoroide/axiom-engine/internal/graph"
 )
 
+const circuitOpenTimeout = 15 * time.Second
+
 // ErrCircuitOpen indicates that the upstream circuit rejects requests.
 var ErrCircuitOpen = errors.New("LLM circuit unavailable")
 
@@ -64,7 +66,7 @@ func NewReasoningService(g *graph.InMemoryGraph, planner Planner, opts Options) 
 
 func breakerSettings(logger *slog.Logger) gobreaker.Settings {
 	return gobreaker.Settings{
-		Name: "bedrock-nova-micro", MaxRequests: 2, Interval: 30 * time.Second, Timeout: 15 * time.Second,
+		Name: "bedrock-nova-micro", MaxRequests: 2, Interval: 30 * time.Second, Timeout: circuitOpenTimeout,
 		ReadyToTrip: func(c gobreaker.Counts) bool { return c.ConsecutiveFailures >= 3 },
 		IsExcluded: func(err error) bool {
 			return errors.Is(err, context.Canceled) || errors.Is(err, ErrInvalidOutput) || errors.Is(err, ErrUpstreamRejected)
@@ -98,8 +100,14 @@ func (s *ReasoningService) GeneratePlan(ctx context.Context, req domain.Adaptive
 				return items, err
 			})
 			if err != nil {
-				if errors.Is(err, gobreaker.ErrOpenState) || errors.Is(err, gobreaker.ErrTooManyRequests) {
-					return &TopicError{Topic: topic, cause: ErrCircuitOpen}
+				if errors.Is(err, gobreaker.ErrTooManyRequests) {
+					return &TopicError{Topic: topic, cause: &UnavailableError{RetryAfter: time.Second, Err: ErrCircuitOpen}}
+				}
+				if errors.Is(err, gobreaker.ErrOpenState) {
+					return &TopicError{Topic: topic, cause: &UnavailableError{RetryAfter: circuitOpenTimeout, Err: ErrCircuitOpen}}
+				}
+				if errors.Is(err, ErrThrottled) {
+					return &TopicError{Topic: topic, cause: &UnavailableError{RetryAfter: 5 * time.Second, Err: err}}
 				}
 				return &TopicError{Topic: topic, cause: errors.Join(ErrUpstream, err)}
 			}

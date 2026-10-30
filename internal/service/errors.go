@@ -1,6 +1,9 @@
 package service
 
-import "fmt"
+import (
+	"fmt"
+	"time"
+)
 
 // ErrThrottled indicates an upstream capacity limit.
 var ErrThrottled = fmt.Errorf("upstream throttled: %w", ErrUpstream)
@@ -25,3 +28,15 @@ func (e *TopicError) Error() string { return "topic planning failed" }
 
 // Unwrap preserves classification and cancellation causes.
 func (e *TopicError) Unwrap() error { return e.cause }
+
+// UnavailableError carries the backoff for a temporary capacity failure.
+type UnavailableError struct {
+	RetryAfter time.Duration
+	Err        error
+}
+
+// Error returns a bounded availability description.
+func (e *UnavailableError) Error() string { return "reasoning temporarily unavailable" }
+
+// Unwrap preserves the underlying failure classification.
+func (e *UnavailableError) Unwrap() error { return e.Err }
