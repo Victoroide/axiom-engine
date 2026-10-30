@@ -30,8 +30,6 @@ type TopicRequest struct {
 	Topic             string
 	PrerequisiteOrder []string
 	VARKProfile       string
-	StudentID         string
-	CourseID          string
 }
 
 // Planner generates study items for one topic.
@@ -128,7 +126,7 @@ func (s *ReasoningService) GeneratePlan(ctx context.Context, req domain.Adaptive
 				callStart := time.Now()
 				defer func() { s.metrics.ObserveLLM(llmOutcome(callErr), time.Since(callStart)) }()
 				started = true
-				items, callErr = s.generateTopic(llmCtx, TopicRequest{GraphContext: subgraph, Topic: topic, PrerequisiteOrder: s.graph.GetPrerequisiteChain(topic), VARKProfile: req.VARKProfile, StudentID: req.StudentID, CourseID: req.CourseID})
+				items, callErr = s.generateTopic(llmCtx, TopicRequest{GraphContext: subgraph, Topic: topic, PrerequisiteOrder: s.graph.GetPrerequisiteChain(topic), VARKProfile: req.VARKProfile})
 				if callErr != nil {
 					return nil, callErr
 				}

@@ -19,8 +19,6 @@ class StudyItem {
 }
 
 class AdaptiveStudyPlan {
-  student_id string
-  course_id string
   items StudyItem[]
 }
 
@@ -29,9 +27,7 @@ function GenerateTopicPlan(
   graph_context: GraphTuple[],
   target_topic: string,
   prerequisite_order: string[],
-  vark_profile: string,
-  student_id: string,
-  course_id: string
+  vark_profile: string
 ) -> AdaptiveStudyPlan {
   client BedrockNovaMicro
   prompt #"
@@ -63,7 +59,6 @@ function GenerateTopicPlan(
        - If auditory: choose "podcast", "lecture", or "audio-course"
        - If read_write: choose "article", "textbook", or "documentation"
     5. Every topic MUST exist in the knowledge graph. Do NOT invent topics.
-    6. student_id = "{{ student_id }}", course_id = "{{ course_id }}".
 
     {{ ctx.output_format }}
   "#

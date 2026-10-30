@@ -31,14 +31,6 @@ func (t *AdaptiveStudyPlanClassView) ListProperties() ([]ClassPropertyView, erro
 	return builders, nil
 }
 
-func (t *AdaptiveStudyPlanClassView) PropertyStudent_id() (ClassPropertyView, error) {
-	return t.inner.Property("student_id")
-}
-
-func (t *AdaptiveStudyPlanClassView) PropertyCourse_id() (ClassPropertyView, error) {
-	return t.inner.Property("course_id")
-}
-
 func (t *AdaptiveStudyPlanClassView) PropertyItems() (ClassPropertyView, error) {
 	return t.inner.Property("items")
 }

@@ -47,7 +47,7 @@ func TestOrderingDedupeAndHallucinationGuard(t *testing.T) {
 			mu.Lock()
 			calls[r.Topic]++
 			mu.Unlock()
-			if len(r.GraphContext) == 0 || r.VARKProfile != "visual" || r.StudentID != "student-42" || r.CourseID != "cs101" {
+			if len(r.GraphContext) == 0 || r.VARKProfile != "visual" {
 				return nil, errors.New("context missing")
 			}
 			return []domain.PlanItem{{Topic: r.Topic, Explanation: r.Topic}, {Topic: "invented"}, {Topic: "Functions"}}, nil
@@ -55,6 +55,9 @@ func TestOrderingDedupeAndHallucinationGuard(t *testing.T) {
 		got, err := svc.GeneratePlan(context.Background(), request(" Recursion ", "", "Polymorphism", "Recursion", "  "))
 		if err != nil {
 			t.Fatal(err)
+		}
+		if got.StudentID != "student-42" || got.CourseID != "cs101" {
+			t.Fatalf("response identifiers = %q, %q", got.StudentID, got.CourseID)
 		}
 		topics := make([]string, 0, len(got.Items))
 		for i, item := range got.Items {

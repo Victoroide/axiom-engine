@@ -7,8 +7,8 @@ package domain
 // study plan.
 //
 // Required fields: FailedTopics (at least one element) and VARKProfile.
-// StudentID and CourseID are propagated into the LLM prompt and returned
-// verbatim in the response envelope.
+// StudentID and CourseID stay within the service and are returned verbatim
+// in the response envelope.
 type AdaptivePlanRequest struct {
 	// StudentID is the platform-level identifier for the learner.
 	StudentID string `json:"student_id" example:"student-42"`
