@@ -167,7 +167,7 @@ sequenceDiagram
 | Rate Limiting | `RATE_LIMIT_MAX`, `RATE_LIMIT_WINDOW` | `50` requests per `1m` | `internal/config/config.go` | `limiter.New` in `internal/server/server.go` | Sliding window IP rate limiter mounted at `/api/v1`. `/health` and `/swagger/*` are excluded. Exceeding returns 429 `rate_limit_exceeded`. |
 | Request Body Limit | N/A | `64 KiB` (65,536 bytes) | Hardcoded | `fiber.Config.BodyLimit` in `internal/server/server.go` | Fiber application body limit. Exceeding returns 413 `payload_too_large`. |
 | Max Failed Topics | `MAX_FAILED_TOPICS` | `10` | `internal/config/config.go` | `validateRequest` in `internal/service/validation.go` | Bounds parallel fan-out concurrency. Exceeding returns 400 `validation_error`. |
-| Upstream Retries | `AWS_MAX_ATTEMPTS`, `AWS_RETRY_MODE` | `3`, `standard` | Evaluated by AWS SDK | AWS SDK in BAML CFFI runtime | BAML adds no retry layer; the embedded AWS SDK owns retries. Standard mode sends 3 requests for sustained 429 throttling, 1 for 403 denial, and parse failures remain 1 request. |
+| Upstream Retries | `AWS_MAX_ATTEMPTS`, `AWS_RETRY_MODE` | `3`, `standard` | Validated at startup; evaluated by AWS SDK | AWS SDK in BAML CFFI runtime | Single retry layer managed by the AWS SDK (see [Upstream Retries](#upstream-retries)). |
 
 ### Circuit Breaker Settings
 
@@ -176,7 +176,7 @@ A single circuit breaker is instantiated with name `"bedrock-nova-micro"` in `in
 - **Open Duration (`Timeout`)**: Stays Open for `15s` before transitioning to Half-Open.
 - **Half-Open Concurrency (`MaxRequests`)**: Permits 2 trial requests in Half-Open state.
 - **Closed Interval (`Interval`)**: Clears internal counters every `30s` in Closed state.
-- **Exclusion Predicate (`IsExcluded`)**: Configured with `IsExcluded: func(err error) bool { return errors.Is(err, context.Canceled) || errors.Is(err, ErrInvalidOutput) }`. Both direct and wrapped `ErrInvalidOutput` errors and `context.Canceled` are excluded. Excluded errors count as neither success nor failure and cannot open or close the circuit. Invalid output describes an unusable response for a specific topic request and does not establish backend unavailability; excluding it prevents request-specific response failures from blocking unrelated topics while retaining protection against shared backend failures. Availability failures—including `ErrThrottled`, `ErrUpstreamUnavailable`, `ErrUpstreamRejected`, and `context.DeadlineExceeded`—continue to count as failures that trip the breaker.
+- **Exclusion Predicate (`IsExcluded`)**: Configured with `IsExcluded: func(err error) bool { return errors.Is(err, context.Canceled) || errors.Is(err, ErrInvalidOutput) || errors.Is(err, ErrUpstreamRejected) }`. Direct and wrapped `context.Canceled`, `ErrInvalidOutput`, and `ErrUpstreamRejected` errors are excluded. Excluded errors count as neither success nor failure and cannot open or close the circuit; in Half-Open state, excluded errors release trial probe capacity without counting toward successful recovery. Invalid output describes unusable responses (such as parse failures or response truncation), and rejected requests describe client-side rejections (including HTTP 4xx errors, credentials, and request validation failures); neither indicates backend unavailability. Excluding them prevents request-specific failures from tripping the shared circuit while retaining protection against shared backend outages. Availability failures—including `ErrThrottled` (HTTP 429), `ErrUpstreamUnavailable` (HTTP 5xx, HTTP 408, transport drops), and `context.DeadlineExceeded`—continue to count as failures that trip the breaker.
 
 ### Upstream Retries
 
@@ -187,26 +187,15 @@ BAML configures no application-level retry policy; retries are owned exclusively
 The service classifies upstream model failures from Boundary ML (BAML) into typed sentinel errors in `internal/llm/classify.go`. Each sentinel error is defined in `internal/service/errors.go` and wraps `service.ErrUpstream`:
 
 - `service.ErrThrottled`: Upstream rate limiting or capacity exhaustion (HTTP status code 429 or `ThrottlingException`).
-- `service.ErrUpstreamUnavailable`: Server-side failures (HTTP 5xx status codes), dispatch or transport drop errors (`DispatchFailure`, connection reset, connection refused), or timeouts (`TimeoutError`).
-- `service.ErrUpstreamRejected`: Upstream client-side rejections other than throttling (HTTP 4xx status codes like 401 or 403 `AccessDeniedException`).
-- `service.ErrInvalidOutput`: Unusable model output, including parsing errors (`Parsing error:`), schema validation errors (`Validation error:`, `ValidationError`), or response truncation (`FinishReasonError`).
+- `service.ErrUpstreamUnavailable`: Server-side failures (HTTP 5xx status codes), dispatch or transport drop errors (`DispatchFailure`, connection reset, connection refused), client code 2, or timeouts (`TimeoutError`, HTTP 408).
+- `service.ErrUpstreamRejected`: Upstream client-side rejections other than throttling (HTTP 4xx status codes like 400, 401, 403, 404, 424, or SDK exceptions like `AccessDeniedException` or `ValidationException`). BAML formats upstream HTTP 400 errors as `InvalidAuthentication (401)`.
+- `service.ErrInvalidOutput`: Unusable model output, including malformed 2xx payloads, parsing errors (`Parsing error:`), schema validation errors (`Validation error:`, `ValidationError`), or response truncation (`Finish reason error:` from `max_tokens` deny list).
 
 Classified errors wrap `service.ErrUpstream` via `fmt.Errorf("%w: %w", class, err)`. This preserves the underlying error for inspection with `errors.Is`. Unrecognized errors and `AbortError` strings pass through without extra classification.
 
 #### HTTP Status Mapping
 
-The HTTP presentation layer (`internal/api/handlers.go`) maps domain and upstream errors to HTTP responses:
-
-| Error Sentinel / Condition | HTTP Status | Error Code (`error`) | Description |
-|---|---|---|---|
-| `service.ErrUpstream` (including `ErrThrottled`, `ErrUpstreamUnavailable`, `ErrUpstreamRejected`, `ErrInvalidOutput`) | `502 Bad Gateway` | `bad_gateway` | Upstream reasoning or model invocation failure. |
-| `service.ErrCircuitOpen` | `503 Service Unavailable` | `service_unavailable` | Upstream planner circuit breaker open due to consecutive failures. |
-| `context.DeadlineExceeded` | `504 Gateway Timeout` | `gateway_timeout` | Pipeline or model invocation exceeded timeout deadline. |
-| `context.Canceled` | `408 Request Timeout` | `request_timeout` | Request context canceled during pipeline execution. |
-| `service.ValidationError` (unknown topics) | `422 Unprocessable Entity` | `validation_error` | Requested topics not present in knowledge graph. |
-| `service.ValidationError` (other) | `400 Bad Request` | `validation_error` | Malformed identifiers or invalid VARK profile. |
-
-Because `ErrThrottled`, `ErrUpstreamUnavailable`, `ErrUpstreamRejected`, and `ErrInvalidOutput` wrap `service.ErrUpstream`, existing HTTP status mapping returns 502 `bad_gateway` for all upstream errors. Context cancellation is normalized in `internal/llm/baml.go`: when `ctx.Err()` is present upon return, the adapter returns `ctx.Err()` directly, producing 504 `gateway_timeout` for expired deadlines or 408 `request_timeout` for client cancellations.
+Because `ErrThrottled`, `ErrUpstreamUnavailable`, `ErrUpstreamRejected`, and `ErrInvalidOutput` wrap `service.ErrUpstream`, the HTTP presentation layer (`internal/api/handlers.go`) maps all classified upstream errors to HTTP 502 `bad_gateway`. When `ctx.Err()` is present upon return from the adapter, it returns `ctx.Err()` directly, producing HTTP 504 `gateway_timeout` when execution deadlines expire. For complete error codes, status mappings, and client-facing response schemas, see the [API reference](api.md#error-codes-and-http-statuses).
 
 ---
 
@@ -217,7 +206,7 @@ Because `ErrThrottled`, `ErrUpstreamUnavailable`, `ErrUpstreamRejected`, and `Er
 - **Decoupled Planner interface**: `service.ReasoningService` depends on the `service.Planner` interface rather than directly on generated BAML functions. This allows unit and race tests to run deterministically with mock planners without requiring AWS credentials or network access.
 - **Typed upstream error classification**: BAML Go returns runtime failures as unclassified string messages (`BamlError`). `internal/llm/classify.go` inspects upstream error messages and wraps them in typed sentinels (`ErrThrottled`, `ErrUpstreamUnavailable`, `ErrUpstreamRejected`, `ErrInvalidOutput`) that each wrap `service.ErrUpstream`. Downstream logic and tests can distinguish error categories using `errors.Is` while preserving existing HTTP status mapping.
 - **Indexed slot assignment during fan-out**: Parallel goroutines write directly to pre-allocated slice indices (`plans[i] = items`). This prevents race conditions and ensures that curriculum item priorities depend solely on request topic order rather than goroutine completion speed.
-- **Circuit breaker exclusion handling**: A single circuit breaker protects the shared Bedrock backend across all topics and callers. Sibling errgroup cancellations produce `context.Canceled`, and unusable model responses produce `ErrInvalidOutput`. Using `IsExcluded` in `gobreaker` ensures cancellations and invalid output (direct or wrapped) are treated neutrally (neither success nor failure). This prevents request-specific validation or parsing failures from tripping the shared circuit and blocking unrelated topics, while preserving failure counting for genuine backend availability degradation (`ErrThrottled`, `ErrUpstreamUnavailable`, `ErrUpstreamRejected`, and `context.DeadlineExceeded`).
+- **Circuit breaker exclusion handling**: A single circuit breaker protects the shared Bedrock backend across all topics and callers. Sibling errgroup cancellations produce `context.Canceled`, unusable model responses produce `ErrInvalidOutput`, and client rejections produce `ErrUpstreamRejected`. Using `IsExcluded` in `gobreaker` ensures cancellations, invalid output, and rejected requests (direct or wrapped) are treated neutrally (neither success nor failure), and trial probes in half-open state are released without recording recovery. This prevents request-specific validation or parsing failures and client 4xx rejections from tripping the shared circuit and blocking unrelated topics, while preserving failure counting for genuine backend availability degradation (`ErrThrottled`, `ErrUpstreamUnavailable`, and `context.DeadlineExceeded`).
 - **Server-enforced prerequisite ordering**: Included study prerequisites are ordered ahead of dependents based on knowledge graph topological order, regardless of request or planner order; independent topics retain deterministic traversal ordering. In addition, `prerequisite_chain` is populated using `graph.GetPrerequisiteChain` rather than trusted from the planner.
 - **Bounded failure logging**: Request failure logging bounds error summaries to `error_class`, `request_id`, and when known, `topic` capped at 128 characters, omitting raw upstream prompts and provider error payloads. `stage.validation` logs WARN records with `request_id` and `items_dropped` only when dropped count is non-zero.
 - **Post-generation hallucination filtering**: LLM responses may invent topic names not present in the curriculum. The `validateAgainstGraph` stage filters out non-existent topics before assigning priorities, maintaining graph integrity.
