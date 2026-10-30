@@ -98,3 +98,19 @@ Commit subjects and pull request titles must follow the Conventional Commits spe
 - Include unit tests for new functionality and regression tests for bug fixes.
 - Update relevant documentation and [CHANGELOG.md](CHANGELOG.md) when user-visible behavior changes.
 - Address maintainer review feedback from Victoroide before merging.
+
+## Releasing
+
+Repository releases are automated through `.github/workflows/release.yml`.
+
+### Release workflow
+
+1. **Dry-run verification**: Before tagging a release, execute a manual dry run. Trigger the `Release` workflow via `workflow_dispatch` with `dry_run: true` (the default). Verify that the `Verify release` job and both native platform builds, including their container smoke tests, succeed without publishing images or creating a GitHub release.
+2. **Tag creation**: Create and push an annotated Git tag with a `v*` prefix (for example, `v0.1.0`) pointing to a commit on `main`. The release workflow verifies that the tag commit is an ancestor of `origin/main` (`git merge-base --is-ancestor "$GITHUB_SHA" origin/main`).
+3. **Publication**: Tag pushes automatically initiate the release pipeline. Manual publication via `workflow_dispatch` with `dry_run: false` is also supported, but requires a `v*` tag whose commit is an ancestor of `main`; manual publishing from an unmerged branch is rejected.
+
+### Protected settings
+
+Publishing jobs target the protected `release` GitHub environment. Configure repository settings before publishing:
+- Configure the `release` environment deployment policy to allow only selected tags matching `v*`.
+- Configure repository tag protection rulesets to restrict tag creation to authorized administrators and maintainers.
