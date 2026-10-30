@@ -111,3 +111,42 @@ func TestDecodeBoundsCycleDetails(t *testing.T) {
 		})
 	}
 }
+
+func TestDecodeRejectsCanonicalCollisions(t *testing.T) {
+	for _, name := range []string{"recursion", "RECURSION", "Recursion  Topic", "Recursio\u0301n"} {
+		t.Run(name, func(t *testing.T) {
+			original := "Recursion"
+			if name == "Recursion  Topic" {
+				original = "Recursion Topic"
+			}
+			if name == "Recursio\u0301n" {
+				original = "Recursión"
+			}
+			input, err := json.Marshal([]map[string]string{{"subject": original, "relation": "depends_on", "object": "Functions"}, {"subject": name, "relation": "depends_on", "object": "Functions"}})
+			if err != nil {
+				t.Fatal(err)
+			}
+			if _, err := Decode(strings.NewReader(string(input))); err == nil || !strings.Contains(err.Error(), "canonical") {
+				t.Fatalf("expected canonical name collision, got %v", err)
+			}
+		})
+	}
+}
+
+func TestDecodeRejectsFoldedNameCollisions(t *testing.T) {
+	for _, pair := range [][2]string{{"Straße", "STRASSE"}, {"ΟΔΟΣ", "οδος"}, {"Recursion", "Recur\u200bsion"}} {
+		data, err := json.Marshal([]map[string]string{{"subject": pair[0], "relation": "depends_on", "object": "Base"}, {"subject": pair[1], "relation": "depends_on", "object": "Base"}})
+		if err != nil {
+			t.Fatal(err)
+		}
+		if _, err := Decode(strings.NewReader(string(data))); err == nil || !strings.Contains(err.Error(), "canonical node name collision") {
+			t.Fatalf("expected colliding names %q and %q to fail, got %v", pair[0], pair[1], err)
+		}
+	}
+}
+
+func TestDecodeRejectsEmptyCanonicalName(t *testing.T) {
+	if _, err := Decode(strings.NewReader(`[{"subject":"\u200b","relation":"depends_on","object":"Base"}]`)); err == nil {
+		t.Fatal("format-only name was accepted")
+	}
+}

@@ -560,3 +560,15 @@ func TestAdaptivePlanRequiresJSONMediaType(t *testing.T) {
 		})
 	}
 }
+
+func TestAdaptivePlanCanonicalTopics(t *testing.T) {
+	app := newTestApp(t, defaultConfig(t), nil, nil)
+	r, b := call(t, app, "POST", "/api/v1/adaptive-plan", `{"failed_topics":["recursion"],"vark_profile":"visual"}`, nil)
+	var plan domain.PlanResponse
+	if err := json.Unmarshal([]byte(b), &plan); err != nil {
+		t.Fatal(err)
+	}
+	if r.StatusCode != http.StatusOK || len(plan.Items) != 1 || plan.Items[0].Topic != "Recursion" {
+		t.Fatalf("%d: %s", r.StatusCode, b)
+	}
+}

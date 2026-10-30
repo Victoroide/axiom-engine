@@ -24,15 +24,17 @@ type bfsEntry struct {
 }
 
 // InMemoryGraph is a bidirectional adjacency-list representation of a
-// curriculum knowledge graph. It maintains three indexes:
+// curriculum knowledge graph. It maintains these indexes:
 //   - forward: subject -> []GraphTuple (outgoing edges)
 //   - reverse: object  -> []GraphTuple (incoming edges)
 //   - nodes:   set of all unique node names
+//   - canonical: normalized names -> stored node names
 type InMemoryGraph struct {
-	forward map[string][]domain.GraphTuple // subject → tuples
-	reverse map[string][]domain.GraphTuple // object  → tuples
-	nodes   map[string]bool                // all unique node names
-	all     []domain.GraphTuple
+	forward   map[string][]domain.GraphTuple // subject → tuples
+	reverse   map[string][]domain.GraphTuple // object  → tuples
+	nodes     map[string]bool                // all unique node names
+	canonical map[string]string
+	all       []domain.GraphTuple
 }
 
 // NewInMemoryGraph returns the embedded curriculum graph.
@@ -49,6 +51,8 @@ func (g *InMemoryGraph) add(t domain.GraphTuple) {
 	g.reverse[t.Object] = append(g.reverse[t.Object], t)
 	g.nodes[t.Subject] = true
 	g.nodes[t.Object] = true
+	g.canonical[Canonical(t.Subject)] = t.Subject
+	g.canonical[Canonical(t.Object)] = t.Object
 	g.all = append(g.all, t)
 }
 
@@ -65,6 +69,12 @@ func (g *InMemoryGraph) All() []domain.GraphTuple {
 // node set and is used by the hallucination-guard validation stage.
 func (g *InMemoryGraph) NodeExists(name string) bool {
 	return g.nodes[name]
+}
+
+// Resolve returns the stored node name for a canonical topic match.
+func (g *InMemoryGraph) Resolve(name string) (string, bool) {
+	node, ok := g.canonical[Canonical(name)]
+	return node, ok
 }
 
 // GetPrerequisiteChain performs a depth-first post-order traversal of the

@@ -134,8 +134,12 @@ func (h *Handler) handleCognitiveGraph(c fiber.Ctx) error {
 		return validationResponse(c, validation)
 	}
 	target := strings.TrimSpace(c.Query("target_topic"))
-	if target != "" && !h.graph.NodeExists(target) {
-		return validationResponse(c, &service.ValidationError{Details: "unknown target_topic: " + target, UnknownTopics: []string{target}})
+	if target != "" {
+		stored, ok := h.graph.Resolve(target)
+		if !ok {
+			return validationResponse(c, &service.ValidationError{Details: "unknown target_topic: " + target, UnknownTopics: []string{target}})
+		}
+		target = stored
 	}
 	return c.JSON(h.graph.GenerateCognitiveShadow(topics, target))
 }

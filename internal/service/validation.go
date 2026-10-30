@@ -23,15 +23,19 @@ func (e *ValidationError) Error() string { return e.Details }
 // ValidIdentifier reports whether an identifier is safe to include in a prompt.
 func ValidIdentifier(id string) bool { return identifierPattern.MatchString(id) }
 
-// ValidateTopics trims and deduplicates topics while preserving request order.
+// ValidateTopics resolves and deduplicates topics while preserving request order.
 func ValidateTopics(field string, topics []string, maxTopics int, g *graph.InMemoryGraph) ([]string, error) {
 	normalized := make([]string, 0, len(topics))
 	seen := make(map[string]bool, len(topics))
 	for _, topic := range topics {
 		topic = strings.TrimSpace(topic)
-		if topic != "" && !seen[topic] {
+		key := graph.Canonical(topic)
+		if key != "" && !seen[key] {
+			if resolved, ok := g.Resolve(topic); ok {
+				topic = resolved
+			}
 			normalized = append(normalized, topic)
-			seen[topic] = true
+			seen[key] = true
 		}
 	}
 	if len(normalized) == 0 {

@@ -282,3 +282,52 @@ func TestHallucinationDropWarning(t *testing.T) {
 		})
 	}
 }
+
+func TestModelCaseVariantKept(t *testing.T) {
+	svc := newService(func(context.Context, TopicRequest) ([]domain.PlanItem, error) {
+		return []domain.PlanItem{{Topic: "recursion"}}, nil
+	})
+	got, err := svc.GeneratePlan(t.Context(), request("Recursion"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(got.Items) != 1 || got.Items[0].Topic != "Recursion" || !reflect.DeepEqual(got.Items[0].PrerequisiteChain, []string{"Functions"}) {
+		t.Fatalf("expected one canonical topic, got %+v", got.Items)
+	}
+	if got.Meta.ItemsValidated != 1 {
+		t.Fatal(got.Meta)
+	}
+}
+
+func TestRequestCanonicalTopicsDeduplicated(t *testing.T) {
+	var mu sync.Mutex
+	var calls []string
+	svc := newService(func(_ context.Context, r TopicRequest) ([]domain.PlanItem, error) {
+		mu.Lock()
+		calls = append(calls, r.Topic)
+		mu.Unlock()
+		return []domain.PlanItem{{Topic: r.Topic}}, nil
+	})
+	got, err := svc.GeneratePlan(t.Context(), request("recursion", " Recursion ", "RECURSION"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !reflect.DeepEqual(calls, []string{"Recursion"}) || got.Meta.TopicsProcessed != 1 || len(got.Items) != 1 || got.Items[0].Topic != "Recursion" {
+		t.Fatalf("calls=%v response=%+v", calls, got)
+	}
+}
+
+func TestModelCanonicalTopicsDeduplicated(t *testing.T) {
+	var logs bytes.Buffer
+	svc := newService(func(context.Context, TopicRequest) ([]domain.PlanItem, error) {
+		return []domain.PlanItem{{Topic: "recursion"}, {Topic: " RECURSION "}, {Topic: "Recursion"}}, nil
+	})
+	svc.logger = slog.New(slog.NewJSONHandler(&logs, nil))
+	got, err := svc.GeneratePlan(t.Context(), request("Recursion"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(got.Items) != 1 || got.Items[0].Topic != "Recursion" || logs.Len() != 0 {
+		t.Fatalf("items=%+v logs=%s", got.Items, logs.String())
+	}
+}

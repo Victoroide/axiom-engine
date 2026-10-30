@@ -116,7 +116,7 @@ Generates a personalized, prerequisite-ordered study plan for a student based on
   - Strict JSON: Request body must be a single JSON object matching the schema. Unknown fields (`unknown field "KEY"`), duplicate keys at any depth (`duplicate field "KEY"`), case mismatches, trailing data (`request body must contain exactly one JSON value`), non-object bodies (`request body must be a JSON object`), and invalid JSON syntax (`request body must be valid JSON`) return HTTP 400 `invalid_request_body`.
   - `student_id`: Optional. If provided, must match regex `^[A-Za-z0-9._:-]{1,128}$`.
   - `course_id`: Optional. If provided, must match regex `^[A-Za-z0-9._:-]{1,128}$`.
-  - `failed_topics`: Required. Array of strings. Must contain at least 1 and at most `MAX_FAILED_TOPICS` (default 10) unique items. Elements must not be null (`failed_topics must not contain null elements`). Every topic must exist in the knowledge graph.
+  - `failed_topics`: Required. Array of strings. Must contain at least 1 and at most `MAX_FAILED_TOPICS` (default 10) unique items. Elements must not be null (`failed_topics must not contain null elements`). Topics resolve canonically across case, whitespace, and Unicode composition differences (see [Node Naming](knowledge-graph.md#node-naming)). Inbound topics are deduplicated by canonical form while preserving request order before validating the `MAX_FAILED_TOPICS` limit. Responses return authoritative stored node names. Upstream model recommendations are also matched canonically, deduplicated, and mapped to authoritative stored graph node names. Topics that do not resolve to a graph node return HTTP 422 `validation_error`.
   - `vark_profile`: Required. String enum. Must be one of `visual`, `auditory`, `read_write`, or `kinesthetic`.
   - `telemetry`: Optional object containing client telemetry (`session_id`, `timestamp_unix`, `duration_ms`, `client_version`). Unknown nested fields are rejected.
 
@@ -220,7 +220,7 @@ Computes a depth-1 concept neighborhood around failed topics for a learner, clas
 - **Path Parameters**:
   - `student_id`: Required string. Must match regex `^[A-Za-z0-9._:-]{1,128}$`. (Validated at the route boundary; omitted from the cognitive shadow graph response).
 - **Query Parameters**:
-  - `topics`: Required string. Comma-separated list of failed topics. Must contain between 1 and `MAX_FAILED_TOPICS` unique topics. Every topic must exist in the knowledge graph.
+  - `topics`: Required string. Comma-separated list of failed topics. Must contain between 1 and `MAX_FAILED_TOPICS` unique topics. Resolves topics canonically and deduplicates by canonical form before count validation; every topic must exist in the knowledge graph.
   - `target_topic`: Optional string. When provided, centers the depth-1 subgraph around this specific topic instead of all failed topics. Must exist in the knowledge graph if specified.
 
 #### Responses

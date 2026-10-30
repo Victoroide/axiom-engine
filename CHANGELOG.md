@@ -53,6 +53,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Remove nested BAML retries to bound Bedrock throttle calls to the SDK attempt count and avoid retrying non-retryable upstream rejection.
 - Reject cyclic `depends_on` and `is_a` prerequisite graphs during startup with a deterministic cycle path.
+- Resolve topics across case, whitespace, and Unicode composition variants, returning stored graph node names consistently.
 
 ### Security
 

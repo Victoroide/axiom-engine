@@ -20,10 +20,11 @@ A directed edge originates at `subject` and terminates at `object`, labeled by `
 
 ### In-Memory Representation
 
-The graph is loaded into `graph.InMemoryGraph` (`internal/graph/memory.go`), which indexes tuples across four structures:
+The graph is loaded into `graph.InMemoryGraph` (`internal/graph/memory.go`), which indexes tuples across five structures:
 - `forward: map[string][]domain.GraphTuple`: Outgoing edges indexed by `subject`.
 - `reverse: map[string][]domain.GraphTuple`: Incoming edges indexed by `object`.
 - `nodes: map[string]bool`: Complete set of all unique concept names.
+- `canonical: map[string]string`: Canonical representation (`internal/graph/canonical.go`) mapped to authoritative stored node name.
 - `all: []domain.GraphTuple`: Slice containing every unique tuple.
 
 Once loaded during process startup, `InMemoryGraph` is immutable. Read operations (BFS subgraph extraction, DFS prerequisite traversal, and existence checks) run concurrently without mutex contention.
@@ -38,6 +39,21 @@ The graph supports two edge relations:
 |---|---|---|
 | `depends_on` | Strict conceptual prerequisite. The `subject` cannot be understood without prior knowledge of the `object`. | Traversed by `GetPrerequisiteChain` as an upstream dependency. |
 | `is_a` | Taxonomic specialization. The `subject` is a specific subtype or implementation of the `object`. | Traversed by `GetPrerequisiteChain` identically to `depends_on`, ensuring foundational abstractions precede specializations. |
+
+---
+
+## Node Naming
+
+Concept node names in the knowledge graph are indexed canonically to support matching across casing, spacing, and Unicode representation differences.
+
+Canonical normalization (`internal/graph/canonical.go`) applies:
+1. Unicode Normalization Form C (`norm.NFC`).
+2. Whitespace collapsing and trimming via `strings.Fields`.
+3. Lowercase folding via `strings.ToLower`.
+
+Distinct stored node names cannot share the same canonical form. During graph loading, the loader rejects any collision where two distinct node names produce an identical canonical key with `tuple %d has canonical node name collision: %q and %q`.
+
+Original spellings, casing, and spacing of stored graph nodes are preserved in memory and returned in API responses.
 
 ---
 
@@ -118,6 +134,7 @@ The graph loader (`Decode` in `internal/graph/loader.go`) enforces the following
 6. **No Self Loops**: A tuple cannot reference the same concept as both subject and object. Violations trigger `tuple %d is a self loop`.
 7. **Deduplication**: Repeated identical triples are deduplicated during decoding.
 8. **Acyclic Prerequisite Structure**: Both `depends_on` and `is_a` edges must form a directed acyclic graph (DAG). Cyclic prerequisite dependencies are rejected at startup with `graph contains a prerequisite cycle: <path>` (for example, `graph contains a prerequisite cycle: A -> B -> A`). Traversal evaluates starting nodes in sorted order to report the cycle path deterministically.
+9. **Canonical Node Name Uniqueness**: Distinct node names may not share the same canonical form. Collisions are rejected at startup with `tuple %d has canonical node name collision: %q and %q` (see [Node Naming](#node-naming)).
 
 ---
 
