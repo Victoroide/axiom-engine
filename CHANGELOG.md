@@ -69,3 +69,4 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Excluded canceled sibling errgroup calls from circuit breaker failure and success counters, ensuring multi-topic outages trip the breaker as expected.
 - Pinned all GitHub Actions to verified immutable commit hashes.
 - Executed container runtime as non-root user `65532:65532` on `distroless/cc-debian12:nonroot` with read-only root compatibility.
+- Enforce an output policy on model-generated resources and text: accept only absolute HTTP(S) URLs with an IP or ASCII DNS host and no userinfo, return them re-encoded and at most 2048 characters long, collapse whitespace and remove other control and format characters in text, bound explanations to 1000 and titles to 200 characters, and restrict resource types to the learner's VARK profile with at most 3 resources per item.

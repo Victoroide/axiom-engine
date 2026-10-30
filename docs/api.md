@@ -135,6 +135,21 @@ Generates a personalized, prerequisite-ordered study plan for a student based on
 - **503 Service Unavailable**: Upstream circuit breaker is open.
 - **504 Gateway Timeout**: Request exceeded pipeline deadline.
 
+#### Response Contract
+
+Adaptive plan items and recommended learning resources adhere to an output validation and sanitization policy:
+
+- **Resource URLs**: Surrounding whitespace is trimmed. A URL must be absolute `http` or `https`, without userinfo or Unicode control or format characters, and its host must be an IP address or an ASCII DNS name (internationalized names must be given as `xn--` A-labels). The service returns the URL re-encoded: characters that are not allowed in a path, query or fragment are percent-encoded (for example `"` becomes `%22`, `<` becomes `%3C` and a space becomes `%20`), and existing `%XX` escapes are kept. The 2048-character limit applies to the re-encoded URL, so a long path with many non-ASCII characters can be dropped. Resources whose URL fails any rule are dropped.
+- **Resource Types**: Normalized to lowercase and restricted to modalities matching the student's `vark_profile`:
+  - `visual`: `video`, `diagram`, `infographic`
+  - `auditory`: `podcast`, `lecture`, `audio-course`
+  - `read_write`: `article`, `textbook`, `documentation`
+  - `kinesthetic`: `exercise`, `lab`, `coding-challenge`
+  Resources with mismatched types or unrecognized values are dropped.
+- **Resource Count**: Each plan item contains between 0 and 3 learning resources (`maxItems: 3`). When more than 3 valid resources are returned for an item, only the first 3 are retained and excess resources are dropped. Discarded resources emit a `stage.output` warning log record with `request_id` and `resources_dropped`.
+- **Titles and Explanations**: Whitespace runs, including tabs and line breaks, become one space, and leading and trailing whitespace is removed. Other Unicode control and format characters (categories `Cc` and `Cf`) are removed, including bidirectional controls such as U+202E, zero-width space, ZWNJ U+200C, ZWJ U+200D and soft hyphen U+00AD; this can change Persian or Indic text and joined emoji. Titles are then truncated to 200 characters (Unicode code points) and explanations to 1000, never ending with a space.
+- **Client Text-Rendering Duty**: Client applications must render returned text fields (`title`, `explanation`) as plain text rather than raw HTML or unescaped markup to protect against injection and cross-site scripting vulnerabilities. Escape URLs when placing them in HTML attributes; RFC 3986 sub-delimiters such as `'` are returned unencoded.
+
 #### Example
 
 ```sh

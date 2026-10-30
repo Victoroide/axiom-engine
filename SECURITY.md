@@ -54,6 +54,11 @@ Remediation timing depends on severity and operational considerations. Critical 
 - Request bodies are limited to 64 KiB. Payloads exceeding this limit return HTTP 413 `payload_too_large`. Invalid JSON returns HTTP 400 `invalid_request_body`.
 - For error response formats and status code mappings, see [API reference](docs/api.md).
 
+### LLM output handling
+
+- Model-generated study items and learning resources are validated and sanitized in `internal/service/output.go` before response assembly (see [response contract](docs/api.md#response-contract)).
+- Client rendering duty: While the service filters unsafe URL schemes and removes control characters, client applications rendering returned titles and explanations must treat them as untrusted text and render them as plain text rather than unescaped HTML to prevent cross-site scripting (XSS) and DOM injection vulnerabilities. Escape URLs when placing them in HTML attributes; RFC 3986 sub-delimiters such as `'` are returned unencoded.
+
 ### Rate limiting and network boundaries
 
 - An in-memory sliding window rate limiter restricts traffic per client IP address (`RATE_LIMIT_MAX`, default: 50 requests; `RATE_LIMIT_WINDOW`, default: 1 minute) across `/api/v1` routes. Exceeding this limit returns HTTP 429 `rate_limit_exceeded`. Public routes (`/health` and `/swagger/*`) bypass rate limiting and do not consume quota.
