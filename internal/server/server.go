@@ -44,7 +44,31 @@ func New(cfg config.Config, deps Dependencies) *fiber.App {
 		logger = slog.Default()
 	}
 	errorHandler := newErrorHandler(logger)
-	app := fiber.New(fiber.Config{AppName: "axiom-engine", BodyLimit: 64 * 1024, ReadTimeout: cfg.ReadTimeout, WriteTimeout: cfg.WriteTimeout, IdleTimeout: cfg.IdleTimeout, JSONEncoder: json.Marshal, JSONDecoder: json.Unmarshal, ErrorHandler: errorHandler, TrustProxy: true, TrustProxyConfig: fiber.TrustProxyConfig{Proxies: cfg.TrustedProxies}, ProxyHeader: fiber.HeaderXForwardedFor, EnableIPValidation: true})
+	app := newApp(cfg, errorHandler)
+	useMiddleware(app, cfg, logger, errorHandler)
+	registerPublicRoutes(app)
+	registerAPI(app, cfg, deps, logger)
+	return app
+}
+
+func newApp(cfg config.Config, errorHandler fiber.ErrorHandler) *fiber.App {
+	return fiber.New(fiber.Config{
+		AppName:            "axiom-engine",
+		BodyLimit:          64 * 1024,
+		ReadTimeout:        cfg.ReadTimeout,
+		WriteTimeout:       cfg.WriteTimeout,
+		IdleTimeout:        cfg.IdleTimeout,
+		JSONEncoder:        json.Marshal,
+		JSONDecoder:        json.Unmarshal,
+		ErrorHandler:       errorHandler,
+		TrustProxy:         true,
+		TrustProxyConfig:   fiber.TrustProxyConfig{Proxies: cfg.TrustedProxies},
+		ProxyHeader:        fiber.HeaderXForwardedFor,
+		EnableIPValidation: true,
+	})
+}
+
+func useMiddleware(app *fiber.App, cfg config.Config, logger *slog.Logger, errorHandler fiber.ErrorHandler) {
 	app.Use(requestid.New())
 	app.Use(func(c fiber.Ctx) error {
 		start := time.Now()
@@ -67,12 +91,18 @@ func New(cfg config.Config, deps Dependencies) *fiber.App {
 	app.Use("/api/v1", limiter.New(limiter.Config{Max: cfg.RateLimitMax, Expiration: cfg.RateLimitWindow, LimiterMiddleware: limiter.SlidingWindow{}, LimitReached: func(c fiber.Ctx) error {
 		return c.Status(fiber.StatusTooManyRequests).JSON(domain.ErrorResponse{Error: "rate_limit_exceeded", Details: "too many requests"})
 	}}))
+}
+
+func registerPublicRoutes(app *fiber.App) {
 	app.Get("/health", healthHandler)
 	// ReadDoc mutates its receiver; render a private copy once before serving.
 	spec := *docs.SwaggerInfo
 	specJSON := spec.ReadDoc()
 	app.Get("/swagger/doc.json", func(c fiber.Ctx) error { return c.Type("json").SendString(specJSON) })
 	app.Get("/swagger/*", swaggo.New(swaggo.Config{Title: "AxiomEngine API", ValidatorUrl: "none"}))
+}
+
+func registerAPI(app *fiber.App, cfg config.Config, deps Dependencies, logger *slog.Logger) {
 	if cfg.InternalToken != "" {
 		app.Use("/api/v1", internalTokenMiddleware(cfg.InternalToken))
 	} else {
@@ -80,7 +110,6 @@ func New(cfg config.Config, deps Dependencies) *fiber.App {
 	}
 	reasoning := service.NewReasoningService(deps.Graph, deps.Planner, service.Options{LLMTimeout: cfg.LLMTimeout, MaxFailedTopics: cfg.MaxFailedTopics, Logger: logger})
 	api.NewHandler(reasoning, deps.Graph, cfg.RequestTimeout, cfg.MaxFailedTopics, logger).RegisterRoutes(app)
-	return app
 }
 
 // healthHandler reports process liveness.

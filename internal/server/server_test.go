@@ -39,7 +39,7 @@ func defaultConfig(t *testing.T) config.Config {
 	}
 	return c
 }
-func newApp(t *testing.T, c config.Config, p fakePlanner, logs io.Writer) *fiber.App {
+func newTestApp(t *testing.T, c config.Config, p fakePlanner, logs io.Writer) *fiber.App {
 	t.Helper()
 	if p == nil {
 		p = func(_ context.Context, r service.TopicRequest) ([]domain.PlanItem, error) {
@@ -83,7 +83,7 @@ const validBody = `{"student_id":"student-42","course_id":"cs101","failed_topics
 func TestValidationAndUnknownTopics(t *testing.T) {
 	cfg := defaultConfig(t)
 	cfg.MaxFailedTopics = 2
-	app := newApp(t, cfg, func(context.Context, service.TopicRequest) ([]domain.PlanItem, error) {
+	app := newTestApp(t, cfg, func(context.Context, service.TopicRequest) ([]domain.PlanItem, error) {
 		t.Error("invalid request reached planner")
 		return nil, nil
 	}, nil)
@@ -114,7 +114,7 @@ func TestValidationAndUnknownTopics(t *testing.T) {
 func TestAuthenticationAndSuccess(t *testing.T) {
 	cfg := defaultConfig(t)
 	cfg.InternalToken = "test-secret"
-	app := newApp(t, cfg, nil, nil)
+	app := newTestApp(t, cfg, nil, nil)
 	for _, token := range []string{"", "wrong"} {
 		r, b := call(t, app, "POST", "/api/v1/adaptive-plan", validBody, map[string]string{"X-Internal-Token": token})
 		if r.StatusCode != http.StatusUnauthorized || !strings.Contains(b, "unauthorized") {
@@ -144,7 +144,7 @@ func TestPipelineErrorMappingAndLogging(t *testing.T) {
 	}{{context.DeadlineExceeded, 504, "gateway_timeout"}, {service.ErrCircuitOpen, 503, "service_unavailable"}, {fmt.Errorf("%w: secret-backend", service.ErrUpstream), 502, "bad_gateway"}, {errors.New("secret-backend"), 502, "bad_gateway"}} {
 		t.Run(tc.code, func(t *testing.T) {
 			var logs bytes.Buffer
-			app := newApp(t, defaultConfig(t), func(context.Context, service.TopicRequest) ([]domain.PlanItem, error) { return nil, tc.err }, &logs)
+			app := newTestApp(t, defaultConfig(t), func(context.Context, service.TopicRequest) ([]domain.PlanItem, error) { return nil, tc.err }, &logs)
 			r, b := call(t, app, "POST", "/api/v1/adaptive-plan", validBody, map[string]string{"X-Request-ID": "error-42"})
 			if r.StatusCode != tc.status || !strings.Contains(b, tc.code) || strings.Contains(b, "secret-backend") {
 				t.Fatalf("%d: %s", r.StatusCode, b)
@@ -156,7 +156,7 @@ func TestPipelineErrorMappingAndLogging(t *testing.T) {
 	}
 	cfg := defaultConfig(t)
 	cfg.LLMTimeout = time.Millisecond
-	app := newApp(t, cfg, func(ctx context.Context, _ service.TopicRequest) ([]domain.PlanItem, error) {
+	app := newTestApp(t, cfg, func(ctx context.Context, _ service.TopicRequest) ([]domain.PlanItem, error) {
 		<-ctx.Done()
 		return nil, ctx.Err()
 	}, nil)
@@ -166,7 +166,7 @@ func TestPipelineErrorMappingAndLogging(t *testing.T) {
 }
 
 func TestFrameworkErrorsAndRecovery(t *testing.T) {
-	app := newApp(t, defaultConfig(t), nil, nil)
+	app := newTestApp(t, defaultConfig(t), nil, nil)
 	app.Get("/failure", func(fiber.Ctx) error { return errors.New("internal secret") })
 	app.Get("/panic", func(fiber.Ctx) error { panic("internal secret") })
 	app.Get("/method", func(fiber.Ctx) error { return fiber.ErrMethodNotAllowed })
@@ -195,7 +195,7 @@ func TestRateLimitAndProxyTrust(t *testing.T) {
 			if trusted {
 				cfg.TrustedProxies = []string{"0.0.0.0/0", "::/0"}
 			}
-			app := newApp(t, cfg, nil, nil)
+			app := newTestApp(t, cfg, nil, nil)
 			for i, ip := range []string{"192.0.2.1", "192.0.2.2", "192.0.2.1"} {
 				r, b := call(t, app, "POST", "/api/v1/adaptive-plan", validBody, map[string]string{"X-Forwarded-For": ip})
 				want := 200
@@ -216,7 +216,7 @@ func TestCORS(t *testing.T) {
 		if enabled {
 			cfg.CORSAllowedOrigins = []string{"https://example.com"}
 		}
-		app := newApp(t, cfg, nil, nil)
+		app := newTestApp(t, cfg, nil, nil)
 		r, b := call(t, app, "OPTIONS", "/api/v1/adaptive-plan", "", map[string]string{"Origin": "https://example.com", "Access-Control-Request-Method": "POST", "Access-Control-Request-Headers": "X-Internal-Token,X-Request-ID"})
 		if enabled {
 			if r.StatusCode != http.StatusNoContent || !strings.Contains(r.Header.Get("Access-Control-Allow-Headers"), "X-Internal-Token") || !strings.Contains(r.Header.Get("Access-Control-Allow-Headers"), "X-Request-ID") || strings.Contains(r.Header.Get("Access-Control-Allow-Methods"), "DELETE") {
@@ -229,7 +229,7 @@ func TestCORS(t *testing.T) {
 }
 
 func TestCognitiveGraph(t *testing.T) {
-	app := newApp(t, defaultConfig(t), nil, nil)
+	app := newTestApp(t, defaultConfig(t), nil, nil)
 	for _, tc := range []struct {
 		path   string
 		status int
@@ -245,7 +245,7 @@ func TestCognitiveGraph(t *testing.T) {
 }
 
 func TestSwaggerAssets(t *testing.T) {
-	app := newApp(t, defaultConfig(t), nil, nil)
+	app := newTestApp(t, defaultConfig(t), nil, nil)
 	for _, path := range []string{"/swagger/index.html", "/swagger/doc.json", "/swagger/swagger-ui.css", "/swagger/swagger-ui-bundle.js"} {
 		r, b := call(t, app, "GET", path, "", nil)
 		if r.StatusCode != http.StatusOK || len(b) == 0 {
@@ -255,7 +255,7 @@ func TestSwaggerAssets(t *testing.T) {
 }
 
 func TestBodyLimit(t *testing.T) {
-	app := newApp(t, defaultConfig(t), nil, nil)
+	app := newTestApp(t, defaultConfig(t), nil, nil)
 	req := httptest.NewRequestWithContext(context.Background(), http.MethodPost, "/api/v1/adaptive-plan", strings.NewReader(strings.Repeat("a", 64*1024+1)))
 	resp, err := app.Test(req)
 	if resp != nil {
@@ -267,7 +267,7 @@ func TestBodyLimit(t *testing.T) {
 	// Fiber's Test returns the parser error before exposing its response.
 	// Exercise the wire response separately rather than weakening the body limit.
 	var logs bytes.Buffer
-	app = newApp(t, defaultConfig(t), nil, &logs)
+	app = newTestApp(t, defaultConfig(t), nil, &logs)
 	ln, err := (&net.ListenConfig{}).Listen(context.Background(), "tcp", "127.0.0.1:0")
 	if err != nil {
 		t.Fatal(err)
@@ -303,7 +303,7 @@ func TestBodyLimit(t *testing.T) {
 }
 
 func TestSwaggerConcurrentSpecReads(t *testing.T) {
-	app := newApp(t, defaultConfig(t), nil, nil)
+	app := newTestApp(t, defaultConfig(t), nil, nil)
 	_, _ = call(t, app, "GET", "/swagger/doc.json", "", nil)
 	var wg sync.WaitGroup
 	for range 10 {
@@ -315,7 +315,7 @@ func TestSwaggerConcurrentSpecReads(t *testing.T) {
 func TestHTTPTransportTimeouts(t *testing.T) {
 	cfg := defaultConfig(t)
 	cfg.ReadTimeout = 25 * time.Millisecond
-	app := newApp(t, cfg, nil, nil)
+	app := newTestApp(t, cfg, nil, nil)
 	if app.Config().ReadTimeout != cfg.ReadTimeout || app.Config().WriteTimeout <= cfg.RequestTimeout || app.Config().IdleTimeout != time.Minute {
 		t.Fatal("HTTP deadlines are not configured")
 	}
@@ -401,7 +401,7 @@ func TestUpstreamFailureLogsAreBounded(t *testing.T) {
 
 func TestHTTPHallucinationWarningHasRequestID(t *testing.T) {
 	var logs bytes.Buffer
-	app := newApp(t, defaultConfig(t), func(context.Context, service.TopicRequest) ([]domain.PlanItem, error) {
+	app := newTestApp(t, defaultConfig(t), func(context.Context, service.TopicRequest) ([]domain.PlanItem, error) {
 		return []domain.PlanItem{{Topic: "invented"}, {Topic: "Recursion"}}, nil
 	}, &logs)
 	r, _ := call(t, app, "POST", "/api/v1/adaptive-plan", `{"failed_topics":["Recursion"],"vark_profile":"visual"}`, map[string]string{"X-Request-ID": "drop-42"})
@@ -426,7 +426,7 @@ func TestHTTPHallucinationWarningHasRequestID(t *testing.T) {
 func TestPublicRoutesDoNotShareAPIRateBudget(t *testing.T) {
 	cfg := defaultConfig(t)
 	cfg.RateLimitMax = 1
-	app := newApp(t, cfg, nil, nil)
+	app := newTestApp(t, cfg, nil, nil)
 	public := []string{"/health", "/swagger/index.html", "/swagger/doc.json", "/swagger/swagger-ui.css", "/swagger/swagger-ui-bundle.js"}
 	for range 2 {
 		for _, path := range public {
@@ -453,7 +453,7 @@ func TestPublicRoutesDoNotShareAPIRateBudget(t *testing.T) {
 func TestBearerSchemeAndTokenLengths(t *testing.T) {
 	cfg := defaultConfig(t)
 	cfg.InternalToken = "test-secret"
-	app := newApp(t, cfg, nil, nil)
+	app := newTestApp(t, cfg, nil, nil)
 	for _, scheme := range []string{"Bearer", "bearer", "bEaReR"} {
 		r, b := call(t, app, "POST", "/api/v1/adaptive-plan", validBody, map[string]string{"Authorization": scheme + " test-secret"})
 		if r.StatusCode != http.StatusOK {
@@ -473,7 +473,7 @@ func TestWarnWhenInternalTokenIsUnset(t *testing.T) {
 		var logs bytes.Buffer
 		cfg := defaultConfig(t)
 		cfg.InternalToken = token
-		_ = newApp(t, cfg, nil, &logs)
+		_ = newTestApp(t, cfg, nil, &logs)
 		if token != "" {
 			if strings.Contains(logs.String(), "auth.internal_token.disabled") {
 				t.Fatal(logs.String())
@@ -493,7 +493,7 @@ func TestWarnWhenInternalTokenIsUnset(t *testing.T) {
 func TestCognitiveValidationNamesTopicsField(t *testing.T) {
 	cfg := defaultConfig(t)
 	cfg.MaxFailedTopics = 1
-	app := newApp(t, cfg, nil, nil)
+	app := newTestApp(t, cfg, nil, nil)
 	for _, query := range []string{"", "?topics=,", "?topics=Recursion,Polymorphism", "?topics=unknown"} {
 		r, body := call(t, app, "GET", "/api/v1/tutor/student/student-42/cognitive-graph"+query, "", nil)
 		if r.StatusCode != http.StatusBadRequest && r.StatusCode != http.StatusUnprocessableEntity {

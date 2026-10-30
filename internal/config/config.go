@@ -30,9 +30,24 @@ type Config struct {
 	ShutdownTimeout    time.Duration
 }
 
+func defaults() Config {
+	return Config{
+		Port:            "8080",
+		RateLimitMax:    50,
+		RateLimitWindow: time.Minute,
+		RequestTimeout:  20 * time.Second,
+		LLMTimeout:      15 * time.Second,
+		MaxFailedTopics: 10,
+		ShutdownTimeout: 10 * time.Second,
+		LogLevel:        slog.LevelInfo,
+	}
+}
+
 // Load parses environment values without modifying process state.
 func Load(getenv func(string) string) (Config, error) {
-	c := Config{Port: "8080", InternalToken: getenv("AXIOM_INTERNAL_TOKEN"), GraphFile: getenv("GRAPH_FILE"), RateLimitMax: 50, RateLimitWindow: time.Minute, RequestTimeout: 20 * time.Second, LLMTimeout: 15 * time.Second, MaxFailedTopics: 10, ShutdownTimeout: 10 * time.Second, LogLevel: slog.LevelInfo}
+	c := defaults()
+	c.InternalToken = getenv("AXIOM_INTERNAL_TOKEN")
+	c.GraphFile = getenv("GRAPH_FILE")
 	if v := getenv("PORT"); v != "" {
 		n, err := strconv.Atoi(v)
 		if err != nil || n < 1 || n > 65535 {
@@ -43,7 +58,10 @@ func Load(getenv func(string) string) (Config, error) {
 	for _, item := range []struct {
 		key string
 		dst *int
-	}{{"RATE_LIMIT_MAX", &c.RateLimitMax}, {"MAX_FAILED_TOPICS", &c.MaxFailedTopics}} {
+	}{
+		{"RATE_LIMIT_MAX", &c.RateLimitMax},
+		{"MAX_FAILED_TOPICS", &c.MaxFailedTopics},
+	} {
 		if v := getenv(item.key); v != "" {
 			n, err := strconv.Atoi(v)
 			if err != nil || n <= 0 {
@@ -55,7 +73,12 @@ func Load(getenv func(string) string) (Config, error) {
 	for _, item := range []struct {
 		key string
 		dst *time.Duration
-	}{{"RATE_LIMIT_WINDOW", &c.RateLimitWindow}, {"REQUEST_TIMEOUT", &c.RequestTimeout}, {"LLM_TIMEOUT", &c.LLMTimeout}, {"SHUTDOWN_TIMEOUT", &c.ShutdownTimeout}} {
+	}{
+		{"RATE_LIMIT_WINDOW", &c.RateLimitWindow},
+		{"REQUEST_TIMEOUT", &c.RequestTimeout},
+		{"LLM_TIMEOUT", &c.LLMTimeout},
+		{"SHUTDOWN_TIMEOUT", &c.ShutdownTimeout},
+	} {
 		if v := getenv(item.key); v != "" {
 			d, err := time.ParseDuration(v)
 			if err != nil || d <= 0 {
