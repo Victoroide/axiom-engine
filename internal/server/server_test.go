@@ -481,7 +481,7 @@ func TestPublicRoutesDoNotShareAPIRateBudget(t *testing.T) {
 	cfg := defaultConfig(t)
 	cfg.RateLimitMax = 1
 	app := newTestApp(t, cfg, nil, nil)
-	public := []string{"/health", "/swagger/index.html", "/swagger/doc.json", "/swagger/swagger-ui.css", "/swagger/swagger-ui-bundle.js"}
+	public := []string{"/health", "/livez", "/readyz", "/swagger/index.html", "/swagger/doc.json", "/swagger/swagger-ui.css", "/swagger/swagger-ui-bundle.js"}
 	for range 2 {
 		for _, path := range public {
 			r, b := call(t, app, "GET", path, "", nil)

@@ -23,7 +23,7 @@ Header verification checks `X-Internal-Token` first, then falls back to `Authori
 }
 ```
 
-The `/health`, `/swagger/*`, and `/swagger/doc.json` routes are always public and do not evaluate authorization headers. These public routes are also exempt from rate limiting.
+The `/livez`, `/readyz`, `/health`, `/swagger/*`, and `/swagger/doc.json` routes are always public and do not evaluate authorization headers. These public routes are also exempt from rate limiting.
 
 ---
 
@@ -73,9 +73,84 @@ The `details` field provides context when available and is omitted when empty. A
 
 ## Endpoints
 
+### GET /livez
+
+Returns process liveness status, including during shutdown draining. Does not require authentication or evaluate downstream dependencies.
+
+- **Method**: `GET`
+- **Path**: `/livez`
+- **Headers**: None required
+- **Query Parameters**: None
+- **Request Body**: None
+
+#### Responses
+
+- **200 OK**: Process is alive and operational.
+
+#### Example
+
+```sh
+curl -i http://localhost:8080/livez
+```
+
+Response:
+
+```http
+HTTP/1.1 200 OK
+Content-Type: application/json; charset=utf-8
+X-Request-ID: wBCIxn6xjS9w_vQuSjlaA0USEVwvW0UpBwrpQiyQh4c
+
+{"status":"ok"}
+```
+
+---
+
+### GET /readyz
+
+Returns local process readiness without authorization or upstream calls. During shutdown draining, returns HTTP 503 with `{"status":"draining"}`.
+
+- **Method**: `GET`
+- **Path**: `/readyz`
+- **Headers**: None required
+- **Query Parameters**: None
+- **Request Body**: None
+
+#### Responses
+
+- **200 OK**: Process is ready to receive traffic.
+- **503 Service Unavailable**: During shutdown draining, returns HTTP 503 with `{"status":"draining"}`.
+
+#### Examples
+
+Normal response:
+
+```sh
+curl -i http://localhost:8080/readyz
+```
+
+```http
+HTTP/1.1 200 OK
+Content-Type: application/json; charset=utf-8
+X-Request-ID: wBCIxn6xjS9w_vQuSjlaA0USEVwvW0UpBwrpQiyQh4c
+
+{"status":"ok"}
+```
+
+Shutdown draining response:
+
+```http
+HTTP/1.1 503 Service Unavailable
+Content-Type: application/json; charset=utf-8
+X-Request-ID: wBCIxn6xjS9w_vQuSjlaA0USEVwvW0UpBwrpQiyQh4c
+
+{"status":"draining"}
+```
+
+---
+
 ### GET /health
 
-Returns process liveness status. Does not require authentication.
+Alias of `/livez` for backwards compatibility. Returns process liveness without requiring authorization.
 
 - **Method**: `GET`
 - **Path**: `/health`
@@ -85,7 +160,7 @@ Returns process liveness status. Does not require authentication.
 
 #### Responses
 
-- **200 OK**: Process is healthy and listening.
+- **200 OK**: Process is alive and operational.
 
 #### Example
 

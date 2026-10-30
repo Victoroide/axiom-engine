@@ -6,12 +6,19 @@ import (
 	"fmt"
 	"net"
 	"net/http"
+	"sync/atomic"
 	"time"
 
 	"github.com/gofiber/fiber/v3"
 )
 
 const requestContextKey = "requestContext"
+const drainStateKey = "drainState"
+
+type drainState struct {
+	delay    time.Duration
+	draining atomic.Bool
+}
 
 // Run serves until cancellation or a listener failure, then drains connections.
 func Run(ctx context.Context, app *fiber.App, address string, shutdownTimeout time.Duration) error {
@@ -32,6 +39,16 @@ func Run(ctx context.Context, app *fiber.App, address string, shutdownTimeout ti
 	case err := <-stopped:
 		return err
 	case <-ctx.Done():
+		if state, ok := fiber.GetState[*drainState](app.State(), drainStateKey); ok {
+			state.draining.Store(true)
+			drainTimer := time.NewTimer(state.delay)
+			defer drainTimer.Stop()
+			select {
+			case <-drainTimer.C:
+			case err := <-stopped:
+				return err
+			}
+		}
 		cancelTimer := time.AfterFunc(shutdownTimeout-time.Second, cancel)
 		defer cancelTimer.Stop()
 		// Close the listener even if cancellation beats Fiber's startup.
@@ -52,7 +69,7 @@ func Run(ctx context.Context, app *fiber.App, address string, shutdownTimeout ti
 func Healthcheck(ctx context.Context, port string) error {
 	ctx, cancel := context.WithTimeout(ctx, 3*time.Second)
 	defer cancel()
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, "http://127.0.0.1:"+port+"/health", nil)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, "http://127.0.0.1:"+port+"/livez", nil)
 	if err != nil {
 		return err
 	}
