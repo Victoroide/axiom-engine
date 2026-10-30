@@ -192,7 +192,7 @@ const docTemplate = `{
         },
         "/health": {
             "get": {
-                "description": "Return process liveness without requiring authorization.",
+                "description": "Alias of /livez, reporting process liveness without authorization.",
                 "produces": [
                     "application/json"
                 ],
@@ -204,6 +204,54 @@ const docTemplate = `{
                 "responses": {
                     "200": {
                         "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/domain.HealthResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/livez": {
+            "get": {
+                "description": "Return process liveness, including during shutdown draining, without authorization.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "System"
+                ],
+                "summary": "Liveness probe",
+                "operationId": "getLivez",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/domain.HealthResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/readyz": {
+            "get": {
+                "description": "Return local readiness without authorization or upstream calls; report draining during shutdown.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "System"
+                ],
+                "summary": "Readiness probe",
+                "operationId": "getReadyz",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/domain.HealthResponse"
+                        }
+                    },
+                    "503": {
+                        "description": "Server draining",
                         "schema": {
                             "$ref": "#/definitions/domain.HealthResponse"
                         }

@@ -167,7 +167,7 @@ Execution flow:
 2. Launches headless Chrome or Chromium through Rod. If Chrome is in a non-standard location, set `ROD_BROWSER_BIN=/path/to/chrome`.
 3. Navigates to `http://127.0.0.1:<port>/swagger/index.html`.
 4. Interacts with the Swagger UI DOM:
-   - Expands `GET /health`, clicks **Try it out**, executes the request, and verifies HTTP 200 with `{"status":"ok"}`.
+   - Expands `GET /health`, `GET /livez`, and `GET /readyz`, clicks **Try it out**, executes each request, and verifies HTTP 200 with `{"status":"ok"}`.
    - Expands `POST /api/v1/adaptive-plan`, executes without credentials, and verifies HTTP 401 Unauthorized.
    - Opens the **Authorize** modal, enters the configured service token for the `InternalToken` (`X-Internal-Token`) scheme, and applies authorization.
    - Re-executes `POST /api/v1/adaptive-plan` with topics, asserting HTTP 200 and verifying expected topics in the response payload.

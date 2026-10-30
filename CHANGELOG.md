@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Liveness (`/livez`) and readiness (`/readyz`) probe endpoints with backwards-compatible `/health` liveness alias, atomic shutdown draining signaling HTTP 503 on `/readyz`, configurable `SHUTDOWN_DRAIN_DELAY`, and `/livez` binary container healthcheck.
 - Upstream response classification mapping malformed 2xx responses and truncated model outputs to HTTP 502 `bad_gateway`.
 - BAML v0.226.2 client generation with pinned CFFI native libraries for `linux/amd64`, `linux/arm64`, `darwin/amd64`, and `darwin/arm64`.
 - Host native library verification target `make native-baml` with SHA256 checksum validation and cached asset verification.

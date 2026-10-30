@@ -46,6 +46,7 @@ func New(cfg config.Config, deps Dependencies) *fiber.App {
 	}
 	errorHandler := newErrorHandler(logger)
 	app := newApp(cfg, errorHandler)
+	app.State().Set(drainStateKey, &drainState{delay: cfg.ShutdownDrainDelay})
 	useMiddleware(app, cfg, logger, errorHandler)
 	registerPublicRoutes(app)
 	registerAPI(app, cfg, deps, logger)
@@ -102,6 +103,8 @@ func useMiddleware(app *fiber.App, cfg config.Config, logger *slog.Logger, error
 
 func registerPublicRoutes(app *fiber.App) {
 	app.Get("/health", healthHandler)
+	app.Get("/livez", livenessHandler)
+	app.Get("/readyz", readinessHandler)
 	// ReadDoc mutates its receiver; render a private copy once before serving.
 	spec := *docs.SwaggerInfo
 	specJSON := spec.ReadDoc()
@@ -119,15 +122,42 @@ func registerAPI(app *fiber.App, cfg config.Config, deps Dependencies, logger *s
 	api.NewHandler(reasoning, deps.Graph, cfg.RequestTimeout, cfg.MaxFailedTopics, logger).RegisterRoutes(app)
 }
 
-// healthHandler reports process liveness.
+// healthHandler provides the legacy liveness alias.
 // @Summary Health check
 // @ID getHealth
-// @Description Return process liveness without requiring authorization.
+// @Description Alias of /livez, reporting process liveness without authorization.
 // @Tags System
 // @Produce json
 // @Success 200 {object} domain.HealthResponse
 // @Router /health [get]
-func healthHandler(c fiber.Ctx) error { return c.JSON(domain.HealthResponse{Status: "ok"}) }
+func healthHandler(c fiber.Ctx) error { return livenessHandler(c) }
+
+// livenessHandler reports process liveness.
+// @Summary Liveness probe
+// @ID getLivez
+// @Description Return process liveness, including during shutdown draining, without authorization.
+// @Tags System
+// @Produce json
+// @Success 200 {object} domain.HealthResponse
+// @Router /livez [get]
+func livenessHandler(c fiber.Ctx) error { return c.JSON(domain.HealthResponse{Status: "ok"}) }
+
+// readinessHandler reports whether the process is accepting traffic.
+// @Summary Readiness probe
+// @ID getReadyz
+// @Description Return local readiness without authorization or upstream calls; report draining during shutdown.
+// @Tags System
+// @Produce json
+// @Success 200 {object} domain.HealthResponse
+// @Failure 503 {object} domain.HealthResponse "Server draining"
+// @Router /readyz [get]
+func readinessHandler(c fiber.Ctx) error {
+	state := fiber.MustGetState[*drainState](c.App().State(), drainStateKey)
+	if state.draining.Load() {
+		return c.Status(fiber.StatusServiceUnavailable).JSON(domain.HealthResponse{Status: "draining"})
+	}
+	return c.JSON(domain.HealthResponse{Status: "ok"})
+}
 
 func newErrorHandler(logger *slog.Logger) fiber.ErrorHandler {
 	return func(c fiber.Ctx, err error) error {

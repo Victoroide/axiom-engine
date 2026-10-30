@@ -84,29 +84,33 @@ Panics recovered by middleware generate a `panic.recovered` record with `request
 
 Pipeline and upstream failures generate a `request.failed` record with `request_id`, `error_class`, and (when known) `topic` capped at 128 characters. Upstream prompt content and error dumps are excluded from logs. When hallucinated topics returned by the planner are dropped, a `stage.validation` warning record is emitted with `request_id` and `items_dropped`.
 
-### Health endpoint
+### Probes
 
-The service provides an unauthenticated liveness endpoint at `GET /health`.
+The service provides unauthenticated health probe endpoints:
+- `GET /livez`: Liveness probe. Returns HTTP 200 `{"status":"ok"}` when the HTTP server is operational, including during shutdown draining.
+- `GET /readyz`: Readiness probe. Returns HTTP 200 `{"status":"ok"}` when the server is ready to accept traffic, and flips to HTTP 503 `{"status":"draining"}` immediately upon receiving a shutdown signal.
+- `GET /health`: Backwards-compatible alias for `/livez`.
 
 ```sh
-curl http://127.0.0.1:8080/health
+curl http://127.0.0.1:8080/livez
+curl http://127.0.0.1:8080/readyz
 ```
 
-Response:
+Both probes verify local process state without calling upstream dependencies, bypass rate limiting, and do not evaluate authorization headers. For full endpoint details, see [API reference](api.md).
 
-```json
-{"status":"ok"}
-```
+The CLI subcommand `axiom-server healthcheck` queries `http://127.0.0.1:<PORT>/livez` with a 3-second timeout. It exits with code 0 on status 200, or code 1 if the request fails or returns a non-200 status code. The Docker image uses this command for container health checks, remaining healthy while draining.
 
-HTTP status is 200 OK. The endpoint verifies that the HTTP server is listening and operational; it does not evaluate external downstream dependencies. Requests to `/health` bypass rate limiting and do not consume rate limit tokens. For full endpoint details, see [API reference](api.md).
-
-The CLI subcommand `axiom-server healthcheck` queries `http://127.0.0.1:<PORT>/health` with a 3-second timeout. It exits with code 0 on status 200, or code 1 if the request fails or returns a non-200 status code. The Docker image uses this command for container health checks.
+In Kubernetes deployments, configure `livenessProbe` to query `/livez` and `readinessProbe` to query `/readyz`. Configure `SHUTDOWN_DRAIN_DELAY` (see [configuration](configuration.md)) to allow ingress controllers and endpoint slices time to propagate pod removal before the listener closes. If a platform requires an additional pre-stop delay, use native `preStop.sleep` rather than an exec hook, because the distroless container image contains no shell or `sleep` binary.
 
 ### Graceful shutdown
 
 The service captures `SIGINT` and `SIGTERM` signals. On receipt of either signal:
-1. The server closes the TCP listener to reject new connections.
-2. Active requests drain within `SHUTDOWN_TIMEOUT` (see [configuration](configuration.md)). The server cancels in-flight request contexts one second before the shutdown deadline expires to reserve time to send responses. Requests that complete before cancellation retain their normal response. Requests interrupted by cancellation return HTTP 503 `service_unavailable` with `Retry-After: 1`.
-3. The process exits with code 0 once all in-flight requests finish cleanly. If the shutdown deadline expires before in-flight requests complete, the server exits with code 1.
+1. The server enters the draining state. `/readyz` immediately returns HTTP 503 `{"status":"draining"}` so load balancers stop routing new traffic.
+2. The TCP listener remains open and continues accepting and serving requests for the configured `SHUTDOWN_DRAIN_DELAY` duration (default `0s`). `/livez` continues returning HTTP 200 `{"status":"ok"}`.
+3. After `SHUTDOWN_DRAIN_DELAY` elapses, the server closes the TCP listener to reject new connections.
+4. Active requests drain within `SHUTDOWN_TIMEOUT` (see [configuration](configuration.md)). The server cancels in-flight request contexts one second before the shutdown deadline expires to reserve time to send responses. Requests that complete before cancellation retain their normal response. Requests interrupted by cancellation return HTTP 503 `service_unavailable` with `Retry-After: 1`.
+5. The process exits with code 0 once all in-flight requests finish cleanly. If the shutdown deadline expires before in-flight requests complete, the server exits with code 1.
 
-Set container stop timeouts or Kubernetes `terminationGracePeriodSeconds` to satisfy the shutdown budget formula: `terminationGracePeriodSeconds >= SHUTDOWN_DRAIN_DELAY + SHUTDOWN_TIMEOUT + 5` seconds.
+A second `SIGINT` or `SIGTERM` during shutdown terminates the process immediately.
+
+Set container stop timeouts or Kubernetes `terminationGracePeriodSeconds` to satisfy the shutdown budget formula: `terminationGracePeriodSeconds >= SHUTDOWN_DRAIN_DELAY + SHUTDOWN_TIMEOUT + 5` seconds, plus any additional `preStop` delay.

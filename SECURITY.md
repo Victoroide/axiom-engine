@@ -32,7 +32,7 @@ Remediation timing depends on severity and operational considerations. Critical 
 
 ### Service token authentication
 
-- Every `/api/v1` route requires authentication by default. Public routes (`/health` and `/swagger/*`) bypass token authentication.
+- Every `/api/v1` route requires authentication by default. Public routes (`/livez`, `/readyz`, `/health`, `/swagger/*` and, when `METRICS_ENABLED=true`, `/metrics`) bypass token authentication.
 - Callers may authenticate using the `X-Internal-Token` header or an `Authorization: Bearer <token>` header (scheme matching is case-insensitive).
 - Token validation computes SHA-256 digests of the expected and provided tokens and evaluates them using `crypto/subtle.ConstantTimeCompare` (comparing two 32-byte digests) to prevent timing side-channel attacks.
 - Service startup fails closed if `AXIOM_INTERNAL_TOKEN` is unset or empty, unless `AXIOM_AUTH_DISABLED=true` is explicitly configured; configuring both simultaneously fails startup (see [configuration reference](docs/configuration.md)). When disabled, the server logs a startup warning `auth.disabled`.
@@ -61,7 +61,7 @@ Remediation timing depends on severity and operational considerations. Critical 
 
 ### Rate limiting and network boundaries
 
-- An in-memory sliding window rate limiter restricts traffic per client IP address (`RATE_LIMIT_MAX`, default: 50 requests; `RATE_LIMIT_WINDOW`, default: 1 minute) across `/api/v1` routes. Exceeding this limit returns HTTP 429 `rate_limit_exceeded`. Public routes (`/health` and `/swagger/*`) bypass rate limiting and do not consume quota.
+- An in-memory sliding window rate limiter restricts traffic per client IP address (`RATE_LIMIT_MAX`, default: 50 requests; `RATE_LIMIT_WINDOW`, default: 1 minute) across `/api/v1` routes. Exceeding this limit returns HTTP 429 `rate_limit_exceeded`. Public routes (`/livez`, `/readyz`, `/health`, `/swagger/*` and, when `METRICS_ENABLED=true`, `/metrics`) bypass rate limiting and do not consume quota.
 - Proxy headers (`X-Forwarded-For`) are trusted only when connections originate from addresses listed in `TRUSTED_PROXIES`. Untrusted clients cannot bypass rate limiting by spoofing proxy headers.
 - Inbound HTTP transport is bounded by server timeouts: ReadTimeout (10s), IdleTimeout (1m), and WriteTimeout (`REQUEST_TIMEOUT + 10s`, default 30s).
 - Pipeline reasoning execution is bounded by `REQUEST_TIMEOUT` (default: 20s), and upstream model calls are bounded by `LLM_TIMEOUT` (default: 15s, where `LLM_TIMEOUT <= REQUEST_TIMEOUT`).

@@ -1,6 +1,7 @@
 package server
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
@@ -14,6 +15,7 @@ import (
 
 	"github.com/gofiber/fiber/v3"
 
+	"github.com/Victoroide/axiom-engine/internal/config"
 	"github.com/Victoroide/axiom-engine/internal/domain"
 	"github.com/Victoroide/axiom-engine/internal/service"
 )
@@ -168,4 +170,111 @@ func TestHealthcheck(t *testing.T) {
 	if err := Healthcheck(context.Background(), port); err == nil {
 		t.Fatal("unreachable server accepted")
 	}
+}
+
+func TestReadinessFlipsWhileDraining(t *testing.T) {
+	cfg, err := config.Load(func(k string) string {
+		switch k {
+		case "AXIOM_AUTH_DISABLED":
+			return "true"
+		case "SHUTDOWN_DRAIN_DELAY":
+			return "1s"
+		default:
+			return ""
+		}
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	app := newTestApp(t, cfg, nil, nil)
+	ready := make(chan string, 1)
+	app.Hooks().OnListen(func(data fiber.ListenData) error { ready <- data.Host + ":" + data.Port; return nil })
+	ctx, cancel := context.WithCancel(t.Context())
+	defer cancel()
+	done := make(chan error, 1)
+	go func() { done <- Run(ctx, app, "127.0.0.1:0", cfg.ShutdownTimeout) }()
+	address := <-ready
+	client := &http.Client{Timeout: time.Second}
+	defer client.CloseIdleConnections()
+	probe := func(path string) (int, string, error) {
+		req, err := http.NewRequestWithContext(t.Context(), http.MethodGet, "http://"+address+path, nil)
+		if err != nil {
+			return 0, "", err
+		}
+		resp, err := client.Do(req)
+		if err != nil {
+			return 0, "", err
+		}
+		defer func() { _ = resp.Body.Close() }()
+		var body domain.HealthResponse
+		err = json.NewDecoder(resp.Body).Decode(&body)
+		return resp.StatusCode, body.Status, err
+	}
+	if status, body, err := probe("/readyz"); err != nil || status != http.StatusOK || body != "ok" {
+		t.Errorf("initial readiness: status=%d body=%q error=%v", status, body, err)
+	}
+	shutdownStart := time.Now()
+	cancel()
+	for {
+		status, body, err := probe("/readyz")
+		if err != nil || time.Since(shutdownStart) >= time.Second {
+			t.Errorf("readiness did not report draining before listener closure: status=%d body=%q error=%v", status, body, err)
+			break
+		}
+		if status == http.StatusServiceUnavailable {
+			if body != "draining" {
+				t.Errorf("draining readiness body=%q", body)
+			}
+			break
+		}
+		time.Sleep(5 * time.Millisecond)
+	}
+	for _, path := range []string{"/livez", "/health", "/api/v1/tutor/student/student-42/cognitive-graph?topics=Recursion"} {
+		if status, _, err := probe(path); err != nil || status != http.StatusOK {
+			t.Errorf("draining %s: status=%d error=%v", path, status, err)
+		}
+	}
+	if err := <-done; err != nil {
+		t.Fatal(err)
+	}
+	if elapsed := time.Since(shutdownStart); elapsed < time.Second || elapsed >= 3*time.Second {
+		t.Fatalf("shutdown elapsed=%s, want a one-second drain before closure", elapsed)
+	}
+}
+
+func TestHealthcheckProbesLivez(t *testing.T) {
+	var logs bytes.Buffer
+	cfg := defaultConfig(t)
+	app := newTestApp(t, cfg, nil, &logs)
+	ready := make(chan string, 1)
+	app.Hooks().OnListen(func(data fiber.ListenData) error { ready <- data.Host + ":" + data.Port; return nil })
+	ctx, cancel := context.WithCancel(t.Context())
+	defer cancel()
+	done := make(chan error, 1)
+	go func() { done <- Run(ctx, app, "127.0.0.1:0", cfg.ShutdownTimeout) }()
+	_, port, err := net.SplitHostPort(<-ready)
+	if err != nil {
+		t.Fatal(err)
+	}
+	probeErr := Healthcheck(t.Context(), port)
+	cancel()
+	if err := <-done; err != nil {
+		t.Fatal(err)
+	}
+	if probeErr != nil {
+		t.Fatal(probeErr)
+	}
+	for _, line := range strings.Split(strings.TrimSpace(logs.String()), "\n") {
+		var event map[string]any
+		if err := json.Unmarshal([]byte(line), &event); err != nil {
+			t.Fatal(err)
+		}
+		if event["msg"] == "http.access" {
+			if event["path"] != "/livez" || event["status"] != float64(http.StatusOK) {
+				t.Fatalf("healthcheck request=%v", event)
+			}
+			return
+		}
+	}
+	t.Fatal("missing healthcheck access record")
 }

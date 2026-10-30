@@ -30,20 +30,22 @@ type Config struct {
 	MaxFailedTopics    int
 	GraphFile          string
 	LogLevel           slog.Level
+	ShutdownDrainDelay time.Duration
 	ShutdownTimeout    time.Duration
 }
 
 func defaults() Config {
 	return Config{
-		Port:              "8080",
-		RateLimitMax:      50,
-		RateLimitWindow:   time.Minute,
-		RequestTimeout:    20 * time.Second,
-		LLMTimeout:        15 * time.Second,
-		LLMMaxConcurrency: 16,
-		LLMQueueTimeout:   2 * time.Second,
-		MaxFailedTopics:   10,
-		LogLevel:          slog.LevelInfo,
+		Port:               "8080",
+		RateLimitMax:       50,
+		RateLimitWindow:    time.Minute,
+		RequestTimeout:     20 * time.Second,
+		LLMTimeout:         15 * time.Second,
+		LLMMaxConcurrency:  16,
+		LLMQueueTimeout:    2 * time.Second,
+		MaxFailedTopics:    10,
+		LogLevel:           slog.LevelInfo,
+		ShutdownDrainDelay: 0,
 	}
 }
 
@@ -99,18 +101,23 @@ func Load(getenv func(string) string) (Config, error) {
 		}
 	}
 	for _, item := range []struct {
-		key string
-		dst *time.Duration
+		key       string
+		dst       *time.Duration
+		allowZero bool
 	}{
-		{"RATE_LIMIT_WINDOW", &c.RateLimitWindow},
-		{"REQUEST_TIMEOUT", &c.RequestTimeout},
-		{"LLM_TIMEOUT", &c.LLMTimeout},
-		{"LLM_QUEUE_TIMEOUT", &c.LLMQueueTimeout},
-		{"SHUTDOWN_TIMEOUT", &c.ShutdownTimeout},
+		{"RATE_LIMIT_WINDOW", &c.RateLimitWindow, false},
+		{"REQUEST_TIMEOUT", &c.RequestTimeout, false},
+		{"LLM_TIMEOUT", &c.LLMTimeout, false},
+		{"LLM_QUEUE_TIMEOUT", &c.LLMQueueTimeout, false},
+		{"SHUTDOWN_DRAIN_DELAY", &c.ShutdownDrainDelay, true},
+		{"SHUTDOWN_TIMEOUT", &c.ShutdownTimeout, false},
 	} {
 		if v := getenv(item.key); v != "" {
 			d, err := time.ParseDuration(v)
-			if err != nil || d <= 0 {
+			if err != nil || d < 0 || (d == 0 && !item.allowZero) {
+				if item.allowZero {
+					return Config{}, fmt.Errorf("%s must be a non-negative duration", item.key)
+				}
 				return Config{}, fmt.Errorf("%s must be a positive duration", item.key)
 			}
 			*item.dst = d

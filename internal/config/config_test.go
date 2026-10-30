@@ -136,6 +136,33 @@ func TestShutdownTimeoutRejectsInsufficientBudget(t *testing.T) {
 	}
 }
 
+func TestShutdownDrainDelay(t *testing.T) {
+	for _, tc := range []struct {
+		value     string
+		wantError bool
+	}{
+		{"", false},
+		{"0s", false},
+		{"250ms", false},
+		{"1s", false},
+		{"-1s", true},
+		{"invalid", true},
+		{"2562047h47m16.854775808s", true},
+	} {
+		t.Run(tc.value, func(t *testing.T) {
+			_, err := loadWithoutAuth(func(k string) string {
+				if k == "SHUTDOWN_DRAIN_DELAY" {
+					return tc.value
+				}
+				return ""
+			})
+			if (err != nil) != tc.wantError {
+				t.Fatalf("SHUTDOWN_DRAIN_DELAY=%q: error=%v, want error=%v", tc.value, err, tc.wantError)
+			}
+		})
+	}
+}
+
 func TestLoadRequiresTokenUnlessAuthDisabled(t *testing.T) {
 	for _, tc := range []struct {
 		name      string

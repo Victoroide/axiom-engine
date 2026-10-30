@@ -23,7 +23,7 @@ flowchart TD
     Client["Client / Upstream Caller"] -->|"HTTP Request"| Router["HTTP Router and Middleware<br/>(RequestID, Logger, Recover, Helmet, Limiter, Auth)"]
 
     subgraph ServerRoutes ["Server Endpoints (internal/server)"]
-        Router -->|"GET /health"| H_Health["Health Handler"]
+        Router -->|"GET /livez, /readyz, /health"| H_Health["Health and Probe Handlers"]
         Router -->|"GET /swagger/*"| H_Swagger["Swagger UI and Spec"]
     end
 

@@ -87,7 +87,7 @@ func TestSwaggerTryItOut(t *testing.T) {
 	if !strings.Contains(title, "AxiomEngine API") {
 		t.Fatal(title)
 	}
-	paths := []string{"/health", "/api/v1/adaptive-plan", "/api/v1/tutor/student/{student_id}/cognitive-graph"}
+	paths := []string{"/health", "/livez", "/readyz", "/api/v1/adaptive-plan", "/api/v1/tutor/student/{student_id}/cognitive-graph"}
 	for _, path := range paths {
 		page.MustElement(`.opblock .opblock-summary-path[data-path="` + path + `"]`).MustWaitVisible()
 	}
@@ -118,6 +118,12 @@ func TestSwaggerTryItOut(t *testing.T) {
 	health := operation("/health")
 	expand(health)
 	execute(health, "200", `"status": "ok"`)
+	for _, path := range []string{"/livez", "/readyz"} {
+		t.Log(path + " Try it out")
+		op := operation(path)
+		expand(op)
+		execute(op, "200", `"status": "ok"`)
+	}
 	t.Log("plan unauthorized Try it out")
 	plan := operation("/api/v1/adaptive-plan")
 	expand(plan)
