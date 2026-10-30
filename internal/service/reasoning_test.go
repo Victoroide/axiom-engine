@@ -535,3 +535,31 @@ func TestCanceledQueueWaitPreservesCancellation(t *testing.T) {
 		}
 	})
 }
+
+func TestPlannerIgnoringContextStillTimesOut(t *testing.T) {
+	synctest.Test(t, func(t *testing.T) {
+		finished := make(chan struct{})
+		var finishedOnce sync.Once
+		svc := NewReasoningService(graph.NewInMemoryGraph(), plannerFunc(func(_ context.Context, r TopicRequest) ([]domain.PlanItem, error) {
+			time.Sleep(2 * time.Second)
+			finishedOnce.Do(func() { close(finished) })
+			return []domain.PlanItem{{Topic: r.Topic}}, nil
+		}), Options{LLMTimeout: 50 * time.Millisecond, MaxFailedTopics: 10, MaxConcurrency: 1, QueueTimeout: 10 * time.Millisecond})
+		start := time.Now()
+		_, err := svc.GeneratePlan(t.Context(), request("Recursion"))
+		if !errors.Is(err, context.DeadlineExceeded) || time.Since(start) != 50*time.Millisecond {
+			t.Errorf("error=%v elapsed=%v", err, time.Since(start))
+		}
+		_, err = svc.GeneratePlan(t.Context(), request("Recursion"))
+		var unavailable *UnavailableError
+		if !errors.As(err, &unavailable) || unavailable.RetryAfter != time.Second {
+			t.Errorf("blocked call released capacity: %v", err)
+		}
+		<-finished
+		synctest.Wait()
+		if !svc.slots.TryAcquire(1) {
+			t.Fatal("finished call retained capacity")
+		}
+		svc.slots.Release(1)
+	})
+}

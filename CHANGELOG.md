@@ -57,6 +57,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Remove nested BAML retries to bound Bedrock throttle calls to the SDK attempt count and avoid retrying non-retryable upstream rejection.
 - Resolve topic inputs across case, whitespace, and Unicode composition variants, returning stored graph node names consistently.
 - Exclude invalid upstream output and rejected requests from circuit breaker health counts so non-availability failures do not trip the circuit for unrelated topics.
+- Enforce the LLM timeout autonomously in the reasoning service when downstream calls block, returning HTTP 504 gateway timeout while holding concurrency capacity until the call completes.
 
 ### Security
 

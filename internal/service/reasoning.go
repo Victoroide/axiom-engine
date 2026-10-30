@@ -110,15 +110,17 @@ func (s *ReasoningService) GeneratePlan(ctx context.Context, req domain.Adaptive
 				}
 				return &TopicError{Topic: topic, cause: &UnavailableError{RetryAfter: time.Second}}
 			}
-			defer s.slots.Release(1)
+			started := false
+			defer func() {
+				if !started {
+					s.slots.Release(1)
+				}
+			}()
 			llmCtx, cancel := context.WithTimeout(egCtx, s.llmTimeout)
 			defer cancel()
 			items, err := s.breaker.Execute(func() ([]domain.PlanItem, error) {
-				items, err := s.planner.GenerateTopic(llmCtx, TopicRequest{GraphContext: subgraph, Topic: topic, PrerequisiteOrder: s.graph.GetPrerequisiteChain(topic), VARKProfile: req.VARKProfile, StudentID: req.StudentID, CourseID: req.CourseID})
-				if llmCtx.Err() != nil {
-					return nil, llmCtx.Err()
-				}
-				return items, err
+				started = true
+				return s.generateTopic(llmCtx, TopicRequest{GraphContext: subgraph, Topic: topic, PrerequisiteOrder: s.graph.GetPrerequisiteChain(topic), VARKProfile: req.VARKProfile, StudentID: req.StudentID, CourseID: req.CourseID})
 			})
 			if err != nil {
 				if errors.Is(err, gobreaker.ErrTooManyRequests) {
@@ -147,6 +149,28 @@ func (s *ReasoningService) GeneratePlan(ctx context.Context, req domain.Adaptive
 		s.logger.WarnContext(ctx, "stage.validation", "request_id", requestIDFromContext(ctx), "items_dropped", dropped)
 	}
 	return domain.PlanResponse{StudentID: req.StudentID, CourseID: req.CourseID, Items: validated, Meta: domain.PipelineMeta{SubgraphTuples: len(subgraph), TopicsProcessed: len(req.FailedTopics), ItemsGenerated: countTotalItems(plans), ItemsValidated: len(validated), LLMLatencyMs: float64(llmLatency.Milliseconds()), TotalLatencyMs: float64(time.Since(start).Milliseconds())}}, nil
+}
+
+func (s *ReasoningService) generateTopic(ctx context.Context, req TopicRequest) ([]domain.PlanItem, error) {
+	type result struct {
+		items []domain.PlanItem
+		err   error
+	}
+	results := make(chan result, 1)
+	go func() {
+		defer s.slots.Release(1)
+		items, err := s.planner.GenerateTopic(ctx, req)
+		results <- result{items: items, err: err}
+	}()
+	select {
+	case <-ctx.Done():
+		return nil, ctx.Err()
+	case got := <-results:
+		if ctx.Err() != nil {
+			return nil, ctx.Err()
+		}
+		return got.items, got.err
+	}
 }
 
 func countTotalItems(plans [][]domain.PlanItem) int {

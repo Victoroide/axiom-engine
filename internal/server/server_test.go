@@ -647,3 +647,27 @@ func TestQueueSaturationReturnsRetryAfter(t *testing.T) {
 		t.Fatalf("status=%d retry-after=%q body=%s", resp.StatusCode, resp.Header.Get("Retry-After"), body)
 	}
 }
+
+func TestRequestTimeoutHoldsWithBlockingPlanner(t *testing.T) {
+	cfg := defaultConfig(t)
+	cfg.RequestTimeout = 60 * time.Millisecond
+	cfg.LLMTimeout = 50 * time.Millisecond
+	release := make(chan struct{})
+	finished := make(chan struct{})
+	app := newTestApp(t, cfg, func(_ context.Context, r service.TopicRequest) ([]domain.PlanItem, error) {
+		<-release
+		close(finished)
+		return []domain.PlanItem{{Topic: r.Topic}}, nil
+	}, nil)
+	timer := time.AfterFunc(400*time.Millisecond, func() { close(release) })
+	start := time.Now()
+	resp, body := call(t, app, "POST", "/api/v1/adaptive-plan", `{"failed_topics":["Recursion"],"vark_profile":"visual"}`, nil)
+	elapsed := time.Since(start)
+	if timer.Stop() {
+		close(release)
+	}
+	<-finished
+	if resp.StatusCode != http.StatusGatewayTimeout || elapsed > cfg.RequestTimeout+250*time.Millisecond {
+		t.Fatalf("status=%d elapsed=%v body=%s", resp.StatusCode, elapsed, body)
+	}
+}
