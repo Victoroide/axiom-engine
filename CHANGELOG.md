@@ -61,6 +61,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Replace invalid or oversized client `X-Request-ID` headers with a generated 43-character request ID before response and log emission, accepting only identifiers matching `^[A-Za-z0-9._:-]{1,128}$`.
 - Reject cyclic `depends_on` and `is_a` prerequisite graphs during startup with a deterministic cycle path.
 - Remove nested BAML retries to bound Bedrock throttle calls to the SDK attempt count and avoid retrying non-retryable upstream rejection.
 - Resolve topic inputs across case, whitespace, and Unicode composition variants, returning stored graph node names consistently.

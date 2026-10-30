@@ -73,7 +73,7 @@ The workflow performs the following steps:
 The service writes structured JSON logs to standard output using the Go standard library `log/slog` package. Log level is configured through `LOG_LEVEL` (`debug`, `info`, `warn`, `error`; default is `info`).
 
 Every HTTP request produces an `http.access` log record containing:
-- `request_id`: unique request identifier from the `X-Request-ID` header or generated 43-character URL-safe token. A fallback UUID is generated only for parser-level errors that precede request middleware execution.
+- `request_id`: the client's `X-Request-ID` when it matches `^[A-Za-z0-9._:-]{1,128}$`, otherwise a generated 43-character URL-safe token. A fallback UUID is generated only for errors raised before the request-ID middleware runs.
 - `method`: HTTP method (`GET`, `POST`, `HEAD`, `OPTIONS`).
 - `path`: request route path.
 - `status`: HTTP response status code.

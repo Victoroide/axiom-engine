@@ -10,6 +10,7 @@ import (
 	"log/slog"
 	"net/http"
 	"net/netip"
+	"regexp"
 	"runtime/debug"
 	"strings"
 	"sync"
@@ -34,6 +35,8 @@ import (
 	"github.com/Victoroide/axiom-engine/internal/metrics"
 	"github.com/Victoroide/axiom-engine/internal/service"
 )
+
+var clientRequestIDPattern = regexp.MustCompile(`^[A-Za-z0-9._:-]{1,128}$`)
 
 var previousTokenWarnings = &previousTokenLogGate{}
 
@@ -102,6 +105,12 @@ func useMiddleware(app *fiber.App, cfg config.Config, logger *slog.Logger, error
 	app.Use(func(c fiber.Ctx) error {
 		if base, ok := fiber.GetState[context.Context](app.State(), requestContextKey); ok {
 			c.SetContext(base)
+		}
+		return c.Next()
+	})
+	app.Use(func(c fiber.Ctx) error {
+		if !clientRequestIDPattern.MatchString(c.Get("X-Request-ID")) {
+			c.Request().Header.Del("X-Request-ID")
 		}
 		return c.Next()
 	})

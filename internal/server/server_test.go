@@ -819,3 +819,65 @@ func TestIPv6ClientsShareSlash64Bucket(t *testing.T) {
 		})
 	}
 }
+
+func TestClientRequestIDPolicy(t *testing.T) {
+	for _, tc := range []struct {
+		name, id string
+		accepted bool
+	}{
+		{"short", "abc-123", true},
+		{"allowed punctuation", "A0.z_:-9", true},
+		{"maximum length", strings.Repeat("a", 128), true},
+		{"missing", "", false},
+		{"too long", strings.Repeat("a", 129), false},
+		{"large", strings.Repeat("a", 6000), false},
+		{"space", "abc 123", false},
+		{"slash", "abc/123", false},
+		{"non ASCII", "café", false},
+	} {
+		for _, path := range []string{"/health", "/request-failure"} {
+			t.Run(tc.name+path, func(t *testing.T) {
+				var logs bytes.Buffer
+				app := newTestApp(t, defaultConfig(t), nil, &logs)
+				app.Get("/request-failure", func(fiber.Ctx) error { return errors.New("failure") })
+				resp, _ := call(t, app, "GET", path, "", map[string]string{"X-Request-ID": tc.id})
+				id := resp.Header.Get("X-Request-ID")
+				if tc.accepted {
+					if id != tc.id {
+						t.Fatalf("client ID changed: length=%d value=%.160q", len(id), id)
+					}
+				} else if id == tc.id || len(id) != 43 {
+					t.Fatalf("invalid ID not replaced: length=%d value=%.160q", len(id), id)
+				}
+				want := http.StatusOK
+				if path == "/request-failure" {
+					want = http.StatusInternalServerError
+				}
+				if resp.StatusCode != want {
+					t.Fatalf("status=%d want=%d", resp.StatusCode, want)
+				}
+				decoder := json.NewDecoder(&logs)
+				access, failure := false, false
+				for decoder.More() {
+					var entry struct {
+						Message   string `json:"msg"`
+						RequestID string `json:"request_id"`
+					}
+					if err := decoder.Decode(&entry); err != nil {
+						t.Fatal(err)
+					}
+					if entry.Message == "http.access" || entry.Message == "request.failed" {
+						if entry.RequestID != id {
+							t.Fatalf("logged ID differs from response: %.160q", entry.RequestID)
+						}
+						access = access || entry.Message == "http.access"
+						failure = failure || entry.Message == "request.failed"
+					}
+				}
+				if !access || (path == "/request-failure" && !failure) {
+					t.Fatal("missing correlated request logs")
+				}
+			})
+		}
+	}
+}
