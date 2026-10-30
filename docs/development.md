@@ -250,3 +250,9 @@ Runs on pushing a tag matching `v*`:
 - Pushes images to `ghcr.io/victoroide/axiom-engine` tagged with release version, semantic version patterns, and tag name.
 - Generates SLSA provenance and container SBOM.
 - Publishes a GitHub Release with generated release notes.
+
+### `security-scan.yml`
+
+Triggers daily on a schedule (`17 6 * * *` / 06:17 UTC) and on manual dispatch (`workflow_dispatch`) with top-level `contents: read` permissions. Each scanning job requests `security-events: write` to upload SARIF results:
+- **`dependencies`**: sets up Go and runs `make vuln VULN_FLAGS="-show verbose"`, which lists module advisories and fails on reachable vulnerabilities. It then generates SARIF with `make --silent vuln VULN_FLAGS="-format sarif"` (this step always exits 0) and uploads it under the `go-dependencies` category, also when the text scan fails.
+- **`image`**: builds the `runtime` container target, scans it for fixable high and critical vulnerabilities with Anchore Grype (`anchore/scan-action`), and uploads SARIF under the `runtime-image` category even when the severity threshold fails.

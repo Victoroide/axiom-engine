@@ -15,6 +15,7 @@ export BAML_LIBRARY_PATH := $(BIN_DIR)/libbaml_cffi.$(BAML_LIB_EXT)
 export BAML_LIBRARY_DISABLE_DOWNLOAD := true
 export BAML_LOG ?= off
 IMAGE ?= axiom-engine:local
+VULN_FLAGS ?=
 
 .PHONY: help generate swagger build run test cover test-e2e lint vuln fmt tidy-check generate-check docker-build clean tools-baml baml-check native-baml
 
@@ -89,7 +90,7 @@ lint: ## Vet all build variants and check lint rules and Go formatting
 	go run github.com/golangci/golangci-lint/v2/cmd/golangci-lint@$(GOLANGCI_LINT_VERSION) run ./...
 
 vuln: ## Check reachable Go vulnerabilities
-	go run golang.org/x/vuln/cmd/govulncheck@$(GOVULNCHECK_VERSION) ./...
+	go run golang.org/x/vuln/cmd/govulncheck@$(GOVULNCHECK_VERSION) $(VULN_FLAGS) ./...
 
 fmt: ## Format maintained Go source files
 	go run github.com/golangci/golangci-lint/v2/cmd/golangci-lint@$(GOLANGCI_LINT_VERSION) fmt
