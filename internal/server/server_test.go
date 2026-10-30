@@ -683,3 +683,44 @@ func TestMissingTopicItemReturnsBadGateway(t *testing.T) {
 		t.Fatalf("status=%d body=%s", resp.StatusCode, body)
 	}
 }
+
+func TestModelOutputIsSanitized(t *testing.T) {
+	var logs bytes.Buffer
+	app := newTestApp(t, defaultConfig(t), func(_ context.Context, r service.TopicRequest) ([]domain.PlanItem, error) {
+		return []domain.PlanItem{{Topic: r.Topic, Explanation: "\u202e" + strings.Repeat("é", 1100) + "\n", Resources: []domain.Resource{
+			{Title: "unsafe", URL: "javascript:alert(1)", ResourceType: "video"},
+			{Title: strings.Repeat("x", 100000), URL: "data:text/html,evil", ResourceType: "VISUAL"},
+			{URL: "/etc/passwd"},
+			{URL: "ftp://example.com/x", ResourceType: "lab"},
+			{URL: "https://user@example.com", ResourceType: "video"},
+			{Title: "\u202e" + strings.Repeat("界", 250) + "\x00", URL: "https://example.com/video", ResourceType: "Video"},
+			{Title: "diagram", URL: "http://example.com/diagram", ResourceType: "diagram"},
+			{Title: "infographic", URL: "https://example.com/infographic", ResourceType: "infographic"},
+			{Title: "extra", URL: "https://example.com/extra", ResourceType: "video"},
+			{Title: "wrong type", URL: "https://example.com/audio", ResourceType: "podcast"},
+		}}}, nil
+	}, &logs)
+	resp, body := call(t, app, "POST", "/api/v1/adaptive-plan", `{"failed_topics":["Recursion"],"vark_profile":"visual"}`, nil)
+	var got domain.PlanResponse
+	if err := json.Unmarshal([]byte(body), &got); err != nil {
+		t.Fatal(err)
+	}
+	if resp.StatusCode != http.StatusOK || len(got.Items) != 1 {
+		t.Fatalf("status=%d items=%d", resp.StatusCode, len(got.Items))
+	}
+	item := got.Items[0]
+	if item.Explanation != strings.Repeat("é", 1000) || len(item.Resources) != 3 {
+		t.Fatalf("explanation runes=%d resources=%d", len([]rune(item.Explanation)), len(item.Resources))
+	}
+	for i, kind := range []string{"video", "diagram", "infographic"} {
+		if item.Resources[i].ResourceType != kind {
+			t.Fatalf("resources=%+v", item.Resources)
+		}
+	}
+	if item.Resources[0].Title != strings.Repeat("界", 200) {
+		t.Fatalf("title runes=%d", len([]rune(item.Resources[0].Title)))
+	}
+	if !strings.Contains(logs.String(), `"msg":"stage.output"`) || !strings.Contains(logs.String(), `"resources_dropped":7`) || !strings.Contains(logs.String(), `"level":"WARN"`) {
+		t.Fatal(logs.String())
+	}
+}

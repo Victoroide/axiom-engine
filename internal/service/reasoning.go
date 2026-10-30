@@ -152,6 +152,10 @@ func (s *ReasoningService) GeneratePlan(ctx context.Context, req domain.Adaptive
 	}
 	llmLatency := time.Since(llmStart)
 	merged := mergeAndDeduplicate(plans)
+	merged, resourcesDropped := sanitizeOutput(merged, req.VARKProfile)
+	if resourcesDropped > 0 {
+		s.logger.WarnContext(ctx, "stage.output", "request_id", requestIDFromContext(ctx), "resources_dropped", resourcesDropped)
+	}
 	validated, dropped := validateAgainstGraph(merged, s.graph, req.FailedTopics)
 	if dropped > 0 {
 		s.logger.WarnContext(ctx, "stage.validation", "request_id", requestIDFromContext(ctx), "items_dropped", dropped)
