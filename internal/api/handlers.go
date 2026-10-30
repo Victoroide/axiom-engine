@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"mime"
 	"strings"
 	"time"
 
@@ -51,6 +52,7 @@ func (h *Handler) RegisterRoutes(app *fiber.App) {
 // @Failure 400 {object} domain.ErrorResponse
 // @Failure 401 {object} domain.ErrorResponse
 // @Failure 413 {object} domain.ErrorResponse
+// @Failure 415 {object} domain.ErrorResponse
 // @Failure 422 {object} domain.ErrorResponse
 // @Failure 429 {object} domain.ErrorResponse
 // @Failure 502 {object} domain.ErrorResponse
@@ -58,9 +60,14 @@ func (h *Handler) RegisterRoutes(app *fiber.App) {
 // @Failure 504 {object} domain.ErrorResponse
 // @Router /api/v1/adaptive-plan [post]
 func (h *Handler) handleAdaptivePlan(c fiber.Ctx) error {
+	mediaType, params, err := mime.ParseMediaType(c.Get("Content-Type"))
+	charset, hasCharset := params["charset"]
+	if err != nil || mediaType != "application/json" || (hasCharset && !strings.EqualFold(charset, "utf-8")) {
+		return c.Status(fiber.StatusUnsupportedMediaType).JSON(domain.ErrorResponse{Error: "unsupported_media_type", Details: "Content-Type must be application/json"})
+	}
 	var req domain.AdaptivePlanRequest
-	if err := c.Bind().Body(&req); err != nil {
-		return c.Status(fiber.StatusBadRequest).JSON(domain.ErrorResponse{Error: "invalid_request_body", Details: "request body must be valid JSON"})
+	if err := decodeStrictJSON(c.Body(), &req); err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(domain.ErrorResponse{Error: "invalid_request_body", Details: err.Error()})
 	}
 	ctx, cancel := context.WithTimeout(service.WithRequestID(c.Context(), requestid.FromContext(c)), h.timeout)
 	defer cancel()

@@ -531,3 +531,32 @@ func TestCognitiveValidationNamesTopicsField(t *testing.T) {
 		}
 	}
 }
+
+func TestAdaptivePlanRequiresJSONMediaType(t *testing.T) {
+	for _, tc := range []struct {
+		name, mediaType, body string
+		want                  int
+	}{
+		{"xml", "application/xml", `<AdaptivePlanRequest><FailedTopics>Recursion</FailedTopics><VARKProfile>visual</VARKProfile></AdaptivePlanRequest>`, 415},
+		{"text xml", "text/xml", `<request/>`, 415},
+		{"form", "application/x-www-form-urlencoded", `FailedTopics=Recursion&VARKProfile=visual`, 415},
+		{"multipart", "multipart/form-data; boundary=example", "--example--\r\n", 415},
+		{"text", "text/plain", validBody, 415},
+		{"missing", "", validBody, 415},
+		{"malformed", "application/json; charset", validBody, 415},
+		{"json charset", "application/json; charset=utf-8", validBody, 200},
+		{"uppercase charset", "Application/JSON; charset=UTF-8", validBody, 200},
+		{"unsupported charset", "application/json; charset=utf-16", validBody, 415},
+		{"empty charset", `application/json; charset=""`, validBody, 415},
+		{"json", "application/json", validBody, 200},
+		{"telemetry", "application/json", `{"failed_topics":["Recursion"],"vark_profile":"visual","telemetry":{"session_id":"x","timestamp_unix":123,"duration_ms":1.5,"client_version":"1"}}`, 200},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			app := newTestApp(t, defaultConfig(t), nil, nil)
+			r, b := call(t, app, "POST", "/api/v1/adaptive-plan", tc.body, map[string]string{"Content-Type": tc.mediaType})
+			if r.StatusCode != tc.want || (tc.want == 415 && !strings.Contains(b, `"error":"unsupported_media_type"`)) {
+				t.Fatalf("got %d: %s, want %d", r.StatusCode, b, tc.want)
+			}
+		})
+	}
+}
