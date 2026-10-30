@@ -12,7 +12,7 @@ func TestLoadDefaults(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if c.Port != "8080" || c.RateLimitMax != 50 || c.RateLimitWindow != time.Minute || c.RequestTimeout != 20*time.Second || c.LLMTimeout != 15*time.Second || c.MaxFailedTopics != 10 || c.ShutdownTimeout != 10*time.Second || c.LogLevel != slog.LevelInfo || len(c.CORSAllowedOrigins) != 0 || len(c.TrustedProxies) != 0 {
+	if c.LLMMaxConcurrency != 16 || c.LLMQueueTimeout != 2*time.Second || c.Port != "8080" || c.RateLimitMax != 50 || c.RateLimitWindow != time.Minute || c.RequestTimeout != 20*time.Second || c.LLMTimeout != 15*time.Second || c.MaxFailedTopics != 10 || c.ShutdownTimeout != 10*time.Second || c.LogLevel != slog.LevelInfo || len(c.CORSAllowedOrigins) != 0 || len(c.TrustedProxies) != 0 {
 		t.Fatalf("unexpected defaults: %+v", c)
 	}
 }
@@ -173,5 +173,75 @@ func TestLoadRejectsWeakOrPaddedTokens(t *testing.T) {
 				}
 			})
 		}
+	}
+}
+
+func TestConcurrencyConfigBounds(t *testing.T) {
+	for _, tc := range []struct {
+		key, value string
+		invalid    bool
+	}{
+		{"LLM_MAX_CONCURRENCY", "0", true}, {"LLM_MAX_CONCURRENCY", "-1", true}, {"LLM_MAX_CONCURRENCY", "1025", true}, {"LLM_MAX_CONCURRENCY", "bad", true},
+		{"LLM_MAX_CONCURRENCY", "1", false}, {"LLM_MAX_CONCURRENCY", "1024", false},
+		{"LLM_QUEUE_TIMEOUT", "0s", true}, {"LLM_QUEUE_TIMEOUT", "-1s", true}, {"LLM_QUEUE_TIMEOUT", "bad", true}, {"LLM_QUEUE_TIMEOUT", "15s", true}, {"LLM_QUEUE_TIMEOUT", "16s", true}, {"LLM_QUEUE_TIMEOUT", "1s", false},
+	} {
+		t.Run(tc.key+"="+tc.value, func(t *testing.T) {
+			_, err := loadWithoutAuth(func(key string) string {
+				if key == tc.key {
+					return tc.value
+				}
+				return ""
+			})
+			if (err != nil) != tc.invalid {
+				t.Fatalf("error=%v, want invalid=%v", err, tc.invalid)
+			}
+		})
+	}
+}
+
+func TestQueueTimeoutAdaptsToCallDeadline(t *testing.T) {
+	for _, tc := range []struct {
+		llm, queue string
+		want       time.Duration
+		wantError  bool
+	}{
+		{"1s", "", 500 * time.Millisecond, false},
+		{"2s", "", time.Second, false},
+		{"15s", "", 2 * time.Second, false},
+		{"1s", "250ms", 250 * time.Millisecond, false},
+		{"1s", "1s", 0, true},
+		{"1s", "2s", 0, true},
+	} {
+		t.Run(tc.llm+"/"+tc.queue, func(t *testing.T) {
+			cfg, err := loadWithoutAuth(func(key string) string {
+				switch key {
+				case "LLM_TIMEOUT":
+					return tc.llm
+				case "LLM_QUEUE_TIMEOUT":
+					return tc.queue
+				default:
+					return ""
+				}
+			})
+			if (err != nil) != tc.wantError || (err == nil && cfg.LLMQueueTimeout != tc.want) {
+				t.Fatalf("queue=%s error=%v, want %s error=%v", cfg.LLMQueueTimeout, err, tc.want, tc.wantError)
+			}
+		})
+	}
+}
+
+func TestConcurrencyConfigOverrides(t *testing.T) {
+	c, err := loadWithoutAuth(func(key string) string {
+		switch key {
+		case "LLM_MAX_CONCURRENCY":
+			return "7"
+		case "LLM_QUEUE_TIMEOUT":
+			return "125ms"
+		default:
+			return ""
+		}
+	})
+	if err != nil || c.LLMMaxConcurrency != 7 || c.LLMQueueTimeout != 125*time.Millisecond {
+		t.Fatalf("config=%+v error=%v", c, err)
 	}
 }

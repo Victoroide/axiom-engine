@@ -25,6 +25,8 @@ type Config struct {
 	WriteTimeout       time.Duration
 	IdleTimeout        time.Duration
 	LLMTimeout         time.Duration
+	LLMMaxConcurrency  int
+	LLMQueueTimeout    time.Duration
 	MaxFailedTopics    int
 	GraphFile          string
 	LogLevel           slog.Level
@@ -33,14 +35,16 @@ type Config struct {
 
 func defaults() Config {
 	return Config{
-		Port:            "8080",
-		RateLimitMax:    50,
-		RateLimitWindow: time.Minute,
-		RequestTimeout:  20 * time.Second,
-		LLMTimeout:      15 * time.Second,
-		MaxFailedTopics: 10,
-		ShutdownTimeout: 10 * time.Second,
-		LogLevel:        slog.LevelInfo,
+		Port:              "8080",
+		RateLimitMax:      50,
+		RateLimitWindow:   time.Minute,
+		RequestTimeout:    20 * time.Second,
+		LLMTimeout:        15 * time.Second,
+		LLMMaxConcurrency: 16,
+		LLMQueueTimeout:   2 * time.Second,
+		MaxFailedTopics:   10,
+		ShutdownTimeout:   10 * time.Second,
+		LogLevel:          slog.LevelInfo,
 	}
 }
 
@@ -83,6 +87,7 @@ func Load(getenv func(string) string) (Config, error) {
 		key string
 		dst *int
 	}{
+		{"LLM_MAX_CONCURRENCY", &c.LLMMaxConcurrency},
 		{"RATE_LIMIT_MAX", &c.RateLimitMax},
 		{"MAX_FAILED_TOPICS", &c.MaxFailedTopics},
 	} {
@@ -101,6 +106,7 @@ func Load(getenv func(string) string) (Config, error) {
 		{"RATE_LIMIT_WINDOW", &c.RateLimitWindow},
 		{"REQUEST_TIMEOUT", &c.RequestTimeout},
 		{"LLM_TIMEOUT", &c.LLMTimeout},
+		{"LLM_QUEUE_TIMEOUT", &c.LLMQueueTimeout},
 		{"SHUTDOWN_TIMEOUT", &c.ShutdownTimeout},
 	} {
 		if v := getenv(item.key); v != "" {
@@ -110,6 +116,18 @@ func Load(getenv func(string) string) (Config, error) {
 			}
 			*item.dst = d
 		}
+	}
+	if c.LLMMaxConcurrency > 1024 {
+		return Config{}, fmt.Errorf("LLM_MAX_CONCURRENCY must be between 1 and 1024")
+	}
+	if getenv("LLM_QUEUE_TIMEOUT") == "" {
+		c.LLMQueueTimeout = min(2*time.Second, c.LLMTimeout/2)
+	}
+	if c.LLMQueueTimeout <= 0 {
+		return Config{}, fmt.Errorf("LLM_TIMEOUT must allow a positive queue timeout")
+	}
+	if c.LLMQueueTimeout >= c.LLMTimeout {
+		return Config{}, fmt.Errorf("LLM_QUEUE_TIMEOUT must be less than LLM_TIMEOUT")
 	}
 	c.ReadTimeout = 10 * time.Second
 	c.IdleTimeout = time.Minute

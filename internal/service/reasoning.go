@@ -9,6 +9,7 @@ import (
 
 	"github.com/sony/gobreaker/v2"
 	"golang.org/x/sync/errgroup"
+	"golang.org/x/sync/semaphore"
 
 	"github.com/Victoroide/axiom-engine/internal/domain"
 	"github.com/Victoroide/axiom-engine/internal/graph"
@@ -41,6 +42,8 @@ type Planner interface {
 type Options struct {
 	LLMTimeout      time.Duration
 	MaxFailedTopics int
+	MaxConcurrency  int
+	QueueTimeout    time.Duration
 	Logger          *slog.Logger
 }
 
@@ -51,6 +54,8 @@ type ReasoningService struct {
 	planner         Planner
 	llmTimeout      time.Duration
 	maxFailedTopics int
+	queueTimeout    time.Duration
+	slots           *semaphore.Weighted
 	breaker         *gobreaker.CircuitBreaker[[]domain.PlanItem]
 }
 
@@ -60,8 +65,14 @@ func NewReasoningService(g *graph.InMemoryGraph, planner Planner, opts Options) 
 	if logger == nil {
 		logger = slog.Default()
 	}
+	if opts.MaxConcurrency <= 0 {
+		opts.MaxConcurrency = 16
+	}
+	if opts.QueueTimeout <= 0 {
+		opts.QueueTimeout = 2 * time.Second
+	}
 	cb := gobreaker.NewCircuitBreaker[[]domain.PlanItem](breakerSettings(logger))
-	return &ReasoningService{logger: logger, graph: g, planner: planner, llmTimeout: opts.LLMTimeout, maxFailedTopics: opts.MaxFailedTopics, breaker: cb}
+	return &ReasoningService{logger: logger, graph: g, planner: planner, llmTimeout: opts.LLMTimeout, maxFailedTopics: opts.MaxFailedTopics, breaker: cb, queueTimeout: opts.QueueTimeout, slots: semaphore.NewWeighted(int64(opts.MaxConcurrency))}
 }
 
 func breakerSettings(logger *slog.Logger) gobreaker.Settings {
@@ -90,6 +101,16 @@ func (s *ReasoningService) GeneratePlan(ctx context.Context, req domain.Adaptive
 	plans := make([][]domain.PlanItem, len(req.FailedTopics))
 	for i, topic := range req.FailedTopics {
 		eg.Go(func() error {
+			queueCtx, queueCancel := context.WithTimeout(egCtx, s.queueTimeout)
+			err := s.slots.Acquire(queueCtx, 1)
+			queueCancel()
+			if err != nil {
+				if egCtx.Err() != nil {
+					return &TopicError{Topic: topic, cause: egCtx.Err()}
+				}
+				return &TopicError{Topic: topic, cause: &UnavailableError{RetryAfter: time.Second}}
+			}
+			defer s.slots.Release(1)
 			llmCtx, cancel := context.WithTimeout(egCtx, s.llmTimeout)
 			defer cancel()
 			items, err := s.breaker.Execute(func() ([]domain.PlanItem, error) {
@@ -111,7 +132,7 @@ func (s *ReasoningService) GeneratePlan(ctx context.Context, req domain.Adaptive
 				}
 				return &TopicError{Topic: topic, cause: errors.Join(ErrUpstream, err)}
 			}
-			// Each goroutine owns one slot; completion order cannot change priorities.
+			// Each goroutine owns one result index; completion order cannot change priorities.
 			plans[i] = items
 			return nil
 		})

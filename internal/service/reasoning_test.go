@@ -10,7 +10,9 @@ import (
 	"math/rand/v2"
 	"reflect"
 	"sync"
+	"sync/atomic"
 	"testing"
+	"testing/synctest"
 	"time"
 
 	"github.com/sony/gobreaker/v2"
@@ -447,4 +449,89 @@ func TestModelCanonicalTopicsDeduplicated(t *testing.T) {
 	if len(got.Items) != 1 || got.Items[0].Topic != "Recursion" || logs.Len() != 0 {
 		t.Fatalf("items=%+v logs=%s", got.Items, logs.String())
 	}
+}
+
+func TestGlobalConcurrencyBound(t *testing.T) {
+	synctest.Test(t, func(t *testing.T) {
+		var active, peak atomic.Int32
+		release := make(chan struct{})
+		svc := newService(func(_ context.Context, r TopicRequest) ([]domain.PlanItem, error) {
+			n := active.Add(1)
+			defer active.Add(-1)
+			for old := peak.Load(); n > old; old = peak.Load() {
+				if peak.CompareAndSwap(old, n) {
+					break
+				}
+			}
+			<-release
+			return []domain.PlanItem{{Topic: r.Topic}}, nil
+		})
+		topics := []string{"Variables", "Functions", "Recursion", "Arrays", "Hash Tables", "Objects", "Classes", "Inheritance", "Polymorphism", "Merge Sort"}
+		done := make(chan error, 30)
+		for range 30 {
+			go func() { _, err := svc.GeneratePlan(t.Context(), request(topics...)); done <- err }()
+		}
+		synctest.Wait()
+		got := peak.Load()
+		close(release)
+		for range 30 {
+			if err := <-done; err != nil {
+				t.Fatal(err)
+			}
+		}
+		if got != 16 {
+			t.Fatalf("peak concurrent calls = %d, want 16", got)
+		}
+	})
+}
+
+func TestQueueTimeoutReturnsUnavailable(t *testing.T) {
+	synctest.Test(t, func(t *testing.T) {
+		release, entered := make(chan struct{}), make(chan struct{})
+		svc := NewReasoningService(graph.NewInMemoryGraph(), plannerFunc(func(_ context.Context, r TopicRequest) ([]domain.PlanItem, error) {
+			close(entered)
+			<-release
+			return []domain.PlanItem{{Topic: r.Topic}}, nil
+		}), Options{LLMTimeout: time.Second, MaxFailedTopics: 10, MaxConcurrency: 1, QueueTimeout: 50 * time.Millisecond})
+		done := make(chan error, 1)
+		go func() { _, err := svc.GeneratePlan(t.Context(), request("Recursion")); done <- err }()
+		<-entered
+		start := time.Now()
+		_, err := svc.GeneratePlan(t.Context(), request("Recursion"))
+		close(release)
+		if firstErr := <-done; firstErr != nil {
+			t.Fatal(firstErr)
+		}
+		var unavailable *UnavailableError
+		if !errors.As(err, &unavailable) || unavailable.RetryAfter != time.Second || errors.Is(err, context.DeadlineExceeded) || time.Since(start) != 50*time.Millisecond {
+			t.Fatalf("error=%v elapsed=%v", err, time.Since(start))
+		}
+		if svc.breaker.Counts().Requests != 1 {
+			t.Fatalf("queue wait reached breaker: %+v", svc.breaker.Counts())
+		}
+	})
+}
+
+func TestCanceledQueueWaitPreservesCancellation(t *testing.T) {
+	synctest.Test(t, func(t *testing.T) {
+		release, entered := make(chan struct{}), make(chan struct{})
+		svc := NewReasoningService(graph.NewInMemoryGraph(), plannerFunc(func(_ context.Context, r TopicRequest) ([]domain.PlanItem, error) {
+			close(entered)
+			<-release
+			return []domain.PlanItem{{Topic: r.Topic}}, nil
+		}), Options{LLMTimeout: time.Second, MaxFailedTopics: 10, MaxConcurrency: 1, QueueTimeout: 50 * time.Millisecond})
+		done := make(chan error, 1)
+		go func() { _, err := svc.GeneratePlan(t.Context(), request("Recursion")); done <- err }()
+		<-entered
+		ctx, cancel := context.WithCancel(t.Context())
+		cancel()
+		_, err := svc.GeneratePlan(ctx, request("Recursion"))
+		close(release)
+		if firstErr := <-done; firstErr != nil {
+			t.Fatal(firstErr)
+		}
+		if !errors.Is(err, context.Canceled) {
+			t.Fatalf("error=%v", err)
+		}
+	})
 }
