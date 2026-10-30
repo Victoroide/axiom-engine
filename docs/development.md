@@ -9,17 +9,32 @@ For contribution workflow, commit conventions, and review procedures, see [CONTR
 - **Docker**: Engine 24+ for building runtime images and executing container health checks.
 - **Chrome or Chromium**: Required for browser end-to-end tests. The test runner detects local system installations or uses the path specified in `ROD_BROWSER_BIN`.
 
-## Pinned tool versions
+<a id="pinned-tool-versions"></a>
+## Tooling
 
-Tooling dependencies are pinned to specific versions:
+Developer and CI tools are declared using Go `tool` directives in `tools/go.mod` with cryptographic checksums pinned in `tools/go.sum`. This isolated module is the single source of truth for tool versions:
 
-| Tool | Version | Description |
-| --- | --- | --- |
-| `golangci-lint` | `v2.15.0` | Go linter and formatter |
-| `govulncheck` | `v1.9.0` | Go vulnerability scanner |
-| `swag` | `v1.16.6` | Swagger 2.0 generator |
-| `goimports` | `v0.52.0` | Import organizer and formatter |
-| `baml-cli` | `0.226.2` | BAML client code generator |
+| Tool | Version | Directive | Description |
+| --- | --- | --- | --- |
+| `govulncheck` | `v1.9.0` | `golang.org/x/vuln/cmd/govulncheck` | Go vulnerability scanner |
+| `swag` | `v1.16.6` | `github.com/swaggo/swag/cmd/swag` | Swagger 2.0 generator |
+| `goimports` | `v0.52.0` | `golang.org/x/tools/cmd/goimports` | Import organizer and formatter |
+| `actionlint` | `v1.7.12` | `github.com/rhysd/actionlint/cmd/actionlint` | GitHub Actions workflow linter |
+
+Run pinned tools from the repository root using `go tool`:
+
+```sh
+go tool -modfile=tools/go.mod <tool> [args...]
+```
+
+To update a pinned tool version:
+
+```sh
+go -C tools get -tool <package>@<version>
+go -C tools mod tidy
+```
+
+`golangci-lint` (`v2.15.0`) intentionally remains executed via `go run github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v2.15.0` in accordance with upstream guidance. `baml-cli` (`0.226.2`) is installed into `bin/` via `make tools-baml` matching the version in `baml_src/generators.baml`. CI caches modules by both `go.sum` and `tools/go.sum`.
 
 ## Make targets
 
@@ -219,7 +234,7 @@ make tidy-check
 make generate-check
 ```
 
-`tidy-check` runs `go mod tidy` and asserts no changes to `go.mod` or `go.sum`. `generate-check` regenerates BAML and Swagger artifacts and asserts no modified or untracked files remain.
+`tidy-check` runs `go mod tidy` and `go -C tools mod tidy`, asserting no changes to `go.mod`, `go.sum`, `tools/go.mod`, or `tools/go.sum`. `generate-check` regenerates BAML and Swagger artifacts and asserts no modified or untracked files remain.
 
 ## Continuous integration jobs
 
@@ -265,4 +280,5 @@ Runs on pushing a tag matching `v*`:
 
 Triggers daily on a schedule (`17 6 * * *` / 06:17 UTC) and on manual dispatch (`workflow_dispatch`) with top-level `contents: read` permissions. Each scanning job requests `security-events: write` to upload SARIF results:
 - **`dependencies`**: sets up Go and runs `make vuln VULN_FLAGS="-show verbose"`, which lists module advisories and fails on reachable vulnerabilities. It then generates SARIF with `make --silent vuln VULN_FLAGS="-format sarif"` (this step always exits 0) and uploads it under the `go-dependencies` category, also when the text scan fails.
+- **`tools`**: sets up Go from `tools/go.mod` and runs `go -C tools tool govulncheck -scan package -show verbose tool`, which fails when a pinned tool imports a vulnerable package and lists module advisories. It then uploads SARIF under the `go-tools` category with findings attributed to `tools/go.mod`, also after a failure.
 - **`image`**: builds the `runtime` container target, scans it for fixable high and critical vulnerabilities with Anchore Grype (`anchore/scan-action`), and uploads SARIF under the `runtime-image` category even when the severity threshold fails.

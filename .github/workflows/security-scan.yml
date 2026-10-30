@@ -27,6 +27,9 @@ jobs:
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
           go-version-file: go.mod
+          cache-dependency-path: |
+            go.sum
+            tools/go.sum
       - run: make vuln VULN_FLAGS="-show verbose"
       - name: Generate Go scan results
         id: sarif
@@ -38,6 +41,36 @@ jobs:
         with:
           sarif_file: ${{ runner.temp }}/govulncheck.sarif
           category: go-dependencies
+  tools:
+    name: Scan developer tools
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+      security-events: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: tools/go.mod
+          cache-dependency-path: tools/go.sum
+      - name: Scan tool packages
+        run: go -C tools tool govulncheck -scan package -show verbose tool
+      - name: Generate tool scan results
+        id: sarif
+        if: ${{ always() }}
+        run: |
+          go -C tools tool govulncheck -scan package -format sarif tool > "$RUNNER_TEMP/tools.sarif"
+          jq '(.runs[].results[]?.locations[]?.physicalLocation.artifactLocation.uri) |= "tools/" + .' \
+            "$RUNNER_TEMP/tools.sarif" > "$RUNNER_TEMP/tools-located.sarif"
+      - name: Upload tool scan results
+        if: ${{ always() && steps.sarif.outcome == 'success' }}
+        uses: github/codeql-action/upload-sarif@9b3254085494b55a0f7c4c2b3d2d52cc712ce370 # v4.39.1
+        with:
+          sarif_file: ${{ runner.temp }}/tools-located.sarif
+          category: go-tools
   image:
     name: Scan runtime image
     runs-on: ubuntu-latest

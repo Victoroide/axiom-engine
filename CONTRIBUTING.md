@@ -6,7 +6,11 @@
 - A C compiler toolchain (such as `gcc` or `clang`) with CGO enabled. CGO is required for BAML native CFFI bindings.
 - Docker for container builds and local verification.
 - Google Chrome or Chromium for browser end-to-end tests.
-- Pinned toolchain and tooling dependencies specified in the [development guide](docs/development.md#pinned-tool-versions).
+- Pinned toolchain and tooling dependencies specified in the [development guide](docs/development.md#tooling).
+
+## Development tools
+
+Developer and CI tools (`govulncheck`, `swag`, `goimports`, and `actionlint`) are tracked in `tools/go.mod` with checksums in `tools/go.sum`. For tool invocation commands, version updates, and maintenance instructions, see the [tooling guide](docs/development.md#tooling). Dependabot checks the `/tools` module weekly, including indirect requirements (`allow: dependency-type: all`, because Go records every tool module as `// indirect`), with a three-day default cooldown.
 
 Read [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md) before participating. Report security vulnerabilities privately as described in [SECURITY.md](SECURITY.md), never in a public issue or pull request.
 
