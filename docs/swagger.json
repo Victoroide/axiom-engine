@@ -293,9 +293,14 @@
             "type": "object",
             "properties": {
                 "items_after_validation": {
-                    "description": "ItemsValidated is the count of study items remaining after the\nhallucination-guard stage drops items whose topics are absent from\nthe knowledge graph.",
+                    "description": "ItemsValidated is the count of study items remaining after the\ngraph validation stage retains requested topics and their prerequisites.",
                     "type": "integer",
                     "example": 5
+                },
+                "items_dropped": {
+                    "description": "ItemsDropped counts distinct items outside the requested prerequisite closure.",
+                    "type": "integer",
+                    "example": 1
                 },
                 "items_generated": {
                     "description": "ItemsGenerated is the total number of study items returned across\nall per-topic LLM calls before deduplication.",

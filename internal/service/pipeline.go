@@ -23,11 +23,22 @@ func mergeAndDeduplicate(plans [][]domain.PlanItem) []domain.PlanItem {
 	return merged
 }
 
-func validateAgainstGraph(items []domain.PlanItem, g *graph.InMemoryGraph) ([]domain.PlanItem, int) {
+func validateAgainstGraph(items []domain.PlanItem, g *graph.InMemoryGraph, requested []string) ([]domain.PlanItem, int) {
+	allowed := make(map[string]bool)
+	for _, name := range requested {
+		topic, ok := g.Resolve(name)
+		if !ok {
+			continue
+		}
+		allowed[topic] = true
+		for _, prerequisite := range g.GetPrerequisiteChain(topic) {
+			allowed[prerequisite] = true
+		}
+	}
 	valid := make([]domain.PlanItem, 0, len(items))
 	dropped := 0
 	for _, item := range items {
-		if topic, ok := g.Resolve(item.Topic); ok {
+		if topic, ok := g.Resolve(item.Topic); ok && allowed[topic] {
 			item.Topic = topic
 			item.PrerequisiteChain = g.GetPrerequisiteChain(item.Topic)
 			valid = append(valid, item)

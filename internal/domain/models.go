@@ -140,9 +140,11 @@ type PipelineMeta struct {
 	ItemsGenerated int `json:"items_generated" example:"6"`
 
 	// ItemsValidated is the count of study items remaining after the
-	// hallucination-guard stage drops items whose topics are absent from
-	// the knowledge graph.
+	// graph validation stage retains requested topics and their prerequisites.
 	ItemsValidated int `json:"items_after_validation" example:"5"`
+
+	// ItemsDropped counts distinct items outside the requested prerequisite closure.
+	ItemsDropped int `json:"items_dropped" example:"1"`
 
 	// LLMLatencyMs is the wall-clock time (milliseconds) spent waiting
 	// for all parallel LLM calls to complete.

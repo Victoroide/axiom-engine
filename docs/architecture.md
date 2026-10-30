@@ -130,7 +130,7 @@ sequenceDiagram
 
     Service->>Service: mergeAndDeduplicate(plans)
     Service->>Graph: validateAgainstGraph(mergedItems)
-    Note over Service: Drop hallucinated topics, replace chains from graph, sort prerequisites before dependents, assign sequential priorities (1..N)
+    Note over Service: Retain requested topics and prerequisite closure, replace chains from graph, sort prerequisites before dependents, assign sequential priorities (1..N)
 
     Service-->>Handler: Return PlanResponse with PipelineMeta
     Handler-->>Caller: 200 OK (PlanResponse)
@@ -148,8 +148,8 @@ sequenceDiagram
    - Invokes Amazon Bedrock Nova Micro through the BAML adapter (`internal/llm/baml.go`).
    - Stores the generated items directly into `plans[i]`, where `i` is the original request index. This ensures deterministic ordering regardless of goroutine completion timing.
 5. **Merge and Deduplication**: `mergeAndDeduplicate` in `internal/service/pipeline.go` iterates sequentially through the per-topic results in request order, tracking visited topic names in a map and dropping duplicate concept recommendations.
-6. **Prerequisite Ordering and Hallucination Validation**: `validateAgainstGraph` in `internal/service/pipeline.go` verifies every study item against the knowledge graph. Non-existent topics are dropped as hallucinations. When items are dropped, the service emits a WARN log record with `request_id` and `items_dropped`. Each validated item receives its trusted prerequisite chain from the graph (`GetPrerequisiteChain`) rather than accepting invented planner chains. Validated items are stable-sorted by graph prerequisite rank so that prerequisite concepts always precede dependent concepts, preserving deterministic traversal order among independent topics. Sequential priorities (1, 2, 3...) are assigned after sorting.
-7. **Response Construction**: The final `domain.PlanResponse` is assembled with echoed identifiers, validated and sorted study items, and internal telemetry metrics (`subgraph_tuples`, `topics_processed`, `items_generated`, `items_after_validation`, `llm_latency_ms`, `total_latency_ms`).
+6. **Prerequisite Ordering and Hallucination Validation**: `validateAgainstGraph` in `internal/service/pipeline.go` verifies every study item against the knowledge graph, retaining only requested canonical topics and their transitive prerequisites (`GetPrerequisiteChain`). Non-existent topics and items outside this closure are dropped. When items are dropped, the service emits a WARN log record with `request_id` and `items_dropped`. Each validated item receives its trusted prerequisite chain from the graph (`GetPrerequisiteChain`) rather than accepting invented planner chains. Validated items are stable-sorted by graph prerequisite rank so that prerequisite concepts always precede dependent concepts, preserving deterministic traversal order among independent topics. Sequential priorities (1, 2, 3...) are assigned after sorting.
+7. **Response Construction**: The final `domain.PlanResponse` is assembled with echoed identifiers, validated and sorted study items, and internal telemetry metrics (`subgraph_tuples`, `topics_processed`, `items_generated`, `items_after_validation`, `items_dropped`, `llm_latency_ms`, `total_latency_ms`).
 
 ---
 
