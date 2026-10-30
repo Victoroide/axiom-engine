@@ -78,7 +78,7 @@ func TestHTTPMetricsCaptureRejectedRequests(t *testing.T) {
 	cfg := metricsConfig(t)
 	cfg.AuthDisabled = false
 	cfg.InternalToken = strings.Repeat("x", 32)
-	cfg.RateLimitMax = 2
+	cfg.RateLimitMax = 1
 	app := newTestApp(t, cfg, nil, nil)
 	for i, status := range []int{http.StatusUnauthorized, http.StatusOK, http.StatusTooManyRequests} {
 		var headers map[string]string

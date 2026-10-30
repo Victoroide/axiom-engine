@@ -6,7 +6,7 @@ AxiomEngine organizes responsibilities into distinct Go packages under `cmd/` an
 
 ```mermaid
 flowchart TD
-    Client["Client / Upstream Caller"] -->|"HTTP Request"| Router["Fiber v3 Router & Middleware<br/>(RequestID, Logger, Recover, Helmet, Limiter, Auth)"]
+    Client["Client / Upstream Caller"] -->|"HTTP Request"| Router["Fiber v3 Router & Middleware<br/>(RequestID, Logger, Recover, Helmet, Auth, Limiter)"]
 
     subgraph ServerRoutes ["Server Boundary (internal/server)"]
         Router --> H_Health["Health and Probe Handlers<br/>GET /livez, /readyz, /health"]

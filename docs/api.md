@@ -25,7 +25,31 @@ Header verification checks `X-Internal-Token` first, then falls back to `Authori
 }
 ```
 
-The `/livez`, `/readyz`, `/health`, `/swagger/*`, and `/swagger/doc.json` routes are always public and do not evaluate authorization headers. These public routes are also exempt from rate limiting.
+The `/livez`, `/readyz`, and `/health` routes (and `/swagger/*` and `/swagger/doc.json` when `SWAGGER_ENABLED=true` (the default)) are always public and do not evaluate authorization headers.
+
+---
+
+## Rate Limiting
+
+Requests to `/api/v1` routes are rate limited using an in-memory sliding window keyed by client IP (see [configuration reference](configuration.md#environment-variables)); the default budget is 50 requests per minute. When authentication is enabled, credentials are verified first: requests with a missing or invalid token receive HTTP 401 Unauthorized, consume no quota, and are not rate limited by the service. Limit unauthenticated traffic at a reverse proxy or WAF if needed.
+
+Rate limits are evaluated per process replica and are not shared across instances:
+- **IPv4**: Individual IPv4 addresses maintain separate rate-limit buckets. IPv4-mapped IPv6 addresses (`::ffff:x.x.x.x`) are unmapped and share the canonical IPv4 bucket.
+- **IPv6**: Client IPv6 addresses are masked to their `/64` subnet prefix, grouping callers within the same `/64` subnet into a shared bucket.
+- **Reverse proxies**: Client IP addresses are resolved from `X-Forwarded-For` only when the remote peer is recognized as a trusted proxy via `TRUSTED_PROXIES`. Untrusted proxy headers are ignored.
+
+When a client exceeds `RATE_LIMIT_MAX` requests within `RATE_LIMIT_WINDOW`, the server returns HTTP 429 Too Many Requests:
+
+```json
+{
+  "error": "rate_limit_exceeded",
+  "details": "too many requests"
+}
+```
+
+Responses that pass the limiter carry `X-RateLimit-Limit`, `X-RateLimit-Remaining` and `X-RateLimit-Reset`. HTTP 429 responses carry `Retry-After` (seconds) instead. HTTP 401 responses are produced before the limiter and carry none of these headers.
+
+Health (`/health`), liveness (`/livez`), readiness (`/readyz`), Swagger documentation (`/swagger/*`, `/swagger/doc.json`), and enabled Prometheus metrics (`/metrics`) endpoints are public and operate outside this limiter.
 
 ---
 
