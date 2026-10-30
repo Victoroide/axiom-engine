@@ -2,7 +2,7 @@
 
 ## Container image
 
-The service is packaged using a multi-stage [Dockerfile](../Dockerfile) that produces a minimal container based on Google Distroless Debian 12.
+The service is packaged using a multi-stage [Dockerfile](../Dockerfile) that produces a minimal container based on Google Distroless Debian 13 (`gcr.io/distroless/cc-debian13:nonroot`, pinned by digest).
 
 ### Build stages
 
@@ -13,6 +13,7 @@ The service is packaged using a multi-stage [Dockerfile](../Dockerfile) that pro
    - Compiles the stripped service binary with CGO enabled.
 
 2. **`runtime`**:
+   - Uses base image `gcr.io/distroless/cc-debian13:nonroot`, pinned by digest in the [Dockerfile](../Dockerfile).
    - Copies the compiled binary and native library to `/app`.
    - Sets environment variables:
      - `PORT=8080`
@@ -20,6 +21,7 @@ The service is packaged using a multi-stage [Dockerfile](../Dockerfile) that pro
      - `BAML_LIBRARY_DISABLE_DOWNLOAD=true`
      - `BAML_LOG=off`
    - Executes under non-root numeric user and group `65532:65532`.
+   - Supports execution with a read-only root filesystem and `/tmp` mounted as tmpfs.
    - Exposes port `8080`.
    - Configures container health check: `CMD ["/app/axiom-server", "healthcheck"]`.
    - Sets entrypoint to `["/app/axiom-server"]`.
@@ -35,6 +37,8 @@ To run the container:
 ```sh
 docker run -d \
   --name axiom-engine \
+  --read-only \
+  --tmpfs /tmp \
   --user 65532:65532 \
   -p 8080:8080 \
   -e AXIOM_INTERNAL_TOKEN="$(openssl rand -hex 32)" \

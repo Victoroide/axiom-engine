@@ -26,7 +26,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Server transport deadlines: `ReadTimeout` (10s), `IdleTimeout` (1m), and `WriteTimeout` (`REQUEST_TIMEOUT + 10s`).
 - Swagger 2.0 interactive documentation at `/swagger/index.html` with thread-safe specification delivery at `/swagger/doc.json`.
 - Browser end-to-end test suite using Rod and headless Chrome/Chromium (`make test-e2e`).
-- Multi-stage Docker build producing a non-root runtime container on `distroless/cc-debian12:nonroot` with built-in CLI health probe (`axiom-server healthcheck`).
+- Multi-stage Docker build producing a non-root runtime container on `distroless/cc-debian13:nonroot` with built-in CLI health probe (`axiom-server healthcheck`).
 - CI workflows for linting, race-enabled tests, generated code verification, vulnerability scanning, container smoke testing, and browser end-to-end tests.
 - Workflows for CodeQL security scanning, pull request dependency reviews, Conventional Commit PR title validation, SLSA build provenance attestation, and multi-architecture container releases to GitHub Container Registry.
 - Repository configuration including Dependabot, issue templates, pull request template, CODEOWNERS, and MIT license.
@@ -76,5 +76,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Validated all incoming topics against the curriculum graph to prevent prompt injection and unauthorized topic processing.
 - Excluded canceled sibling errgroup calls from circuit breaker failure and success counters, ensuring multi-topic outages trip the breaker as expected.
 - Pinned all GitHub Actions to verified immutable commit hashes.
-- Executed container runtime as non-root user `65532:65532` on `distroless/cc-debian12:nonroot` with read-only root compatibility.
+- Executed container runtime as non-root user `65532:65532` on `distroless/cc-debian13:nonroot` with read-only root compatibility.
 - Enforce an output policy on model-generated resources and text: accept only absolute HTTP(S) URLs with an IP or ASCII DNS host and no userinfo, return them re-encoded and at most 2048 characters long, collapse whitespace and remove other control and format characters in text, bound explanations to 1000 and titles to 200 characters, and restrict resource types to the learner's VARK profile with at most 3 resources per item.
+- Move the runtime container base image to distroless Debian 13 pinned by digest to remediate fixable OpenSSL advisories in the Debian 12 runtime.
