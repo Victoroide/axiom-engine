@@ -28,6 +28,7 @@ type Config struct {
 	LLMMaxConcurrency  int
 	LLMQueueTimeout    time.Duration
 	MaxFailedTopics    int
+	MetricsEnabled     bool
 	GraphFile          string
 	LogLevel           slog.Level
 	ShutdownDrainDelay time.Duration
@@ -59,6 +60,7 @@ func Load(getenv func(string) string) (Config, error) {
 		dst *bool
 	}{
 		{"AXIOM_AUTH_DISABLED", &c.AuthDisabled},
+		{"METRICS_ENABLED", &c.MetricsEnabled},
 	} {
 		if v := getenv(item.key); v != "" {
 			switch v {

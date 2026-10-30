@@ -16,6 +16,7 @@ import (
 	"github.com/goccy/go-json"
 	"github.com/gofiber/contrib/v3/swaggo"
 	"github.com/gofiber/fiber/v3"
+	"github.com/gofiber/fiber/v3/middleware/adaptor"
 	"github.com/gofiber/fiber/v3/middleware/cors"
 	"github.com/gofiber/fiber/v3/middleware/helmet"
 	"github.com/gofiber/fiber/v3/middleware/limiter"
@@ -28,6 +29,7 @@ import (
 	"github.com/Victoroide/axiom-engine/internal/config"
 	"github.com/Victoroide/axiom-engine/internal/domain"
 	"github.com/Victoroide/axiom-engine/internal/graph"
+	"github.com/Victoroide/axiom-engine/internal/metrics"
 	"github.com/Victoroide/axiom-engine/internal/service"
 )
 
@@ -44,12 +46,19 @@ func New(cfg config.Config, deps Dependencies) *fiber.App {
 	if logger == nil {
 		logger = slog.Default()
 	}
+	var recorder *metrics.Metrics
+	if cfg.MetricsEnabled {
+		recorder = metrics.New()
+	}
 	errorHandler := newErrorHandler(logger)
 	app := newApp(cfg, errorHandler)
 	app.State().Set(drainStateKey, &drainState{delay: cfg.ShutdownDrainDelay})
-	useMiddleware(app, cfg, logger, errorHandler)
+	useMiddleware(app, cfg, logger, errorHandler, recorder)
 	registerPublicRoutes(app)
-	registerAPI(app, cfg, deps, logger)
+	if recorder != nil {
+		app.Get("/metrics", adaptor.HTTPHandler(recorder.Handler()))
+	}
+	registerAPI(app, cfg, deps, logger, recorder)
 	return app
 }
 
@@ -70,7 +79,7 @@ func newApp(cfg config.Config, errorHandler fiber.ErrorHandler) *fiber.App {
 	})
 }
 
-func useMiddleware(app *fiber.App, cfg config.Config, logger *slog.Logger, errorHandler fiber.ErrorHandler) {
+func useMiddleware(app *fiber.App, cfg config.Config, logger *slog.Logger, errorHandler fiber.ErrorHandler, recorder *metrics.Metrics) {
 	app.Use(func(c fiber.Ctx) error {
 		if base, ok := fiber.GetState[context.Context](app.State(), requestContextKey); ok {
 			c.SetContext(base)
@@ -85,6 +94,13 @@ func useMiddleware(app *fiber.App, cfg config.Config, logger *slog.Logger, error
 			if handleErr := errorHandler(c, err); handleErr != nil {
 				return handleErr
 			}
+		}
+		if recorder != nil {
+			route, method := "unmatched", "unmatched"
+			if endpoint := c.Endpoint(); endpoint != nil {
+				route, method = endpoint.Path, endpoint.Method
+			}
+			recorder.ObserveHTTP(route, method, c.Response().StatusCode(), time.Since(start))
 		}
 		logger.InfoContext(c.Context(), "http.access", "request_id", requestid.FromContext(c), "method", c.Method(), "path", c.Path(), "status", c.Response().StatusCode(), "duration_ms", float64(time.Since(start).Microseconds())/1000, "ip", c.IP())
 		return nil
@@ -112,13 +128,13 @@ func registerPublicRoutes(app *fiber.App) {
 	app.Get("/swagger/*", swaggo.New(swaggo.Config{Title: "AxiomEngine API", ValidatorUrl: "none"}))
 }
 
-func registerAPI(app *fiber.App, cfg config.Config, deps Dependencies, logger *slog.Logger) {
+func registerAPI(app *fiber.App, cfg config.Config, deps Dependencies, logger *slog.Logger, recorder *metrics.Metrics) {
 	if !cfg.AuthDisabled {
 		app.Use("/api/v1", internalTokenMiddleware(cfg.InternalToken))
 	} else {
 		logger.Warn("auth.disabled")
 	}
-	reasoning := service.NewReasoningService(deps.Graph, deps.Planner, service.Options{LLMTimeout: cfg.LLMTimeout, MaxFailedTopics: cfg.MaxFailedTopics, MaxConcurrency: cfg.LLMMaxConcurrency, QueueTimeout: cfg.LLMQueueTimeout, Logger: logger})
+	reasoning := service.NewReasoningService(deps.Graph, deps.Planner, service.Options{LLMTimeout: cfg.LLMTimeout, MaxFailedTopics: cfg.MaxFailedTopics, MaxConcurrency: cfg.LLMMaxConcurrency, QueueTimeout: cfg.LLMQueueTimeout, Logger: logger, Metrics: recorder})
 	api.NewHandler(reasoning, deps.Graph, cfg.RequestTimeout, cfg.MaxFailedTopics, logger).RegisterRoutes(app)
 }
 

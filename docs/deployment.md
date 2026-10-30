@@ -114,3 +114,20 @@ The service captures `SIGINT` and `SIGTERM` signals. On receipt of either signal
 A second `SIGINT` or `SIGTERM` during shutdown terminates the process immediately.
 
 Set container stop timeouts or Kubernetes `terminationGracePeriodSeconds` to satisfy the shutdown budget formula: `terminationGracePeriodSeconds >= SHUTDOWN_DRAIN_DELAY + SHUTDOWN_TIMEOUT + 5` seconds, plus any additional `preStop` delay.
+
+Docker Compose sets `stop_grace_period: 30s`. With `docker run` or `docker stop`, pass `--stop-timeout 30` or `-t 30`; Docker's default of 10 seconds kills the process before the default 25-second budget ends. Raise these values when `SHUTDOWN_DRAIN_DELAY + SHUTDOWN_TIMEOUT + 5` exceeds 30 seconds.
+
+### Metrics
+
+When `METRICS_ENABLED=true` is configured (see [configuration](configuration.md)), the server exposes Prometheus text exposition at `GET /metrics`. The endpoint requires no authentication token and does not consume API rate limit budget. Restrict access to `/metrics` at the network or reverse-proxy level rather than relying on application authentication.
+
+Scrape configuration example:
+
+```yaml
+scrape_configs:
+  - job_name: axiom-engine
+    metrics_path: /metrics
+    static_configs:
+      - targets: ['axiom-engine:8080']
+```
+

@@ -13,6 +13,7 @@ import (
 
 	"github.com/Victoroide/axiom-engine/internal/domain"
 	"github.com/Victoroide/axiom-engine/internal/graph"
+	"github.com/Victoroide/axiom-engine/internal/metrics"
 )
 
 const circuitOpenTimeout = 15 * time.Second
@@ -45,10 +46,12 @@ type Options struct {
 	MaxConcurrency  int
 	QueueTimeout    time.Duration
 	Logger          *slog.Logger
+	Metrics         *metrics.Metrics
 }
 
 // ReasoningService coordinates validated, concurrent topic generation.
 type ReasoningService struct {
+	metrics         *metrics.Metrics
 	logger          *slog.Logger
 	graph           *graph.InMemoryGraph
 	planner         Planner
@@ -72,7 +75,8 @@ func NewReasoningService(g *graph.InMemoryGraph, planner Planner, opts Options) 
 		opts.QueueTimeout = 2 * time.Second
 	}
 	cb := gobreaker.NewCircuitBreaker[[]domain.PlanItem](breakerSettings(logger))
-	return &ReasoningService{logger: logger, graph: g, planner: planner, llmTimeout: opts.LLMTimeout, maxFailedTopics: opts.MaxFailedTopics, breaker: cb, queueTimeout: opts.QueueTimeout, slots: semaphore.NewWeighted(int64(opts.MaxConcurrency))}
+	opts.Metrics.SetBreakerStateSource(func() int { return int(cb.State()) })
+	return &ReasoningService{metrics: opts.Metrics, logger: logger, graph: g, planner: planner, llmTimeout: opts.LLMTimeout, maxFailedTopics: opts.MaxFailedTopics, breaker: cb, queueTimeout: opts.QueueTimeout, slots: semaphore.NewWeighted(int64(opts.MaxConcurrency))}
 }
 
 func breakerSettings(logger *slog.Logger) gobreaker.Settings {
@@ -101,9 +105,11 @@ func (s *ReasoningService) GeneratePlan(ctx context.Context, req domain.Adaptive
 	plans := make([][]domain.PlanItem, len(req.FailedTopics))
 	for i, topic := range req.FailedTopics {
 		eg.Go(func() error {
+			queueStart := time.Now()
 			queueCtx, queueCancel := context.WithTimeout(egCtx, s.queueTimeout)
 			err := s.slots.Acquire(queueCtx, 1)
 			queueCancel()
+			s.metrics.ObserveQueueWait(time.Since(queueStart), errors.Is(err, context.DeadlineExceeded) && egCtx.Err() == nil)
 			if err != nil {
 				if egCtx.Err() != nil {
 					return &TopicError{Topic: topic, cause: egCtx.Err()}
@@ -118,11 +124,13 @@ func (s *ReasoningService) GeneratePlan(ctx context.Context, req domain.Adaptive
 			}()
 			llmCtx, cancel := context.WithTimeout(egCtx, s.llmTimeout)
 			defer cancel()
-			items, err := s.breaker.Execute(func() ([]domain.PlanItem, error) {
+			items, err := s.breaker.Execute(func() (items []domain.PlanItem, callErr error) {
+				callStart := time.Now()
+				defer func() { s.metrics.ObserveLLM(llmOutcome(callErr), time.Since(callStart)) }()
 				started = true
-				items, err := s.generateTopic(llmCtx, TopicRequest{GraphContext: subgraph, Topic: topic, PrerequisiteOrder: s.graph.GetPrerequisiteChain(topic), VARKProfile: req.VARKProfile, StudentID: req.StudentID, CourseID: req.CourseID})
-				if err != nil {
-					return nil, err
+				items, callErr = s.generateTopic(llmCtx, TopicRequest{GraphContext: subgraph, Topic: topic, PrerequisiteOrder: s.graph.GetPrerequisiteChain(topic), VARKProfile: req.VARKProfile, StudentID: req.StudentID, CourseID: req.CourseID})
+				if callErr != nil {
+					return nil, callErr
 				}
 				if missing := missingTopic(items, []string{topic}); missing != "" {
 					s.logger.WarnContext(llmCtx, "stage.validation", "request_id", requestIDFromContext(llmCtx), "topic", missing)
@@ -152,11 +160,14 @@ func (s *ReasoningService) GeneratePlan(ctx context.Context, req domain.Adaptive
 	}
 	llmLatency := time.Since(llmStart)
 	merged := mergeAndDeduplicate(plans)
+	duplicates := countTotalItems(plans) - len(merged)
 	merged, resourcesDropped := sanitizeOutput(merged, req.VARKProfile)
+	s.metrics.ObserveDroppedResources(resourcesDropped)
 	if resourcesDropped > 0 {
 		s.logger.WarnContext(ctx, "stage.output", "request_id", requestIDFromContext(ctx), "resources_dropped", resourcesDropped)
 	}
 	validated, dropped := validateAgainstGraph(merged, s.graph, req.FailedTopics)
+	s.metrics.ObserveDroppedItems(duplicates, dropped)
 	if dropped > 0 {
 		s.logger.WarnContext(ctx, "stage.validation", "request_id", requestIDFromContext(ctx), "items_dropped", dropped)
 	}
@@ -174,10 +185,15 @@ func (s *ReasoningService) generateTopic(ctx context.Context, req TopicRequest) 
 		err   error
 	}
 	results := make(chan result, 1)
+	s.metrics.StartCall()
 	go func() {
-		defer s.slots.Release(1)
-		items, err := s.planner.GenerateTopic(ctx, req)
-		results <- result{items: items, err: err}
+		got := func() result {
+			defer s.slots.Release(1)
+			defer s.metrics.FinishCall()
+			items, err := s.planner.GenerateTopic(ctx, req)
+			return result{items: items, err: err}
+		}()
+		results <- got
 	}()
 	select {
 	case <-ctx.Done():
@@ -196,4 +212,25 @@ func countTotalItems(plans [][]domain.PlanItem) int {
 		n += len(p)
 	}
 	return n
+}
+
+func llmOutcome(err error) string {
+	switch {
+	case err == nil:
+		return "ok"
+	case errors.Is(err, context.DeadlineExceeded):
+		return "deadline"
+	case errors.Is(err, context.Canceled):
+		return "canceled"
+	case errors.Is(err, ErrThrottled):
+		return "throttled"
+	case errors.Is(err, ErrUpstreamUnavailable):
+		return "unavailable"
+	case errors.Is(err, ErrUpstreamRejected):
+		return "rejected"
+	case errors.Is(err, ErrInvalidOutput):
+		return "invalid_output"
+	default:
+		return "error"
+	}
 }

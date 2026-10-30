@@ -9,7 +9,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- Liveness (`/livez`) and readiness (`/readyz`) probe endpoints with backwards-compatible `/health` liveness alias, atomic shutdown draining signaling HTTP 503 on `/readyz`, configurable `SHUTDOWN_DRAIN_DELAY`, and `/livez` binary container healthcheck.
+- Bound concurrent Bedrock calls across requests with a process-wide limit (`LLM_MAX_CONCURRENCY`, default 16); a topic that waits longer than `LLM_QUEUE_TIMEOUT` (default `min(2s, LLM_TIMEOUT/2)`) returns HTTP 503 `service_unavailable` with `Retry-After: 1`.
+- Liveness (`/livez`) and readiness (`/readyz`) probe endpoints with backwards-compatible `/health` liveness alias, readiness that reports draining with HTTP 503 on shutdown, configurable `SHUTDOWN_DRAIN_DELAY`, and `/livez` binary container healthcheck.
+- Prometheus metrics exposition at `/metrics` controlled by `METRICS_ENABLED`, tracking route-template HTTP request counts and latency distributions, LLM call outcomes, duration, in-flight executions, queue wait times, circuit breaker state, dropped items, and Go and process runtime series.
 - Upstream response classification mapping malformed 2xx responses and truncated model outputs to HTTP 502 `bad_gateway`.
 - BAML v0.226.2 client generation with pinned CFFI native libraries for `linux/amd64`, `linux/arm64`, `darwin/amd64`, and `darwin/arm64`.
 - Host native library verification target `make native-baml` with SHA256 checksum validation and cached asset verification.
