@@ -22,11 +22,12 @@ type Server struct {
 	once         sync.Once
 }
 
-// New starts a server in ok, throttle, denied, hang, garbage or empty mode.
+// New starts a server in one of the response modes handled by ServeHTTP.
+// Unknown modes panic.
 // Call Close after use; hang requests must first be canceled by their client.
 func New(mode string) *Server {
 	switch mode {
-	case "ok", "throttle", "denied", "hang", "garbage", "empty":
+	case "ok", "throttle", "denied", "hang", "garbage", "empty", "validation", "not-found", "timeout", "error", "internal", "unavailable", "malformed", "html", "max-tokens":
 	default:
 		panic(fmt.Sprintf("unknown Bedrock response mode: %q", mode))
 	}
@@ -72,27 +73,46 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		<-r.Context().Done()
 		s.once.Do(func() { close(s.disconnected) })
 		return
-	case "throttle":
-		w.Header().Set("x-amzn-ErrorType", "ThrottlingException:http://internal.amazon.com/coral/com.amazon.bedrock/")
-		w.WriteHeader(http.StatusTooManyRequests)
-		_, _ = io.WriteString(w, `{"message":"Too many requests, please wait before trying again."}`)
+	case "throttle", "denied", "validation", "not-found", "timeout", "error", "internal", "unavailable":
+		reply := map[string]struct {
+			status int
+			code   string
+		}{
+			"throttle":    {429, "ThrottlingException"},
+			"denied":      {403, "AccessDeniedException"},
+			"validation":  {400, "ValidationException"},
+			"not-found":   {404, "ResourceNotFoundException"},
+			"timeout":     {408, "ModelTimeoutException"},
+			"error":       {424, "ModelErrorException"},
+			"internal":    {500, "InternalServerException"},
+			"unavailable": {503, "ServiceUnavailableException"},
+		}[s.mode]
+		w.Header().Set("x-amzn-ErrorType", reply.code+":http://internal.amazon.com/coral/com.amazon.bedrock/")
+		w.WriteHeader(reply.status)
+		_, _ = io.WriteString(w, `{"message":"timeout connection reset validationerror finish reason"}`)
 		return
-	case "denied":
-		w.Header().Set("x-amzn-ErrorType", "AccessDeniedException:http://internal.amazon.com/coral/com.amazon.bedrock/")
-		w.WriteHeader(http.StatusForbidden)
-		_, _ = io.WriteString(w, `{"message":"Access to the specified model is denied."}`)
+	case "malformed":
+		_, _ = io.WriteString(w, `{}`)
+		return
+	case "html":
+		w.Header().Set("Content-Type", "text/html")
+		_, _ = io.WriteString(w, `<html>timeout validationerror</html>`)
 		return
 	}
 	text := `{"student_id":"s","course_id":"c","items":[{"topic":"Recursion","priority":1,"prerequisite_chain":["Functions"],"explanation":"Practice recursion.","resources":[{"title":"Guide","url":"https://example.com/recursion","resource_type":"video"}]}]}`
+	stopReason := "end_turn"
 	switch s.mode {
 	case "garbage":
 		text = "I cannot produce a study plan."
 	case "empty":
 		text = `{"student_id":"s","course_id":"c","items":[]}`
+	case "max-tokens":
+		text = strings.TrimSuffix(text, "]}")
+		stopReason = "max_tokens"
 	}
 	_ = json.NewEncoder(w).Encode(map[string]any{
 		"output":     map[string]any{"message": map[string]any{"role": "assistant", "content": []any{map[string]any{"text": text}}}},
-		"stopReason": "end_turn",
+		"stopReason": stopReason,
 		"usage":      map[string]int{"inputTokens": 100, "outputTokens": 50, "totalTokens": 150},
 		"metrics":    map[string]int{"latencyMs": 1},
 	})

@@ -2,9 +2,11 @@ package llm
 
 import (
 	"context"
+	"errors"
 	"os"
 	"path/filepath"
 	"reflect"
+	"strings"
 	"testing"
 	"time"
 
@@ -131,5 +133,57 @@ func TestAdapterReturnsEmptyItems(t *testing.T) {
 	items, err := New().GenerateTopic(ctx, topicRequest())
 	if err != nil || len(items) != 0 || s.Count() != 1 {
 		t.Fatalf("items = %+v, error = %v, requests = %d", items, err, s.Count())
+	}
+}
+
+func TestAdapterClassifiesFailures(t *testing.T) {
+	for _, tt := range []struct {
+		mode, fragment string
+		want           error
+	}{
+		{"throttle", "status code: RateLimited (429)", service.ErrThrottled},
+		{"denied", "status code: NotSupported (403)", service.ErrUpstreamRejected},
+		{"validation", "status code: InvalidAuthentication (401)", service.ErrUpstreamRejected},
+		{"not-found", "status code: Unspecified error code: 404", service.ErrUpstreamRejected},
+		{"timeout", "status code: Unspecified error code: 408", service.ErrUpstreamUnavailable},
+		{"error", "status code: Unspecified error code: 424", service.ErrUpstreamRejected},
+		{"internal", "status code: ServerError (500)", service.ErrUpstreamUnavailable},
+		{"unavailable", "status code: ServiceUnavailable (503)", service.ErrUpstreamUnavailable},
+		{"malformed", "status code: Unspecified error code: 200", service.ErrInvalidOutput},
+		{"html", "status code: Unspecified error code: 200", service.ErrInvalidOutput},
+		{"max-tokens", "Finish reason error:", service.ErrInvalidOutput},
+		{"garbage", "Parsing error:", service.ErrInvalidOutput},
+		{"hang", "", context.DeadlineExceeded},
+	} {
+		t.Run(tt.mode, func(t *testing.T) {
+			s := bedrockEndpoint(t, tt.mode)
+			budget := 15 * time.Second
+			if tt.mode == "hang" {
+				budget = 500 * time.Millisecond
+			}
+			ctx, cancel := context.WithTimeout(context.Background(), budget)
+			defer cancel()
+			_, err := New().GenerateTopic(ctx, topicRequest())
+			if !errors.Is(err, tt.want) {
+				t.Fatalf("error = %v, want %v (requests = %d)", err, tt.want, s.Count())
+			}
+			if tt.fragment != "" && !strings.Contains(err.Error(), tt.fragment) {
+				t.Fatalf("missing runtime status %q: %v", tt.fragment, err)
+			}
+			if tt.mode != "hang" && !errors.Is(err, service.ErrUpstream) {
+				t.Fatalf("error does not wrap ErrUpstream: %v", err)
+			}
+		})
+	}
+}
+
+func TestAdapterClassifiesTransportFailure(t *testing.T) {
+	s := bedrockEndpoint(t, "ok")
+	s.Close()
+	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
+	defer cancel()
+	_, err := New().GenerateTopic(ctx, topicRequest())
+	if !errors.Is(err, service.ErrUpstreamUnavailable) || !errors.Is(err, service.ErrUpstream) {
+		t.Fatalf("error = %v, want upstream unavailable", err)
 	}
 }

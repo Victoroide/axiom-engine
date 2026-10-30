@@ -30,7 +30,10 @@ func (b *BAML) GenerateTopic(ctx context.Context, r service.TopicRequest) ([]dom
 	}
 	plan, err := b.generate(ctx, tuples, r.Topic, r.PrerequisiteOrder, r.VARKProfile, r.StudentID, r.CourseID)
 	if err != nil {
-		return nil, err
+		if ctx.Err() != nil {
+			return nil, ctx.Err()
+		}
+		return nil, classify(err)
 	}
 	items := make([]domain.PlanItem, len(plan.Items))
 	for i, item := range plan.Items {
