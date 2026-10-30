@@ -166,6 +166,7 @@ Execution flow:
 1. Starts the HTTP server on a random local port (`127.0.0.1:0`) with an in-memory graph and a deterministic mock planner.
 2. Launches headless Chrome or Chromium through Rod. If Chrome is in a non-standard location, set `ROD_BROWSER_BIN=/path/to/chrome`.
 3. Navigates to `http://127.0.0.1:<port>/swagger/index.html`.
+3a. Records Content-Security-Policy violations and asserts that the Google Fonts stylesheet is blocked (`style-src-elem`) and that the enforced policy contains `base-uri 'none'` and `form-action 'self'`.
 4. Interacts with the Swagger UI DOM:
    - Expands `GET /health`, `GET /livez`, and `GET /readyz`, clicks **Try it out**, executes each request, and verifies HTTP 200 with `{"status":"ok"}`.
    - Expands `POST /api/v1/adaptive-plan`, executes without credentials, and verifies HTTP 401 Unauthorized.

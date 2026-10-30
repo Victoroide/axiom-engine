@@ -140,3 +140,14 @@ scrape_configs:
       - targets: ['axiom-engine:8080']
 ```
 
+### Production settings
+
+Setting `SWAGGER_ENABLED=false` (see [configuration](configuration.md)) is recommended in production deployments to disable Swagger UI interactive documentation, OpenAPI specification endpoints, and static asset routes. When disabled, `/swagger/index.html`, `/swagger/doc.json`, and static assets are not registered and return HTTP 404 with the standard `not_found` error envelope.
+
+When enabled (`SWAGGER_ENABLED=true`, default), Swagger routes remain public and deliver a restricted `Content-Security-Policy` header:
+
+```http
+default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self'; font-src 'self'; base-uri 'none'; form-action 'self'
+```
+
+This policy blocks third-party Google Fonts requests so the interface renders using native fallback fonts, while local scripts, styles, and the interactive "Try it out" feature remain fully functional. `base-uri 'none'` and `form-action 'self'` stop injected markup from changing the page's base URL or submitting forms to another origin.

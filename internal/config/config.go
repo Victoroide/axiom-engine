@@ -30,6 +30,7 @@ type Config struct {
 	LLMQueueTimeout       time.Duration
 	MaxFailedTopics       int
 	MetricsEnabled        bool
+	SwaggerEnabled        bool
 	GraphFile             string
 	LogLevel              slog.Level
 	ShutdownDrainDelay    time.Duration
@@ -39,6 +40,7 @@ type Config struct {
 func defaults() Config {
 	return Config{
 		Port:               "8080",
+		SwaggerEnabled:     true,
 		RateLimitMax:       50,
 		RateLimitWindow:    time.Minute,
 		RequestTimeout:     20 * time.Second,
@@ -63,6 +65,7 @@ func Load(getenv func(string) string) (Config, error) {
 	}{
 		{"AXIOM_AUTH_DISABLED", &c.AuthDisabled},
 		{"METRICS_ENABLED", &c.MetricsEnabled},
+		{"SWAGGER_ENABLED", &c.SwaggerEnabled},
 	} {
 		if v := getenv(item.key); v != "" {
 			switch v {
