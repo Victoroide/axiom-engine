@@ -105,6 +105,31 @@ Coverage areas include:
 - `internal/service`: reasoning pipeline orchestration, duplicate elimination, unknown topic rejection, VARK style validation, and circuit breaker state transitions.
 - `internal/server` and `internal/api`: Fiber v3 routing, constant-time token verification, sliding-window rate limiting, request ID propagation, structured access logging, panic recovery, and error response formatting.
 
+### Fake Bedrock contract tests
+
+Contract tests in `internal/llm/adapter_contract_test.go` exercise the generated BAML client and native CFFI runtime against an in-process HTTP server provided by `test/fakebedrock`.
+
+Execute contract tests:
+
+```sh
+go test -race -count=1 -run Adapter ./internal/llm
+```
+
+The test setup configures AWS environment variables with `t.Setenv`:
+- `AWS_ENDPOINT_URL`: points to the local HTTP test server address.
+- `AWS_REGION` and `AWS_DEFAULT_REGION`: `us-east-1`.
+- `AWS_ACCESS_KEY_ID` and `AWS_SECRET_ACCESS_KEY`: `dummy`.
+- `AWS_SESSION_TOKEN` and `AWS_PROFILE`: empty strings.
+- `AWS_EC2_METADATA_DISABLED`: `true` to disable metadata service lookups.
+- `AWS_MAX_ATTEMPTS`: `3`.
+- `AWS_RETRY_MODE`: `standard`.
+
+Tests execute serially because the BAML client reads process environment variables on each invocation. The test cases verify:
+- Item translation from Bedrock Converse responses into domain items.
+- Empty item handling from upstream responses.
+- Rejection of invalid response payloads on the initial attempt without retry loops.
+- Context deadline cancellation within the deadline plus 250 ms, verifying the fake endpoint observes client disconnection.
+
 ### Browser end-to-end tests
 
 Browser tests verify the Swagger UI interface using a real headless browser instance:
