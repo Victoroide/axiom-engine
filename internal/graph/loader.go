@@ -44,7 +44,13 @@ func Decode(r io.Reader) (*InMemoryGraph, error) {
 	if len(tuples) == 0 {
 		return nil, fmt.Errorf("graph must contain at least one tuple")
 	}
-	g := &InMemoryGraph{forward: make(map[string][]domain.GraphTuple), reverse: make(map[string][]domain.GraphTuple), nodes: make(map[string]bool), all: make([]domain.GraphTuple, 0, len(tuples))}
+	g := &InMemoryGraph{
+		forward:   make(map[string][]domain.GraphTuple),
+		reverse:   make(map[string][]domain.GraphTuple),
+		nodes:     make(map[string]bool),
+		canonical: make(map[string]string),
+		all:       make([]domain.GraphTuple, 0, len(tuples)),
+	}
 	seen := make(map[domain.GraphTuple]bool, len(tuples))
 	for i, t := range tuples {
 		t.Subject = strings.TrimSpace(t.Subject)
@@ -58,6 +64,16 @@ func Decode(r io.Reader) (*InMemoryGraph, error) {
 		}
 		if t.Subject == t.Object {
 			return nil, fmt.Errorf("tuple %d is a self loop", i)
+		}
+		for _, name := range []string{t.Subject, t.Object} {
+			key := Canonical(name)
+			if key == "" {
+				return nil, fmt.Errorf("tuple %d has an empty node name after normalization", i)
+			}
+			if previous, exists := g.canonical[key]; exists && previous != name {
+				return nil, fmt.Errorf("tuple %d has canonical node name collision: %q and %q", i, previous, name)
+			}
+			g.canonical[key] = name
 		}
 		if !seen[t] {
 			g.add(t)

@@ -13,8 +13,9 @@ func mergeAndDeduplicate(plans [][]domain.PlanItem) []domain.PlanItem {
 	merged := make([]domain.PlanItem, 0)
 	for _, plan := range plans {
 		for _, item := range plan {
-			if !seen[item.Topic] {
-				seen[item.Topic] = true
+			key := graph.Canonical(item.Topic)
+			if !seen[key] {
+				seen[key] = true
 				merged = append(merged, item)
 			}
 		}
@@ -26,7 +27,8 @@ func validateAgainstGraph(items []domain.PlanItem, g *graph.InMemoryGraph) ([]do
 	valid := make([]domain.PlanItem, 0, len(items))
 	dropped := 0
 	for _, item := range items {
-		if g.NodeExists(item.Topic) {
+		if topic, ok := g.Resolve(item.Topic); ok {
+			item.Topic = topic
 			item.PrerequisiteChain = g.GetPrerequisiteChain(item.Topic)
 			valid = append(valid, item)
 		} else {
