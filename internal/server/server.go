@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"log/slog"
 	"net/http"
+	"net/netip"
 	"runtime/debug"
 	"strings"
 	"sync"
@@ -130,9 +131,6 @@ func useMiddleware(app *fiber.App, cfg config.Config, logger *slog.Logger, error
 	if len(cfg.CORSAllowedOrigins) > 0 {
 		app.Use(cors.New(cors.Config{AllowOrigins: cfg.CORSAllowedOrigins, AllowMethods: []string{"GET", "POST", "HEAD", "OPTIONS"}, AllowHeaders: []string{"Origin", "Content-Type", "Accept", "Authorization", "X-Internal-Token", "X-Request-ID"}, ExposeHeaders: []string{"X-Request-ID"}, MaxAge: 3600}))
 	}
-	app.Use("/api/v1", limiter.New(limiter.Config{Max: cfg.RateLimitMax, Expiration: cfg.RateLimitWindow, LimiterMiddleware: limiter.SlidingWindow{}, LimitReached: func(c fiber.Ctx) error {
-		return c.Status(fiber.StatusTooManyRequests).JSON(domain.ErrorResponse{Error: "rate_limit_exceeded", Details: "too many requests"})
-	}}))
 }
 
 func registerPublicRoutes(app *fiber.App) {
@@ -152,6 +150,9 @@ func registerAPI(app *fiber.App, cfg config.Config, deps Dependencies, logger *s
 	} else {
 		logger.Warn("auth.disabled")
 	}
+	app.Use("/api/v1", limiter.New(limiter.Config{Max: cfg.RateLimitMax, Expiration: cfg.RateLimitWindow, LimiterMiddleware: limiter.SlidingWindow{}, KeyGenerator: rateLimitKey, LimitReached: func(c fiber.Ctx) error {
+		return c.Status(fiber.StatusTooManyRequests).JSON(domain.ErrorResponse{Error: "rate_limit_exceeded", Details: "too many requests"})
+	}}))
 	reasoning := service.NewReasoningService(deps.Graph, deps.Planner, service.Options{LLMTimeout: cfg.LLMTimeout, MaxFailedTopics: cfg.MaxFailedTopics, MaxConcurrency: cfg.LLMMaxConcurrency, QueueTimeout: cfg.LLMQueueTimeout, Logger: logger, Metrics: recorder})
 	api.NewHandler(reasoning, deps.Graph, cfg.RequestTimeout, cfg.MaxFailedTopics, logger).RegisterRoutes(app)
 }
@@ -217,6 +218,19 @@ func newErrorHandler(logger *slog.Logger) fiber.ErrorHandler {
 		}
 		return c.Status(status).JSON(domain.ErrorResponse{Error: code, Details: message})
 	}
+}
+
+func rateLimitKey(c fiber.Ctx) string {
+	ip := c.IP()
+	address, err := netip.ParseAddr(ip)
+	if err != nil {
+		return ip
+	}
+	address = address.Unmap()
+	if address.Is6() {
+		return netip.PrefixFrom(address, 64).Masked().String()
+	}
+	return address.String()
 }
 
 func tokenDigests(tokens ...string) [][sha256.Size]byte {

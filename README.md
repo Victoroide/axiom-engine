@@ -20,7 +20,7 @@ AxiomEngine is a Go microservice that generates personalized, prerequisite-order
 
 ```mermaid
 flowchart TD
-    Client["Client / Upstream Caller"] -->|"HTTP Request"| Router["HTTP Router and Middleware<br/>(RequestID, Logger, Recover, Helmet, Limiter, Auth)"]
+    Client["Client / Upstream Caller"] -->|"HTTP Request"| Router["HTTP Router and Middleware<br/>(RequestID, Logger, Recover, Helmet, Auth, Limiter)"]
 
     subgraph ServerRoutes ["Server Endpoints (internal/server)"]
         Router -->|"GET /livez, /readyz, /health"| H_Health["Health and Probe Handlers"]

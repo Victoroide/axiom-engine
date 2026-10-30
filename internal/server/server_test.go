@@ -769,3 +769,53 @@ func TestPreviousTokenAcceptedDuringRotation(t *testing.T) {
 		})
 	}
 }
+
+func TestUnauthenticatedTrafficDoesNotConsumeBudget(t *testing.T) {
+	cfg := defaultConfig(t)
+	cfg.AuthDisabled = false
+	cfg.InternalToken = strings.Repeat("a", 32)
+	cfg.InternalTokenPrevious = strings.Repeat("b", 32)
+	app := newTestApp(t, cfg, nil, nil)
+	for i := range 60 {
+		resp, body := call(t, app, "POST", "/api/v1/adaptive-plan", validBody, map[string]string{"X-Internal-Token": "wrong"})
+		if resp.StatusCode != http.StatusUnauthorized {
+			t.Errorf("request %d: status=%d body=%s", i, resp.StatusCode, body)
+		}
+	}
+	for _, token := range []string{cfg.InternalToken, cfg.InternalTokenPrevious} {
+		resp, body := call(t, app, "POST", "/api/v1/adaptive-plan", validBody, map[string]string{"X-Internal-Token": token})
+		if resp.StatusCode != http.StatusOK {
+			t.Errorf("authorized status=%d body=%s", resp.StatusCode, body)
+		}
+	}
+}
+
+func TestIPv6ClientsShareSlash64Bucket(t *testing.T) {
+	for _, authenticated := range []bool{true, false} {
+		t.Run(fmt.Sprintf("authenticated=%v", authenticated), func(t *testing.T) {
+			cfg := defaultConfig(t)
+			cfg.AuthDisabled = !authenticated
+			cfg.InternalToken = strings.Repeat("a", 32)
+			cfg.RateLimitMax = 1
+			cfg.TrustedProxies = []string{"0.0.0.0/0", "::/0"}
+			app := newTestApp(t, cfg, nil, nil)
+			for _, tc := range []struct {
+				ip   string
+				want int
+			}{
+				{"2001:db8:1234:5678::1", 200},
+				{"2001:db8:1234:5678::2", 429},
+				{"2001:db8:1234:5679::1", 200},
+				{"192.0.2.1", 200},
+				{"192.0.2.2", 200},
+				{"::ffff:192.0.2.1", 429},
+				{"192.0.2.1", 429},
+			} {
+				resp, body := call(t, app, "POST", "/api/v1/adaptive-plan", validBody, map[string]string{"X-Forwarded-For": tc.ip, "X-Internal-Token": cfg.InternalToken})
+				if resp.StatusCode != tc.want {
+					t.Errorf("ip=%s status=%d want=%d body=%s", tc.ip, resp.StatusCode, tc.want, body)
+				}
+			}
+		})
+	}
+}
