@@ -28,6 +28,8 @@ This document is the authoritative reference for all environment variables suppo
 | `AWS_SECRET_ACCESS_KEY` | String | `""` | IAM secret access key | Secret access key corresponding to `AWS_ACCESS_KEY_ID`. |
 | `AWS_SESSION_TOKEN` | String | `""` | STS session token string | Temporary session token when using assumed roles or temporary STS credentials. |
 | `AWS_PROFILE` | String | `""` | Named profile string | Selects an AWS profile configured in `~/.aws/credentials` or `~/.aws/config`. |
+| `AWS_MAX_ATTEMPTS` | Integer | `3` | Positive integer (`>= 1`) | Maximum total attempts per Bedrock call, including the initial attempt. Evaluated by the underlying AWS SDK; not parsed by service configuration. |
+| `AWS_RETRY_MODE` | String | `standard` | `standard`, `adaptive` | Retry classification and backoff mode evaluated by the underlying AWS SDK; not parsed by service configuration. |
 | `BAML_LOG` | String | `""` (`off` in container) | `off`, `warn`, `info`, `debug` | Controls native BAML logging. Set to `off` to prevent prompt text from being logged to standard output. |
 | `BAML_LIBRARY_PATH` | String | `""` (`/app/libbaml_cffi.so` in container) | File path to dynamic shared library | Filesystem path to the compiled BAML CFFI engine binary. Set in `Dockerfile`. |
 | `BAML_LIBRARY_DISABLE_DOWNLOAD` | Boolean | `false` (`true` in container) | `true` or `false` | When true, prevents the BAML runtime from attempting to download shared libraries from the internet at runtime. Set in `Dockerfile`. |

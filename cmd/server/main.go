@@ -31,6 +31,9 @@ func main() {
 }
 
 func run(args []string) error {
+	if err := config.ValidateAWSRetry(os.LookupEnv); err != nil {
+		return err
+	}
 	cfg, err := config.Load(os.Getenv)
 	if err != nil {
 		return err
