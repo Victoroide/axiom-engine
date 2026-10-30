@@ -97,7 +97,7 @@ jobs:
       - name: Check container health and authentication
         shell: bash
         run: |
-          docker run -d --name axiom-ci -p 8080:8080 \
+          docker run -d --name axiom-ci --read-only --tmpfs /tmp -p 8080:8080 \
             -e AWS_REGION=us-east-1 -e AWS_ACCESS_KEY_ID=test \
             -e AWS_SECRET_ACCESS_KEY=test -e AXIOM_INTERNAL_TOKEN=ci-internal-token-0123456789abcdef axiom-ci
           for _ in {1..30}; do
@@ -111,10 +111,13 @@ jobs:
             sleep 2
           done
           test "$status" = healthy
+          test "$(docker inspect --format '{{.Config.User}}' axiom-ci)" = 65532:65532
           curl --fail --silent --show-error http://127.0.0.1:8080/health
           status=$(curl --silent --output /dev/null --write-out '%{http_code}' \
             --request POST http://127.0.0.1:8080/api/v1/adaptive-plan)
           test "$status" = 401
+          docker stop axiom-ci
+          test "$(docker inspect --format '{{.State.ExitCode}}' axiom-ci)" = 0
       - name: Print container logs on failure
         if: failure()
         run: docker logs axiom-ci || true
