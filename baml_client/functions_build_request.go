@@ -26,7 +26,7 @@ type build_request struct{}
 var Request = &build_request{}
 
 // Build HTTP request for GenerateTopicPlan (returns baml.HTTPRequest)
-func (*build_request) GenerateTopicPlan(graph_context []types.GraphTuple, target_topic string, prerequisite_order []string, vark_profile string, student_id string, course_id string, opts ...CallOptionFunc) (baml.HTTPRequest, error) {
+func (*build_request) GenerateTopicPlan(graph_context []types.GraphTuple, target_topic string, prerequisite_order []string, vark_profile string, opts ...CallOptionFunc) (baml.HTTPRequest, error) {
 
 	var callOpts callOption
 	for _, opt := range opts {
@@ -42,7 +42,7 @@ func (*build_request) GenerateTopicPlan(graph_context []types.GraphTuple, target
 	}
 
 	args := baml.BamlFunctionArguments{
-		Kwargs: map[string]any{"graph_context": graph_context, "target_topic": target_topic, "prerequisite_order": prerequisite_order, "vark_profile": vark_profile, "student_id": student_id, "course_id": course_id, "stream": false},
+		Kwargs: map[string]any{"graph_context": graph_context, "target_topic": target_topic, "prerequisite_order": prerequisite_order, "vark_profile": vark_profile, "stream": false},
 		Env:    getEnvVars(callOpts.env),
 	}
 

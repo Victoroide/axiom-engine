@@ -10,15 +10,15 @@ import (
 	"github.com/Victoroide/axiom-engine/internal/service"
 )
 
-type generateFunc func(context.Context, []types.GraphTuple, string, []string, string, string, string) (types.AdaptiveStudyPlan, error)
+type generateFunc func(context.Context, []types.GraphTuple, string, []string, string) (types.AdaptiveStudyPlan, error)
 
 // BAML generates per-topic plans using Amazon Bedrock.
 type BAML struct{ generate generateFunc }
 
 // New constructs the BAML adapter.
 func New() *BAML {
-	return &BAML{generate: func(ctx context.Context, g []types.GraphTuple, t string, p []string, v, s, c string) (types.AdaptiveStudyPlan, error) {
-		return baml.GenerateTopicPlan(ctx, g, t, p, v, s, c)
+	return &BAML{generate: func(ctx context.Context, g []types.GraphTuple, t string, p []string, v string) (types.AdaptiveStudyPlan, error) {
+		return baml.GenerateTopicPlan(ctx, g, t, p, v)
 	}}
 }
 
@@ -28,7 +28,7 @@ func (b *BAML) GenerateTopic(ctx context.Context, r service.TopicRequest) ([]dom
 	for i, t := range r.GraphContext {
 		tuples[i] = types.GraphTuple{Subject: t.Subject, Relation: t.Relation, Object: t.Object}
 	}
-	plan, err := b.generate(ctx, tuples, r.Topic, r.PrerequisiteOrder, r.VARKProfile, r.StudentID, r.CourseID)
+	plan, err := b.generate(ctx, tuples, r.Topic, r.PrerequisiteOrder, r.VARKProfile)
 	if err != nil {
 		if ctx.Err() != nil {
 			return nil, ctx.Err()

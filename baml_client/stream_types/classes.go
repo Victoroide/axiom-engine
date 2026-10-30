@@ -21,9 +21,7 @@ import (
 )
 
 type AdaptiveStudyPlan struct {
-	Student_id *string     `json:"student_id"`
-	Course_id  *string     `json:"course_id"`
-	Items      []StudyItem `json:"items"`
+	Items []StudyItem `json:"items"`
 }
 
 func (c *AdaptiveStudyPlan) Decode(holder *cffi.CFFIValueClass, typeMap baml.TypeMap) {
@@ -40,12 +38,6 @@ func (c *AdaptiveStudyPlan) Decode(holder *cffi.CFFIValueClass, typeMap baml.Typ
 		valueHolder := field.Value
 		switch key {
 
-		case "student_id":
-			c.Student_id = baml.Decode(valueHolder).Interface().(*string)
-
-		case "course_id":
-			c.Course_id = baml.Decode(valueHolder).Interface().(*string)
-
 		case "items":
 			c.Items = baml.Decode(valueHolder).Interface().([]StudyItem)
 
@@ -60,10 +52,6 @@ func (c *AdaptiveStudyPlan) Decode(holder *cffi.CFFIValueClass, typeMap baml.Typ
 
 func (c AdaptiveStudyPlan) Encode() (*cffi.HostValue, error) {
 	fields := map[string]any{}
-
-	fields["student_id"] = c.Student_id
-
-	fields["course_id"] = c.Course_id
 
 	fields["items"] = c.Items
 

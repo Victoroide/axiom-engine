@@ -59,6 +59,11 @@ Remediation timing depends on severity and operational considerations. Critical 
 - Model-generated study items and learning resources are validated and sanitized in `internal/service/output.go` before response assembly (see [response contract](docs/api.md#response-contract)).
 - Client rendering duty: While the service filters unsafe URL schemes and removes control characters, client applications rendering returned titles and explanations must treat them as untrusted text and render them as plain text rather than unescaped HTML to prevent cross-site scripting (XSS) and DOM injection vulnerabilities. Escape URLs when placing them in HTML attributes; RFC 3986 sub-delimiters such as `'` are returned unencoded.
 
+### Data handling
+
+- Learner identifiers (`student_id` and `course_id`) remain within the service boundary and are never transmitted to upstream model providers. When supplied, they are validated against format constraints and echoed in the HTTP response directly from the incoming request payload.
+- Learner identifiers are excluded from BAML per-topic arguments, Bedrock prompt instructions, and upstream output schemas. Upstream model requests receive only the graph context, target topic, topological prerequisite order, and VARK learning style profile (see [Prompt Inputs](docs/architecture.md#prompt-inputs)).
+
 ### Rate limiting and network boundaries
 
 - An in-memory sliding window rate limiter restricts traffic per client IP address (`RATE_LIMIT_MAX`, default: 50 requests; `RATE_LIMIT_WINDOW`, default: 1 minute) across `/api/v1` routes. Exceeding this limit returns HTTP 429 `rate_limit_exceeded`. Public routes (`/livez`, `/readyz`, `/health`, `/swagger/*` and, when `METRICS_ENABLED=true`, `/metrics`) bypass rate limiting and do not consume quota.

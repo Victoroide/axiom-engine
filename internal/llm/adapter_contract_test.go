@@ -51,7 +51,6 @@ func topicRequest() service.TopicRequest {
 	return service.TopicRequest{
 		GraphContext: []domain.GraphTuple{{Subject: "Recursion", Relation: "depends_on", Object: "Functions"}},
 		Topic:        "Recursion", PrerequisiteOrder: []string{"Functions"}, VARKProfile: "visual",
-		StudentID: "student-42", CourseID: "cs101",
 	}
 }
 
@@ -66,6 +65,31 @@ func TestAdapterReturnsPlanFromConverse(t *testing.T) {
 	want := []domain.PlanItem{{Topic: "Recursion", Priority: 1, PrerequisiteChain: []string{"Functions"}, Explanation: "Practice recursion.", Resources: []domain.Resource{{Title: "Guide", URL: "https://example.com/recursion", ResourceType: "video"}}}}
 	if !reflect.DeepEqual(items, want) || s.Count() != 1 || len(s.Bodies()) != 1 {
 		t.Fatalf("items = %+v, requests = %d", items, s.Count())
+	}
+}
+
+func TestPromptOmitsLearnerIdentifiers(t *testing.T) {
+	s := bedrockEndpoint(t, "ok")
+	svc := service.NewReasoningService(graph.NewInMemoryGraph(), New(), service.Options{LLMTimeout: 5 * time.Second, MaxFailedTopics: 10})
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	plan, err := svc.GeneratePlan(ctx, domain.AdaptivePlanRequest{
+		StudentID: "student-42", CourseID: "cs101", FailedTopics: []string{"Recursion"}, VARKProfile: "visual",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	bodies := s.Bodies()
+	if len(bodies) != 1 {
+		t.Fatalf("requests = %d, want 1", len(bodies))
+	}
+	for _, identifier := range []string{"student-42", "cs101", "student_id", "course_id"} {
+		if strings.Contains(bodies[0], identifier) {
+			t.Errorf("upstream request contains %q", identifier)
+		}
+	}
+	if plan.StudentID != "student-42" || plan.CourseID != "cs101" || len(plan.Items) != 1 || plan.Items[0].Topic != "Recursion" {
+		t.Fatalf("response = %+v", plan)
 	}
 }
 

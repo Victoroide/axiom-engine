@@ -20,7 +20,7 @@ type ValidationError struct {
 // Error returns a client-safe description.
 func (e *ValidationError) Error() string { return e.Details }
 
-// ValidIdentifier reports whether an identifier is safe to include in a prompt.
+// ValidIdentifier reports whether an identifier matches the request format.
 func ValidIdentifier(id string) bool { return identifierPattern.MatchString(id) }
 
 // ValidateTopics resolves and deduplicates topics while preserving request order.

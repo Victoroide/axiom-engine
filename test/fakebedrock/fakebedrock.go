@@ -99,13 +99,13 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		_, _ = io.WriteString(w, `<html>timeout validationerror</html>`)
 		return
 	}
-	text := `{"student_id":"s","course_id":"c","items":[{"topic":"Recursion","priority":1,"prerequisite_chain":["Functions"],"explanation":"Practice recursion.","resources":[{"title":"Guide","url":"https://example.com/recursion","resource_type":"video"}]}]}`
+	text := `{"items":[{"topic":"Recursion","priority":1,"prerequisite_chain":["Functions"],"explanation":"Practice recursion.","resources":[{"title":"Guide","url":"https://example.com/recursion","resource_type":"video"}]}]}`
 	stopReason := "end_turn"
 	switch s.mode {
 	case "garbage":
 		text = "I cannot produce a study plan."
 	case "empty":
-		text = `{"student_id":"s","course_id":"c","items":[]}`
+		text = `{"items":[]}`
 	case "max-tokens":
 		text = strings.TrimSuffix(text, "]}")
 		stopReason = "max_tokens"

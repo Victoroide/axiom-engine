@@ -43,7 +43,7 @@ func (s *StreamValue[TStream, TFinal]) Stream() *TStream {
 }
 
 // / Streaming version of GenerateTopicPlan
-func (*stream) GenerateTopicPlan(ctx context.Context, graph_context []types.GraphTuple, target_topic string, prerequisite_order []string, vark_profile string, student_id string, course_id string, opts ...CallOptionFunc) (<-chan StreamValue[stream_types.AdaptiveStudyPlan, types.AdaptiveStudyPlan], error) {
+func (*stream) GenerateTopicPlan(ctx context.Context, graph_context []types.GraphTuple, target_topic string, prerequisite_order []string, vark_profile string, opts ...CallOptionFunc) (<-chan StreamValue[stream_types.AdaptiveStudyPlan, types.AdaptiveStudyPlan], error) {
 
 	var callOpts callOption
 	for _, opt := range opts {
@@ -51,7 +51,7 @@ func (*stream) GenerateTopicPlan(ctx context.Context, graph_context []types.Grap
 	}
 
 	args := baml.BamlFunctionArguments{
-		Kwargs: map[string]any{"graph_context": graph_context, "target_topic": target_topic, "prerequisite_order": prerequisite_order, "vark_profile": vark_profile, "student_id": student_id, "course_id": course_id},
+		Kwargs: map[string]any{"graph_context": graph_context, "target_topic": target_topic, "prerequisite_order": prerequisite_order, "vark_profile": vark_profile},
 		Env:    getEnvVars(callOpts.env),
 	}
 
