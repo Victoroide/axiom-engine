@@ -120,7 +120,15 @@ func (s *ReasoningService) GeneratePlan(ctx context.Context, req domain.Adaptive
 			defer cancel()
 			items, err := s.breaker.Execute(func() ([]domain.PlanItem, error) {
 				started = true
-				return s.generateTopic(llmCtx, TopicRequest{GraphContext: subgraph, Topic: topic, PrerequisiteOrder: s.graph.GetPrerequisiteChain(topic), VARKProfile: req.VARKProfile, StudentID: req.StudentID, CourseID: req.CourseID})
+				items, err := s.generateTopic(llmCtx, TopicRequest{GraphContext: subgraph, Topic: topic, PrerequisiteOrder: s.graph.GetPrerequisiteChain(topic), VARKProfile: req.VARKProfile, StudentID: req.StudentID, CourseID: req.CourseID})
+				if err != nil {
+					return nil, err
+				}
+				if missing := missingTopic(items, []string{topic}); missing != "" {
+					s.logger.WarnContext(llmCtx, "stage.validation", "request_id", requestIDFromContext(llmCtx), "topic", missing)
+					return nil, ErrInvalidOutput
+				}
+				return items, nil
 			})
 			if err != nil {
 				if errors.Is(err, gobreaker.ErrTooManyRequests) {
@@ -147,6 +155,11 @@ func (s *ReasoningService) GeneratePlan(ctx context.Context, req domain.Adaptive
 	validated, dropped := validateAgainstGraph(merged, s.graph, req.FailedTopics)
 	if dropped > 0 {
 		s.logger.WarnContext(ctx, "stage.validation", "request_id", requestIDFromContext(ctx), "items_dropped", dropped)
+	}
+	// Guard the coverage invariant if deduplication or graph filtering changes.
+	if missing := missingTopic(validated, req.FailedTopics); missing != "" {
+		s.logger.WarnContext(ctx, "stage.validation", "request_id", requestIDFromContext(ctx), "topic", missing)
+		return domain.PlanResponse{}, &TopicError{Topic: missing, cause: ErrInvalidOutput}
 	}
 	return domain.PlanResponse{StudentID: req.StudentID, CourseID: req.CourseID, Items: validated, Meta: domain.PipelineMeta{SubgraphTuples: len(subgraph), TopicsProcessed: len(req.FailedTopics), ItemsGenerated: countTotalItems(plans), ItemsValidated: len(validated), ItemsDropped: dropped, LLMLatencyMs: float64(llmLatency.Milliseconds()), TotalLatencyMs: float64(time.Since(start).Milliseconds())}}, nil
 }

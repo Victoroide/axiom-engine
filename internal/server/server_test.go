@@ -671,3 +671,15 @@ func TestRequestTimeoutHoldsWithBlockingPlanner(t *testing.T) {
 		t.Fatalf("status=%d elapsed=%v body=%s", resp.StatusCode, elapsed, body)
 	}
 }
+
+func TestMissingTopicItemReturnsBadGateway(t *testing.T) {
+	app := newTestApp(t, defaultConfig(t), func(context.Context, service.TopicRequest) ([]domain.PlanItem, error) { return nil, nil }, nil)
+	resp, body := call(t, app, "POST", "/api/v1/adaptive-plan", `{"failed_topics":["Recursion"],"vark_profile":"visual"}`, nil)
+	var got domain.ErrorResponse
+	if err := json.Unmarshal([]byte(body), &got); err != nil {
+		t.Fatal(err)
+	}
+	if resp.StatusCode != http.StatusBadGateway || got.Error != "bad_gateway" || got.Details != "model returned no usable item" {
+		t.Fatalf("status=%d body=%s", resp.StatusCode, body)
+	}
+}

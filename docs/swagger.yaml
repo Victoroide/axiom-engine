@@ -307,7 +307,7 @@ paths:
           schema:
             $ref: '#/definitions/domain.ErrorResponse'
         "502":
-          description: Bad Gateway
+          description: Upstream failure or no usable item for a requested topic
           schema:
             $ref: '#/definitions/domain.ErrorResponse'
         "503":
