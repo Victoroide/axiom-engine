@@ -117,6 +117,15 @@ Set container stop timeouts or Kubernetes `terminationGracePeriodSeconds` to sat
 
 Docker Compose sets `stop_grace_period: 30s`. With `docker run` or `docker stop`, pass `--stop-timeout 30` or `-t 30`; Docker's default of 10 seconds kills the process before the default 25-second budget ends. Raise these values when `SHUTDOWN_DRAIN_DELAY + SHUTDOWN_TIMEOUT + 5` exceeds 30 seconds.
 
+### Token rotation
+
+To rotate internal service credentials without downtime:
+
+1. Generate a new token meeting complexity requirements (`openssl rand -hex 32`).
+2. Deploy the service with the new token configured as `AXIOM_INTERNAL_TOKEN` and the existing token configured as `AXIOM_INTERNAL_TOKEN_PREVIOUS` (see [configuration](configuration.md)).
+3. After every replica runs the new configuration, update callers to send the new token. During rotation, requests bearing either token authenticate successfully via `X-Internal-Token` or `Authorization: Bearer` (an explicit `X-Internal-Token` header takes precedence). Requests with missing or invalid credentials return HTTP 401 `unauthorized`.
+4. Before removing the previous token, check that no caller still sends it. Each replica logs `auth.previous_token_used` at WARN (with the request's `request_id`, at most once per minute per process) while requests authenticate with the previous token. With `METRICS_ENABLED=true`, every such request also increments `axiom_auth_previous_token_total`. When the counter has stopped increasing and no warning has appeared for more than a minute on every replica, remove `AXIOM_INTERNAL_TOKEN_PREVIOUS` and redeploy.
+
 ### Metrics
 
 When `METRICS_ENABLED=true` is configured (see [configuration](configuration.md)), the server exposes Prometheus text exposition at `GET /metrics`. The endpoint requires no authentication token and does not consume API rate limit budget. Restrict access to `/metrics` at the network or reverse-proxy level rather than relying on application authentication.

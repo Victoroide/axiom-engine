@@ -17,6 +17,7 @@ type Metrics struct {
 	registry         *prometheus.Registry
 	httpDuration     *prometheus.HistogramVec
 	httpRequests     *prometheus.CounterVec
+	previousToken    prometheus.Counter
 	llmCalls         *prometheus.CounterVec
 	llmDuration      *prometheus.HistogramVec
 	inflight         prometheus.Gauge
@@ -35,6 +36,7 @@ func New() *Metrics {
 		registry:         prometheus.NewRegistry(),
 		httpDuration:     prometheus.NewHistogramVec(prometheus.HistogramOpts{Name: "http_server_request_duration_seconds", Buckets: latencyBuckets, Help: "HTTP request duration by route template."}, []string{"route"}),
 		httpRequests:     prometheus.NewCounterVec(prometheus.CounterOpts{Name: "http_server_requests_total", Help: "HTTP requests by route template, bounded method and status."}, []string{"route", "method", "status"}),
+		previousToken:    prometheus.NewCounter(prometheus.CounterOpts{Name: "axiom_auth_previous_token_total", Help: "Requests authenticated with the previous internal token."}),
 		llmCalls:         prometheus.NewCounterVec(prometheus.CounterOpts{Name: "axiom_llm_calls_total", Help: "Dispatched upstream calls by pipeline outcome."}, []string{"outcome"}),
 		llmDuration:      prometheus.NewHistogramVec(prometheus.HistogramOpts{Name: "axiom_llm_duration_seconds", Buckets: latencyBuckets, Help: "Upstream call duration until completion or enforced cancellation."}, []string{"outcome"}),
 		inflight:         prometheus.NewGauge(prometheus.GaugeOpts{Name: "axiom_llm_inflight", Help: "Upstream calls still executing, including calls past their deadline."}),
@@ -58,13 +60,20 @@ func New() *Metrics {
 		}
 		return float64(source())
 	})
-	m.registry.MustRegister(m.httpDuration, m.httpRequests, m.llmCalls, m.llmDuration, m.inflight, m.queueWait, m.queueTimeouts, m.itemsDropped, m.resourcesDropped, state, collectors.NewGoCollector(), collectors.NewProcessCollector(collectors.ProcessCollectorOpts{}))
+	m.registry.MustRegister(m.httpDuration, m.httpRequests, m.previousToken, m.llmCalls, m.llmDuration, m.inflight, m.queueWait, m.queueTimeouts, m.itemsDropped, m.resourcesDropped, state, collectors.NewGoCollector(), collectors.NewProcessCollector(collectors.ProcessCollectorOpts{}))
 	return m
 }
 
 // Handler serves this application's Prometheus exposition.
 func (m *Metrics) Handler() http.Handler {
 	return promhttp.HandlerFor(m.registry, promhttp.HandlerOpts{})
+}
+
+// ObservePreviousToken records successful authentication with a rotating token.
+func (m *Metrics) ObservePreviousToken() {
+	if m != nil {
+		m.previousToken.Inc()
+	}
 }
 
 // SetBreakerStateSource reads the current circuit state at scrape time.

@@ -34,7 +34,7 @@ Remediation timing depends on severity and operational considerations. Critical 
 
 - Every `/api/v1` route requires authentication by default. Public routes (`/livez`, `/readyz`, `/health`, `/swagger/*` and, when `METRICS_ENABLED=true`, `/metrics`) bypass token authentication.
 - Callers may authenticate using the `X-Internal-Token` header or an `Authorization: Bearer <token>` header (scheme matching is case-insensitive).
-- Token validation computes SHA-256 digests of the expected and provided tokens and evaluates them using `crypto/subtle.ConstantTimeCompare` (comparing two 32-byte digests) to prevent timing side-channel attacks.
+- Token validation computes the SHA-256 digest of the provided token and compares it with the digest of every configured token (`AXIOM_INTERNAL_TOKEN` and, during rotation, `AXIOM_INTERNAL_TOKEN_PREVIOUS`) using `crypto/subtle.ConstantTimeCompare`, without an early exit, to prevent timing side channels.
 - Service startup fails closed if `AXIOM_INTERNAL_TOKEN` is unset or empty, unless `AXIOM_AUTH_DISABLED=true` is explicitly configured; configuring both simultaneously fails startup (see [configuration reference](docs/configuration.md)). When disabled, the server logs a startup warning `auth.disabled`.
 - Configured tokens must satisfy the format and length requirements defined in the [configuration reference](docs/configuration.md); the startup error message does not expose the token value.
 
