@@ -11,7 +11,8 @@ This document is the authoritative reference for all environment variables suppo
 | Variable | Type | Default | Accepted Values | Effect |
 |---|---|---|---|---|
 | `PORT` | Integer | `8080` | `1` to `65535` | TCP port on which the HTTP server listens. Configured in `internal/config/config.go`. |
-| `AXIOM_INTERNAL_TOKEN` | String | `""` (unset) | Any non-empty string | Shared secret token required in `X-Internal-Token` or `Authorization: Bearer` on `/api/v1/*` routes. When unset or empty, authentication is disabled and a startup warning `auth.internal_token.disabled` is logged. Configured in `internal/server/server.go`. |
+| `AXIOM_AUTH_DISABLED` | Boolean | `false` | `true` or `false` | When `true`, disables token authentication on `/api/v1/*` routes and logs a startup warning `auth.disabled`. When `false`, `AXIOM_INTERNAL_TOKEN` is required. Configured in `internal/config/config.go`. |
+| `AXIOM_INTERNAL_TOKEN` | String | `""` (unset) | Any non-empty string | Shared secret token required in `X-Internal-Token` or `Authorization: Bearer` on `/api/v1/*` routes. Required at startup unless `AXIOM_AUTH_DISABLED=true`. Configured in `internal/config/config.go`. |
 | `CORS_ALLOWED_ORIGINS` | String | `""` (unset) | `*` alone, or comma-separated list of `http://` or `https://` URLs | Configures allowed origins for cross-origin requests. URLs must not include paths, query parameters, or fragments. When unset or empty, CORS middleware is disabled. Configured in `internal/config/config.go`. |
 | `RATE_LIMIT_MAX` | Integer | `50` | Positive integer (`> 0`) | Maximum number of requests allowed from a client IP within `RATE_LIMIT_WINDOW`. Exceeding requests receive HTTP 429. Configured in `internal/config/config.go`. |
 | `RATE_LIMIT_WINDOW` | Duration | `1m` | Positive Go duration string (e.g. `30s`, `1m`, `5m`) | Sliding window duration for IP-based rate limiting. Configured in `internal/config/config.go`. |

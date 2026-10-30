@@ -8,7 +8,7 @@ Interactive documentation is available at `/swagger/index.html`. Complete machin
 
 ## Authentication
 
-When `AXIOM_INTERNAL_TOKEN` is configured, all routes under `/api/v1` require authentication. If `AXIOM_INTERNAL_TOKEN` is unset or empty, authentication is disabled and API routes are publicly accessible.
+Requests to `/api/v1` routes require authentication by default using the configured internal token. Startup fails if a token is not provided unless authentication is explicitly disabled by setting `AXIOM_AUTH_DISABLED=true` (see [configuration reference](configuration.md)). When authentication is disabled, API routes are publicly accessible and the server emits the startup warning `auth.disabled`.
 
 Callers may supply the internal token using either of two headers:
 - `X-Internal-Token: <token>`

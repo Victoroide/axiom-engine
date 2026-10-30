@@ -103,10 +103,10 @@ func registerPublicRoutes(app *fiber.App) {
 }
 
 func registerAPI(app *fiber.App, cfg config.Config, deps Dependencies, logger *slog.Logger) {
-	if cfg.InternalToken != "" {
+	if !cfg.AuthDisabled {
 		app.Use("/api/v1", internalTokenMiddleware(cfg.InternalToken))
 	} else {
-		logger.Warn("auth.internal_token.disabled")
+		logger.Warn("auth.disabled")
 	}
 	reasoning := service.NewReasoningService(deps.Graph, deps.Planner, service.Options{LLMTimeout: cfg.LLMTimeout, MaxFailedTopics: cfg.MaxFailedTopics, Logger: logger})
 	api.NewHandler(reasoning, deps.Graph, cfg.RequestTimeout, cfg.MaxFailedTopics, logger).RegisterRoutes(app)
@@ -158,7 +158,7 @@ func internalTokenMiddleware(expected string) fiber.Handler {
 			}
 		}
 		providedDigest := sha256.Sum256([]byte(provided))
-		if subtle.ConstantTimeCompare(providedDigest[:], expectedDigest[:]) != 1 {
+		if provided == "" || subtle.ConstantTimeCompare(providedDigest[:], expectedDigest[:]) != 1 {
 			return c.Status(fiber.StatusUnauthorized).JSON(domain.ErrorResponse{Error: "unauthorized", Details: "missing or invalid internal token"})
 		}
 		return c.Next()

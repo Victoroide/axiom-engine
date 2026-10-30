@@ -43,7 +43,12 @@ func TestHandlerResponses(t *testing.T) {
 		{"GET", "/api/v1/tutor/student/student-42/cognitive-graph?topics=Recursion&target_topic=unknown", "", nil, 422},
 	} {
 		t.Run(tc.method+tc.path+tc.body, func(t *testing.T) {
-			cfg, err := config.Load(func(string) string { return "" })
+			cfg, err := config.Load(func(k string) string {
+				if k == "AXIOM_AUTH_DISABLED" {
+					return "true"
+				}
+				return ""
+			})
 			if err != nil {
 				t.Fatal(err)
 			}

@@ -64,13 +64,15 @@ flowchart TD
 cp .env.example .env
 ```
 
+Generate an internal token (for example `openssl rand -hex 32`) and set `AXIOM_INTERNAL_TOKEN=<generated value>` in `.env`.
+
 2. Build and run the container with Docker Compose:
 
 ```sh
 docker compose up --build
 ```
 
-The container starts with non-root UID/GID `65532:65532` and exposes port 8080.
+The container starts with non-root UID/GID `65532:65532` and publishes port 8080 on loopback (`http://127.0.0.1:8080`).
 
 ### Local Development
 
