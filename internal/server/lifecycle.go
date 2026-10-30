@@ -11,6 +11,8 @@ import (
 	"github.com/gofiber/fiber/v3"
 )
 
+const requestContextKey = "requestContext"
+
 // Run serves until cancellation or a listener failure, then drains connections.
 func Run(ctx context.Context, app *fiber.App, address string, shutdownTimeout time.Duration) error {
 	if err := ctx.Err(); err != nil {
@@ -21,12 +23,17 @@ func Run(ctx context.Context, app *fiber.App, address string, shutdownTimeout ti
 		return fmt.Errorf("listen: %w", err)
 	}
 	defer func() { _ = ln.Close() }()
+	base, cancel := context.WithCancel(context.WithoutCancel(ctx))
+	defer cancel()
+	app.State().Set(requestContextKey, base)
 	stopped := make(chan error, 1)
 	go func() { stopped <- app.Listener(ln, fiber.ListenConfig{DisableStartupMessage: true}) }()
 	select {
 	case err := <-stopped:
 		return err
 	case <-ctx.Done():
+		cancelTimer := time.AfterFunc(shutdownTimeout-time.Second, cancel)
+		defer cancelTimer.Stop()
 		// Close the listener even if cancellation beats Fiber's startup.
 		_ = ln.Close()
 		shutdownErr := app.ShutdownWithTimeout(shutdownTimeout)

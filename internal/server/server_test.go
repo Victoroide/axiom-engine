@@ -375,6 +375,18 @@ func TestHTTPTransportTimeouts(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	conn, err := (&net.Dialer{}).DialContext(context.Background(), "tcp", ln.Addr().String())
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = conn.Close() }()
+	if err := conn.SetDeadline(time.Now().Add(time.Second)); err != nil {
+		t.Fatal(err)
+	}
+	time.Sleep(3 * cfg.ReadTimeout)
+	if _, err := io.WriteString(conn, "GET /health HTTP/1.1\r\nHost: localhost\r\n"); err != nil {
+		t.Fatal(err)
+	}
 	done := make(chan error, 1)
 	go func() { done <- app.Listener(ln, fiber.ListenConfig{DisableStartupMessage: true}) }()
 	defer func() {
@@ -385,17 +397,7 @@ func TestHTTPTransportTimeouts(t *testing.T) {
 			t.Error(err)
 		}
 	}()
-	conn, err := (&net.Dialer{}).DialContext(context.Background(), "tcp", ln.Addr().String())
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer func() { _ = conn.Close() }()
-	if err := conn.SetDeadline(time.Now().Add(time.Second)); err != nil {
-		t.Fatal(err)
-	}
-	if _, err := io.WriteString(conn, "GET /health HTTP/1.1\r\nHost: localhost\r\n"); err != nil {
-		t.Fatal(err)
-	}
+	time.Sleep(2 * cfg.ReadTimeout)
 	if _, err := io.ReadAll(conn); err != nil {
 		t.Fatalf("partial headers outlived server read deadline: %v", err)
 	}

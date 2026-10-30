@@ -318,7 +318,7 @@ paths:
           schema:
             $ref: '#/definitions/domain.ErrorResponse'
         "503":
-          description: Temporary unavailability or upstream throttling
+          description: Temporary unavailability, upstream throttling or server shutdown
           headers:
             Retry-After:
               description: Seconds to wait before retrying

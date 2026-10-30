@@ -106,7 +106,7 @@ The CLI subcommand `axiom-server healthcheck` queries `http://127.0.0.1:<PORT>/h
 
 The service captures `SIGINT` and `SIGTERM` signals. On receipt of either signal:
 1. The server closes the TCP listener to reject new connections.
-2. Active requests drain within `SHUTDOWN_TIMEOUT` (default: 10 seconds).
+2. Active requests drain within `SHUTDOWN_TIMEOUT` (see [configuration](configuration.md)). The server cancels in-flight request contexts one second before the shutdown deadline expires to reserve time to send responses. Requests that complete before cancellation retain their normal response. Requests interrupted by cancellation return HTTP 503 `service_unavailable` with `Retry-After: 1`.
 3. The process exits with code 0 once all in-flight requests finish cleanly. If the shutdown deadline expires before in-flight requests complete, the server exits with code 1.
 
-Set orchestrator container stop timeouts to at least 15 seconds to allow the shutdown drain period to complete cleanly before `SIGKILL`.
+Set container stop timeouts or Kubernetes `terminationGracePeriodSeconds` to satisfy the shutdown budget formula: `terminationGracePeriodSeconds >= SHUTDOWN_DRAIN_DELAY + SHUTDOWN_TIMEOUT + 5` seconds.

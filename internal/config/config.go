@@ -43,7 +43,6 @@ func defaults() Config {
 		LLMMaxConcurrency: 16,
 		LLMQueueTimeout:   2 * time.Second,
 		MaxFailedTopics:   10,
-		ShutdownTimeout:   10 * time.Second,
 		LogLevel:          slog.LevelInfo,
 	}
 }
@@ -135,6 +134,12 @@ func Load(getenv func(string) string) (Config, error) {
 		return Config{}, fmt.Errorf("REQUEST_TIMEOUT is too large for the HTTP write deadline")
 	}
 	c.WriteTimeout = c.RequestTimeout + c.ReadTimeout
+	if getenv("SHUTDOWN_TIMEOUT") == "" {
+		c.ShutdownTimeout = max(c.RequestTimeout+5*time.Second, c.ReadTimeout+time.Second)
+	}
+	if c.ShutdownTimeout < c.ReadTimeout+time.Second {
+		return Config{}, fmt.Errorf("SHUTDOWN_TIMEOUT must be at least 11s")
+	}
 	if c.LLMTimeout > c.RequestTimeout {
 		return Config{}, fmt.Errorf("LLM_TIMEOUT must not exceed REQUEST_TIMEOUT")
 	}

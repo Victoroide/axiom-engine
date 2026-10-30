@@ -57,7 +57,6 @@ The `details` field provides context when available and is omitted when empty. A
 | `401 Unauthorized` | `unauthorized` | Token authentication failure | Missing or incorrect `X-Internal-Token` or `Authorization: Bearer` |
 | `404 Not Found` | `not_found` | Resource does not exist | Unmatched route path |
 | `405 Method Not Allowed` | `method_not_allowed` | HTTP method not supported | Unsupported HTTP verb on an existing path |
-| `408 Request Timeout` | `request_timeout` | Processing context canceled | Request context canceled during pipeline processing |
 | `413 Payload Too Large` | `payload_too_large` | Request body exceeds limit | Inbound payload exceeds the 64 KiB (65,536 bytes) limit |
 | `415 Unsupported Media Type` | `unsupported_media_type` | Media type not supported | Missing, malformed, unsupported charset, or non-JSON `Content-Type` header on `POST /api/v1/adaptive-plan` requests |
 | `422 Unprocessable Entity` | `validation_error` | Concept not found in knowledge graph | One or more topics in `failed_topics`, `topics`, or `target_topic` do not exist |
@@ -67,6 +66,7 @@ The `details` field provides context when available and is omitted when empty. A
 | `503 Service Unavailable` | `service_unavailable` | Circuit breaker open | Upstream planner circuit tripped due to consecutive failures (`Retry-After: 15`, details `reasoning temporarily unavailable`; `Retry-After: 1` while the circuit is half-open and its probe requests are in flight) |
 | `503 Service Unavailable` | `service_unavailable` | Concurrency limit reached | No upstream slot became free within `LLM_QUEUE_TIMEOUT` (`Retry-After: 1`, details `reasoning temporarily unavailable`) |
 | `503 Service Unavailable` | `service_unavailable` | Upstream throttling | Upstream capacity limit or rate throttling (`Retry-After: 5`, details `upstream throttled`) |
+| `503 Service Unavailable` | `service_unavailable` | Server shutting down | In-flight request canceled during graceful shutdown (`Retry-After: 1`, details `server shutting down`) |
 | `504 Gateway Timeout` | `gateway_timeout` | Processing deadline exceeded | Pipeline execution exceeded `REQUEST_TIMEOUT` or `LLM_TIMEOUT` |
 
 ---
@@ -131,8 +131,8 @@ Generates a personalized, prerequisite-ordered study plan for a student based on
 - **415 Unsupported Media Type**: Request `Content-Type` is missing, malformed, or not `application/json`.
 - **422 Unprocessable Entity**: One or more topics are not found in the knowledge graph.
 - **429 Too Many Requests**: Rate limit exceeded.
-- **502 Bad Gateway**: Upstream failure or no usable item for a requested topic (details `model returned no usable item` or `upstream reasoning failed`).
-- **503 Service Unavailable**: Upstream circuit breaker is open.
+- **502 Bad Gateway**: details `model returned no usable item` when the model reply cannot be parsed or has no item for a requested topic; `upstream reasoning failed` for other Bedrock failures.
+- **503 Service Unavailable**: Upstream circuit breaker open, concurrency limit reached, upstream throttling, or server shutdown.
 - **504 Gateway Timeout**: Request exceeded pipeline deadline.
 
 #### Response Contract

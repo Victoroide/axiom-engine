@@ -12,6 +12,7 @@ services:
       PORT: "8080"
       BAML_LOG: "${BAML_LOG:-off}"
     restart: unless-stopped
+    stop_grace_period: 30s
     healthcheck:
       test: ["CMD", "/app/axiom-server", "healthcheck"]
       interval: 10s

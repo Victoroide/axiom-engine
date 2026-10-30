@@ -2,6 +2,7 @@ package server
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"net"
 	"net/http"
@@ -12,7 +13,83 @@ import (
 	"time"
 
 	"github.com/gofiber/fiber/v3"
+
+	"github.com/Victoroide/axiom-engine/internal/domain"
+	"github.com/Victoroide/axiom-engine/internal/service"
 )
+
+func TestShutdownAnswersInFlightPlanBeforeDeadline(t *testing.T) {
+	type planResponse struct {
+		status int
+		header http.Header
+		body   domain.ErrorResponse
+		err    error
+	}
+	for _, tc := range []struct {
+		name   string
+		delay  time.Duration
+		status int
+	}{
+		{"cancels slow work", 5 * time.Second, http.StatusServiceUnavailable},
+		{"finishes short work", 50 * time.Millisecond, http.StatusOK},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			cfg := defaultConfig(t)
+			cfg.ShutdownTimeout = 2 * time.Second
+			started := make(chan struct{})
+			app := newTestApp(t, cfg, func(ctx context.Context, r service.TopicRequest) ([]domain.PlanItem, error) {
+				close(started)
+				timer := time.NewTimer(tc.delay)
+				defer timer.Stop()
+				select {
+				case <-ctx.Done():
+					return nil, ctx.Err()
+				case <-timer.C:
+					return []domain.PlanItem{{Topic: r.Topic}}, nil
+				}
+			}, nil)
+			ready := make(chan string, 1)
+			app.Hooks().OnListen(func(data fiber.ListenData) error { ready <- data.Host + ":" + data.Port; return nil })
+			ctx, cancel := context.WithCancel(t.Context())
+			defer cancel()
+			done := make(chan error, 1)
+			go func() { done <- Run(ctx, app, "127.0.0.1:0", cfg.ShutdownTimeout) }()
+			req, err := http.NewRequestWithContext(t.Context(), http.MethodPost, "http://"+<-ready+"/api/v1/adaptive-plan", strings.NewReader(`{"failed_topics":["Recursion"],"vark_profile":"visual"}`))
+			if err != nil {
+				t.Fatal(err)
+			}
+			req.Header.Set("Content-Type", "application/json")
+			result := make(chan planResponse, 1)
+			go func() {
+				resp, err := (&http.Client{Timeout: 7 * time.Second}).Do(req)
+				if err != nil {
+					result <- planResponse{err: err}
+					return
+				}
+				defer func() { _ = resp.Body.Close() }()
+				var body domain.ErrorResponse
+				err = json.NewDecoder(resp.Body).Decode(&body)
+				result <- planResponse{status: resp.StatusCode, header: resp.Header, body: body, err: err}
+			}()
+			<-started
+			shutdownStart := time.Now()
+			cancel()
+			got := <-result
+			runErr := <-done
+			if got.err != nil {
+				t.Fatalf("request error=%v, Run error=%v", got.err, runErr)
+			}
+			if got.status != tc.status || runErr != nil || time.Since(shutdownStart) >= cfg.ShutdownTimeout {
+				t.Fatalf("status=%d, Run error=%v, shutdown elapsed=%s", got.status, runErr, time.Since(shutdownStart))
+			}
+			if tc.status == http.StatusServiceUnavailable {
+				if got.body.Error != "service_unavailable" || got.body.Details != "server shutting down" || got.header.Get("Retry-After") != "1" || got.header.Get("X-Request-ID") == "" {
+					t.Fatalf("headers=%v, body=%+v", got.header, got.body)
+				}
+			}
+		})
+	}
+}
 
 func TestRunListenFailure(t *testing.T) {
 	ln, err := (&net.ListenConfig{}).Listen(context.Background(), "tcp", "127.0.0.1:0")

@@ -12,18 +12,18 @@ func TestLoadDefaults(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if c.LLMMaxConcurrency != 16 || c.LLMQueueTimeout != 2*time.Second || c.Port != "8080" || c.RateLimitMax != 50 || c.RateLimitWindow != time.Minute || c.RequestTimeout != 20*time.Second || c.LLMTimeout != 15*time.Second || c.MaxFailedTopics != 10 || c.ShutdownTimeout != 10*time.Second || c.LogLevel != slog.LevelInfo || len(c.CORSAllowedOrigins) != 0 || len(c.TrustedProxies) != 0 {
+	if c.LLMMaxConcurrency != 16 || c.LLMQueueTimeout != 2*time.Second || c.Port != "8080" || c.RateLimitMax != 50 || c.RateLimitWindow != time.Minute || c.RequestTimeout != 20*time.Second || c.LLMTimeout != 15*time.Second || c.MaxFailedTopics != 10 || c.ShutdownTimeout != 25*time.Second || c.LogLevel != slog.LevelInfo || len(c.CORSAllowedOrigins) != 0 || len(c.TrustedProxies) != 0 {
 		t.Fatalf("unexpected defaults: %+v", c)
 	}
 }
 
 func TestLoadOverrides(t *testing.T) {
-	env := map[string]string{"PORT": "9090", "AXIOM_INTERNAL_TOKEN": "0123456789abcdef0123456789abcdef", "CORS_ALLOWED_ORIGINS": "https://example.com, http://localhost:3000", "RATE_LIMIT_MAX": "2", "RATE_LIMIT_WINDOW": "2m", "TRUSTED_PROXIES": "127.0.0.1,10.0.0.0/8,::1", "REQUEST_TIMEOUT": "5s", "LLM_TIMEOUT": "3s", "MAX_FAILED_TOPICS": "4", "GRAPH_FILE": "graph.json", "LOG_LEVEL": "debug", "SHUTDOWN_TIMEOUT": "1s"}
+	env := map[string]string{"PORT": "9090", "AXIOM_INTERNAL_TOKEN": "0123456789abcdef0123456789abcdef", "CORS_ALLOWED_ORIGINS": "https://example.com, http://localhost:3000", "RATE_LIMIT_MAX": "2", "RATE_LIMIT_WINDOW": "2m", "TRUSTED_PROXIES": "127.0.0.1,10.0.0.0/8,::1", "REQUEST_TIMEOUT": "5s", "LLM_TIMEOUT": "3s", "MAX_FAILED_TOPICS": "4", "GRAPH_FILE": "graph.json", "LOG_LEVEL": "debug", "SHUTDOWN_TIMEOUT": "11s"}
 	c, err := loadWithoutAuth(func(k string) string { return env[k] })
 	if err != nil {
 		t.Fatal(err)
 	}
-	if c.Port != "9090" || c.InternalToken != "0123456789abcdef0123456789abcdef" || len(c.CORSAllowedOrigins) != 2 || len(c.TrustedProxies) != 3 || c.LogLevel != slog.LevelDebug || c.MaxFailedTopics != 4 || c.GraphFile != "graph.json" || c.LLMTimeout != 3*time.Second || c.RateLimitMax != 2 || c.RateLimitWindow != 2*time.Minute || c.ShutdownTimeout != time.Second {
+	if c.Port != "9090" || c.InternalToken != "0123456789abcdef0123456789abcdef" || len(c.CORSAllowedOrigins) != 2 || len(c.TrustedProxies) != 3 || c.LogLevel != slog.LevelDebug || c.MaxFailedTopics != 4 || c.GraphFile != "graph.json" || c.LLMTimeout != 3*time.Second || c.RateLimitMax != 2 || c.RateLimitWindow != 2*time.Minute || c.ShutdownTimeout != 11*time.Second {
 		t.Fatalf("overrides: %+v", c)
 	}
 	for _, level := range []string{"info", "warn", "error"} {
@@ -91,6 +91,48 @@ func TestHTTPTimeouts(t *testing.T) {
 		return ""
 	}); err == nil {
 		t.Fatal("write timeout overflow accepted")
+	}
+}
+
+func TestShutdownTimeoutDefaultsAboveRequestTimeout(t *testing.T) {
+	for _, tc := range []struct {
+		request, shutdown string
+		want              time.Duration
+	}{
+		{"", "", 25 * time.Second},
+		{"35s", "", 40 * time.Second},
+		{"35s", "11s", 11 * time.Second},
+	} {
+		cfg, err := loadWithoutAuth(func(k string) string {
+			switch k {
+			case "REQUEST_TIMEOUT":
+				return tc.request
+			case "SHUTDOWN_TIMEOUT":
+				return tc.shutdown
+			default:
+				return ""
+			}
+		})
+		if err != nil {
+			t.Fatal(err)
+		}
+		if cfg.ShutdownTimeout != tc.want {
+			t.Errorf("REQUEST_TIMEOUT=%q SHUTDOWN_TIMEOUT=%q: got %s, want %s", tc.request, tc.shutdown, cfg.ShutdownTimeout, tc.want)
+		}
+	}
+}
+
+func TestShutdownTimeoutRejectsInsufficientBudget(t *testing.T) {
+	for _, value := range []string{"1s", "2s", "10s", "10999ms"} {
+		_, err := loadWithoutAuth(func(k string) string {
+			if k == "SHUTDOWN_TIMEOUT" {
+				return value
+			}
+			return ""
+		})
+		if err == nil {
+			t.Errorf("SHUTDOWN_TIMEOUT=%q accepted", value)
+		}
 	}
 }
 

@@ -2,6 +2,7 @@
 package server
 
 import (
+	"context"
 	"crypto/sha256"
 	"crypto/subtle"
 	"errors"
@@ -69,6 +70,12 @@ func newApp(cfg config.Config, errorHandler fiber.ErrorHandler) *fiber.App {
 }
 
 func useMiddleware(app *fiber.App, cfg config.Config, logger *slog.Logger, errorHandler fiber.ErrorHandler) {
+	app.Use(func(c fiber.Ctx) error {
+		if base, ok := fiber.GetState[context.Context](app.State(), requestContextKey); ok {
+			c.SetContext(base)
+		}
+		return c.Next()
+	})
 	app.Use(requestid.New())
 	app.Use(func(c fiber.Ctx) error {
 		start := time.Now()
