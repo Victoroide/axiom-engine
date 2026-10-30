@@ -68,21 +68,31 @@ This target performs the following actions:
 
 ### BAML upgrade
 
+Dependabot surfaces BAML updates in a dedicated first-match `baml` group evaluated before general version grouping rules, with a three-day default cooldown (`cooldown.default-days: 3`) across all ecosystems. The previous blanket ignore directive for `github.com/boundaryml/baml` is removed so upstream releases trigger automated pull requests. Until the coordinated update below is pushed to the same branch, a Dependabot BAML pull request fails every job that checks the pins: `make baml-check` in `Test with race detection`, `Check generated code` and `Test API docs in browser`, and the Dockerfile version check in `Build service and runtime image`.
+
 When upgrading BAML dependencies or native CFFI binaries:
-1. Coordinate version bumps across `baml_src/generators.baml`, `ARG BAML_LIB_VERSION` in [Dockerfile](../Dockerfile), and `github.com/boundaryml/baml` in [go.mod](../go.mod).
-2. Update the platform native library SHA256 checksums in [Dockerfile](../Dockerfile).
+1. Update `baml_src/generators.baml`, `ARG BAML_LIB_VERSION` in [Dockerfile](../Dockerfile), and all four platform native library SHA256 checksums (`ARG BAML_LIB_SHA256_AMD64`, `ARG BAML_LIB_SHA256_ARM64`, `ARG BAML_LIB_SHA256_DARWIN_AMD64`, and `ARG BAML_LIB_SHA256_DARWIN_ARM64`) in [Dockerfile](../Dockerfile). Obtain new release assets directly from upstream releases and independently verify each SHA256 checksum.
+2. Update the Go module dependency:
+   ```sh
+   go get github.com/boundaryml/baml@v<VERSION>
+   ```
 3. Regenerate client code and verify native library parity:
    ```sh
    make generate
    make native-baml
    ```
-4. Run classifier message-table tests, fake Bedrock adapter contract tests, and retry attempt tests using the verified native library:
+4. Execute tests and verify container builds:
+   ```sh
+   make test
+   make docker-build
+   ```
+5. Execute classifier message-table tests, fake Bedrock adapter contract tests, and retry attempt tests using the verified native library:
    ```sh
    BAML_LIBRARY_PATH="$PWD/bin/libbaml_cffi.dylib" \
    BAML_LIBRARY_DISABLE_DOWNLOAD=true BAML_LOG=off \
    go test -race -count=1 -run 'Classif|Adapter|Attempts' ./internal/llm
    ```
-   (Use `bin/libbaml_cffi.so` on Linux). BAML exposes runtime errors as string messages wrapped in `BamlError`. The unit tests in `internal/llm/classify_test.go`, contract tests in `internal/llm/adapter_contract_test.go`, and retry tests in `internal/llm/retry_contract_test.go` pin expected error message formats, status code extractions, context cancellation normalization, and SDK attempt counts. Re-running these tests verifies that upstream message format and retry behavior changes are detected before merging.
+   (Use `bin/libbaml_cffi.so` on Linux). BAML exposes runtime errors as string messages wrapped in `BamlError`. The unit tests in `internal/llm/classify_test.go`, contract tests in `internal/llm/adapter_contract_test.go`, and retry tests in `internal/llm/retry_contract_test.go` pin expected error message formats, status code extractions, context cancellation normalization, and SDK attempt counts. Executing these tests verifies that upstream message format and retry behavior changes are detected before merging.
 
 ### Swagger documentation
 
