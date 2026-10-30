@@ -8,6 +8,7 @@ For contribution workflow, commit conventions, and review procedures, see [CONTR
 - **C compiler**: A standard C compiler toolchain (such as `gcc` or `clang`) with CGO enabled. CGO is required for BAML native CFFI bindings.
 - **Docker**: Engine 24+ for building runtime images and executing container health checks.
 - **Chrome or Chromium**: Required for browser end-to-end tests. The test runner detects local system installations or uses the path specified in `ROD_BROWSER_BIN`.
+- **ShellCheck**: required by `make lint`; actionlint uses it to check workflow `run:` steps, as the CI runners do.
 
 <a id="pinned-tool-versions"></a>
 ## Tooling
@@ -53,7 +54,7 @@ Run `make help` to inspect available Makefile targets:
 | `test` | Run unit tests with race detection. |
 | `cover` | Run race tests and print total statement coverage. |
 | `test-e2e` | Test the API documentation in Chrome or Chromium. |
-| `lint` | Vet all build variants and check lint rules and Go formatting. |
+| `lint` | Vet build variants and check Go code and workflow files. |
 | `vuln` | Check reachable Go vulnerabilities. |
 | `fmt` | Format maintained Go source files. |
 | `tidy-check` | Fail if module metadata is not tidy. |
@@ -209,7 +210,7 @@ Linting checks code quality and formatting against rules defined in [.golangci.y
 make lint
 ```
 
-The `make lint` target executes `go vet ./...` and `go vet -tags e2e ./...` before running `golangci-lint`. Enabled linters include `govet`, `errcheck`, `staticcheck`, `unused`, `ineffassign`, `bodyclose`, `noctx`, `gosec`, `revive`, `gocritic`, `misspell`, `errorlint`, `contextcheck`, `nilerr`, `prealloc`, `copyloopvar`, and `usestdlibvars`.
+The `make lint` target executes `go vet ./...` and `go vet -tags e2e ./...`, runs `golangci-lint`, and validates GitHub Actions workflow syntax, expressions, and shell steps with the tools-module-pinned `actionlint` (`go tool -modfile=tools/go.mod actionlint`). Invalid workflow expressions or syntax errors fail the existing `Lint` required check. Enabled linters include `govet`, `errcheck`, `staticcheck`, `unused`, `ineffassign`, `bodyclose`, `noctx`, `gosec`, `revive`, `gocritic`, `misspell`, `errorlint`, `contextcheck`, `nilerr`, `prealloc`, `copyloopvar`, and `usestdlibvars`. `make lint` stops early when `shellcheck` is not on PATH.
 
 To automatically format source files:
 

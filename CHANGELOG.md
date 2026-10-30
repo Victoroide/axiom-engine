@@ -30,6 +30,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - CI workflows for linting, race-enabled tests, generated code verification, vulnerability scanning, container smoke testing, and browser end-to-end tests.
 - Workflows for CodeQL security scanning, pull request dependency reviews, Conventional Commit PR title validation, SLSA build provenance attestation, and multi-architecture container releases to GitHub Container Registry.
 - Repository configuration including Dependabot, issue templates, pull request template, CODEOWNERS, and MIT license.
+- Validate workflow files with actionlint, including ShellCheck on `run:` steps, as part of the lint gate; `make lint` now requires `shellcheck` on PATH.
 
 ### Changed
 
