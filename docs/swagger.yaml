@@ -307,7 +307,11 @@ paths:
           schema:
             $ref: '#/definitions/domain.ErrorResponse'
         "503":
-          description: Service Unavailable
+          description: Temporary unavailability or upstream throttling
+          headers:
+            Retry-After:
+              description: Seconds to wait before retrying
+              type: integer
           schema:
             $ref: '#/definitions/domain.ErrorResponse'
         "504":

@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"log/slog"
 	"mime"
+	"strconv"
 	"strings"
 	"time"
 
@@ -56,7 +57,8 @@ func (h *Handler) RegisterRoutes(app *fiber.App) {
 // @Failure 422 {object} domain.ErrorResponse
 // @Failure 429 {object} domain.ErrorResponse
 // @Failure 502 {object} domain.ErrorResponse
-// @Failure 503 {object} domain.ErrorResponse
+// @Failure 503 {object} domain.ErrorResponse "Temporary unavailability or upstream throttling"
+// @Header 503 {integer} Retry-After "Seconds to wait before retrying"
 // @Failure 504 {object} domain.ErrorResponse
 // @Router /api/v1/adaptive-plan [post]
 func (h *Handler) handleAdaptivePlan(c fiber.Ctx) error {
@@ -73,30 +75,52 @@ func (h *Handler) handleAdaptivePlan(c fiber.Ctx) error {
 	defer cancel()
 	plan, err := h.reasoning.GeneratePlan(ctx, req)
 	if err != nil {
-		var validation *service.ValidationError
-		if errors.As(err, &validation) {
-			return validationResponse(c, validation)
-		}
-		status, code, message := fiber.StatusInternalServerError, "internal_error", "reasoning failed"
-		switch {
-		case errors.Is(err, context.DeadlineExceeded):
-			status, code, message = fiber.StatusGatewayTimeout, "gateway_timeout", "reasoning exceeded deadline"
-		case errors.Is(err, service.ErrCircuitOpen):
-			status, code, message = fiber.StatusServiceUnavailable, "service_unavailable", "reasoning temporarily unavailable"
-		case errors.Is(err, context.Canceled):
-			status, code, message = fiber.StatusRequestTimeout, "request_timeout", "request canceled"
-		case errors.Is(err, service.ErrUpstream):
-			status, code, message = fiber.StatusBadGateway, "bad_gateway", "upstream reasoning failed"
-		}
-		attrs := []slog.Attr{slog.String("request_id", requestid.FromContext(c)), slog.String("error_class", code)}
-		var topicErr *service.TopicError
-		if errors.As(err, &topicErr) {
-			attrs = append(attrs, slog.String("topic", fmt.Sprintf("%.128s", topicErr.Topic)))
-		}
-		h.logger.LogAttrs(ctx, slog.LevelError, "request.failed", attrs...)
-		return c.Status(status).JSON(domain.ErrorResponse{Error: code, Details: message})
+		return h.writePipelineError(c, ctx, err)
 	}
 	return c.JSON(plan)
+}
+
+func (h *Handler) writePipelineError(c fiber.Ctx, ctx context.Context, err error) error {
+	var validation *service.ValidationError
+	if errors.As(err, &validation) {
+		return validationResponse(c, validation)
+	}
+	var unavailable *service.UnavailableError
+	status, code, message := fiber.StatusInternalServerError, "internal_error", "reasoning failed"
+	switch {
+	case errors.Is(err, context.DeadlineExceeded):
+		status, code, message = fiber.StatusGatewayTimeout, "gateway_timeout", "reasoning exceeded deadline"
+	case errors.Is(err, service.ErrThrottled):
+		status, code, message = fiber.StatusServiceUnavailable, "service_unavailable", "upstream throttled"
+	case errors.Is(err, service.ErrCircuitOpen) || errors.As(err, &unavailable):
+		status, code, message = fiber.StatusServiceUnavailable, "service_unavailable", "reasoning temporarily unavailable"
+	case errors.Is(err, context.Canceled):
+		status, code, message = fiber.StatusRequestTimeout, "request_timeout", "request canceled"
+	case errors.Is(err, service.ErrUpstream):
+		status, code, message = fiber.StatusBadGateway, "bad_gateway", "upstream reasoning failed"
+	}
+
+	if status == fiber.StatusServiceUnavailable {
+		retryAfter := 15 * time.Second
+		if errors.Is(err, service.ErrThrottled) {
+			retryAfter = 5 * time.Second
+		}
+		if errors.As(err, &unavailable) && unavailable.RetryAfter > 0 {
+			retryAfter = unavailable.RetryAfter
+		}
+		seconds := retryAfter / time.Second
+		if retryAfter%time.Second != 0 {
+			seconds++
+		}
+		c.Set("Retry-After", strconv.FormatInt(int64(seconds), 10))
+	}
+	attrs := []slog.Attr{slog.String("request_id", requestid.FromContext(c)), slog.String("error_class", code)}
+	var topicErr *service.TopicError
+	if errors.As(err, &topicErr) {
+		attrs = append(attrs, slog.String("topic", fmt.Sprintf("%.128s", topicErr.Topic)))
+	}
+	h.logger.LogAttrs(ctx, slog.LevelError, "request.failed", attrs...)
+	return c.Status(status).JSON(domain.ErrorResponse{Error: code, Details: message})
 }
 
 func validationResponse(c fiber.Ctx, err *service.ValidationError) error {

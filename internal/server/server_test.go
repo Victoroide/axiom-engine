@@ -85,6 +85,36 @@ func call(t *testing.T, app *fiber.App, method, path, body string, headers map[s
 
 const validBody = `{"student_id":"student-42","course_id":"cs101","failed_topics":["Recursion","Polymorphism"],"vark_profile":"visual"}`
 
+func TestServiceUnavailableCarriesRetryAfter(t *testing.T) {
+	for _, tc := range []struct {
+		name             string
+		failure          error
+		attempts         int
+		backoff, details string
+	}{
+		{"open circuit", service.ErrUpstreamUnavailable, 4, "15", "reasoning temporarily unavailable"},
+		{"throttled", service.ErrThrottled, 1, "5", "upstream throttled"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			app := newTestApp(t, defaultConfig(t), func(context.Context, service.TopicRequest) ([]domain.PlanItem, error) {
+				return nil, tc.failure
+			}, nil)
+			var resp response
+			var body string
+			for range tc.attempts {
+				resp, body = call(t, app, "POST", "/api/v1/adaptive-plan", `{"failed_topics":["Recursion"],"vark_profile":"visual"}`, nil)
+			}
+			var got domain.ErrorResponse
+			if err := json.Unmarshal([]byte(body), &got); err != nil {
+				t.Fatal(err)
+			}
+			if resp.StatusCode != http.StatusServiceUnavailable || resp.Header.Get("Retry-After") != tc.backoff || got.Error != "service_unavailable" || got.Details != tc.details {
+				t.Fatalf("status=%d retry-after=%q body=%s", resp.StatusCode, resp.Header.Get("Retry-After"), body)
+			}
+		})
+	}
+}
+
 func TestValidationAndUnknownTopics(t *testing.T) {
 	cfg := defaultConfig(t)
 	cfg.MaxFailedTopics = 2

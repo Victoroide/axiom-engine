@@ -275,8 +275,10 @@ func TestHalfOpenSaturation(t *testing.T) {
 	done := make(chan error, 1)
 	go func() { _, err := svc.GeneratePlan(context.Background(), request("Recursion")); done <- err }()
 	<-entered
-	if _, err := svc.GeneratePlan(context.Background(), request("Recursion")); !errors.Is(err, ErrCircuitOpen) {
-		t.Fatal(err)
+	_, err := svc.GeneratePlan(context.Background(), request("Recursion"))
+	var unavailable *UnavailableError
+	if !errors.Is(err, ErrCircuitOpen) || !errors.As(err, &unavailable) || unavailable.RetryAfter != time.Second {
+		t.Errorf("saturated circuit error=%v retry=%+v", err, unavailable)
 	}
 	close(release)
 	if err := <-done; err != nil {
