@@ -14,6 +14,7 @@ import (
 	"net/url"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -600,5 +601,49 @@ func TestAdaptivePlanCanonicalTopics(t *testing.T) {
 	}
 	if r.StatusCode != http.StatusOK || len(plan.Items) != 1 || plan.Items[0].Topic != "Recursion" {
 		t.Fatalf("%d: %s", r.StatusCode, b)
+	}
+}
+
+func TestQueueSaturationReturnsRetryAfter(t *testing.T) {
+	cfg := defaultConfig(t)
+	cfg.LLMMaxConcurrency = 1
+	cfg.LLMQueueTimeout = 20 * time.Millisecond
+	entered, release := make(chan struct{}), make(chan struct{})
+	var calls atomic.Int32
+	app := newTestApp(t, cfg, func(_ context.Context, r service.TopicRequest) ([]domain.PlanItem, error) {
+		if calls.Add(1) == 1 {
+			close(entered)
+			<-release
+		}
+		return []domain.PlanItem{{Topic: r.Topic}}, nil
+	}, nil)
+	type result struct {
+		status int
+		err    error
+	}
+	done := make(chan result, 1)
+	go func() {
+		req := httptest.NewRequestWithContext(context.Background(), http.MethodPost, "/api/v1/adaptive-plan", strings.NewReader(`{"failed_topics":["Recursion"],"vark_profile":"visual"}`))
+		req.Header.Set("Content-Type", "application/json")
+		resp, err := app.Test(req)
+		status := 0
+		if err == nil {
+			status = resp.StatusCode
+			err = resp.Body.Close()
+		}
+		done <- result{status: status, err: err}
+	}()
+	<-entered
+	resp, body := call(t, app, "POST", "/api/v1/adaptive-plan", `{"failed_topics":["Recursion"],"vark_profile":"visual"}`, nil)
+	close(release)
+	first := <-done
+	if first.err != nil {
+		t.Fatal(first.err)
+	}
+	if first.status != http.StatusOK {
+		t.Errorf("admitted request status=%d", first.status)
+	}
+	if resp.StatusCode != http.StatusServiceUnavailable || resp.Header.Get("Retry-After") != "1" || !strings.Contains(body, `"error":"service_unavailable"`) {
+		t.Fatalf("status=%d retry-after=%q body=%s", resp.StatusCode, resp.Header.Get("Retry-After"), body)
 	}
 }

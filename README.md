@@ -11,8 +11,8 @@ AxiomEngine is a Go microservice that generates personalized, prerequisite-order
 
 - **Knowledge-graph guided reasoning**: Extracts prerequisite chains and local subgraphs using depth-first and breadth-first search over an immutable graph.
 - **VARK-aligned resource mapping**: Generates study recommendations tailored to visual, auditory, read-write, or kinesthetic learning modalities.
-- **Concurrent bounded fan-out**: Dispatches parallel per-topic LLM calls bounded by `MAX_FAILED_TOPICS`, request slot indexing, and circuit breaker protection.
-- **Hallucination validation**: Verifies model outputs against known graph nodes, dropping unrecognized concepts before assigning priorities.
+- **Concurrent bounded fan-out**: Dispatches parallel per-topic LLM calls bounded per request and per process, with circuit breaker protection.
+- **Hallucination validation**: Verifies model outputs against known graph nodes, dropping unrecognized concepts and concepts outside the requested topics and their prerequisites before assigning priorities.
 - **Cognitive shadow graphs**: Computes graph neighborhoods classifying concepts into failed, learning, and mastered states for frontend visualization.
 - **Configurable token authentication**: Restricts API access using constant-time verification of internal shared tokens.
 
