@@ -14,7 +14,7 @@ export BAML_LOG ?= off
 IMAGE ?= axiom-engine:local
 VULN_FLAGS ?=
 
-.PHONY: help generate swagger build run test cover test-e2e lint vuln fmt tidy-check generate-check docker-build clean tools-baml baml-check native-baml
+.PHONY: help generate swagger build run test cover test-e2e lint vuln fmt tidy-check generate-check docker-build container-smoke container-smoke-test clean tools-baml baml-check native-baml
 
 help: ## List available targets
 	@awk 'BEGIN {FS = ":.*## "} /^[a-zA-Z0-9_-]+:.*## / {printf "  %-18s %s\n", $$1, $$2}' $(MAKEFILE_LIST)
@@ -105,6 +105,12 @@ generate-check: generate swagger ## Fail if committed generated code is stale
 
 docker-build: ## Build the non-root runtime image
 	docker build --target runtime --build-arg BAML_VERSION=$(BAML_VERSION) -t $(IMAGE) .
+
+container-smoke: ## Check runtime responses, log privacy and shutdown
+	./scripts/container-smoke.sh "$(IMAGE)"
+
+container-smoke-test: ## Verify rejection of unsafe runtime images
+	./scripts/test-container-smoke.sh "$(IMAGE)"
 
 clean: ## Remove local binaries and coverage artifacts
 	rm -rf "$(BIN_DIR)" coverage.out coverage.html
