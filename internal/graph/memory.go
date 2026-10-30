@@ -74,8 +74,7 @@ func (g *InMemoryGraph) NodeExists(name string) bool {
 // The topic itself is excluded from the returned slice.
 //
 // If the topic does not exist in the graph or has no outgoing prerequisite
-// edges, an empty slice is returned. Cycles are implicitly handled by the
-// visited set.
+// edges, an empty slice is returned. Cyclic graphs are rejected at load time.
 func (g *InMemoryGraph) GetPrerequisiteChain(topic string) []string {
 	visited := make(map[string]bool, 8)
 	var chain []string

@@ -47,6 +47,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Removed obsolete deployment configuration files.
 - Removed obsolete documentation from `docs/reference/`.
 
+### Fixed
+
+- Reject cyclic `depends_on` and `is_a` prerequisite graphs during startup with a deterministic cycle path.
+
 ### Security
 
 - Enforced constant-time token comparison using SHA-256 digests for all `/api/v1` endpoints when `AXIOM_INTERNAL_TOKEN` is configured, and emitted a startup warning when disabled.

@@ -117,6 +117,7 @@ The graph loader (`Decode` in `internal/graph/loader.go`) enforces the following
 5. **Permitted Relations**: The `relation` field must strictly match either `"depends_on"` or `"is_a"` (`tuple %d has unsupported relation %q`).
 6. **No Self Loops**: A tuple cannot reference the same concept as both subject and object. Violations trigger `tuple %d is a self loop`.
 7. **Deduplication**: Repeated identical triples are deduplicated during decoding.
+8. **Acyclic Prerequisite Structure**: Both `depends_on` and `is_a` edges must form a directed acyclic graph (DAG). Cyclic prerequisite dependencies are rejected at startup with `graph contains a prerequisite cycle: <path>` (for example, `graph contains a prerequisite cycle: A -> B -> A`). Traversal evaluates starting nodes in sorted order to report the cycle path deterministically.
 
 ---
 
