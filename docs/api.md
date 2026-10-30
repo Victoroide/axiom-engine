@@ -30,7 +30,7 @@ The `/health`, `/swagger/*`, and `/swagger/doc.json` routes are always public an
 ## Common Headers
 
 - `X-Request-ID`: Client-provided correlation identifier. If omitted, the server generates a 43-character URL-safe random token (with a UUID v4 fallback for parser-level errors). Every HTTP response echoes `X-Request-ID`.
-- `Content-Type`: Required to be `application/json` for requests with a JSON body. All API responses return `application/json; charset=utf-8`.
+- `Content-Type`: Required for requests with a payload. Endpoints expecting JSON require a media type of `application/json` parsed via MIME media type rules; optional parameters such as `charset=utf-8` are accepted. Missing, malformed, or non-JSON media types return HTTP 415 `unsupported_media_type` with details `Content-Type must be application/json`. All API responses return `application/json; charset=utf-8`.
 
 ---
 
@@ -51,7 +51,7 @@ The `details` field provides context when available and is omitted when empty.
 
 | HTTP Status | Error Code (`error`) | Description | Trigger |
 |---|---|---|---|
-| `400 Bad Request` | `invalid_request_body` | Request body is not valid JSON | JSON syntax error or mismatched data types |
+| `400 Bad Request` | `invalid_request_body` | Request body fails JSON parsing or strict schema decoding | Malformed JSON, non-object body, trailing tokens, unknown or duplicate fields, case mismatches, or null array elements |
 | `400 Bad Request` | `validation_error` | Request payload fails schema validation | Missing required fields, invalid VARK profile, or too many topics |
 | `400 Bad Request` | `bad_request` | Generic client error | Malformed query parameters or invalid path encoding |
 | `401 Unauthorized` | `unauthorized` | Token authentication failure | Missing or incorrect `X-Internal-Token` or `Authorization: Bearer` |
@@ -59,6 +59,7 @@ The `details` field provides context when available and is omitted when empty.
 | `405 Method Not Allowed` | `method_not_allowed` | HTTP method not supported | Unsupported HTTP verb on an existing path |
 | `408 Request Timeout` | `request_timeout` | Processing context canceled | Request context canceled during pipeline processing |
 | `413 Payload Too Large` | `payload_too_large` | Request body exceeds limit | Inbound payload exceeds the 64 KiB (65,536 bytes) limit |
+| `415 Unsupported Media Type` | `unsupported_media_type` | Media type not supported | Missing, malformed, or non-JSON `Content-Type` header on requests with a body |
 | `422 Unprocessable Entity` | `validation_error` | Concept not found in knowledge graph | One or more topics in `failed_topics`, `topics`, or `target_topic` do not exist |
 | `429 Too Many Requests` | `rate_limit_exceeded` | Client rate limit exceeded | Inbound requests exceed `RATE_LIMIT_MAX` within `RATE_LIMIT_WINDOW` |
 | `500 Internal Server Error` | `internal_error` | Unhandled server error | Unexpected internal failure or recovered panic |
@@ -109,14 +110,15 @@ Generates a personalized, prerequisite-ordered study plan for a student based on
 - **Method**: `POST`
 - **Path**: `/api/v1/adaptive-plan`
 - **Headers**:
-  - `Content-Type: application/json`
+  - `Content-Type: application/json` (optional parameters such as `charset=utf-8` allowed)
   - `X-Internal-Token: <token>` (if authentication is enabled)
 - **Validation Rules**:
+  - Strict JSON: Request body must be a single JSON object matching the schema. Unknown fields (`unknown field "KEY"`), duplicate keys at any depth (`duplicate field "KEY"`), case mismatches, trailing data (`request body must contain exactly one JSON value`), non-object bodies (`request body must be a JSON object`), and invalid JSON syntax (`request body must be valid JSON`) return HTTP 400 `invalid_request_body`.
   - `student_id`: Optional. If provided, must match regex `^[A-Za-z0-9._:-]{1,128}$`.
   - `course_id`: Optional. If provided, must match regex `^[A-Za-z0-9._:-]{1,128}$`.
-  - `failed_topics`: Required. Array of strings. Must contain at least 1 and at most `MAX_FAILED_TOPICS` (default 10) unique items. Every topic must exist in the knowledge graph.
+  - `failed_topics`: Required. Array of strings. Must contain at least 1 and at most `MAX_FAILED_TOPICS` (default 10) unique items. Elements must not be null (`failed_topics must not contain null elements`). Every topic must exist in the knowledge graph.
   - `vark_profile`: Required. String enum. Must be one of `visual`, `auditory`, `read_write`, or `kinesthetic`.
-  - `telemetry`: Optional object containing client telemetry (`session_id`, `timestamp_unix`, `duration_ms`, `client_version`).
+  - `telemetry`: Optional object containing client telemetry (`session_id`, `timestamp_unix`, `duration_ms`, `client_version`). Unknown nested fields are rejected.
 
 #### Responses
 
@@ -124,6 +126,7 @@ Generates a personalized, prerequisite-ordered study plan for a student based on
 - **400 Bad Request**: Malformed body, missing required fields, or identifier syntax error.
 - **401 Unauthorized**: Missing or invalid authentication token.
 - **413 Payload Too Large**: Payload exceeds 64 KiB.
+- **415 Unsupported Media Type**: Request `Content-Type` is missing, malformed, or not `application/json`.
 - **422 Unprocessable Entity**: One or more topics are not found in the knowledge graph.
 - **429 Too Many Requests**: Rate limit exceeded.
 - **502 Bad Gateway**: Upstream Amazon Bedrock inference failure.

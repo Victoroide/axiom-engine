@@ -70,6 +70,12 @@ const docTemplate = `{
                             "$ref": "#/definitions/domain.ErrorResponse"
                         }
                     },
+                    "415": {
+                        "description": "Unsupported Media Type",
+                        "schema": {
+                            "$ref": "#/definitions/domain.ErrorResponse"
+                        }
+                    },
                     "422": {
                         "description": "Unprocessable Entity",
                         "schema": {
