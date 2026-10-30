@@ -66,6 +66,22 @@ This target performs the following actions:
 5. Formats generated source files with `gofmt -w baml_client`.
 6. Cleans and sorts import statements using `goimports -w baml_client`.
 
+### BAML upgrade
+
+When upgrading BAML dependencies or native CFFI binaries:
+1. Coordinate version bumps across `baml_src/generators.baml`, `ARG BAML_LIB_VERSION` in [Dockerfile](../Dockerfile), and `github.com/boundaryml/baml` in [go.mod](../go.mod).
+2. Update the platform native library SHA256 checksums in [Dockerfile](../Dockerfile).
+3. Regenerate client code and verify native library parity:
+   ```sh
+   make generate
+   make native-baml
+   ```
+4. Run classifier message-table tests and fake Bedrock adapter contract tests:
+   ```sh
+   go test -race -run 'Classif|Adapter' ./internal/llm
+   ```
+   BAML exposes runtime errors as string messages wrapped in `BamlError`. The unit tests in `internal/llm/classify_test.go` and contract tests in `internal/llm/adapter_contract_test.go` pin expected error message formats, status code extractions, and context cancellation normalization. Re-running these tests verifies that upstream message format changes are detected before merging.
+
 ### Swagger documentation
 
 The OpenAPI/Swagger specification in `docs/` is generated from declarative annotations on handlers and types in `cmd/server/main.go` and `internal/`.
@@ -129,6 +145,8 @@ Tests execute serially because the BAML client reads process environment variabl
 - Empty item handling from upstream responses.
 - Rejection of invalid response payloads on the initial attempt without retry loops.
 - Context deadline cancellation within the deadline plus 250 ms, verifying the fake endpoint observes client disconnection.
+- Upstream failure classification into typed sentinel errors (`ErrThrottled`, `ErrUpstreamRejected`, `ErrInvalidOutput`, `context.DeadlineExceeded`) across failure modes (`throttle`, `denied`, `garbage`, `hang`).
+- Transport failure classification into `ErrUpstreamUnavailable` when the endpoint connection is closed.
 
 ### Browser end-to-end tests
 

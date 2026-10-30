@@ -177,6 +177,32 @@ The circuit breaker is instantiated with name `"bedrock-nova-micro"` in `interna
 - **Closed Interval (`Interval`)**: Clears internal counters every `30s` in Closed state.
 - **Exclusion Predicate (`IsExcluded`)**: Configured with `IsExcluded: func(err error) bool { return errors.Is(err, context.Canceled) }`. Context cancellations (such as sibling errgroup cancellations when one topic call fails) are excluded—they count as neither success nor failure. Sibling cancellations do not increment consecutive failures, but they also do not reset failure counts or close half-open probes. Deadline expirations produce `context.DeadlineExceeded`, which is not excluded and counts as a failure.
 
+### Error Handling
+
+The service classifies upstream model failures from Boundary ML (BAML) into typed sentinel errors in `internal/llm/classify.go`. Each sentinel error is defined in `internal/service/errors.go` and wraps `service.ErrUpstream`:
+
+- `service.ErrThrottled`: Upstream rate limiting or capacity exhaustion (HTTP status code 429 or `ThrottlingException`).
+- `service.ErrUpstreamUnavailable`: Server-side failures (HTTP 5xx status codes), dispatch or transport drop errors (`DispatchFailure`, connection reset, connection refused), or timeouts (`TimeoutError`).
+- `service.ErrUpstreamRejected`: Upstream client-side rejections other than throttling (HTTP 4xx status codes like 401 or 403 `AccessDeniedException`).
+- `service.ErrInvalidOutput`: Unusable model output, including parsing errors (`Parsing error:`), schema validation errors (`Validation error:`, `ValidationError`), or response truncation (`FinishReasonError`).
+
+Classified errors wrap `service.ErrUpstream` via `fmt.Errorf("%w: %w", class, err)`. This preserves the underlying error for inspection with `errors.Is`. Unrecognized errors and `AbortError` strings pass through without extra classification.
+
+#### HTTP Status Mapping
+
+The HTTP presentation layer (`internal/api/handlers.go`) maps domain and upstream errors to HTTP responses:
+
+| Error Sentinel / Condition | HTTP Status | Error Code (`error`) | Description |
+|---|---|---|---|
+| `service.ErrUpstream` (including `ErrThrottled`, `ErrUpstreamUnavailable`, `ErrUpstreamRejected`, `ErrInvalidOutput`) | `502 Bad Gateway` | `bad_gateway` | Upstream reasoning or model invocation failure. |
+| `service.ErrCircuitOpen` | `503 Service Unavailable` | `service_unavailable` | Upstream planner circuit breaker open due to consecutive failures. |
+| `context.DeadlineExceeded` | `504 Gateway Timeout` | `gateway_timeout` | Pipeline or model invocation exceeded timeout deadline. |
+| `context.Canceled` | `408 Request Timeout` | `request_timeout` | Request context canceled during pipeline execution. |
+| `service.ValidationError` (unknown topics) | `422 Unprocessable Entity` | `validation_error` | Requested topics not present in knowledge graph. |
+| `service.ValidationError` (other) | `400 Bad Request` | `validation_error` | Malformed identifiers or invalid VARK profile. |
+
+Because `ErrThrottled`, `ErrUpstreamUnavailable`, `ErrUpstreamRejected`, and `ErrInvalidOutput` wrap `service.ErrUpstream`, existing HTTP status mapping returns 502 `bad_gateway` for all upstream errors. Context cancellation is normalized in `internal/llm/baml.go`: when `ctx.Err()` is present upon return, the adapter returns `ctx.Err()` directly, producing 504 `gateway_timeout` for expired deadlines or 408 `request_timeout` for client cancellations.
+
 ---
 
 ## Design Decisions
@@ -184,6 +210,7 @@ The circuit breaker is instantiated with name `"bedrock-nova-micro"` in `interna
 - **In-memory graph storage**: The curriculum knowledge graph contains 20 tuples in seed data and fits entirely in memory. Maintaining forward and reverse adjacency maps in Go memory provides sub-millisecond BFS and DFS traversal without external database infrastructure or network overhead.
 - **Fiber v3 web framework**: Fiber provides high-throughput routing with low memory allocations, built-in security middlewares (helmet, limiter, cors, recover, requestid), and standard context propagation.
 - **Decoupled Planner interface**: `service.ReasoningService` depends on the `service.Planner` interface rather than directly on generated BAML functions. This allows unit and race tests to run deterministically with mock planners without requiring AWS credentials or network access.
+- **Typed upstream error classification**: BAML Go returns runtime failures as unclassified string messages (`BamlError`). `internal/llm/classify.go` inspects upstream error messages and wraps them in typed sentinels (`ErrThrottled`, `ErrUpstreamUnavailable`, `ErrUpstreamRejected`, `ErrInvalidOutput`) that each wrap `service.ErrUpstream`. Downstream logic and tests can distinguish error categories using `errors.Is` while preserving existing HTTP status mapping.
 - **Indexed slot assignment during fan-out**: Parallel goroutines write directly to pre-allocated slice indices (`plans[i] = items`). This prevents race conditions and ensures that curriculum item priorities depend solely on request topic order rather than goroutine completion speed.
 - **Circuit breaker cancellation handling**: Sibling errgroup goroutine cancellations produce `context.Canceled`. Using `IsExcluded` in `gobreaker` ensures cancellations are treated neutrally (neither success nor failure), preventing sibling cancellations during an outage from masking failures or prematurely closing a half-open breaker. Context deadline expiration produces `DeadlineExceeded`, which continues to count as a failure.
 - **Server-enforced prerequisite ordering**: Included study prerequisites are ordered ahead of dependents based on knowledge graph topological order, regardless of request or planner order; independent topics retain deterministic traversal ordering. In addition, `prerequisite_chain` is populated using `graph.GetPrerequisiteChain` rather than trusted from the planner.

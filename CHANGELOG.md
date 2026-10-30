@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Typed upstream failure sentinels (`ErrThrottled`, `ErrUpstreamUnavailable`, `ErrUpstreamRejected`, `ErrInvalidOutput`) in `internal/service` wrapping `ErrUpstream`, with message classification in `internal/llm/classify.go` preserving existing HTTP status mappings.
 - BAML v0.226.2 client generation with pinned CFFI native libraries for `linux/amd64`, `linux/arm64`, `darwin/amd64`, and `darwin/arm64`.
 - Host native library verification target `make native-baml` with SHA256 checksum validation and cached asset verification.
 - Fiber v3 HTTP application with structured JSON logging (`http.access`), request ID tracing, panic recovery (`panic.recovered`), and helmet security headers.
