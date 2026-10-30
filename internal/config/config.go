@@ -69,6 +69,9 @@ func Load(getenv func(string) string) (Config, error) {
 	if c.InternalToken == "" && !c.AuthDisabled {
 		return Config{}, fmt.Errorf("AXIOM_INTERNAL_TOKEN is required unless AXIOM_AUTH_DISABLED=true")
 	}
+	if c.InternalToken != "" && (len(c.InternalToken) < 32 || strings.ContainsFunc(c.InternalToken, func(r rune) bool { return r < 0x21 || r > 0x7e })) {
+		return Config{}, fmt.Errorf("AXIOM_INTERNAL_TOKEN must be at least 32 visible ASCII characters without whitespace")
+	}
 	if v := getenv("PORT"); v != "" {
 		n, err := strconv.Atoi(v)
 		if err != nil || n < 1 || n > 65535 {

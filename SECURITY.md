@@ -36,10 +36,11 @@ Remediation timing depends on severity and operational considerations. Critical 
 - Callers may authenticate using the `X-Internal-Token` header or an `Authorization: Bearer <token>` header (scheme matching is case-insensitive).
 - Token validation computes SHA-256 digests of the expected and provided tokens and evaluates them using `crypto/subtle.ConstantTimeCompare` (comparing two 32-byte digests) to prevent timing side-channel attacks.
 - Service startup fails closed if `AXIOM_INTERNAL_TOKEN` is unset or empty, unless `AXIOM_AUTH_DISABLED=true` is explicitly configured (see [configuration reference](docs/configuration.md)). When disabled, the server logs a startup warning `auth.disabled`.
+- Configured tokens must contain at least 32 visible ASCII characters (`0x21` through `0x7E`) without surrounding or embedded whitespace. Tokens are not trimmed. Invalid tokens prevent startup with `AXIOM_INTERNAL_TOKEN must be at least 32 visible ASCII characters without surrounding whitespace`; the error message does not expose the token value.
 
 ### Deployment requirements
 
-- Provision an internal token before starting the service. Keep authentication enabled for all exposed deployments.
+- Provision an internal token before starting the service. Generate high-entropy secrets using `openssl rand -hex 32`. The configuration loader enforces character and minimum length rules, not entropy. Keep authentication enabled for all exposed deployments.
 - Docker Compose publishes the HTTP service port exclusively to loopback (`127.0.0.1:8080:8080`) by default.
 
 ### Input validation and prompt injection defenses
