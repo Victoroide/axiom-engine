@@ -51,7 +51,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Enforced 64 KiB request body limit returning HTTP 413 (`payload_too_large`).
 - Pinned development and compilation toolchain to versions specified in the [development guide](docs/development.md#pinned-tool-versions).
 - Updated `make lint` to vet both standard and e2e build tags before running `golangci-lint`.
-- Configured Dependabot to ignore `github.com/boundaryml/baml` gomod updates to maintain synchronized generator, module, and native library pins.
+- Surface BAML releases in a separate Dependabot group and apply a three-day default cooldown to version updates.
 
 ### Removed
 

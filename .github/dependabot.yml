@@ -4,17 +4,21 @@ updates:
     directory: /
     schedule:
       interval: weekly
+    cooldown:
+      default-days: 3
     groups:
+      baml:
+        patterns: ["github.com/boundaryml/baml"]
       minor-and-patch:
         update-types: [minor, patch]
-    ignore:
-      - dependency-name: github.com/boundaryml/baml
     commit-message:
       prefix: build(deps)
   - package-ecosystem: github-actions
     directory: /
     schedule:
       interval: weekly
+    cooldown:
+      default-days: 3
     groups:
       minor-and-patch:
         update-types: [minor, patch]
@@ -24,6 +28,8 @@ updates:
     directory: /
     schedule:
       interval: weekly
+    cooldown:
+      default-days: 3
     groups:
       minor-and-patch:
         update-types: [minor, patch]
