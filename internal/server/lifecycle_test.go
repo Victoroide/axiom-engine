@@ -22,7 +22,7 @@ func TestRunListenFailure(t *testing.T) {
 	defer func() { _ = ln.Close() }()
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 	defer cancel()
-	if err := Run(ctx, newApp(t, defaultConfig(t), nil, nil), ln.Addr().String(), time.Second); err == nil || errors.Is(err, context.DeadlineExceeded) {
+	if err := Run(ctx, newTestApp(t, defaultConfig(t), nil, nil), ln.Addr().String(), time.Second); err == nil || errors.Is(err, context.DeadlineExceeded) {
 		t.Fatalf("listen failure did not propagate: %v", err)
 	}
 }
@@ -30,12 +30,12 @@ func TestRunListenFailure(t *testing.T) {
 func TestRunCancellation(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	cancel()
-	if err := Run(ctx, newApp(t, defaultConfig(t), nil, nil), "127.0.0.1:0", time.Second); !errors.Is(err, context.Canceled) {
+	if err := Run(ctx, newTestApp(t, defaultConfig(t), nil, nil), "127.0.0.1:0", time.Second); !errors.Is(err, context.Canceled) {
 		t.Fatal(err)
 	}
 	ctx, cancel = context.WithCancel(context.Background())
 	defer cancel()
-	app := newApp(t, defaultConfig(t), nil, nil)
+	app := newTestApp(t, defaultConfig(t), nil, nil)
 	ready := make(chan string, 1)
 	app.Hooks().OnListen(func(data fiber.ListenData) error { ready <- data.Host + ":" + data.Port; return nil })
 	done := make(chan error, 1)
