@@ -147,6 +147,121 @@ func TestCancellationDoesNotTripBreaker(t *testing.T) {
 	}
 }
 
+func TestRequestFailuresDoNotOpenCircuit(t *testing.T) {
+	for _, tc := range []struct {
+		name string
+		err  error
+	}{
+		{name: "direct", err: ErrInvalidOutput},
+		{name: "wrapped", err: fmt.Errorf("parse response: %w", ErrInvalidOutput)},
+		{name: "rejected", err: ErrUpstreamRejected},
+		{name: "wrapped rejection", err: fmt.Errorf("request denied: %w", ErrUpstreamRejected)},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			svc := newService(func(_ context.Context, r TopicRequest) ([]domain.PlanItem, error) {
+				if r.Topic == "Recursion" {
+					return nil, tc.err
+				}
+				return []domain.PlanItem{{Topic: r.Topic}}, nil
+			})
+			for i := range 5 {
+				if _, err := svc.GeneratePlan(context.Background(), request("Recursion")); !errors.Is(err, tc.err) {
+					t.Errorf("request %d: expected %v, got %v", i+1, tc.err, err)
+				}
+			}
+			counts := svc.breaker.Counts()
+			if svc.breaker.State() != gobreaker.StateClosed || counts.TotalExclusions != 5 || counts.TotalFailures != 0 || counts.TotalSuccesses != 0 {
+				t.Fatalf("request failure changed health: state=%v counts=%+v", svc.breaker.State(), counts)
+			}
+			if _, err := svc.GeneratePlan(context.Background(), request("Polymorphism")); err != nil {
+				t.Fatalf("unrelated topic failed: %v", err)
+			}
+		})
+	}
+}
+
+func TestThrottlingOpensCircuit(t *testing.T) {
+	svc := newService(func(context.Context, TopicRequest) ([]domain.PlanItem, error) {
+		return nil, ErrThrottled
+	})
+	for i := range 3 {
+		if _, err := svc.GeneratePlan(context.Background(), request("Recursion")); !errors.Is(err, ErrThrottled) {
+			t.Fatal(err)
+		}
+		if i < 2 && svc.breaker.State() != gobreaker.StateClosed {
+			t.Fatalf("circuit opened after %d failures", i+1)
+		}
+	}
+	if svc.breaker.State() != gobreaker.StateOpen {
+		t.Fatalf("throttling did not open circuit: %+v", svc.breaker.Counts())
+	}
+	if _, err := svc.GeneratePlan(context.Background(), request("Polymorphism")); !errors.Is(err, ErrCircuitOpen) {
+		t.Fatalf("expected open circuit, got %v", err)
+	}
+}
+
+func TestHalfOpenRequestFailuresReleaseProbes(t *testing.T) {
+	for _, failure := range []error{ErrInvalidOutput, ErrUpstreamRejected} {
+		t.Run(failure.Error(), func(t *testing.T) {
+			healthy := false
+			svc := newService(func(_ context.Context, r TopicRequest) ([]domain.PlanItem, error) {
+				if !healthy {
+					return nil, failure
+				}
+				return []domain.PlanItem{{Topic: r.Topic}}, nil
+			})
+			settings := breakerSettings(svc.logger)
+			settings.Timeout = time.Nanosecond
+			svc.breaker = gobreaker.NewCircuitBreaker[[]domain.PlanItem](settings)
+			for range 3 {
+				_, _ = svc.breaker.Execute(func() ([]domain.PlanItem, error) { return nil, ErrUpstreamUnavailable })
+			}
+			for range 5 {
+				if _, err := svc.GeneratePlan(t.Context(), request("Recursion")); !errors.Is(err, failure) {
+					t.Fatalf("excluded probe failed: %v", err)
+				}
+			}
+			counts := svc.breaker.Counts()
+			if svc.breaker.State() != gobreaker.StateHalfOpen || counts.TotalExclusions != 5 || counts.TotalFailures != 0 || counts.TotalSuccesses != 0 {
+				t.Fatalf("excluded probes changed health: state=%v counts=%+v", svc.breaker.State(), counts)
+			}
+			healthy = true
+			for range 2 {
+				if _, err := svc.GeneratePlan(t.Context(), request("Recursion")); err != nil {
+					t.Fatalf("healthy probe could not run: %v", err)
+				}
+			}
+			if svc.breaker.State() != gobreaker.StateClosed {
+				t.Fatalf("healthy probes did not close circuit: %+v", svc.breaker.Counts())
+			}
+		})
+	}
+}
+
+func TestUpstreamFailuresOpenCircuit(t *testing.T) {
+	for _, tc := range []struct {
+		name string
+		err  error
+	}{
+		{name: "unavailable", err: ErrUpstreamUnavailable},
+		{name: "deadline", err: context.DeadlineExceeded},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			svc := newService(func(context.Context, TopicRequest) ([]domain.PlanItem, error) {
+				return nil, fmt.Errorf("upstream call: %w", tc.err)
+			})
+			for range 3 {
+				if _, err := svc.GeneratePlan(context.Background(), request("Recursion")); !errors.Is(err, tc.err) {
+					t.Fatal(err)
+				}
+			}
+			if svc.breaker.State() != gobreaker.StateOpen {
+				t.Fatalf("upstream failure did not open circuit: %+v", svc.breaker.Counts())
+			}
+		})
+	}
+}
+
 func TestHalfOpenSaturation(t *testing.T) {
 	entered := make(chan struct{})
 	release := make(chan struct{})

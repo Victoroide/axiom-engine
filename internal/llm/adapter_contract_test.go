@@ -3,6 +3,10 @@ package llm
 import (
 	"context"
 	"errors"
+	"io"
+	"log/slog"
+	"net/http"
+	"net/http/httptest"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -10,7 +14,10 @@ import (
 	"testing"
 	"time"
 
+	"github.com/Victoroide/axiom-engine/internal/config"
 	"github.com/Victoroide/axiom-engine/internal/domain"
+	"github.com/Victoroide/axiom-engine/internal/graph"
+	"github.com/Victoroide/axiom-engine/internal/server"
 	"github.com/Victoroide/axiom-engine/internal/service"
 	"github.com/Victoroide/axiom-engine/test/fakebedrock"
 )
@@ -185,5 +192,45 @@ func TestAdapterClassifiesTransportFailure(t *testing.T) {
 	_, err := New().GenerateTopic(ctx, topicRequest())
 	if !errors.Is(err, service.ErrUpstreamUnavailable) || !errors.Is(err, service.ErrUpstream) {
 		t.Fatalf("error = %v, want upstream unavailable", err)
+	}
+}
+
+func TestAdapterRequestFailuresKeepCircuitAvailable(t *testing.T) {
+	for _, mode := range []string{"validation", "denied", "malformed", "html", "garbage", "max-tokens"} {
+		t.Run(mode, func(t *testing.T) {
+			failed := bedrockEndpoint(t, mode)
+			cfg, err := config.Load(func(k string) string {
+				if k == "AXIOM_AUTH_DISABLED" {
+					return "true"
+				}
+				return ""
+			})
+			if err != nil {
+				t.Fatal(err)
+			}
+			app := server.New(cfg, server.Dependencies{Graph: graph.NewInMemoryGraph(), Planner: New(), Logger: slog.New(slog.NewJSONHandler(io.Discard, nil))})
+			call := func() int {
+				t.Helper()
+				req := httptest.NewRequestWithContext(t.Context(), "POST", "/api/v1/adaptive-plan", strings.NewReader(`{"failed_topics":["Recursion"],"vark_profile":"visual"}`))
+				req.Header.Set("Content-Type", "application/json")
+				resp, err := app.Test(req)
+				if err != nil {
+					t.Fatal(err)
+				}
+				if err := resp.Body.Close(); err != nil {
+					t.Fatal(err)
+				}
+				return resp.StatusCode
+			}
+			for i := range 5 {
+				if status := call(); status != http.StatusBadGateway {
+					t.Fatalf("request %d: status = %d, want 502", i+1, status)
+				}
+			}
+			ok := bedrockEndpoint(t, "ok")
+			if status := call(); status != http.StatusOK || ok.Count() != 1 || failed.Count() != 5 {
+				t.Fatalf("status = %d, successful requests = %d, failed requests = %d", status, ok.Count(), failed.Count())
+			}
+		})
 	}
 }
