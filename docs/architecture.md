@@ -60,7 +60,7 @@ flowchart TD
 | `internal/server` | Fiber v3 application initialization, middleware chain, private Swagger spec registration, and graceful shutdown lifecycle. |
 | `internal/service` | Reasoning orchestration pipeline, input validation, circuit breaker wrapping, parallel topic fan-out, item deduplication, and hallucination filtering. |
 | `baml_client` | Generated Go client code for Boundary ML BAML model invocations and data types. |
-| `baml_src` | BAML schema templates, prompt functions, client configuration, and retry policies for Amazon Bedrock. |
+| `baml_src` | BAML schema templates, prompt functions, and client configuration for Amazon Bedrock. |
 | `docs` | Swagger 2.0 specifications (`swagger.json`, `swagger.yaml`), generated Go doc registration, and technical documentation. |
 | `test/e2e` | Headless browser end-to-end tests using Go and Rod verifying Swagger UI operations and interactive execution. |
 
@@ -167,6 +167,7 @@ sequenceDiagram
 | Rate Limiting | `RATE_LIMIT_MAX`, `RATE_LIMIT_WINDOW` | `50` requests per `1m` | `internal/config/config.go` | `limiter.New` in `internal/server/server.go` | Sliding window IP rate limiter mounted at `/api/v1`. `/health` and `/swagger/*` are excluded. Exceeding returns 429 `rate_limit_exceeded`. |
 | Request Body Limit | N/A | `64 KiB` (65,536 bytes) | Hardcoded | `fiber.Config.BodyLimit` in `internal/server/server.go` | Fiber application body limit. Exceeding returns 413 `payload_too_large`. |
 | Max Failed Topics | `MAX_FAILED_TOPICS` | `10` | `internal/config/config.go` | `validateRequest` in `internal/service/validation.go` | Bounds parallel fan-out concurrency. Exceeding returns 400 `validation_error`. |
+| Upstream Retries | `AWS_MAX_ATTEMPTS`, `AWS_RETRY_MODE` | `3`, `standard` | Evaluated by AWS SDK | AWS SDK in BAML CFFI runtime | BAML adds no retry layer; the embedded AWS SDK owns retries. Standard mode sends 3 requests for sustained 429 throttling, 1 for 403 denial, and parse failures remain 1 request. |
 
 ### Circuit Breaker Settings
 
@@ -176,6 +177,10 @@ The circuit breaker is instantiated with name `"bedrock-nova-micro"` in `interna
 - **Half-Open Concurrency (`MaxRequests`)**: Permits 2 trial requests in Half-Open state.
 - **Closed Interval (`Interval`)**: Clears internal counters every `30s` in Closed state.
 - **Exclusion Predicate (`IsExcluded`)**: Configured with `IsExcluded: func(err error) bool { return errors.Is(err, context.Canceled) }`. Context cancellations (such as sibling errgroup cancellations when one topic call fails) are excluded—they count as neither success nor failure. Sibling cancellations do not increment consecutive failures, but they also do not reset failure counts or close half-open probes. Deadline expirations produce `context.DeadlineExceeded`, which is not excluded and counts as a failure.
+
+### Upstream Retries
+
+BAML configures no application-level retry policy; retries are owned exclusively by the embedded AWS SDK. When operating in standard mode with default settings (`AWS_MAX_ATTEMPTS=3`, `AWS_RETRY_MODE=standard`), sustained upstream throttling (HTTP 429) results in three total attempts before returning `service.ErrThrottled`. Client-side rejections (such as HTTP 403 `AccessDeniedException`) and invalid model outputs fail on the initial attempt without retry loops. For environment variable settings, see [Configuration](configuration.md#environment-variables).
 
 ### Error Handling
 
