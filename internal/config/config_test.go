@@ -314,3 +314,19 @@ func TestConcurrencyConfigOverrides(t *testing.T) {
 		t.Fatalf("config=%+v error=%v", c, err)
 	}
 }
+
+func TestMetricsEnabledValidation(t *testing.T) {
+	for _, value := range []string{"yes", "1", "TRUE", " false", "invalid"} {
+		t.Run(value, func(t *testing.T) {
+			_, err := loadWithoutAuth(func(key string) string {
+				if key == "METRICS_ENABLED" {
+					return value
+				}
+				return ""
+			})
+			if err == nil || !strings.Contains(err.Error(), "METRICS_ENABLED") {
+				t.Fatalf("METRICS_ENABLED=%q error=%v", value, err)
+			}
+		})
+	}
+}
