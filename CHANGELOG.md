@@ -9,8 +9,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- Accept an optional previous internal token during rotation via `AXIOM_INTERNAL_TOKEN_PREVIOUS` on `/api/v1` routes.
-
+- Accept an optional previous internal token (`AXIOM_INTERNAL_TOKEN_PREVIOUS`) on `/api/v1` routes during rotation; requests that use it are logged as `auth.previous_token_used` (WARN, at most once per minute per process) and counted in `axiom_auth_previous_token_total` when metrics are enabled.
+- Make Swagger UI and OpenAPI specification routes optional via `SWAGGER_ENABLED` (default `true`), returning HTTP 404 when disabled and enforcing a dedicated Content-Security-Policy header when enabled; the policy also sets `base-uri 'none'` and `form-action 'self'`.
 - Bound concurrent Bedrock calls across requests with a process-wide limit (`LLM_MAX_CONCURRENCY`, default 16); a topic that waits longer than `LLM_QUEUE_TIMEOUT` (default `min(2s, LLM_TIMEOUT/2)`) returns HTTP 503 `service_unavailable` with `Retry-After: 1`.
 - Liveness (`/livez`) and readiness (`/readyz`) probe endpoints with backwards-compatible `/health` liveness alias, readiness that reports draining with HTTP 503 on shutdown, configurable `SHUTDOWN_DRAIN_DELAY`, and `/livez` binary container healthcheck.
 - Prometheus metrics exposition at `/metrics` controlled by `METRICS_ENABLED`, tracking route-template HTTP request counts and latency distributions, LLM call outcomes, duration, in-flight executions, queue wait times, circuit breaker state, dropped items, and Go and process runtime series.

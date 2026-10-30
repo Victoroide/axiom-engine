@@ -95,7 +95,7 @@ make run
 
 Alternatively, build the binary with `make build` and run `./bin/axiom-server`.
 
-The server binds `:8080`, accepting connections on all interfaces (`http://0.0.0.0:8080`). Interactive documentation is available at `http://127.0.0.1:8080/swagger/index.html`.
+The server binds `:8080`, accepting connections on all interfaces (`http://0.0.0.0:8080`). When `SWAGGER_ENABLED=true` (the default), interactive documentation is available at `http://127.0.0.1:8080/swagger/index.html`.
 
 ## Minimal API Examples
 

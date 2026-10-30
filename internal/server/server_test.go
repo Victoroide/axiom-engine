@@ -881,3 +881,69 @@ func TestClientRequestIDPolicy(t *testing.T) {
 		}
 	}
 }
+
+func TestSwaggerDisabled(t *testing.T) {
+	cfg, err := config.Load(func(key string) string {
+		switch key {
+		case "AXIOM_AUTH_DISABLED":
+			return "true"
+		case "SWAGGER_ENABLED":
+			return "false"
+		default:
+			return ""
+		}
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	app := newTestApp(t, cfg, nil, nil)
+	for _, path := range []string{"/swagger/index.html", "/swagger/doc.json", "/swagger/swagger-ui.css", "/swagger/swagger-ui-bundle.js"} {
+		resp, body := call(t, app, "GET", path, "", nil)
+		var envelope domain.ErrorResponse
+		if err := json.Unmarshal([]byte(body), &envelope); err != nil {
+			t.Errorf("%s: invalid error envelope: %v", path, err)
+			continue
+		}
+		if resp.StatusCode != http.StatusNotFound || envelope.Error != "not_found" {
+			t.Errorf("%s: status=%d body=%.160s", path, resp.StatusCode, body)
+		}
+	}
+	for _, path := range []string{"/health", "/livez", "/readyz"} {
+		resp, body := call(t, app, "GET", path, "", nil)
+		if resp.StatusCode != http.StatusOK {
+			t.Errorf("%s: status=%d body=%s", path, resp.StatusCode, body)
+		}
+	}
+}
+
+func TestSwaggerHasCSP(t *testing.T) {
+	for _, value := range []string{"", "true"} {
+		t.Run("enabled="+value, func(t *testing.T) {
+			cfg, err := config.Load(func(key string) string {
+				switch key {
+				case "AXIOM_AUTH_DISABLED":
+					return "true"
+				case "SWAGGER_ENABLED":
+					return value
+				default:
+					return ""
+				}
+			})
+			if err != nil {
+				t.Fatal(err)
+			}
+			app := newTestApp(t, cfg, nil, nil)
+			const want = "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self'; font-src 'self'; base-uri 'none'; form-action 'self'"
+			for _, path := range []string{"/swagger/index.html", "/swagger/doc.json", "/swagger/swagger-ui.css", "/swagger/swagger-ui-bundle.js"} {
+				resp, _ := call(t, app, "GET", path, "", nil)
+				if resp.StatusCode != http.StatusOK || resp.Header.Get("Content-Security-Policy") != want {
+					t.Errorf("%s: status=%d CSP=%q", path, resp.StatusCode, resp.Header.Get("Content-Security-Policy"))
+				}
+			}
+			resp, _ := call(t, app, "GET", "/health", "", nil)
+			if resp.Header.Get("Content-Security-Policy") != "" {
+				t.Error("Swagger CSP applied outside Swagger routes")
+			}
+		})
+	}
+}

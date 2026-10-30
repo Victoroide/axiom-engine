@@ -2,7 +2,7 @@
 
 AxiomEngine provides HTTP endpoints for generating adaptive study plans, visualizing student cognitive states, inspecting API schemas, and verifying process health.
 
-Interactive documentation is available at `/swagger/index.html`. Complete machine-readable schemas are maintained in [docs/swagger.yaml](swagger.yaml) and served dynamically at `/swagger/doc.json`.
+When `SWAGGER_ENABLED=true` (the default), interactive documentation is available at `/swagger/index.html` and the specification is served at `/swagger/doc.json`. Complete machine-readable schemas are maintained in [docs/swagger.yaml](swagger.yaml).
 
 ---
 

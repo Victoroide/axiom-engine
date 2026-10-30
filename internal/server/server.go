@@ -76,7 +76,7 @@ func New(cfg config.Config, deps Dependencies) *fiber.App {
 	app := newApp(cfg, errorHandler)
 	app.State().Set(drainStateKey, &drainState{delay: cfg.ShutdownDrainDelay})
 	useMiddleware(app, cfg, logger, errorHandler, recorder)
-	registerPublicRoutes(app)
+	registerPublicRoutes(app, cfg)
 	if recorder != nil {
 		app.Get("/metrics", adaptor.HTTPHandler(recorder.Handler()))
 	}
@@ -142,10 +142,17 @@ func useMiddleware(app *fiber.App, cfg config.Config, logger *slog.Logger, error
 	}
 }
 
-func registerPublicRoutes(app *fiber.App) {
+func registerPublicRoutes(app *fiber.App, cfg config.Config) {
 	app.Get("/health", healthHandler)
 	app.Get("/livez", livenessHandler)
 	app.Get("/readyz", readinessHandler)
+	if !cfg.SwaggerEnabled {
+		return
+	}
+	app.Use("/swagger", func(c fiber.Ctx) error {
+		c.Set("Content-Security-Policy", "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self'; font-src 'self'; base-uri 'none'; form-action 'self'")
+		return c.Next()
+	})
 	// ReadDoc mutates its receiver; render a private copy once before serving.
 	spec := *docs.SwaggerInfo
 	specJSON := spec.ReadDoc()

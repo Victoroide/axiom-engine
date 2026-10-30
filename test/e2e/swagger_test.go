@@ -69,7 +69,7 @@ func TestSwaggerTryItOut(t *testing.T) {
 	defer browser.MustClose()
 	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
 	defer cancel()
-	page := browser.Context(ctx).MustPage("http://" + ln.Addr().String() + "/swagger/index.html").MustWaitLoad()
+	page := browser.Context(ctx).MustPage()
 	defer func() {
 		if failure := recover(); failure != nil {
 			text, readErr := page.Context(context.Background()).Timeout(3 * time.Second).Element("body")
@@ -83,7 +83,29 @@ func TestSwaggerTryItOut(t *testing.T) {
 		}
 	}()
 
-	title := page.MustElement(".swagger-ui .info .title").MustText()
+	page.MustEvalOnNewDocument(`
+		window.swaggerCSPViolations = [];
+		document.addEventListener("securitypolicyviolation", event => {
+			window.swaggerCSPViolations.push({
+				directive: event.effectiveDirective,
+				disposition: event.disposition,
+				uri: event.blockedURI,
+				policy: event.originalPolicy
+			});
+		});
+	`)
+	page.MustNavigate("http://" + ln.Addr().String() + "/swagger/index.html").MustWaitLoad()
+	page.MustWait(`() => window.swaggerCSPViolations.some(event =>
+		event.directive === "style-src-elem" && event.disposition === "enforce" &&
+		event.uri.startsWith("https://fonts.googleapis.com/"))`)
+	policy := page.MustEval(`() => window.swaggerCSPViolations.find(event =>
+		event.uri.startsWith("https://fonts.googleapis.com/")).policy`).Str()
+	for _, directive := range []string{"base-uri 'none'", "form-action 'self'"} {
+		if !strings.Contains(policy, directive) {
+			t.Errorf("CSP missing %q: %s", directive, policy)
+		}
+	}
+	title := page.MustElement(".swagger-ui .info .title").MustWaitVisible().MustText()
 	if !strings.Contains(title, "AxiomEngine API") {
 		t.Fatal(title)
 	}

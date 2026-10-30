@@ -379,3 +379,19 @@ func TestPreviousTokenRequiresAuthentication(t *testing.T) {
 		t.Fatal("previous token accepted with authentication disabled")
 	}
 }
+
+func TestSwaggerEnabledValidation(t *testing.T) {
+	for _, value := range []string{"yes", "1", "TRUE", " false", "invalid"} {
+		t.Run(value, func(t *testing.T) {
+			_, err := loadWithoutAuth(func(key string) string {
+				if key == "SWAGGER_ENABLED" {
+					return value
+				}
+				return ""
+			})
+			if err == nil || !strings.Contains(err.Error(), "SWAGGER_ENABLED") {
+				t.Fatalf("SWAGGER_ENABLED=%q error=%v", value, err)
+			}
+		})
+	}
+}
