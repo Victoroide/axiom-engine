@@ -9,7 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- Typed upstream failure sentinels (`ErrThrottled`, `ErrUpstreamUnavailable`, `ErrUpstreamRejected`, `ErrInvalidOutput`) in `internal/service` wrapping `ErrUpstream`, with message classification in `internal/llm/classify.go` preserving existing HTTP status mappings.
+- Upstream response classification mapping malformed 2xx responses and truncated model outputs to HTTP 502 `bad_gateway`.
 - BAML v0.226.2 client generation with pinned CFFI native libraries for `linux/amd64`, `linux/arm64`, `darwin/amd64`, and `darwin/arm64`.
 - Host native library verification target `make native-baml` with SHA256 checksum validation and cached asset verification.
 - Fiber v3 HTTP application with structured JSON logging (`http.access`), request ID tracing, panic recovery (`panic.recovered`), and helmet security headers.
@@ -28,9 +28,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
-- **Breaking:** Enforce strict JSON decoding for `POST /api/v1/adaptive-plan`; require media type `application/json` (returning HTTP 415 `unsupported_media_type` otherwise) and reject unknown fields, duplicate keys, case-mismatched keys, null array elements, non-object payloads, and trailing data with HTTP 400 `invalid_request_body`.
-- **Breaking:** Reject short, whitespace-containing, control-containing, and non-ASCII internal tokens at startup; `AXIOM_INTERNAL_TOKEN` must be at least 32 visible ASCII characters (`0x21`–`0x7E`) without surrounding or embedded whitespace.
 - **Breaking:** Require `AXIOM_INTERNAL_TOKEN` at startup unless `AXIOM_AUTH_DISABLED=true` is explicitly configured, and bind the Docker Compose published HTTP port to loopback (`127.0.0.1:8080:8080`).
+- **Breaking:** Reject short, whitespace-containing, control-containing, and non-ASCII internal tokens at startup; `AXIOM_INTERNAL_TOKEN` must be at least 32 visible ASCII characters (`0x21`–`0x7E`) without surrounding or embedded whitespace.
+- **Breaking:** Enforce strict JSON decoding for `POST /api/v1/adaptive-plan`; require media type `application/json` (returning HTTP 415 `unsupported_media_type` otherwise) and reject unknown fields, duplicate keys, case-mismatched keys, null array elements, non-object payloads, and trailing data with HTTP 400 `invalid_request_body`.
 - Migrated HTTP server framework to Fiber v3 with validated configuration and standardized JSON error envelope containing `error` and `details`.
 - Replaced wildcard CORS default (`*`) with disabled CORS unless origins are explicitly configured in `CORS_ALLOWED_ORIGINS`.
 - Mapped reasoning pipeline failures to HTTP 502 (`bad_gateway`), 503 (`service_unavailable`), and 504 (`gateway_timeout`), and unknown topics to HTTP 422 (`validation_error`).
@@ -51,14 +51,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
-- Exclude invalid upstream output from circuit breaker health counts so unusable responses do not block unrelated topic requests.
-- Remove nested BAML retries to bound Bedrock throttle calls to the SDK attempt count and avoid retrying non-retryable upstream rejection.
 - Reject cyclic `depends_on` and `is_a` prerequisite graphs during startup with a deterministic cycle path.
-- Resolve topics across case, whitespace, and Unicode composition variants, returning stored graph node names consistently.
+- Remove nested BAML retries to bound Bedrock throttle calls to the SDK attempt count and avoid retrying non-retryable upstream rejection.
+- Resolve topic inputs across case, whitespace, and Unicode composition variants, returning stored graph node names consistently.
+- Exclude invalid upstream output and rejected requests from circuit breaker health counts so non-availability failures do not trip the circuit for unrelated topics.
 
 ### Security
 
-- Enforced constant-time token comparison using SHA-256 digests for all `/api/v1` endpoints when `AXIOM_INTERNAL_TOKEN` is configured, and emitted a startup warning when disabled.
+- Enforced constant-time token comparison using SHA-256 digests on all `/api/v1` routes unless `AXIOM_AUTH_DISABLED=true`.
 - Restricted `X-Forwarded-For` evaluation to explicitly allowed IP addresses and CIDRs to prevent client IP spoofing.
 - Validated all incoming topics against the curriculum graph to prevent prompt injection and unauthorized topic processing.
 - Excluded canceled sibling errgroup calls from circuit breaker failure and success counters, ensuring multi-topic outages trip the breaker as expected.

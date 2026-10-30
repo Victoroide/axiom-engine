@@ -37,7 +37,7 @@ docker run -d \
   --name axiom-engine \
   --user 65532:65532 \
   -p 8080:8080 \
-  -e AXIOM_INTERNAL_TOKEN="your-internal-token" \
+  -e AXIOM_INTERNAL_TOKEN="$(openssl rand -hex 32)" \
   -e AWS_REGION="us-east-1" \
   -e AWS_ACCESS_KEY_ID="your-access-key-id" \
   -e AWS_SECRET_ACCESS_KEY="your-secret-access-key" \
@@ -52,7 +52,7 @@ The repository includes [docker-compose.yml](../docker-compose.yml) for managing
 docker compose up -d
 ```
 
-Compose reads configuration from an optional `.env` file in the repository root. For available variables, see [configuration](configuration.md).
+Compose requires a valid `AXIOM_INTERNAL_TOKEN` in `.env` unless authentication is explicitly disabled (see [configuration](configuration.md)). The service port binds exclusively to loopback (`127.0.0.1:8080:8080`), making it unreachable from other network hosts without modifying `ports` (see [Quick Start](../README.md#quick-start)). Compose reads configuration from an optional `.env` file in the repository root.
 
 ## Release images
 

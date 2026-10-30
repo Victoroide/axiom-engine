@@ -47,11 +47,12 @@ The graph supports two edge relations:
 Concept node names in the knowledge graph are indexed canonically to support matching across casing, spacing, and Unicode representation differences.
 
 Canonical normalization (`internal/graph/canonical.go`) applies:
-1. Unicode Normalization Form C (`norm.NFC`).
+1. Removal of Unicode format characters (`unicode.Cf`).
 2. Whitespace collapsing and trimming via `strings.Fields`.
-3. Lowercase folding via `strings.ToLower`.
+3. Unicode case folding via `cases.Fold()`.
+4. Unicode Normalization Form C (`norm.NFC`).
 
-Distinct stored node names cannot share the same canonical form. During graph loading, the loader rejects any collision where two distinct node names produce an identical canonical key with `tuple %d has canonical node name collision: %q and %q`.
+Distinct stored node names cannot share the same canonical form. During graph loading, the loader rejects node names that become empty after normalization (`tuple %d has an empty node name after normalization`) and any collision where two distinct node names produce an identical canonical key with `tuple %d has canonical node name collision: %q and %q`.
 
 Original spellings, casing, and spacing of stored graph nodes are preserved in memory and returned in API responses.
 
@@ -133,8 +134,8 @@ The graph loader (`Decode` in `internal/graph/loader.go`) enforces the following
 5. **Permitted Relations**: The `relation` field must strictly match either `"depends_on"` or `"is_a"` (`tuple %d has unsupported relation %q`).
 6. **No Self Loops**: A tuple cannot reference the same concept as both subject and object. Violations trigger `tuple %d is a self loop`.
 7. **Deduplication**: Repeated identical triples are deduplicated during decoding.
-8. **Acyclic Prerequisite Structure**: Both `depends_on` and `is_a` edges must form a directed acyclic graph (DAG). Cyclic prerequisite dependencies are rejected at startup with `graph contains a prerequisite cycle: <path>` (for example, `graph contains a prerequisite cycle: A -> B -> A`). Traversal evaluates starting nodes in sorted order to report the cycle path deterministically.
-9. **Canonical Node Name Uniqueness**: Distinct node names may not share the same canonical form. Collisions are rejected at startup with `tuple %d has canonical node name collision: %q and %q` (see [Node Naming](#node-naming)).
+8. **Acyclic Prerequisite Structure**: Both `depends_on` and `is_a` edges must form a directed acyclic graph (DAG). Cyclic prerequisite dependencies are rejected at startup with `graph contains a prerequisite cycle: <path>` (for example, `graph contains a prerequisite cycle: B -> C -> B`). Traversal evaluates starting nodes in sorted order and rotates the cycle to its smallest node to report the path deterministically. Diagnostics show at most 16 nodes and truncate node names exceeding 64 runes with an ellipsis, reporting total node count when nodes are omitted.
+9. **Canonical Node Name Uniqueness**: Distinct node names may not share the same canonical form, and names must not normalize to empty. Format-only names and collisions are rejected at startup (see [Node Naming](#node-naming)).
 
 ---
 

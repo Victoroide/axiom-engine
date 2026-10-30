@@ -59,7 +59,7 @@ The `details` field provides context when available and is omitted when empty.
 | `405 Method Not Allowed` | `method_not_allowed` | HTTP method not supported | Unsupported HTTP verb on an existing path |
 | `408 Request Timeout` | `request_timeout` | Processing context canceled | Request context canceled during pipeline processing |
 | `413 Payload Too Large` | `payload_too_large` | Request body exceeds limit | Inbound payload exceeds the 64 KiB (65,536 bytes) limit |
-| `415 Unsupported Media Type` | `unsupported_media_type` | Media type not supported | Missing, malformed, or non-JSON `Content-Type` header on requests with a body |
+| `415 Unsupported Media Type` | `unsupported_media_type` | Media type not supported | Missing, malformed, unsupported charset, or non-JSON `Content-Type` header on `POST /api/v1/adaptive-plan` requests |
 | `422 Unprocessable Entity` | `validation_error` | Concept not found in knowledge graph | One or more topics in `failed_topics`, `topics`, or `target_topic` do not exist |
 | `429 Too Many Requests` | `rate_limit_exceeded` | Client rate limit exceeded | Inbound requests exceed `RATE_LIMIT_MAX` within `RATE_LIMIT_WINDOW` |
 | `500 Internal Server Error` | `internal_error` | Unhandled server error | Unexpected internal failure or recovered panic |
@@ -113,7 +113,7 @@ Generates a personalized, prerequisite-ordered study plan for a student based on
   - `Content-Type: application/json` (optional parameters such as `charset=utf-8` allowed)
   - `X-Internal-Token: <token>` (if authentication is enabled)
 - **Validation Rules**:
-  - Strict JSON: Request body must be a single JSON object matching the schema. Unknown fields (`unknown field "KEY"`), duplicate keys at any depth (`duplicate field "KEY"`), case mismatches, trailing data (`request body must contain exactly one JSON value`), non-object bodies (`request body must be a JSON object`), and invalid JSON syntax (`request body must be valid JSON`) return HTTP 400 `invalid_request_body`.
+  - Strict JSON: Request body must be a single JSON object matching the schema. Missing or invalid JSON syntax (`request body must be valid JSON`), non-object bodies (`request body must be a JSON object`), trailing data (`request body must contain exactly one JSON value`), schema type mismatches and out-of-range numbers (`request body must match the JSON schema`), unknown fields (`unknown field "KEY"`), duplicate keys at any depth (`duplicate field "KEY"`), and case mismatches return HTTP 400 `invalid_request_body`. Field names in error details are bounded to 64 runes plus an ellipsis. If a `charset` parameter is present on `Content-Type`, only case-insensitive `utf-8` is accepted; other or empty charsets return HTTP 415.
   - `student_id`: Optional. If provided, must match regex `^[A-Za-z0-9._:-]{1,128}$`.
   - `course_id`: Optional. If provided, must match regex `^[A-Za-z0-9._:-]{1,128}$`.
   - `failed_topics`: Required. Array of strings. Must contain at least 1 and at most `MAX_FAILED_TOPICS` (default 10) unique items. Elements must not be null (`failed_topics must not contain null elements`). Topics resolve canonically across case, whitespace, and Unicode composition differences (see [Node Naming](knowledge-graph.md#node-naming)). Inbound topics are deduplicated by canonical form while preserving request order before validating the `MAX_FAILED_TOPICS` limit. Responses return authoritative stored node names. Upstream model recommendations are also matched canonically, deduplicated, and mapped to authoritative stored graph node names. Topics that do not resolve to a graph node return HTTP 422 `validation_error`.
@@ -221,7 +221,7 @@ Computes a depth-1 concept neighborhood around failed topics for a learner, clas
   - `student_id`: Required string. Must match regex `^[A-Za-z0-9._:-]{1,128}$`. (Validated at the route boundary; omitted from the cognitive shadow graph response).
 - **Query Parameters**:
   - `topics`: Required string. Comma-separated list of failed topics. Must contain between 1 and `MAX_FAILED_TOPICS` unique topics. Resolves topics canonically and deduplicates by canonical form before count validation; every topic must exist in the knowledge graph.
-  - `target_topic`: Optional string. When provided, centers the depth-1 subgraph around this specific topic instead of all failed topics. Must exist in the knowledge graph if specified.
+  - `target_topic`: Optional string. When provided, centers the depth-1 subgraph around this specific topic instead of all failed topics. Resolves canonically across case, whitespace, and Unicode composition variants (see [Node Naming](knowledge-graph.md#node-naming)), and must exist in the knowledge graph if specified.
 
 #### Responses
 

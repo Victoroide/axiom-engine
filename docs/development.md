@@ -76,11 +76,13 @@ When upgrading BAML dependencies or native CFFI binaries:
    make generate
    make native-baml
    ```
-4. Run classifier message-table tests and fake Bedrock adapter contract tests:
+4. Run classifier message-table tests, fake Bedrock adapter contract tests, and retry attempt tests using the verified native library:
    ```sh
-   go test -race -run 'Classif|Adapter' ./internal/llm
+   BAML_LIBRARY_PATH="$PWD/bin/libbaml_cffi.dylib" \
+   BAML_LIBRARY_DISABLE_DOWNLOAD=true BAML_LOG=off \
+   go test -race -count=1 -run 'Classif|Adapter|Attempts' ./internal/llm
    ```
-   BAML exposes runtime errors as string messages wrapped in `BamlError`. The unit tests in `internal/llm/classify_test.go` and contract tests in `internal/llm/adapter_contract_test.go` pin expected error message formats, status code extractions, and context cancellation normalization. Re-running these tests verifies that upstream message format changes are detected before merging.
+   (Use `bin/libbaml_cffi.so` on Linux). BAML exposes runtime errors as string messages wrapped in `BamlError`. The unit tests in `internal/llm/classify_test.go`, contract tests in `internal/llm/adapter_contract_test.go`, and retry tests in `internal/llm/retry_contract_test.go` pin expected error message formats, status code extractions, context cancellation normalization, and SDK attempt counts. Re-running these tests verifies that upstream message format and retry behavior changes are detected before merging.
 
 ### Swagger documentation
 
@@ -125,13 +127,15 @@ Coverage areas include:
 
 Contract tests in `internal/llm/adapter_contract_test.go` exercise the generated BAML client and native CFFI runtime against an in-process HTTP server provided by `test/fakebedrock`.
 
-Execute contract tests:
+Run `make native-baml` to download and verify the host library, then execute contract tests with the verified native library environment:
 
 ```sh
+BAML_LIBRARY_PATH="$PWD/bin/libbaml_cffi.dylib" \
+BAML_LIBRARY_DISABLE_DOWNLOAD=true BAML_LOG=off \
 go test -race -count=1 -run Adapter ./internal/llm
 ```
 
-The test setup configures AWS environment variables with `t.Setenv`:
+(Use `bin/libbaml_cffi.so` on Linux). The test setup isolates AWS configuration and credentials using empty temporary files (`AWS_CONFIG_FILE` and `AWS_SHARED_CREDENTIALS_FILE`), configures service-specific endpoints, and sets AWS environment variables with `t.Setenv`:
 - `AWS_ENDPOINT_URL`: points to the local HTTP test server address.
 - `AWS_REGION` and `AWS_DEFAULT_REGION`: `us-east-1`.
 - `AWS_ACCESS_KEY_ID` and `AWS_SECRET_ACCESS_KEY`: `dummy`.
