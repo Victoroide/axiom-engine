@@ -26,14 +26,20 @@ type Server struct {
 // Unknown modes panic.
 // Call Close after use; hang requests must first be canceled by their client.
 func New(mode string) *Server {
+	s := NewHandler(mode)
+	s.Server = httptest.NewServer(s)
+	return s
+}
+
+// NewHandler returns a Converse handler without opening a listener.
+// Unknown modes panic.
+func NewHandler(mode string) *Server {
 	switch mode {
 	case "ok", "throttle", "denied", "hang", "garbage", "empty", "validation", "not-found", "timeout", "error", "internal", "unavailable", "malformed", "html", "max-tokens":
 	default:
 		panic(fmt.Sprintf("unknown Bedrock response mode: %q", mode))
 	}
-	s := &Server{mode: mode, disconnected: make(chan struct{})}
-	s.Server = httptest.NewServer(s)
-	return s
+	return &Server{mode: mode, disconnected: make(chan struct{})}
 }
 
 // Count returns the number of accepted Converse requests.

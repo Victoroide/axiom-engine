@@ -18,6 +18,19 @@ func TestNewRejectsUnknownMode(t *testing.T) {
 	defer s.Close()
 }
 
+func TestHandlerServesWithoutListener(t *testing.T) {
+	s := NewHandler("throttle")
+	if s.Server != nil {
+		t.Fatal("handler started an HTTP listener")
+	}
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/model/test/converse", strings.NewReader(`{}`))
+	reply := httptest.NewRecorder()
+	s.ServeHTTP(reply, req)
+	if reply.Code != http.StatusTooManyRequests || s.Count() != 1 {
+		t.Fatalf("status=%d requests=%d", reply.Code, s.Count())
+	}
+}
+
 func TestRepliesContainOnlyItems(t *testing.T) {
 	for _, mode := range []string{"ok", "empty"} {
 		t.Run(mode, func(t *testing.T) {

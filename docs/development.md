@@ -60,6 +60,8 @@ Run `make help` to inspect available Makefile targets:
 | `tidy-check` | Fail if module metadata is not tidy. |
 | `generate-check` | Fail if committed generated code is stale. |
 | `docker-build` | Build the non-root runtime image. |
+| `container-smoke` | Check runtime responses, log privacy and shutdown. |
+| `container-smoke-test` | Verify rejection of unsafe runtime images. |
 | `clean` | Remove local binaries and coverage artifacts. |
 
 ## Regenerating code
@@ -200,6 +202,37 @@ Execution flow:
    - Re-executes `POST /api/v1/adaptive-plan` with topics, asserting HTTP 200 and verifying expected topics in the response payload.
    - Expands `GET /api/v1/tutor/student/{student_id}/cognitive-graph`, provides student ID and topic parameters, executes the request, and verifies HTTP 200 with node and edge data.
 
+### Container smoke test
+
+The container smoke test script `scripts/container-smoke.sh` exercises the runtime container image against a local stubbed Bedrock endpoint:
+
+```sh
+make docker-build container-smoke
+```
+
+To test an existing container image, pass the `IMAGE` variable:
+
+```sh
+make container-smoke IMAGE=axiom-ci
+```
+
+The smoke test performs the following steps:
+1. Compiles the local fake Bedrock command `test/fakebedrock/cmd/fakebedrock`.
+2. Starts a local HTTP stub in `ok` response mode on an ephemeral port, serving Amazon Bedrock Converse routes.
+3. Launches the runtime container image with `--read-only`, `--tmpfs /tmp`, host-gateway routing (`--add-host host.docker.internal:host-gateway`), an ephemeral published port mapped to 8080, and configured dummy AWS credentials pointing `AWS_ENDPOINT_URL` to the local stub.
+4. Waits for the container health status to report `healthy`.
+5. Confirms that the configured user is `65532:65532`, that every running container process (including any overlapping healthcheck probe) has UID 65532, requiring at least one process, that the root filesystem is read-only, and that `/tmp` is a tmpfs mount.
+6. Sends `GET /health` and asserts HTTP 200.
+7. Sends an unauthenticated `POST /api/v1/adaptive-plan` and asserts HTTP 401 Unauthorized.
+8. Sends an authenticated `POST /api/v1/adaptive-plan` request with valid learner input and asserts HTTP 200 with generated plan items.
+9. Stops the container with `docker stop --time 30`, verifies a clean exit code 0, and asserts that container logs are exclusively valid JSON objects containing no sensitive learner identifiers (`student-42`) and no raw native `[BAML` records.
+10. Starts the stub in `throttle` mode, launches a fresh container, and sends an authenticated plan request to assert HTTP 503 `service_unavailable` with header `Retry-After: 5`.
+11. Stops the container and verifies clean shutdown and structured JSON log privacy.
+
+All temporary files, fixture processes, and test containers are cleaned up on completion or failure.
+
+Every failed check stops the script with `container smoke: <reason>`. `make container-smoke-test IMAGE=<image>` builds two derived images, one running as root and one killed on stop, and checks that the smoke test rejects them with `container smoke: configured user is 0:0` and `container smoke: stop exit code is 137`. The derived images are removed afterwards. Both scripts need Go, Docker with `host-gateway` support, curl and Python 3.
+
 ## Static analysis and checks
 
 ### Lint
@@ -248,7 +281,7 @@ Runs on push to `main` and on pull requests:
 - **`test`**: runs `make cover` with data race detection and uploads `coverage.out` as a workflow artifact.
 - **`generated`**: runs `make tools-baml generate-check tidy-check` to enforce that generated code matches definitions.
 - **`vulnerabilities`**: runs `make vuln` to verify zero reachable vulnerability findings.
-- **`image`**: builds the binary via `make build`, builds the Docker runtime container `axiom-ci`, starts the container, polls the health status until healthy (up to 60 seconds), asserts `GET /health` returns 200, asserts unauthenticated `POST /api/v1/adaptive-plan` returns 401, and tears down the container.
+- **`image`**: builds the Docker runtime container `axiom-ci` and executes `make container-smoke container-smoke-test IMAGE=axiom-ci` to verify health probes, authentication, end-to-end plan generation, upstream throttling handling, log privacy, and graceful termination, emitting container logs on failure.
 - **`browser`**: verifies or installs Google Chrome stable, sets `ROD_BROWSER_BIN`, and runs `make test-e2e`.
 
 ### `codeql.yml`
