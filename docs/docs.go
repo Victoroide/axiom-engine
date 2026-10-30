@@ -95,7 +95,7 @@ const docTemplate = `{
                         }
                     },
                     "503": {
-                        "description": "Temporary unavailability or upstream throttling",
+                        "description": "Temporary unavailability, upstream throttling or server shutdown",
                         "schema": {
                             "$ref": "#/definitions/domain.ErrorResponse"
                         },

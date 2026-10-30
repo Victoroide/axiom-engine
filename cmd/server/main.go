@@ -53,5 +53,6 @@ func run(args []string) error {
 	app := server.New(cfg, server.Dependencies{Graph: g, Planner: llm.New(), Logger: logger})
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer stop()
+	context.AfterFunc(ctx, stop)
 	return server.Run(ctx, app, ":"+cfg.Port, cfg.ShutdownTimeout)
 }
