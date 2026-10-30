@@ -144,7 +144,7 @@ sequenceDiagram
 4. **Parallel Topic Fan-Out**: An `errgroup.Group` spawns a goroutine for each failed topic (`internal/service/reasoning.go`). Each goroutine:
    - Acquires a permit from the process-wide weighted semaphore (`LLM_MAX_CONCURRENCY`) within `LLM_QUEUE_TIMEOUT`; if the wait expires, returns HTTP 503 `service_unavailable` with `Retry-After: 1`.
    - Computes the topological prerequisite chain for its topic via post-order depth-first search (`GetPrerequisiteChain` in `internal/graph/memory.go`). Cyclic inputs are rejected at load time; the traversal visited set handles shared prerequisites.
-   - Executes through a shared circuit breaker with an individual timeout bounded by `LLM_TIMEOUT` (`internal/service/reasoning.go`).
+   - Executes through a shared circuit breaker with an individual timeout bounded by `LLM_TIMEOUT` (`internal/service/reasoning.go`; see [Timeouts](#timeouts)).
    - Invokes Amazon Bedrock Nova Micro through the BAML adapter (`internal/llm/baml.go`).
    - Stores the generated items directly into `plans[i]`, where `i` is the original request index. This ensures deterministic ordering regardless of goroutine completion timing.
 5. **Merge and Deduplication**: `mergeAndDeduplicate` in `internal/service/pipeline.go` iterates sequentially through the per-topic results in request order, tracking visited topic names in a map and dropping duplicate concept recommendations.
@@ -158,10 +158,10 @@ sequenceDiagram
 | Mechanism | Configuration Key | Default Value | Config Location | Implementation Location | Behavior |
 |---|---|---|---|---|---|
 | Transport Read Timeout | N/A | `10s` | Hardcoded in `internal/config/config.go` | `fiber.Config.ReadTimeout` in `internal/server/server.go` | Bounds duration for reading inbound request headers and body. |
-| Transport Write Timeout | N/A | `30s` (derived) | Derived as `REQUEST_TIMEOUT + 10s` in `internal/config/config.go` | `fiber.Config.WriteTimeout` in `internal/server/server.go` | Bounds duration for transmitting HTTP responses. Derived write duration rejects overflow at startup. |
+| Transport Write Timeout | N/A | `30s` (derived) | Derived as `REQUEST_TIMEOUT + 10s` in `internal/config/config.go` | `fiber.Config.WriteTimeout` in `internal/server/server.go` | Bounds duration for transmitting HTTP responses. Derived write duration rejects overflow at startup (see [Timeouts](#timeouts)). |
 | Transport Idle Timeout | N/A | `1m` | Hardcoded in `internal/config/config.go` | `fiber.Config.IdleTimeout` in `internal/server/server.go` | Bounds maximum idle keep-alive connection time. |
 | Request Timeout | `REQUEST_TIMEOUT` | `20s` | `internal/config/config.go` | `AdaptivePlanHandler` in `internal/api/handlers.go` | Bounds total HTTP request processing duration in the reasoning pipeline. Exceeding returns 504 `gateway_timeout`. |
-| LLM Timeout | `LLM_TIMEOUT` | `15s` | `internal/config/config.go` | `ReasoningService` in `internal/service/reasoning.go` | Bounds individual model calls. Validated at startup not to exceed `REQUEST_TIMEOUT`. |
+| LLM Timeout | `LLM_TIMEOUT` | `15s` | `internal/config/config.go` | `ReasoningService` in `internal/service/reasoning.go` | Bounds individual model calls. Validated at startup not to exceed `REQUEST_TIMEOUT` (see [Timeouts](#timeouts)). |
 | LLM Concurrency Bound | `LLM_MAX_CONCURRENCY` | `16` | `internal/config/config.go` | `ReasoningService` in `internal/service/reasoning.go` | Process-wide weighted semaphore bounding simultaneous in-flight Bedrock calls across all requests. |
 | LLM Queue Timeout | `LLM_QUEUE_TIMEOUT` | `min(2s, LLM_TIMEOUT/2)` | `internal/config/config.go` | `ReasoningService` in `internal/service/reasoning.go` | Maximum wait duration for an available concurrency slot (see [configuration](configuration.md#environment-variables)). Queue saturation returns HTTP 503 `service_unavailable` with `Retry-After: 1`. |
 | Shutdown Timeout | `SHUTDOWN_TIMEOUT` | `max(REQUEST_TIMEOUT + 5s, 11s)` | `internal/config/config.go` | `Run` in `internal/server/lifecycle.go` | Maximum time allowed to drain connections during SIGINT or SIGTERM (minimum `11s`, see [configuration](configuration.md#environment-variables)); cancels in-flight work 1 s before the deadline and answers it with 503 `server shutting down`. |
@@ -171,6 +171,15 @@ sequenceDiagram
 | Request Body Limit | N/A | `64 KiB` (65,536 bytes) | Hardcoded | `fiber.Config.BodyLimit` in `internal/server/server.go` | Fiber application body limit. Exceeding returns 413 `payload_too_large`. |
 | Max Failed Topics | `MAX_FAILED_TOPICS` | `10` | `internal/config/config.go` | `validateRequest` in `internal/service/validation.go` | Bounds parallel fan-out concurrency. Exceeding returns 400 `validation_error`. |
 | Upstream Retries | `AWS_MAX_ATTEMPTS`, `AWS_RETRY_MODE` | `3`, `standard` | Validated at startup; evaluated by AWS SDK | AWS SDK in BAML CFFI runtime | Single retry layer managed by the AWS SDK (see [Upstream Retries](#upstream-retries)). |
+
+### Timeouts
+
+HTTP transport timeouts configured on Fiber (`ReadTimeout`, `WriteTimeout`, `IdleTimeout`) operate at the socket layer. Fasthttp arms `WriteTimeout` only after request handler execution completes, so transport write timeouts do not bound active handler execution.
+
+The reasoning service enforces deadlines autonomously:
+- **Request Deadline**: Handlers enforce `REQUEST_TIMEOUT` (default `20s`) using context deadlines. Exceeding this limit returns HTTP 504 `gateway_timeout`.
+- **LLM Deadline**: Model invocations are bounded by `LLM_TIMEOUT` (default `15s`). The service dispatches `planner.GenerateTopic` in a separate goroutine and selects concurrently on `llmCtx.Done()`. Even if downstream planner execution blocks indefinitely without checking context cancellation, the service unblocks immediately when the deadline expires and returns `context.DeadlineExceeded`, which maps to HTTP 504 `gateway_timeout`.
+- **Concurrency Permit Retention**: When an LLM call times out or context is canceled, the dispatched goroutine continues running in the background until the underlying planner call completes or terminates. The goroutine retains its semaphore permit from `LLM_MAX_CONCURRENCY` until it actually finishes, preventing abandoned or runaway calls from evading process-wide concurrency limits.
 
 ### Circuit Breaker Settings
 
