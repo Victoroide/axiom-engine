@@ -66,7 +66,9 @@ func breakerSettings(logger *slog.Logger) gobreaker.Settings {
 	return gobreaker.Settings{
 		Name: "bedrock-nova-micro", MaxRequests: 2, Interval: 30 * time.Second, Timeout: 15 * time.Second,
 		ReadyToTrip: func(c gobreaker.Counts) bool { return c.ConsecutiveFailures >= 3 },
-		IsExcluded:  func(err error) bool { return errors.Is(err, context.Canceled) },
+		IsExcluded: func(err error) bool {
+			return errors.Is(err, context.Canceled) || errors.Is(err, ErrInvalidOutput) || errors.Is(err, ErrUpstreamRejected)
+		},
 		OnStateChange: func(name string, from, to gobreaker.State) {
 			logger.Warn("circuit_breaker.state_change", "name", name, "from", from.String(), "to", to.String())
 		},
