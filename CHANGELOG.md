@@ -52,6 +52,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Pinned development and compilation toolchain to versions specified in the [development guide](docs/development.md#pinned-tool-versions).
 - Updated `make lint` to vet both standard and e2e build tags before running `golangci-lint`.
 - Surface BAML releases in a separate Dependabot group and apply a three-day default cooldown to version updates.
+- Pin developer tool dependency graphs and checksums in a dedicated module, have Dependabot update it, and scan the tools for vulnerabilities daily.
 
 ### Removed
 

@@ -1,9 +1,6 @@
 .DEFAULT_GOAL := help
 
 GOLANGCI_LINT_VERSION := v2.15.0
-GOVULNCHECK_VERSION := v1.9.0
-SWAG_VERSION := v1.16.6
-GOIMPORTS_VERSION := v0.52.0
 BAML_VERSION := $(shell sed -n 's/^[[:space:]]*version[[:space:]]*"\([^"]*\)".*/\1/p' baml_src/generators.baml)
 BIN_DIR := $(CURDIR)/bin
 BAML_CLI := $(BIN_DIR)/baml-cli-$(BAML_VERSION)
@@ -61,10 +58,10 @@ native-baml: baml-check ## Download and verify the pinned native library for thi
 generate: native-baml $(BAML_CLI) ## Regenerate and format the BAML client
 	"$(BAML_CLI)" generate --from baml_src
 	gofmt -w baml_client
-	go run golang.org/x/tools/cmd/goimports@$(GOIMPORTS_VERSION) -w baml_client
+	go tool -modfile=tools/go.mod goimports -w baml_client
 
 swagger: ## Regenerate the Swagger specification and embedded docs
-	go run github.com/swaggo/swag/cmd/swag@$(SWAG_VERSION) init -g cmd/server/main.go -o docs --parseInternal
+	go tool -modfile=tools/go.mod swag init -g cmd/server/main.go -o docs --parseInternal
 	gofmt -w docs/docs.go
 
 build: ## Build the stripped service binary with CGO
@@ -90,14 +87,15 @@ lint: ## Vet all build variants and check lint rules and Go formatting
 	go run github.com/golangci/golangci-lint/v2/cmd/golangci-lint@$(GOLANGCI_LINT_VERSION) run ./...
 
 vuln: ## Check reachable Go vulnerabilities
-	go run golang.org/x/vuln/cmd/govulncheck@$(GOVULNCHECK_VERSION) $(VULN_FLAGS) ./...
+	go tool -modfile=tools/go.mod govulncheck $(VULN_FLAGS) ./...
 
 fmt: ## Format maintained Go source files
 	go run github.com/golangci/golangci-lint/v2/cmd/golangci-lint@$(GOLANGCI_LINT_VERSION) fmt
 
 tidy-check: ## Fail if module metadata is not tidy
 	go mod tidy
-	git diff --exit-code -- go.mod go.sum
+	go -C tools mod tidy
+	git diff --exit-code -- go.mod go.sum tools/go.mod tools/go.sum
 
 generate-check: generate swagger ## Fail if committed generated code is stale
 	git diff --exit-code
