@@ -55,7 +55,7 @@ Health (`/health`), liveness (`/livez`), readiness (`/readyz`), Swagger document
 
 ## Common Headers
 
-- `X-Request-ID`: Client-provided correlation identifier. If omitted, the server generates a 43-character URL-safe random token (with a UUID v4 fallback for parser-level errors). Every HTTP response echoes `X-Request-ID`.
+- `X-Request-ID`: Client-provided correlation identifier. The server accepts and echoes client-supplied values matching `^[A-Za-z0-9._:-]{1,128}$`. Missing or invalid values—including identifiers exceeding 128 characters, containing whitespace, punctuation outside that character set, or non-ASCII characters—are replaced by a generated 43-character URL-safe random token. Responses produced by the application, including 400, 404, 405, 413 and 431 errors, echo the resolved `X-Request-ID`, and access and error logs use the same value. Requests whose method the router does not implement (for example `PROPFIND`) are answered with a plain-text HTTP 501 before any middleware runs and carry no `X-Request-ID`.
 - `Content-Type`: Required for requests with a payload. Endpoints expecting JSON require a media type of `application/json` parsed via MIME media type rules; optional parameters such as `charset=utf-8` are accepted. Missing, malformed, or non-JSON media types return HTTP 415 `unsupported_media_type` with details `Content-Type must be application/json`. All API responses return `application/json; charset=utf-8`.
 
 ---
