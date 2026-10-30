@@ -33,7 +33,12 @@ func (f fakePlanner) GenerateTopic(ctx context.Context, r service.TopicRequest) 
 }
 func defaultConfig(t *testing.T) config.Config {
 	t.Helper()
-	c, err := config.Load(func(string) string { return "" })
+	c, err := config.Load(func(k string) string {
+		if k == "AXIOM_AUTH_DISABLED" {
+			return "true"
+		}
+		return ""
+	})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -113,6 +118,7 @@ func TestValidationAndUnknownTopics(t *testing.T) {
 
 func TestAuthenticationAndSuccess(t *testing.T) {
 	cfg := defaultConfig(t)
+	cfg.AuthDisabled = false
 	cfg.InternalToken = "test-secret"
 	app := newTestApp(t, cfg, nil, nil)
 	for _, token := range []string{"", "wrong"} {
@@ -133,6 +139,21 @@ func TestAuthenticationAndSuccess(t *testing.T) {
 	r, b := call(t, app, "GET", "/health", "", nil)
 	if r.StatusCode != http.StatusOK || b != `{"status":"ok"}` {
 		t.Fatalf("%d: %s", r.StatusCode, b)
+	}
+}
+
+func TestAuthenticationRejectsEmptyConfiguredToken(t *testing.T) {
+	cfg := defaultConfig(t)
+	cfg.AuthDisabled = false
+	app := newTestApp(t, cfg, func(context.Context, service.TopicRequest) ([]domain.PlanItem, error) {
+		t.Error("unauthorized request reached planner")
+		return nil, nil
+	}, nil)
+	for _, headers := range []map[string]string{nil, {"Authorization": "Bearer "}, {"X-Internal-Token": "unexpected"}} {
+		r, b := call(t, app, "POST", "/api/v1/adaptive-plan", validBody, headers)
+		if r.StatusCode != http.StatusUnauthorized || !strings.Contains(b, "unauthorized") {
+			t.Fatalf("%d: %s", r.StatusCode, b)
+		}
 	}
 }
 
@@ -452,6 +473,7 @@ func TestPublicRoutesDoNotShareAPIRateBudget(t *testing.T) {
 
 func TestBearerSchemeAndTokenLengths(t *testing.T) {
 	cfg := defaultConfig(t)
+	cfg.AuthDisabled = false
 	cfg.InternalToken = "test-secret"
 	app := newTestApp(t, cfg, nil, nil)
 	for _, scheme := range []string{"Bearer", "bearer", "bEaReR"} {
@@ -468,14 +490,15 @@ func TestBearerSchemeAndTokenLengths(t *testing.T) {
 	}
 }
 
-func TestWarnWhenInternalTokenIsUnset(t *testing.T) {
+func TestAuthDisabledLogsWarning(t *testing.T) {
 	for _, token := range []string{"", "configured-secret"} {
 		var logs bytes.Buffer
 		cfg := defaultConfig(t)
+		cfg.AuthDisabled = token == ""
 		cfg.InternalToken = token
 		_ = newTestApp(t, cfg, nil, &logs)
 		if token != "" {
-			if strings.Contains(logs.String(), "auth.internal_token.disabled") {
+			if strings.Contains(logs.String(), "auth.disabled") {
 				t.Fatal(logs.String())
 			}
 			continue
@@ -484,7 +507,7 @@ func TestWarnWhenInternalTokenIsUnset(t *testing.T) {
 		if err := json.Unmarshal(logs.Bytes(), &event); err != nil {
 			t.Fatal(err)
 		}
-		if event["msg"] != "auth.internal_token.disabled" || event["level"] != "WARN" {
+		if event["msg"] != "auth.disabled" || event["level"] != "WARN" {
 			t.Fatal(event)
 		}
 	}

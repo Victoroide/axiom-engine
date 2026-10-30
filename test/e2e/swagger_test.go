@@ -30,11 +30,15 @@ func (planner) GenerateTopic(_ context.Context, r service.TopicRequest) ([]domai
 }
 
 func TestSwaggerTryItOut(t *testing.T) {
-	cfg, err := config.Load(func(string) string { return "" })
+	cfg, err := config.Load(func(k string) string {
+		if k == "AXIOM_INTERNAL_TOKEN" {
+			return "e2e-internal-token-0123456789abcdef"
+		}
+		return ""
+	})
 	if err != nil {
 		t.Fatal(err)
 	}
-	cfg.InternalToken = "e2e-token"
 	app := server.New(cfg, server.Dependencies{Graph: graph.NewInMemoryGraph(), Planner: planner{}, Logger: slog.New(slog.NewJSONHandler(io.Discard, nil))})
 	ln, err := (&net.ListenConfig{}).Listen(context.Background(), "tcp", "127.0.0.1:0")
 	if err != nil {
@@ -122,7 +126,7 @@ func TestSwaggerTryItOut(t *testing.T) {
 	t.Log("authorize")
 	page.MustElementR("button.authorize", "Authorize").MustClick()
 	dialog := page.MustElement(".dialog-ux").MustWaitVisible()
-	dialog.MustElement("input").MustInput("e2e-token")
+	dialog.MustElement("input").MustInput("e2e-internal-token-0123456789abcdef")
 	dialog.MustElementR("button.authorize", "Authorize").MustClick()
 	dialog.MustElementR("button", "^Close$").MustClick()
 	t.Log("plan authorized Try it out")

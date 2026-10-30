@@ -14,6 +14,7 @@ import (
 // Config contains startup configuration for the service.
 type Config struct {
 	Port               string
+	AuthDisabled       bool
 	InternalToken      string
 	CORSAllowedOrigins []string
 	RateLimitMax       int
@@ -48,6 +49,26 @@ func Load(getenv func(string) string) (Config, error) {
 	c := defaults()
 	c.InternalToken = getenv("AXIOM_INTERNAL_TOKEN")
 	c.GraphFile = getenv("GRAPH_FILE")
+	for _, item := range []struct {
+		key string
+		dst *bool
+	}{
+		{"AXIOM_AUTH_DISABLED", &c.AuthDisabled},
+	} {
+		if v := getenv(item.key); v != "" {
+			switch v {
+			case "true":
+				*item.dst = true
+			case "false":
+				*item.dst = false
+			default:
+				return Config{}, fmt.Errorf("%s must be true or false", item.key)
+			}
+		}
+	}
+	if c.InternalToken == "" && !c.AuthDisabled {
+		return Config{}, fmt.Errorf("AXIOM_INTERNAL_TOKEN is required unless AXIOM_AUTH_DISABLED=true")
+	}
 	if v := getenv("PORT"); v != "" {
 		n, err := strconv.Atoi(v)
 		if err != nil || n < 1 || n > 65535 {
@@ -136,6 +157,9 @@ func Load(getenv func(string) string) (Config, error) {
 			}
 			c.CORSAllowedOrigins = append(c.CORSAllowedOrigins, origin)
 		}
+	}
+	if c.AuthDisabled && c.InternalToken != "" {
+		return Config{}, fmt.Errorf("AXIOM_AUTH_DISABLED must be false when AXIOM_INTERNAL_TOKEN is configured")
 	}
 	return c, nil
 }

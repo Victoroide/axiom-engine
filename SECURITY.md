@@ -32,10 +32,15 @@ Remediation timing depends on severity and operational considerations. Critical 
 
 ### Service token authentication
 
-- Every `/api/v1` route requires authentication when `AXIOM_INTERNAL_TOKEN` is configured. Public routes (`/health` and `/swagger/*`) bypass token authentication.
+- Every `/api/v1` route requires authentication by default. Public routes (`/health` and `/swagger/*`) bypass token authentication.
 - Callers may authenticate using the `X-Internal-Token` header or an `Authorization: Bearer <token>` header (scheme matching is case-insensitive).
 - Token validation computes SHA-256 digests of the expected and provided tokens and evaluates them using `crypto/subtle.ConstantTimeCompare` (comparing two 32-byte digests) to prevent timing side-channel attacks.
-- Leaving `AXIOM_INTERNAL_TOKEN` unset disables authentication and logs a startup warning `auth.internal_token.disabled`. This mode is permitted only for local development and testing; deployed environments must configure a secret token.
+- Service startup fails closed if `AXIOM_INTERNAL_TOKEN` is unset or empty, unless `AXIOM_AUTH_DISABLED=true` is explicitly configured (see [configuration reference](docs/configuration.md)). When disabled, the server logs a startup warning `auth.disabled`.
+
+### Deployment requirements
+
+- Provision an internal token before starting the service. Keep authentication enabled for all exposed deployments.
+- Docker Compose publishes the HTTP service port exclusively to loopback (`127.0.0.1:8080:8080`) by default.
 
 ### Input validation and prompt injection defenses
 

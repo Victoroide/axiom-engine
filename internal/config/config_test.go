@@ -7,7 +7,7 @@ import (
 )
 
 func TestLoadDefaults(t *testing.T) {
-	c, err := Load(func(string) string { return "" })
+	c, err := loadWithoutAuth(func(string) string { return "" })
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -18,7 +18,7 @@ func TestLoadDefaults(t *testing.T) {
 
 func TestLoadOverrides(t *testing.T) {
 	env := map[string]string{"PORT": "9090", "AXIOM_INTERNAL_TOKEN": "secret", "CORS_ALLOWED_ORIGINS": "https://example.com, http://localhost:3000", "RATE_LIMIT_MAX": "2", "RATE_LIMIT_WINDOW": "2m", "TRUSTED_PROXIES": "127.0.0.1,10.0.0.0/8,::1", "REQUEST_TIMEOUT": "5s", "LLM_TIMEOUT": "3s", "MAX_FAILED_TOPICS": "4", "GRAPH_FILE": "graph.json", "LOG_LEVEL": "debug", "SHUTDOWN_TIMEOUT": "1s"}
-	c, err := Load(func(k string) string { return env[k] })
+	c, err := loadWithoutAuth(func(k string) string { return env[k] })
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -26,7 +26,7 @@ func TestLoadOverrides(t *testing.T) {
 		t.Fatalf("overrides: %+v", c)
 	}
 	for _, level := range []string{"info", "warn", "error"} {
-		if _, err := Load(func(k string) string {
+		if _, err := loadWithoutAuth(func(k string) string {
 			if k == "LOG_LEVEL" {
 				return level
 			}
@@ -35,7 +35,7 @@ func TestLoadOverrides(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-	if _, err := Load(func(k string) string {
+	if _, err := loadWithoutAuth(func(k string) string {
 		if k == "CORS_ALLOWED_ORIGINS" {
 			return "*"
 		}
@@ -54,7 +54,7 @@ func TestLoadRejectsInvalidValues(t *testing.T) {
 	for key, values := range cases {
 		for _, value := range values {
 			t.Run(key+"="+value, func(t *testing.T) {
-				_, err := Load(func(k string) string {
+				_, err := loadWithoutAuth(func(k string) string {
 					if k == key {
 						return value
 					}
@@ -70,7 +70,7 @@ func TestLoadRejectsInvalidValues(t *testing.T) {
 
 func TestHTTPTimeouts(t *testing.T) {
 	for _, requestTimeout := range []string{"", "35s"} {
-		cfg, err := Load(func(k string) string {
+		cfg, err := loadWithoutAuth(func(k string) string {
 			if k == "REQUEST_TIMEOUT" {
 				return requestTimeout
 			}
@@ -83,7 +83,7 @@ func TestHTTPTimeouts(t *testing.T) {
 			t.Fatalf("invalid HTTP timeout derivation: %+v", cfg)
 		}
 	}
-	if _, err := Load(func(k string) string {
+	if _, err := loadWithoutAuth(func(k string) string {
 		if k == "REQUEST_TIMEOUT" {
 			return "2562047h47m16.854775807s"
 		}
@@ -91,4 +91,38 @@ func TestHTTPTimeouts(t *testing.T) {
 	}); err == nil {
 		t.Fatal("write timeout overflow accepted")
 	}
+}
+
+func TestLoadRequiresTokenUnlessAuthDisabled(t *testing.T) {
+	for _, tc := range []struct {
+		name      string
+		env       map[string]string
+		wantError bool
+	}{
+		{"missing token", nil, true},
+		{"explicit opt out", map[string]string{"AXIOM_AUTH_DISABLED": "true"}, false},
+		{"invalid opt out", map[string]string{"AXIOM_AUTH_DISABLED": "yes"}, true},
+		{"explicit enabled", map[string]string{"AXIOM_AUTH_DISABLED": "false"}, true},
+		{"configured token", map[string]string{"AXIOM_INTERNAL_TOKEN": "0123456789abcdef0123456789abcdef"}, false},
+		{"token with opt out", map[string]string{"AXIOM_INTERNAL_TOKEN": "0123456789abcdef0123456789abcdef", "AXIOM_AUTH_DISABLED": "true"}, true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			_, err := Load(func(k string) string { return tc.env[k] })
+			if (err != nil) != tc.wantError {
+				t.Fatalf("Load error = %v, want error %v", err, tc.wantError)
+			}
+		})
+	}
+}
+
+func loadWithoutAuth(getenv func(string) string) (Config, error) {
+	return Load(func(k string) string {
+		if k == "AXIOM_AUTH_DISABLED" {
+			if getenv("AXIOM_INTERNAL_TOKEN") != "" {
+				return "false"
+			}
+			return "true"
+		}
+		return getenv(k)
+	})
 }
