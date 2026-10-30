@@ -60,3 +60,16 @@ func validateAgainstGraph(items []domain.PlanItem, g *graph.InMemoryGraph, reque
 	}
 	return valid, dropped
 }
+
+func missingTopic(items []domain.PlanItem, requested []string) string {
+	present := make(map[string]bool, len(items))
+	for _, item := range items {
+		present[graph.Canonical(item.Topic)] = true
+	}
+	for _, topic := range requested {
+		if !present[graph.Canonical(topic)] {
+			return topic
+		}
+	}
+	return ""
+}

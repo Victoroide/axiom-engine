@@ -28,6 +28,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- **Breaking:** Require every requested topic to retain a study item after validation; return HTTP 502 `bad_gateway` with details `model returned no usable item` instead of HTTP 200 with an empty item list when model output lacks a usable item for a requested topic.
 - **Breaking:** Require `AXIOM_INTERNAL_TOKEN` at startup unless `AXIOM_AUTH_DISABLED=true` is explicitly configured, and bind the Docker Compose published HTTP port to loopback (`127.0.0.1:8080:8080`).
 - **Breaking:** Reject short, whitespace-containing, control-containing, and non-ASCII internal tokens at startup; `AXIOM_INTERNAL_TOKEN` must be at least 32 visible ASCII characters (`0x21`–`0x7E`) without surrounding or embedded whitespace.
 - **Breaking:** Enforce strict JSON decoding for `POST /api/v1/adaptive-plan`; require media type `application/json` (returning HTTP 415 `unsupported_media_type` otherwise) and reject unknown fields, duplicate keys, case-mismatched keys, null array elements, non-object payloads, and trailing data with HTTP 400 `invalid_request_body`.

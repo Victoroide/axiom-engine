@@ -56,7 +56,7 @@ func (h *Handler) RegisterRoutes(app *fiber.App) {
 // @Failure 415 {object} domain.ErrorResponse
 // @Failure 422 {object} domain.ErrorResponse
 // @Failure 429 {object} domain.ErrorResponse
-// @Failure 502 {object} domain.ErrorResponse
+// @Failure 502 {object} domain.ErrorResponse "Upstream failure or no usable item for a requested topic"
 // @Failure 503 {object} domain.ErrorResponse "Temporary unavailability or upstream throttling"
 // @Header 503 {integer} Retry-After "Seconds to wait before retrying"
 // @Failure 504 {object} domain.ErrorResponse
@@ -96,6 +96,8 @@ func (h *Handler) writePipelineError(c fiber.Ctx, ctx context.Context, err error
 		status, code, message = fiber.StatusServiceUnavailable, "service_unavailable", "reasoning temporarily unavailable"
 	case errors.Is(err, context.Canceled):
 		status, code, message = fiber.StatusRequestTimeout, "request_timeout", "request canceled"
+	case errors.Is(err, service.ErrInvalidOutput):
+		status, code, message = fiber.StatusBadGateway, "bad_gateway", "model returned no usable item"
 	case errors.Is(err, service.ErrUpstream):
 		status, code, message = fiber.StatusBadGateway, "bad_gateway", "upstream reasoning failed"
 	}

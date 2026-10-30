@@ -63,8 +63,9 @@ The `details` field provides context when available and is omitted when empty. A
 | `422 Unprocessable Entity` | `validation_error` | Concept not found in knowledge graph | One or more topics in `failed_topics`, `topics`, or `target_topic` do not exist |
 | `429 Too Many Requests` | `rate_limit_exceeded` | Client rate limit exceeded | Inbound requests exceed `RATE_LIMIT_MAX` within `RATE_LIMIT_WINDOW` |
 | `500 Internal Server Error` | `internal_error` | Unhandled server error | Unexpected internal failure or recovered panic |
-| `502 Bad Gateway` | `bad_gateway` | Upstream model failure | Amazon Bedrock invocation error or unparseable model response |
-| `503 Service Unavailable` | `service_unavailable` | Circuit breaker open | Upstream planner circuit tripped due to consecutive failures (`Retry-After: 15`, details `reasoning temporarily unavailable`) |
+| `502 Bad Gateway` | `bad_gateway` | Upstream model failure or missing topic item | Amazon Bedrock invocation error, unparseable model response, or no usable item returned for a requested topic |
+| `503 Service Unavailable` | `service_unavailable` | Circuit breaker open | Upstream planner circuit tripped due to consecutive failures (`Retry-After: 15`, details `reasoning temporarily unavailable`; `Retry-After: 1` while the circuit is half-open and its probe requests are in flight) |
+| `503 Service Unavailable` | `service_unavailable` | Concurrency limit reached | No upstream slot became free within `LLM_QUEUE_TIMEOUT` (`Retry-After: 1`, details `reasoning temporarily unavailable`) |
 | `503 Service Unavailable` | `service_unavailable` | Upstream throttling | Upstream capacity limit or rate throttling (`Retry-After: 5`, details `upstream throttled`) |
 | `504 Gateway Timeout` | `gateway_timeout` | Processing deadline exceeded | Pipeline execution exceeded `REQUEST_TIMEOUT` or `LLM_TIMEOUT` |
 
@@ -123,14 +124,14 @@ Generates a personalized, prerequisite-ordered study plan for a student based on
 
 #### Responses
 
-- **200 OK**: Successfully generated adaptive plan. Response metadata (`_meta`) reports execution statistics: `items_after_validation` counts study items retained within the requested topics and their prerequisite closure, while `items_dropped` counts distinct items outside this closure or absent from the graph (also emitted in `stage.validation` warning logs).
+- **200 OK**: Successfully generated adaptive plan. Every requested canonical topic is guaranteed to retain a study item. Response metadata (`_meta`) reports execution statistics: `items_after_validation` counts study items retained within the requested topics and their prerequisite closure, while `items_dropped` counts distinct items outside this closure or absent from the graph (also emitted in `stage.validation` warning logs). Duplicate items removed during merging are not counted.
 - **400 Bad Request**: Malformed body, missing required fields, or identifier syntax error.
 - **401 Unauthorized**: Missing or invalid authentication token.
 - **413 Payload Too Large**: Payload exceeds 64 KiB.
 - **415 Unsupported Media Type**: Request `Content-Type` is missing, malformed, or not `application/json`.
 - **422 Unprocessable Entity**: One or more topics are not found in the knowledge graph.
 - **429 Too Many Requests**: Rate limit exceeded.
-- **502 Bad Gateway**: Upstream Amazon Bedrock inference failure.
+- **502 Bad Gateway**: Upstream failure or no usable item for a requested topic (details `model returned no usable item` or `upstream reasoning failed`).
 - **503 Service Unavailable**: Upstream circuit breaker is open.
 - **504 Gateway Timeout**: Request exceeded pipeline deadline.
 

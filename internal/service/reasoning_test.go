@@ -9,6 +9,7 @@ import (
 	"log/slog"
 	"math/rand/v2"
 	"reflect"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"testing"
@@ -96,7 +97,9 @@ func TestValidationBeforePlanner(t *testing.T) {
 			}
 		})
 	}
-	svc := newService(func(context.Context, TopicRequest) ([]domain.PlanItem, error) { return nil, nil })
+	svc := newService(func(_ context.Context, r TopicRequest) ([]domain.PlanItem, error) {
+		return []domain.PlanItem{{Topic: r.Topic}}, nil
+	})
 	_, err := svc.GeneratePlan(context.Background(), request("Recursion", "unknown", "other"))
 	var validation *ValidationError
 	if !errors.As(err, &validation) || !reflect.DeepEqual(validation.UnknownTopics, []string{"unknown", "other"}) {
@@ -267,10 +270,10 @@ func TestUpstreamFailuresOpenCircuit(t *testing.T) {
 func TestHalfOpenSaturation(t *testing.T) {
 	entered := make(chan struct{})
 	release := make(chan struct{})
-	svc := newService(func(context.Context, TopicRequest) ([]domain.PlanItem, error) {
+	svc := newService(func(_ context.Context, r TopicRequest) ([]domain.PlanItem, error) {
 		close(entered)
 		<-release
-		return nil, nil
+		return []domain.PlanItem{{Topic: r.Topic}}, nil
 	})
 	svc.breaker = gobreaker.NewCircuitBreaker[[]domain.PlanItem](gobreaker.Settings{MaxRequests: 1, Timeout: time.Nanosecond, ReadyToTrip: func(gobreaker.Counts) bool { return true }})
 	_, _ = svc.breaker.Execute(func() ([]domain.PlanItem, error) { return nil, errors.New("failure") })
@@ -562,4 +565,52 @@ func TestPlannerIgnoringContextStillTimesOut(t *testing.T) {
 		}
 		svc.slots.Release(1)
 	})
+}
+
+func TestMissingTopicItemFailsAsInvalidOutput(t *testing.T) {
+	for _, tc := range []struct {
+		name  string
+		items []domain.PlanItem
+	}{
+		{"empty", nil}, {"prerequisite only", []domain.PlanItem{{Topic: "Functions"}}}, {"unrelated", []domain.PlanItem{{Topic: "Hash Tables"}}}, {"unknown", []domain.PlanItem{{Topic: "invented"}}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			var logs bytes.Buffer
+			svc := newService(func(context.Context, TopicRequest) ([]domain.PlanItem, error) { return tc.items, nil })
+			svc.logger = slog.New(slog.NewJSONHandler(&logs, nil))
+			for range 5 {
+				_, err := svc.GeneratePlan(WithRequestID(t.Context(), "missing-42"), request("Recursion"))
+				var topicErr *TopicError
+				if !errors.Is(err, ErrInvalidOutput) || !errors.As(err, &topicErr) || topicErr.Topic != "Recursion" {
+					t.Fatalf("error=%v", err)
+				}
+			}
+			counts := svc.breaker.Counts()
+			if counts.TotalExclusions != 5 || counts.TotalFailures != 0 || counts.TotalSuccesses != 0 || svc.breaker.State() != gobreaker.StateClosed {
+				t.Fatalf("counts=%+v state=%v", counts, svc.breaker.State())
+			}
+			for _, line := range strings.Split(strings.TrimSpace(logs.String()), "\n") {
+				var event map[string]any
+				if err := json.Unmarshal([]byte(line), &event); err != nil {
+					t.Fatal(err)
+				}
+				if event["msg"] != "stage.validation" || event["level"] != "WARN" || event["topic"] != "Recursion" || event["request_id"] != "missing-42" {
+					t.Fatalf("event=%v", event)
+				}
+			}
+		})
+	}
+}
+
+func TestIncompleteRequestedTopicsFail(t *testing.T) {
+	svc := newService(func(_ context.Context, r TopicRequest) ([]domain.PlanItem, error) {
+		if r.Topic == "Recursion" {
+			return []domain.PlanItem{{Topic: r.Topic}}, nil
+		}
+		return []domain.PlanItem{{Topic: "Functions"}}, nil
+	})
+	_, err := svc.GeneratePlan(t.Context(), request("Recursion", "Polymorphism"))
+	if !errors.Is(err, ErrInvalidOutput) {
+		t.Fatalf("error=%v", err)
+	}
 }
