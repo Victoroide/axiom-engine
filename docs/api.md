@@ -14,6 +14,8 @@ Callers may supply the internal token using either of two headers:
 - `X-Internal-Token: <token>`
 - `Authorization: Bearer <token>`
 
+During rotation the service also accepts the token configured in `AXIOM_INTERNAL_TOKEN_PREVIOUS` (see [Token rotation](deployment.md#token-rotation)). The presented token is compared with every configured token.
+
 Header verification checks `X-Internal-Token` first, then falls back to `Authorization: Bearer <token>` with a case-insensitive `Bearer` scheme check. Verification computes SHA-256 digests and performs a constant-time comparison (`crypto/subtle.ConstantTimeCompare`) in `internalTokenMiddleware` (`internal/server/server.go`). Requests that omit the token or provide a mismatched value receive HTTP 401 Unauthorized:
 
 ```json

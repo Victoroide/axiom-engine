@@ -9,6 +9,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Accept an optional previous internal token during rotation via `AXIOM_INTERNAL_TOKEN_PREVIOUS` on `/api/v1` routes.
+
 - Bound concurrent Bedrock calls across requests with a process-wide limit (`LLM_MAX_CONCURRENCY`, default 16); a topic that waits longer than `LLM_QUEUE_TIMEOUT` (default `min(2s, LLM_TIMEOUT/2)`) returns HTTP 503 `service_unavailable` with `Retry-After: 1`.
 - Liveness (`/livez`) and readiness (`/readyz`) probe endpoints with backwards-compatible `/health` liveness alias, readiness that reports draining with HTTP 503 on shutdown, configurable `SHUTDOWN_DRAIN_DELAY`, and `/livez` binary container healthcheck.
 - Prometheus metrics exposition at `/metrics` controlled by `METRICS_ENABLED`, tracking route-template HTTP request counts and latency distributions, LLM call outcomes, duration, in-flight executions, queue wait times, circuit breaker state, dropped items, and Go and process runtime series.

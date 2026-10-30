@@ -330,3 +330,52 @@ func TestMetricsEnabledValidation(t *testing.T) {
 		})
 	}
 }
+
+func TestPreviousTokenMustDiffer(t *testing.T) {
+	token := strings.Repeat("a", 32)
+	_, err := Load(func(key string) string {
+		if key == "AXIOM_INTERNAL_TOKEN" || key == "AXIOM_INTERNAL_TOKEN_PREVIOUS" {
+			return token
+		}
+		return ""
+	})
+	if err == nil || !strings.Contains(err.Error(), "must differ") {
+		t.Fatalf("expected distinct token validation, got %v", err)
+	}
+}
+
+func TestPreviousTokenValidation(t *testing.T) {
+	for _, previous := range []string{"short", strings.Repeat("b", 31), " " + strings.Repeat("b", 32), strings.Repeat("b", 32) + " ", strings.Repeat("b", 32) + "é", strings.Repeat("b", 32) + "\x7f"} {
+		t.Run(previous, func(t *testing.T) {
+			_, err := Load(func(key string) string {
+				switch key {
+				case "AXIOM_INTERNAL_TOKEN":
+					return strings.Repeat("a", 32)
+				case "AXIOM_INTERNAL_TOKEN_PREVIOUS":
+					return previous
+				default:
+					return ""
+				}
+			})
+			if err == nil || !strings.Contains(err.Error(), "AXIOM_INTERNAL_TOKEN_PREVIOUS") {
+				t.Fatalf("expected previous token validation, got %v", err)
+			}
+		})
+	}
+}
+
+func TestPreviousTokenRequiresAuthentication(t *testing.T) {
+	_, err := Load(func(key string) string {
+		switch key {
+		case "AXIOM_AUTH_DISABLED":
+			return "true"
+		case "AXIOM_INTERNAL_TOKEN_PREVIOUS":
+			return strings.Repeat("b", 32)
+		default:
+			return ""
+		}
+	})
+	if err == nil {
+		t.Fatal("previous token accepted with authentication disabled")
+	}
+}

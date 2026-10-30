@@ -13,26 +13,27 @@ import (
 
 // Config contains startup configuration for the service.
 type Config struct {
-	Port               string
-	AuthDisabled       bool
-	InternalToken      string
-	CORSAllowedOrigins []string
-	RateLimitMax       int
-	RateLimitWindow    time.Duration
-	TrustedProxies     []string
-	RequestTimeout     time.Duration
-	ReadTimeout        time.Duration
-	WriteTimeout       time.Duration
-	IdleTimeout        time.Duration
-	LLMTimeout         time.Duration
-	LLMMaxConcurrency  int
-	LLMQueueTimeout    time.Duration
-	MaxFailedTopics    int
-	MetricsEnabled     bool
-	GraphFile          string
-	LogLevel           slog.Level
-	ShutdownDrainDelay time.Duration
-	ShutdownTimeout    time.Duration
+	Port                  string
+	AuthDisabled          bool
+	InternalToken         string
+	InternalTokenPrevious string
+	CORSAllowedOrigins    []string
+	RateLimitMax          int
+	RateLimitWindow       time.Duration
+	TrustedProxies        []string
+	RequestTimeout        time.Duration
+	ReadTimeout           time.Duration
+	WriteTimeout          time.Duration
+	IdleTimeout           time.Duration
+	LLMTimeout            time.Duration
+	LLMMaxConcurrency     int
+	LLMQueueTimeout       time.Duration
+	MaxFailedTopics       int
+	MetricsEnabled        bool
+	GraphFile             string
+	LogLevel              slog.Level
+	ShutdownDrainDelay    time.Duration
+	ShutdownTimeout       time.Duration
 }
 
 func defaults() Config {
@@ -54,6 +55,7 @@ func defaults() Config {
 func Load(getenv func(string) string) (Config, error) {
 	c := defaults()
 	c.InternalToken = getenv("AXIOM_INTERNAL_TOKEN")
+	c.InternalTokenPrevious = getenv("AXIOM_INTERNAL_TOKEN_PREVIOUS")
 	c.GraphFile = getenv("GRAPH_FILE")
 	for _, item := range []struct {
 		key string
@@ -76,8 +78,16 @@ func Load(getenv func(string) string) (Config, error) {
 	if c.InternalToken == "" && !c.AuthDisabled {
 		return Config{}, fmt.Errorf("AXIOM_INTERNAL_TOKEN is required unless AXIOM_AUTH_DISABLED=true")
 	}
-	if c.InternalToken != "" && (len(c.InternalToken) < 32 || strings.ContainsFunc(c.InternalToken, func(r rune) bool { return r < 0x21 || r > 0x7e })) {
-		return Config{}, fmt.Errorf("AXIOM_INTERNAL_TOKEN must be at least 32 visible ASCII characters without whitespace")
+	for _, token := range []struct{ key, value string }{
+		{"AXIOM_INTERNAL_TOKEN", c.InternalToken},
+		{"AXIOM_INTERNAL_TOKEN_PREVIOUS", c.InternalTokenPrevious},
+	} {
+		if token.value != "" && (len(token.value) < 32 || strings.ContainsFunc(token.value, func(r rune) bool { return r < 0x21 || r > 0x7e })) {
+			return Config{}, fmt.Errorf("%s must be at least 32 visible ASCII characters without whitespace", token.key)
+		}
+	}
+	if c.InternalTokenPrevious != "" && c.InternalTokenPrevious == c.InternalToken {
+		return Config{}, fmt.Errorf("AXIOM_INTERNAL_TOKEN_PREVIOUS must differ from AXIOM_INTERNAL_TOKEN")
 	}
 	if v := getenv("PORT"); v != "" {
 		n, err := strconv.Atoi(v)
@@ -192,6 +202,9 @@ func Load(getenv func(string) string) (Config, error) {
 			}
 			c.CORSAllowedOrigins = append(c.CORSAllowedOrigins, origin)
 		}
+	}
+	if c.AuthDisabled && c.InternalTokenPrevious != "" {
+		return Config{}, fmt.Errorf("AXIOM_AUTH_DISABLED must be false when AXIOM_INTERNAL_TOKEN_PREVIOUS is configured")
 	}
 	if c.AuthDisabled && c.InternalToken != "" {
 		return Config{}, fmt.Errorf("AXIOM_AUTH_DISABLED must be false when AXIOM_INTERNAL_TOKEN is configured")

@@ -11,6 +11,7 @@ import (
 	"net/http"
 	"runtime/debug"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/goccy/go-json"
@@ -32,6 +33,23 @@ import (
 	"github.com/Victoroide/axiom-engine/internal/metrics"
 	"github.com/Victoroide/axiom-engine/internal/service"
 )
+
+var previousTokenWarnings = &previousTokenLogGate{}
+
+type previousTokenLogGate struct {
+	mu   sync.Mutex
+	last time.Time
+}
+
+func (g *previousTokenLogGate) allow(now time.Time) bool {
+	g.mu.Lock()
+	defer g.mu.Unlock()
+	if !g.last.IsZero() && now.Sub(g.last) < time.Minute {
+		return false
+	}
+	g.last = now
+	return true
+}
 
 // Dependencies supplies the immutable graph, external planner and logger.
 type Dependencies struct {
@@ -130,7 +148,7 @@ func registerPublicRoutes(app *fiber.App) {
 
 func registerAPI(app *fiber.App, cfg config.Config, deps Dependencies, logger *slog.Logger, recorder *metrics.Metrics) {
 	if !cfg.AuthDisabled {
-		app.Use("/api/v1", internalTokenMiddleware(cfg.InternalToken))
+		app.Use("/api/v1", internalTokenMiddleware(tokenDigests(cfg.InternalToken, cfg.InternalTokenPrevious), logger, recorder))
 	} else {
 		logger.Warn("auth.disabled")
 	}
@@ -201,8 +219,17 @@ func newErrorHandler(logger *slog.Logger) fiber.ErrorHandler {
 	}
 }
 
-func internalTokenMiddleware(expected string) fiber.Handler {
-	expectedDigest := sha256.Sum256([]byte(expected))
+func tokenDigests(tokens ...string) [][sha256.Size]byte {
+	digests := make([][sha256.Size]byte, 0, len(tokens))
+	for _, token := range tokens {
+		if token != "" {
+			digests = append(digests, sha256.Sum256([]byte(token)))
+		}
+	}
+	return digests
+}
+
+func internalTokenMiddleware(expected [][sha256.Size]byte, logger *slog.Logger, recorder *metrics.Metrics) fiber.Handler {
 	return func(c fiber.Ctx) error {
 		provided := c.Get("X-Internal-Token")
 		if provided == "" {
@@ -211,8 +238,23 @@ func internalTokenMiddleware(expected string) fiber.Handler {
 			}
 		}
 		providedDigest := sha256.Sum256([]byte(provided))
-		if provided == "" || subtle.ConstantTimeCompare(providedDigest[:], expectedDigest[:]) != 1 {
+		matched := 0
+		previousMatched := 0
+		for i, digest := range expected {
+			match := subtle.ConstantTimeCompare(providedDigest[:], digest[:])
+			matched |= match
+			if i == 1 {
+				previousMatched = match
+			}
+		}
+		if provided == "" || matched != 1 {
 			return c.Status(fiber.StatusUnauthorized).JSON(domain.ErrorResponse{Error: "unauthorized", Details: "missing or invalid internal token"})
+		}
+		if previousMatched == 1 {
+			recorder.ObservePreviousToken()
+			if previousTokenWarnings.allow(time.Now()) {
+				logger.WarnContext(c.Context(), "auth.previous_token_used", "request_id", requestid.FromContext(c))
+			}
 		}
 		return c.Next()
 	}

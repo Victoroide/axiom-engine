@@ -726,3 +726,46 @@ func TestModelOutputIsSanitized(t *testing.T) {
 		t.Fatal(logs.String())
 	}
 }
+
+func TestPreviousTokenAcceptedDuringRotation(t *testing.T) {
+	current, previous := strings.Repeat("a", 32), strings.Repeat("b", 32)
+	for _, rotating := range []bool{true, false} {
+		t.Run(fmt.Sprintf("rotation=%v", rotating), func(t *testing.T) {
+			cfg, err := config.Load(func(key string) string {
+				switch key {
+				case "AXIOM_INTERNAL_TOKEN":
+					return current
+				case "AXIOM_INTERNAL_TOKEN_PREVIOUS":
+					if rotating {
+						return previous
+					}
+				}
+				return ""
+			})
+			if err != nil {
+				t.Fatal(err)
+			}
+			app := newTestApp(t, cfg, nil, nil)
+			for _, token := range []string{current, previous, "", "wrong"} {
+				for _, header := range []string{"X-Internal-Token", "Authorization"} {
+					value := token
+					if header == "Authorization" {
+						value = "Bearer " + token
+					}
+					resp, body := call(t, app, "POST", "/api/v1/adaptive-plan", validBody, map[string]string{header: value})
+					want := http.StatusUnauthorized
+					if token == current || (rotating && token == previous) {
+						want = http.StatusOK
+					}
+					if resp.StatusCode != want {
+						t.Errorf("%s previous=%v: status=%d want=%d body=%s", header, token == previous, resp.StatusCode, want, body)
+					}
+				}
+			}
+			resp, _ := call(t, app, "POST", "/api/v1/adaptive-plan", validBody, map[string]string{"X-Internal-Token": "wrong", "Authorization": "Bearer " + current})
+			if resp.StatusCode != http.StatusUnauthorized {
+				t.Fatal("internal token header lost precedence")
+			}
+		})
+	}
+}
