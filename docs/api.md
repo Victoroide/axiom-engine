@@ -123,7 +123,7 @@ Generates a personalized, prerequisite-ordered study plan for a student based on
 
 #### Responses
 
-- **200 OK**: Successfully generated adaptive plan.
+- **200 OK**: Successfully generated adaptive plan. Response metadata (`_meta`) reports execution statistics: `items_after_validation` counts study items retained within the requested topics and their prerequisite closure, while `items_dropped` counts distinct items outside this closure or absent from the graph (also emitted in `stage.validation` warning logs).
 - **400 Bad Request**: Malformed body, missing required fields, or identifier syntax error.
 - **401 Unauthorized**: Missing or invalid authentication token.
 - **413 Payload Too Large**: Payload exceeds 64 KiB.
@@ -202,6 +202,7 @@ X-Request-ID: k9m7Lx4fPUH5TzEerTGLjuuPm2qLVSzmkFDEe6UxwJ0
     "topics_processed": 1,
     "items_generated": 2,
     "items_after_validation": 2,
+    "items_dropped": 0,
     "llm_latency_ms": 1120.0,
     "total_latency_ms": 1135.0
   }

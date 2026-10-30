@@ -76,9 +76,13 @@ definitions:
       items_after_validation:
         description: |-
           ItemsValidated is the count of study items remaining after the
-          hallucination-guard stage drops items whose topics are absent from
-          the knowledge graph.
+          graph validation stage retains requested topics and their prerequisites.
         example: 5
+        type: integer
+      items_dropped:
+        description: ItemsDropped counts distinct items outside the requested prerequisite
+          closure.
+        example: 1
         type: integer
       items_generated:
         description: |-
