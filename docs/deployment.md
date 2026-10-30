@@ -60,15 +60,41 @@ Compose requires a valid `AXIOM_INTERNAL_TOKEN` in `.env` unless authentication 
 
 ## Release images
 
-Tagging a commit with `v*` triggers the `.github/workflows/release.yml` workflow.
+Tagging a commit with `v*` or manually dispatching `.github/workflows/release.yml` initiates the release pipeline.
 
-The workflow performs the following steps:
-1. Sets up QEMU for multi-architecture emulation and Docker Buildx.
-2. Authenticates against GitHub Container Registry (`ghcr.io`).
-3. Extracts image tags and OCI labels based on semantic versioning rules (`ghcr.io/victoroide/axiom-engine:<tag>`, `:<major>.<minor>`, `:<version>`).
-4. Compiles and pushes multi-architecture images for `linux/amd64` and `linux/arm64`.
-5. Attaches signed build provenance and Software Bill of Materials (SBOM).
-6. Creates a GitHub release corresponding to the tag and generates release notes.
+The release workflow performs the following steps:
+1. **Verification**: executes `make lint test docker-build container-smoke` and confirms that the release commit is an ancestor of `origin/main` (`git merge-base --is-ancestor "$GITHUB_SHA" origin/main`).
+2. **Native platform builds**: builds each image natively on `ubuntu-latest` (`linux/amd64`) and `ubuntu-24.04-arm` (`linux/arm64`) using explicitly installed Docker CE `v29.9.2` without QEMU, loads it into a containerd image store and runs the container smoke test against it. A dry run (`dry_run: true`) then exports an OCI archive and publishes nothing. A release pushes the tested image as `ghcr.io/victoroide/axiom-engine:<commit SHA>-<arch>`, checks that the pushed digest equals the built one, and uploads the digest as an artifact. The two candidate tags stay in the registry.
+3. **Platform merge**: downloads the platform digests and creates the multi-architecture manifest list using `docker buildx imagetools create` with semantic version tags (`:<tag>`, `:<version>`, `:<major>.<minor>` and `:latest`).
+4. **Provenance attestation**: generates and signs SLSA build provenance attestations for the merged index digest using `actions/attest-build-provenance`.
+5. **Cosign signing**: signs the merged index digest using keyless signing with Sigstore Cosign and GitHub Actions OIDC identity.
+6. **Release**: creates the GitHub release corresponding to the tag and generates release notes.
+
+Publishing jobs target the protected `release` environment, ensuring registry credentials and OIDC signing permissions are restricted to verified tag references.
+
+### Verifying images
+
+Published container images include SLSA build provenance attestations and Cosign signatures attached to the multi-architecture index digest.
+
+To verify build provenance using the GitHub CLI:
+
+```sh
+gh attestation verify oci://ghcr.io/victoroide/axiom-engine:<tag> --repo Victoroide/axiom-engine
+```
+
+Use cosign v3 or later; the workflow signs with cosign v3.0.6.
+
+To verify the Cosign signature against the GitHub Actions OIDC issuer and workflow identity:
+
+```sh
+cosign verify ghcr.io/victoroide/axiom-engine:<tag> \
+  --certificate-oidc-issuer https://token.actions.githubusercontent.com \
+  --certificate-identity-regexp '^https://github.com/Victoroide/axiom-engine/.github/workflows/release.yml@refs/tags/v'
+```
+
+### Supply chain
+
+Release builds attach SLSA build provenance and an SPDX Software Bill of Materials (SBOM) to published container images. The precompiled BAML CFFI native library (`libbaml_cffi.so`) is verified at container build time using the SHA256 checksums pinned in the [Dockerfile](../Dockerfile) rather than upstream cryptographic signatures, and is not listed in the generated Go SBOM. Its version parity is verified using `make baml-check`.
 
 ## Operating notes
 

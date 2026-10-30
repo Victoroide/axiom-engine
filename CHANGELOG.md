@@ -42,6 +42,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Breaking:** Require `AXIOM_INTERNAL_TOKEN` at startup unless `AXIOM_AUTH_DISABLED=true` is explicitly configured, and bind the Docker Compose published HTTP port to loopback (`127.0.0.1:8080:8080`).
 - **Breaking:** Reject short, whitespace-containing, control-containing, and non-ASCII internal tokens at startup; `AXIOM_INTERNAL_TOKEN` must be at least 32 visible ASCII characters (`0x21`–`0x7E`) without surrounding or embedded whitespace.
 - **Breaking:** Enforce strict JSON decoding for `POST /api/v1/adaptive-plan`; require media type `application/json` (returning HTTP 415 `unsupported_media_type` otherwise) and reject unknown fields, duplicate keys, case-mismatched keys, null array elements, non-object payloads, and trailing data with HTTP 400 `invalid_request_body`.
+- Gate release publication on verification, support safe dry-run execution, and build and smoke-test each runtime platform natively before pushing, merging, attesting and signing the index.
 - Advertise `Retry-After` on every HTTP 503: 15 seconds for an open circuit, 1 second while the half-open circuit's probe slots are taken, and 5 seconds for upstream throttling, which moves from HTTP 502 to HTTP 503 with details `upstream throttled`.
 - Migrated HTTP server framework to Fiber v3 with validated configuration and standardized JSON error envelope containing `error` and `details`.
 - Replaced wildcard CORS default (`*`) with disabled CORS unless origins are explicitly configured in `CORS_ALLOWED_ORIGINS`.

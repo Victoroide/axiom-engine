@@ -302,13 +302,11 @@ Runs on pull request lifecycle events:
 
 ### `release.yml`
 
-Runs on pushing a tag matching `v*`:
-- Sets up QEMU and Docker Buildx.
-- Logs in to GitHub Container Registry (`ghcr.io`).
-- Builds multi-architecture container images for `linux/amd64` and `linux/arm64`.
-- Pushes images to `ghcr.io/victoroide/axiom-engine` tagged with release version, semantic version patterns, and tag name.
-- Generates SLSA provenance and container SBOM.
-- Publishes a GitHub Release with generated release notes.
+Runs on a pushed `v*` tag and on manual dispatch (`workflow_dispatch`, input `dry_run`, default `true`):
+- **`verify`**: runs `make lint test docker-build container-smoke IMAGE=axiom-release:verify`; publishing runs also require a `v*` tag whose commit is on `main`.
+- **`dry-run`** (when not publishing): explicitly installs Docker CE `v29.9.2`, builds the runtime image natively on `ubuntu-latest` (amd64) and `ubuntu-24.04-arm` (arm64) into a containerd image store, runs `make container-smoke` against it, and exports an OCI archive with SBOM and provenance. Nothing is pushed.
+- **`build`** (publishing): explicitly installs Docker CE `v29.9.2`, builds and loads each native image, runs `make container-smoke`, logs in, pushes it as `ghcr.io/victoroide/axiom-engine:<commit SHA>-<arch>`, checks that the pushed digest equals the built one, and uploads the digest as an artifact.
+- **`merge`**, **`attest`**, **`sign`**, **`release`**: combine both digests into one index tagged `<tag>`, `<version>`, `<major>.<minor>` and `latest`, attest and keylessly sign that index digest, then create the GitHub release. Publishing jobs run in the `release` environment.
 
 ### `security-scan.yml`
 
