@@ -2,6 +2,7 @@ package config
 
 import (
 	"log/slog"
+	"strings"
 	"testing"
 	"time"
 )
@@ -17,12 +18,12 @@ func TestLoadDefaults(t *testing.T) {
 }
 
 func TestLoadOverrides(t *testing.T) {
-	env := map[string]string{"PORT": "9090", "AXIOM_INTERNAL_TOKEN": "secret", "CORS_ALLOWED_ORIGINS": "https://example.com, http://localhost:3000", "RATE_LIMIT_MAX": "2", "RATE_LIMIT_WINDOW": "2m", "TRUSTED_PROXIES": "127.0.0.1,10.0.0.0/8,::1", "REQUEST_TIMEOUT": "5s", "LLM_TIMEOUT": "3s", "MAX_FAILED_TOPICS": "4", "GRAPH_FILE": "graph.json", "LOG_LEVEL": "debug", "SHUTDOWN_TIMEOUT": "1s"}
+	env := map[string]string{"PORT": "9090", "AXIOM_INTERNAL_TOKEN": "0123456789abcdef0123456789abcdef", "CORS_ALLOWED_ORIGINS": "https://example.com, http://localhost:3000", "RATE_LIMIT_MAX": "2", "RATE_LIMIT_WINDOW": "2m", "TRUSTED_PROXIES": "127.0.0.1,10.0.0.0/8,::1", "REQUEST_TIMEOUT": "5s", "LLM_TIMEOUT": "3s", "MAX_FAILED_TOPICS": "4", "GRAPH_FILE": "graph.json", "LOG_LEVEL": "debug", "SHUTDOWN_TIMEOUT": "1s"}
 	c, err := loadWithoutAuth(func(k string) string { return env[k] })
 	if err != nil {
 		t.Fatal(err)
 	}
-	if c.Port != "9090" || c.InternalToken != "secret" || len(c.CORSAllowedOrigins) != 2 || len(c.TrustedProxies) != 3 || c.LogLevel != slog.LevelDebug || c.MaxFailedTopics != 4 || c.GraphFile != "graph.json" || c.LLMTimeout != 3*time.Second || c.RateLimitMax != 2 || c.RateLimitWindow != 2*time.Minute || c.ShutdownTimeout != time.Second {
+	if c.Port != "9090" || c.InternalToken != "0123456789abcdef0123456789abcdef" || len(c.CORSAllowedOrigins) != 2 || len(c.TrustedProxies) != 3 || c.LogLevel != slog.LevelDebug || c.MaxFailedTopics != 4 || c.GraphFile != "graph.json" || c.LLMTimeout != 3*time.Second || c.RateLimitMax != 2 || c.RateLimitWindow != 2*time.Minute || c.ShutdownTimeout != time.Second {
 		t.Fatalf("overrides: %+v", c)
 	}
 	for _, level := range []string{"info", "warn", "error"} {
@@ -125,4 +126,52 @@ func loadWithoutAuth(getenv func(string) string) (Config, error) {
 		}
 		return getenv(k)
 	})
+}
+
+func TestLoadRejectsWeakOrPaddedTokens(t *testing.T) {
+	for _, tc := range []struct {
+		name      string
+		token     string
+		wantError bool
+	}{
+		{"one byte", "x", true},
+		{"31 bytes", strings.Repeat("x", 31), true},
+		{"leading space", " " + strings.Repeat("x", 32), true},
+		{"trailing space", strings.Repeat("x", 32) + " ", true},
+		{"embedded space", strings.Repeat("x", 16) + " " + strings.Repeat("x", 16), true},
+		{"newline", strings.Repeat("x", 32) + "\n", true},
+		{"tab", strings.Repeat("x", 32) + "\t", true},
+		{"non ASCII", strings.Repeat("x", 32) + "é", true},
+		{"delete", strings.Repeat("x", 32) + "\x7f", true},
+		{"32 bytes", "0123456789abcdef0123456789abcdef", false},
+		{"visible boundaries", strings.Repeat("!~", 16), false},
+		{"longer token", strings.Repeat("x", 64), false},
+	} {
+		for _, disabled := range []string{"true", "false"} {
+			t.Run(tc.name+"/disabled="+disabled, func(t *testing.T) {
+				_, err := Load(func(k string) string {
+					switch k {
+					case "AXIOM_INTERNAL_TOKEN":
+						return tc.token
+					case "AXIOM_AUTH_DISABLED":
+						return disabled
+					default:
+						return ""
+					}
+				})
+				switch {
+				case tc.wantError:
+					if err == nil || err.Error() != "AXIOM_INTERNAL_TOKEN must be at least 32 visible ASCII characters without whitespace" {
+						t.Fatalf("expected token validation error, got %v", err)
+					}
+				case disabled == "true":
+					if err == nil || err.Error() != "AXIOM_AUTH_DISABLED must be false when AXIOM_INTERNAL_TOKEN is configured" {
+						t.Fatalf("expected conflicting authentication settings to fail, got %v", err)
+					}
+				case err != nil:
+					t.Fatal(err)
+				}
+			})
+		}
+	}
 }

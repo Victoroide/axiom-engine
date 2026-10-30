@@ -99,7 +99,7 @@ jobs:
         run: |
           docker run -d --name axiom-ci -p 8080:8080 \
             -e AWS_REGION=us-east-1 -e AWS_ACCESS_KEY_ID=test \
-            -e AWS_SECRET_ACCESS_KEY=test -e AXIOM_INTERNAL_TOKEN=ci-internal-token axiom-ci
+            -e AWS_SECRET_ACCESS_KEY=test -e AXIOM_INTERNAL_TOKEN=ci-internal-token-0123456789abcdef axiom-ci
           for _ in {1..30}; do
             status=$(docker inspect --format '{{.State.Health.Status}}' axiom-ci)
             if [ "$status" = healthy ]; then

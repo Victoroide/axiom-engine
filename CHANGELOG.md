@@ -27,6 +27,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- **Breaking:** Reject short, whitespace-containing, control-containing, and non-ASCII internal tokens at startup; `AXIOM_INTERNAL_TOKEN` must be at least 32 visible ASCII characters (`0x21`–`0x7E`) without surrounding or embedded whitespace.
 - **Breaking:** Require `AXIOM_INTERNAL_TOKEN` at startup unless `AXIOM_AUTH_DISABLED=true` is explicitly configured, and bind the Docker Compose published HTTP port to loopback (`127.0.0.1:8080:8080`).
 - Migrated HTTP server framework to Fiber v3 with validated configuration and standardized JSON error envelope containing `error` and `details`.
 - Replaced wildcard CORS default (`*`) with disabled CORS unless origins are explicitly configured in `CORS_ALLOWED_ORIGINS`.
