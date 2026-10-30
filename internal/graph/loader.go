@@ -5,8 +5,10 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"maps"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 
 	"github.com/Victoroide/axiom-engine/internal/domain"
@@ -62,5 +64,63 @@ func Decode(r io.Reader) (*InMemoryGraph, error) {
 			seen[t] = true
 		}
 	}
+	if cycle := g.prerequisiteCycle(); len(cycle) > 0 {
+		return nil, fmt.Errorf("graph contains a prerequisite cycle: %s", cycleSummary(cycle))
+	}
 	return g, nil
+}
+
+func (g *InMemoryGraph) prerequisiteCycle() []string {
+	colors := make(map[string]uint8, len(g.nodes))
+	var path []string
+	var visit func(string) []string
+	visit = func(node string) []string {
+		colors[node] = 1
+		path = append(path, node)
+		for _, edge := range g.forward[node] {
+			if colors[edge.Object] == 1 {
+				start := slices.Index(path, edge.Object)
+				cycle := slices.Clone(path[start:])
+				first := slices.Index(cycle, slices.Min(cycle))
+				cycle = append(cycle[first:], cycle[:first]...)
+				return append(cycle, cycle[0])
+			}
+			if colors[edge.Object] == 0 {
+				if cycle := visit(edge.Object); len(cycle) > 0 {
+					return cycle
+				}
+			}
+		}
+		path = path[:len(path)-1]
+		colors[node] = 2
+		return nil
+	}
+	for _, node := range slices.Sorted(maps.Keys(g.nodes)) {
+		if colors[node] == 0 {
+			if cycle := visit(node); len(cycle) > 0 {
+				return cycle
+			}
+		}
+	}
+	return nil
+}
+
+func cycleSummary(cycle []string) string {
+	const maxNodes = 16
+	shown := cycle
+	if len(cycle)-1 > maxNodes {
+		shown = cycle[:maxNodes]
+	}
+	names := make([]string, len(shown))
+	for i, node := range shown {
+		names[i] = fmt.Sprintf("%.64s", node)
+		if len(names[i]) < len(node) {
+			names[i] += "…"
+		}
+	}
+	summary := strings.Join(names, " -> ")
+	if len(cycle)-1 > maxNodes {
+		summary += fmt.Sprintf(" -> … (%d nodes)", len(cycle)-1)
+	}
+	return summary
 }

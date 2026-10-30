@@ -142,7 +142,7 @@ sequenceDiagram
 2. **Topic Existence Verification**: All topics in `failed_topics` are verified against the in-memory graph (`internal/service/validation.go`). If any topic is absent from the graph, execution stops immediately and returns HTTP 422 `validation_error` with the list of unknown topics.
 3. **Subgraph Extraction**: The service extracts a depth-2 bidirectional subgraph centered on the failed topics using breadth-first search (`GetLocalSubgraph` in `internal/graph/memory.go`). This context bounds the concept neighborhood provided to the LLM.
 4. **Parallel Topic Fan-Out**: An `errgroup.Group` spawns a goroutine for each failed topic (`internal/service/reasoning.go`). Each goroutine:
-   - Computes the topological prerequisite chain for its topic via post-order depth-first search (`GetPrerequisiteChain` in `internal/graph/memory.go`).
+   - Computes the topological prerequisite chain for its topic via post-order depth-first search (`GetPrerequisiteChain` in `internal/graph/memory.go`). Cyclic inputs are rejected at load time; the traversal visited set handles shared prerequisites.
    - Executes through a shared circuit breaker with an individual timeout bounded by `LLM_TIMEOUT` (`internal/service/reasoning.go`).
    - Invokes Amazon Bedrock Nova Micro through the BAML adapter (`internal/llm/baml.go`).
    - Stores the generated items directly into `plans[i]`, where `i` is the original request index. This ensures deterministic ordering regardless of goroutine completion timing.

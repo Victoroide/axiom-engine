@@ -2,6 +2,7 @@ package graph
 
 import (
 	"encoding/json"
+	"fmt"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -53,5 +54,60 @@ func TestShadowDeterministic(t *testing.T) {
 		if string(got) != string(want) {
 			t.Fatal("nondeterministic shadow")
 		}
+	}
+}
+
+func TestDecodeRejectsCycles(t *testing.T) {
+	for _, tc := range []struct {
+		name, input, path string
+	}{
+		{"two nodes", `[{"subject":"B","relation":"depends_on","object":"A"},{"subject":"A","relation":"depends_on","object":"B"}]`, "A -> B -> A"},
+		{"three nodes", `[{"subject":"C","relation":"depends_on","object":"A"},{"subject":"A","relation":"depends_on","object":"B"},{"subject":"B","relation":"depends_on","object":"C"}]`, "A -> B -> C -> A"},
+		{"mixed relations", `[{"subject":"A","relation":"is_a","object":"B"},{"subject":"B","relation":"depends_on","object":"A"}]`, "A -> B -> A"},
+		{"cycle below root", `[{"subject":"A","relation":"depends_on","object":"C"},{"subject":"C","relation":"depends_on","object":"B"},{"subject":"B","relation":"depends_on","object":"C"}]`, "B -> C -> B"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			_, err := Decode(strings.NewReader(tc.input))
+			want := "graph contains a prerequisite cycle: " + tc.path
+			if err == nil || err.Error() != want {
+				t.Fatalf("got %v, want %q", err, want)
+			}
+		})
+	}
+}
+
+func TestDecodeAllowsSharedPrerequisites(t *testing.T) {
+	_, err := Decode(strings.NewReader(`[{"subject":"A","relation":"depends_on","object":"B"},{"subject":"A","relation":"depends_on","object":"C"},{"subject":"B","relation":"is_a","object":"D"},{"subject":"C","relation":"depends_on","object":"D"}]`))
+	if err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestDecodeBoundsCycleDetails(t *testing.T) {
+	for _, tc := range []struct {
+		name   string
+		count  int
+		prefix string
+	}{
+		{"many nodes", 1000, "Node"},
+		{"long names", 2, strings.Repeat("界", 1000)},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			tuples := make([]map[string]string, tc.count)
+			for i := range tc.count {
+				tuples[i] = map[string]string{"subject": fmt.Sprintf("%s%04d", tc.prefix, i), "relation": "depends_on", "object": fmt.Sprintf("%s%04d", tc.prefix, (i+1)%tc.count)}
+			}
+			data, err := json.Marshal(tuples)
+			if err != nil {
+				t.Fatal(err)
+			}
+			_, err = Decode(strings.NewReader(string(data)))
+			if err == nil || len(err.Error()) > 1500 || !strings.Contains(err.Error(), "…") {
+				t.Fatalf("cycle details were not bounded: %v", err)
+			}
+			if tc.count > 16 && (!strings.Contains(err.Error(), "Node0000 -> Node0001") || !strings.Contains(err.Error(), "(1000 nodes)")) {
+				t.Fatalf("missing cycle origin or size: %v", err)
+			}
+		})
 	}
 }
