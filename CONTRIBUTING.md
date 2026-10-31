@@ -87,7 +87,7 @@ Commit subjects and pull request titles must follow the Conventional Commits spe
 - **Types**: `build`, `ci`, `docs`, `feat`, `fix`, `perf`, `refactor`, `test`, `chore`, `revert`.
 - **Scope**: Lowercase component or package name, for example `api`, `config`, `graph`, `llm`, `server`, `service`, `docker`, `make`, `ci`, or `repo`.
 - **Subject**: Use imperative mood (for example, `reject invalid topic names`). Do not start with an uppercase letter. Do not append a trailing period.
-- **Length**: The entire subject line must not exceed 72 characters. CI validates PR title format and length via `.github/workflows/pr-title.yml`.
+- **Length**: Commit subject lines and human-authored PR titles must not exceed 72 characters. Dependabot-authored PR titles may exceed this limit because their generated titles include dependency metadata; they must still pass the same Conventional Commit type and subject validation. When squash-merging a Dependabot PR, supply a conventional commit title of at most 72 characters and a body without trailers.
 - Do not add trailers of any kind (such as `Signed-off-by` or `Co-authored-by`).
 
 ### Review expectations

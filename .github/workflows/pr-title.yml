@@ -36,6 +36,9 @@ jobs:
           subjectPattern: ^[^A-Z].*$
           subjectPatternError: The subject must not start with an uppercase letter.
       - name: Check header length
+        if: >-
+          ${{ github.event.pull_request.user.login != 'dependabot[bot]' ||
+              github.event.pull_request.user.type != 'Bot' }}
         env:
           PR_TITLE: ${{ github.event.pull_request.title }}
         shell: bash
