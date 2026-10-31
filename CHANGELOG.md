@@ -85,3 +85,4 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Enforce an output policy on model-generated resources and text: accept only absolute HTTP(S) URLs with an IP or ASCII DNS host and no userinfo, return them re-encoded and at most 2048 characters long, collapse whitespace and remove other control and format characters in text, bound explanations to 1000 and titles to 200 characters, and restrict resource types to the learner's VARK profile with at most 3 resources per item.
 - Move the runtime container base image to distroless Debian 13 pinned by digest to remediate fixable OpenSSL advisories in the Debian 12 runtime.
 - Scan Go dependencies and the runtime container image daily and on manual dispatch, uploading SARIF reports to GitHub Security.
+- Update `golang.org/x/net` to v0.62.0 in the root and tools modules to remediate GO-2026-6860 and GO-2026-6866.

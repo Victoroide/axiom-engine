@@ -46,6 +46,8 @@ go -C tools mod tidy
 
 Go marks the four provider requirements as indirect, so each named allow rule retains `dependency-type: all`. Check the resolved dependency graph, update the documented tool version, run `go -C tools tool govulncheck -scan package -show verbose tool`, `make tidy-check`, `make generate-check` and `make lint`, and commit any justified generated output with that tool upgrade. If an affected transitive dependency cannot be fixed through a parent-tool release, document an explicit override and inspect it before committing; do not suppress alerts with permanent ignore comments.
 
+`tools/go.mod` explicitly requires `golang.org/x/net v0.62.0` to fix GO-2026-6860 and GO-2026-6866. Swag reaches this module through `go-openapi/spec`, `go-openapi/jsonreference`, and `purell`. The tools Dependabot allowlist selects only the four tool-provider modules, so this transitive security update needs an explicit requirement. After updating the parent tools, check the selected version with `go -C tools list -m golang.org/x/net` and repeat the tools vulnerability scan before changing the override.
+
 `golangci-lint` (`v2.15.0`) intentionally remains executed via `go run github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v2.15.0` in accordance with upstream guidance. `baml-cli` (`0.226.2`) is installed into `bin/` via `make tools-baml` matching the version in `baml_src/generators.baml`. CI caches modules by both `go.sum` and `tools/go.sum`.
 
 ## Make targets
