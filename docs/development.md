@@ -298,7 +298,9 @@ Runs on pull requests:
 
 Runs on pull request lifecycle events:
 - Validates that pull request titles adhere to Conventional Commits format using `amannn/action-semantic-pull-request@v6.1.1`.
-- Enforces allowed types (`build`, `ci`, `docs`, `feat`, `fix`, `perf`, `refactor`, `test`, `chore`, `revert`), non-capitalized subject, and a maximum length of 72 characters.
+- Allowed types (`build`, `ci`, `docs`, `feat`, `fix`, `perf`, `refactor`, `test`, `chore`, `revert`) and the prohibition on uppercase-leading subjects apply to every PR. The 72-character PR-title limit applies to every author except `dependabot[bot]` of type `Bot`; only the separate length step skips for that author. The required `Validate PR title` job continues to execute semantic validation for all PRs.
+
+This workflow uses `pull_request_target`, so GitHub reads its definition from main. After changing the title policy, refresh existing Dependabot PRs with `@dependabot rebase` and validate a new lifecycle event. When squash-merging a Dependabot PR, supply a Conventional Commit title of at most 72 characters and a body without trailers.
 
 ### `release.yml`
 
