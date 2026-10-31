@@ -2,6 +2,8 @@ package main
 
 import (
 	"bufio"
+	"encoding/json"
+	"errors"
 	"io"
 	"net"
 	"net/http"
@@ -56,12 +58,24 @@ func TestRunAcceptsRetrySettings(t *testing.T) {
 }
 
 func TestSecondSignalStopsServer(t *testing.T) {
+	testSecondSignalStopsServer(t, false)
+}
+
+func TestBackToBackSignalsStopServer(t *testing.T) {
+	testSecondSignalStopsServer(t, true)
+}
+
+func testSecondSignalStopsServer(t *testing.T, backToBack bool) {
+	t.Helper()
 	if os.Getenv("AXIOM_SIGNAL_TEST") == "1" {
 		if err := run(nil); err != nil {
 			os.Exit(1)
 		}
 		os.Exit(0)
 	}
+	const shutdownTimeout = 25 * time.Second
+	// Finish before the incomplete body's read timeout or the shutdown budget.
+	const waitTimeout = shutdownTimeout / 4
 	ln, err := (&net.ListenConfig{}).Listen(t.Context(), "tcp", "127.0.0.1:0")
 	if err != nil {
 		t.Fatal(err)
@@ -74,13 +88,37 @@ func TestSecondSignalStopsServer(t *testing.T) {
 	if err := ln.Close(); err != nil {
 		t.Fatal(err)
 	}
-	cmd := exec.CommandContext(t.Context(), os.Args[0], "-test.run=^TestSecondSignalStopsServer$") //nolint:gosec // Reexecute this test binary to exercise process signals.
-	cmd.Env = append(os.Environ(), "AXIOM_SIGNAL_TEST=1", "AXIOM_AUTH_DISABLED=true", "AXIOM_INTERNAL_TOKEN=", "PORT="+port, "SHUTDOWN_TIMEOUT=25s", "SHUTDOWN_DRAIN_DELAY=0s", "GRAPH_FILE=", "AWS_MAX_ATTEMPTS=3", "AWS_RETRY_MODE=standard")
+	cmd := exec.CommandContext(t.Context(), os.Args[0], "-test.run=^"+t.Name()+"$") //nolint:gosec // Reexecute this test binary to exercise process signals.
+	cmd.Env = append(os.Environ(), "AXIOM_SIGNAL_TEST=1", "AXIOM_AUTH_DISABLED=true", "AXIOM_INTERNAL_TOKEN=", "PORT="+port, "SHUTDOWN_TIMEOUT="+shutdownTimeout.String(), "SHUTDOWN_DRAIN_DELAY=0s", "GRAPH_FILE=", "LOG_LEVEL=info", "AWS_MAX_ATTEMPTS=3", "AWS_RETRY_MODE=standard")
+	output, err := cmd.StdoutPipe()
+	if err != nil {
+		t.Fatal(err)
+	}
 	if err := cmd.Start(); err != nil {
 		t.Fatal(err)
 	}
 	done := make(chan error, 1)
-	go func() { done <- cmd.Wait() }()
+	type shutdownRecord struct {
+		Message string `json:"msg"`
+		Level   string `json:"level"`
+		Signal  string `json:"signal"`
+		Timeout any    `json:"timeout"`
+	}
+	shutdownStarted := make(chan shutdownRecord, 1)
+	go func() {
+		scanner := bufio.NewScanner(output)
+		for scanner.Scan() {
+			var record shutdownRecord
+			if json.Unmarshal(scanner.Bytes(), &record) == nil && record.Message == "server.shutdown_started" {
+				select {
+				case shutdownStarted <- record:
+				default:
+				}
+			}
+		}
+		close(shutdownStarted)
+		done <- errors.Join(cmd.Wait(), scanner.Err())
+	}()
 	waited := false
 	defer func() {
 		_ = cmd.Process.Kill()
@@ -103,7 +141,7 @@ func TestSecondSignalStopsServer(t *testing.T) {
 		}
 		return err
 	}
-	deadline := time.Now().Add(5 * time.Second)
+	deadline := time.Now().Add(waitTimeout)
 	for probe() != nil {
 		if time.Now().After(deadline) {
 			t.Fatal("server did not start")
@@ -118,7 +156,7 @@ func TestSecondSignalStopsServer(t *testing.T) {
 	if _, err := io.WriteString(conn, "POST /api/v1/adaptive-plan HTTP/1.1\r\nHost: localhost\r\nContent-Length: 1\r\nExpect: 100-continue\r\n\r\n"); err != nil {
 		t.Fatal(err)
 	}
-	if err := conn.SetDeadline(time.Now().Add(5 * time.Second)); err != nil {
+	if err := conn.SetDeadline(time.Now().Add(waitTimeout)); err != nil {
 		t.Fatal(err)
 	}
 	line, err := bufio.NewReader(conn).ReadString('\n')
@@ -126,26 +164,58 @@ func TestSecondSignalStopsServer(t *testing.T) {
 		t.Fatalf("continue response=%q error=%v", line, err)
 	}
 	// Keep an incomplete body open while the listener closes.
+	deadline = time.Now().Add(waitTimeout)
+	shutdownTimer := time.NewTimer(waitTimeout)
+	defer shutdownTimer.Stop()
 	if err := cmd.Process.Signal(syscall.SIGTERM); err != nil {
 		t.Fatal(err)
 	}
-	deadline = time.Now().Add(2 * time.Second)
-	for probe() == nil {
-		if time.Now().After(deadline) {
-			t.Fatal("listener stayed open after termination signal")
+	if backToBack {
+		if err := cmd.Process.Signal(syscall.SIGINT); err != nil {
+			t.Fatal(err)
 		}
-		time.Sleep(10 * time.Millisecond)
-	}
-	if err := cmd.Process.Signal(syscall.SIGINT); err != nil {
-		t.Fatal(err)
+	} else {
+		select {
+		case record, ok := <-shutdownStarted:
+			if !ok {
+				t.Fatal("child output closed before shutdown started")
+			}
+			if record.Level != "INFO" || record.Signal != "terminated" || record.Timeout != "25s" {
+				t.Fatalf("unexpected shutdown record: %+v", record)
+			}
+		case <-shutdownTimer.C:
+			t.Fatal("server did not restore signal defaults before shutdown")
+		}
+		for probe() == nil {
+			if time.Now().After(deadline) {
+				t.Fatal("listener stayed open after termination signal")
+			}
+			time.Sleep(10 * time.Millisecond)
+		}
+		if err := cmd.Process.Signal(syscall.SIGINT); err != nil {
+			t.Fatal(err)
+		}
 	}
 	select {
 	case err := <-done:
 		waited = true
-		if err == nil {
-			t.Fatal("second signal did not interrupt shutdown")
+		var exitErr *exec.ExitError
+		if !errors.As(err, &exitErr) {
+			t.Fatalf("expected signal exit, got %v", err)
 		}
-	case <-time.After(2 * time.Second):
+		status, ok := exitErr.Sys().(syscall.WaitStatus)
+		if !ok {
+			t.Fatalf("expected signal status, got %v", err)
+		}
+		if backToBack {
+			// Pending signals can be delivered in either order.
+			if status.Signal() != syscall.SIGINT && status.Signal() != syscall.SIGTERM {
+				t.Fatalf("expected interrupt or termination exit, got %v", err)
+			}
+		} else if status.Signal() != syscall.SIGINT {
+			t.Fatalf("expected interrupt exit, got %v", err)
+		}
+	case <-shutdownTimer.C:
 		t.Fatal("second signal did not stop the process")
 	}
 }

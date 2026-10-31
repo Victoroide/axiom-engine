@@ -114,6 +114,16 @@ Panics recovered by middleware generate a `panic.recovered` record with `request
 
 Pipeline and upstream failures generate a `request.failed` record with `request_id`, `error_class`, and (when known) `topic` capped at 128 characters. Upstream prompt content and error dumps are excluded from logs. When hallucinated topics returned by the planner are dropped, a `stage.validation` warning record is emitted with `request_id` and `items_dropped`.
 
+When a termination signal initiates graceful shutdown, the server emits an `INFO` record `server.shutdown_started` containing:
+- `signal`: signal name string (`terminated` or `interrupt`).
+- `timeout`: configured shutdown budget as a Go duration string (for example, `"25s"`).
+
+```json
+{"level":"INFO","msg":"server.shutdown_started","signal":"terminated","timeout":"25s"}
+```
+
+This record includes standard `time`, `level`, and `msg` fields and is suppressed when `LOG_LEVEL` is set to `warn` or `error`.
+
 ### Probes
 
 The service provides unauthenticated health probe endpoints:
@@ -134,14 +144,15 @@ In Kubernetes deployments, configure `livenessProbe` to query `/livez` and `read
 
 ### Graceful shutdown
 
-The service captures `SIGINT` and `SIGTERM` signals. On receipt of either signal:
-1. The server enters the draining state. `/readyz` immediately returns HTTP 503 `{"status":"draining"}` so load balancers stop routing new traffic.
-2. The TCP listener remains open and continues accepting and serving requests for the configured `SHUTDOWN_DRAIN_DELAY` duration (default `0s`). `/livez` continues returning HTTP 200 `{"status":"ok"}`.
-3. After `SHUTDOWN_DRAIN_DELAY` elapses, the server closes the TCP listener to reject new connections.
-4. Active requests drain within `SHUTDOWN_TIMEOUT` (see [configuration](configuration.md)). The server cancels in-flight request contexts one second before the shutdown deadline expires to reserve time to send responses. Requests that complete before cancellation retain their normal response. Requests interrupted by cancellation return HTTP 503 `service_unavailable` with `Retry-After: 1`.
-5. The process exits with code 0 once all in-flight requests finish cleanly. If the shutdown deadline expires before in-flight requests complete, the server exits with code 1.
+The service captures `SIGINT` and `SIGTERM` signals. On receipt of the initial signal:
+1. Default signal behavior is restored synchronously before canceling the serving context. The server emits a `server.shutdown_started` record (see [Log format](#log-format)) and cancels the serving context.
+2. The server enters the draining state. `/readyz` immediately returns HTTP 503 `{"status":"draining"}` so load balancers stop routing new traffic.
+3. The TCP listener remains open and continues accepting and serving requests for the configured `SHUTDOWN_DRAIN_DELAY` duration (default `0s`). `/livez` continues returning HTTP 200 `{"status":"ok"}`.
+4. After `SHUTDOWN_DRAIN_DELAY` elapses, the server closes the TCP listener to reject new connections.
+5. Active requests drain within `SHUTDOWN_TIMEOUT` (see [configuration](configuration.md)). The server cancels in-flight request contexts one second before the shutdown deadline expires to reserve time to send responses. Requests that complete before cancellation retain their normal response. Requests interrupted by cancellation return HTTP 503 `service_unavailable` with `Retry-After: 1`.
+6. The process exits with code 0 once all in-flight requests finish cleanly. If the shutdown deadline expires before in-flight requests complete, the server exits with code 1.
 
-A second `SIGINT` or `SIGTERM` during shutdown terminates the process immediately.
+A second `SIGINT` or `SIGTERM` received after shutdown begins terminates the process immediately. In back-to-back signal scenarios (`SIGTERM` followed immediately by `SIGINT`), a second signal queued before default dispositions are restored is re-delivered after restoration, terminating the process immediately without waiting for graceful shutdown. When both signals are pending simultaneously, either signal can trigger immediate termination, and process termination can precede the `server.shutdown_started` log record.
 
 Set container stop timeouts or Kubernetes `terminationGracePeriodSeconds` to satisfy the shutdown budget formula: `terminationGracePeriodSeconds >= SHUTDOWN_DRAIN_DELAY + SHUTDOWN_TIMEOUT + 5` seconds, plus any additional `preStop` delay.
 

@@ -51,8 +51,28 @@ func run(args []string) error {
 		return err
 	}
 	app := server.New(cfg, server.Dependencies{Graph: g, Planner: llm.New(), Logger: logger})
-	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
-	defer stop()
-	context.AfterFunc(ctx, stop)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	signals := make(chan os.Signal, 2)
+	signal.Notify(signals, syscall.SIGINT, syscall.SIGTERM)
+	defer signal.Stop(signals)
+	go func() {
+		select {
+		case sig := <-signals:
+			// Restore signal defaults before announcing shutdown or closing the listener.
+			signal.Stop(signals)
+			// Re-deliver a second signal queued before defaults were restored.
+			select {
+			case again := <-signals:
+				if p, err := os.FindProcess(os.Getpid()); err == nil {
+					_ = p.Signal(again)
+				}
+			default:
+			}
+			logger.Info("server.shutdown_started", "signal", sig.String(), "timeout", cfg.ShutdownTimeout.String())
+			cancel()
+		case <-ctx.Done():
+		}
+	}()
 	return server.Run(ctx, app, ":"+cfg.Port, cfg.ShutdownTimeout)
 }
