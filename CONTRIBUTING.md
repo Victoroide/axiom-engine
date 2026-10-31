@@ -10,7 +10,7 @@
 
 ## Development tools
 
-Developer and CI tools (`govulncheck`, `swag`, `goimports`, and `actionlint`) are tracked in `tools/go.mod` with checksums in `tools/go.sum`. For tool invocation commands, version updates, and maintenance instructions, see the [tooling guide](docs/development.md#tooling). Dependabot checks the `/tools` module weekly, including indirect requirements (`allow: dependency-type: all`, because Go records every tool module as `// indirect`), with a three-day default cooldown.
+Developer and CI tools (`govulncheck`, `swag`, `goimports`, and `actionlint`) are tracked in `tools/go.mod` with checksums in `tools/go.sum`. For tool invocation commands, version updates, and maintenance instructions, see the [tooling guide](docs/development.md#tooling). Dependabot checks the `/tools` module weekly with a three-day cooldown. Its allowlist selects the modules providing actionlint, swag, goimports, and govulncheck, including their indirect Go requirements. Transitive libraries are resolved with tool updates instead of receiving independent version-update PRs. Keep the allowlist synchronized with the `tool` directives when adding or removing a tool.
 
 Read [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md) before participating. Report security vulnerabilities privately as described in [SECURITY.md](SECURITY.md), never in a public issue or pull request.
 
