@@ -22,6 +22,15 @@ Developer and CI tools are declared using Go `tool` directives in `tools/go.mod`
 | `goimports` | `v0.52.0` | `golang.org/x/tools/cmd/goimports` | Import organizer and formatter |
 | `actionlint` | `v1.7.12` | `github.com/rhysd/actionlint/cmd/actionlint` | GitHub Actions workflow linter |
 
+Dependabot checks the `/tools` module weekly with a three-day cooldown. Its allowlist selects the modules providing actionlint, swag, goimports, and govulncheck, including their indirect Go requirements. Transitive libraries are resolved with tool updates instead of receiving independent version-update PRs. Keep the allowlist synchronized with the `tool` directives when adding or removing a tool.
+
+| Tool package | Dependabot module name |
+| --- | --- |
+| `github.com/rhysd/actionlint/cmd/actionlint` | `github.com/rhysd/actionlint` |
+| `github.com/swaggo/swag/cmd/swag` | `github.com/swaggo/swag` |
+| `golang.org/x/tools/cmd/goimports` | `golang.org/x/tools` |
+| `golang.org/x/vuln/cmd/govulncheck` | `golang.org/x/vuln` |
+
 Run pinned tools from the repository root using `go tool`:
 
 ```sh
@@ -34,6 +43,8 @@ To update a pinned tool version:
 go -C tools get -tool <package>@<version>
 go -C tools mod tidy
 ```
+
+Go marks the four provider requirements as indirect, so each named allow rule retains `dependency-type: all`. Check the resolved dependency graph, update the documented tool version, run `go -C tools tool govulncheck -scan package -show verbose tool`, `make tidy-check`, `make generate-check` and `make lint`, and commit any justified generated output with that tool upgrade. If an affected transitive dependency cannot be fixed through a parent-tool release, document an explicit override and inspect it before committing; do not suppress alerts with permanent ignore comments.
 
 `golangci-lint` (`v2.15.0`) intentionally remains executed via `go run github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v2.15.0` in accordance with upstream guidance. `baml-cli` (`0.226.2`) is installed into `bin/` via `make tools-baml` matching the version in `baml_src/generators.baml`. CI caches modules by both `go.sum` and `tools/go.sum`.
 

@@ -16,7 +16,15 @@ updates:
   - package-ecosystem: gomod
     directory: /tools
     allow:
-      - dependency-type: all
+      # Tool providers are indirect in this tools-only Go module.
+      - dependency-name: github.com/rhysd/actionlint
+        dependency-type: all
+      - dependency-name: github.com/swaggo/swag
+        dependency-type: all
+      - dependency-name: golang.org/x/tools
+        dependency-type: all
+      - dependency-name: golang.org/x/vuln
+        dependency-type: all
     schedule:
       interval: weekly
     cooldown:
