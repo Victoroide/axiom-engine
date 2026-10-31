@@ -12,7 +12,7 @@ require (
 	github.com/prometheus/client_golang v1.25.0
 	github.com/sony/gobreaker/v2 v2.4.0
 	github.com/swaggo/swag v1.16.6
-	github.com/valyala/fasthttp v1.76.0
+	github.com/valyala/fasthttp v1.77.0
 	golang.org/x/sync v0.24.0
 	golang.org/x/text v0.43.0
 )
