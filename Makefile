@@ -13,8 +13,9 @@ export BAML_LIBRARY_DISABLE_DOWNLOAD := true
 export BAML_LOG ?= off
 IMAGE ?= axiom-engine:local
 VULN_FLAGS ?=
+FUZZTIME ?= 30s
 
-.PHONY: help generate swagger build run test cover test-e2e lint vuln fmt tidy-check generate-check toolchain-check docker-build container-smoke container-smoke-test clean tools-baml baml-check native-baml
+.PHONY: help generate swagger build run test cover test-e2e fuzz lint vuln fmt tidy-check generate-check toolchain-check docker-build container-smoke container-smoke-test clean tools-baml baml-check native-baml
 
 help: ## List available targets
 	@awk 'BEGIN {FS = ":.*## "} /^[a-zA-Z0-9_-]+:.*## / {printf "  %-18s %s\n", $$1, $$2}' $(MAKEFILE_LIST)
@@ -80,6 +81,13 @@ cover: native-baml ## Run race tests and print total statement coverage
 
 test-e2e: native-baml ## Test the API documentation in Chrome or Chromium
 	CGO_ENABLED=1 go test -tags e2e -count=1 ./test/e2e/...
+
+fuzz: ## Fuzz parsers and output policy without the native library
+	go test ./internal/graph -run='^$$' -fuzz='^FuzzDecode$$' -fuzztime=$(FUZZTIME)
+	go test ./internal/graph -run='^$$' -fuzz='^FuzzCanonical$$' -fuzztime=$(FUZZTIME)
+	go test ./internal/config -run='^$$' -fuzz='^FuzzLoad$$' -fuzztime=$(FUZZTIME)
+	go test ./internal/api -run='^$$' -fuzz='^FuzzStrictJSON$$' -fuzztime=$(FUZZTIME)
+	go test ./internal/service -run='^$$' -fuzz='^FuzzOutputPolicy$$' -fuzztime=$(FUZZTIME)
 
 lint: ## Vet build variants and check Go code and workflow files
 	@command -v shellcheck >/dev/null || { echo "shellcheck is required for workflow linting; install it and add it to PATH" >&2; exit 1; }

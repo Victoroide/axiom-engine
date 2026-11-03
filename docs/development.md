@@ -67,6 +67,7 @@ Run `make help` to inspect available Makefile targets:
 | `test` | Run unit tests with race detection. |
 | `cover` | Run race tests and print total statement coverage. |
 | `test-e2e` | Test the API documentation in Chrome or Chromium. |
+| `fuzz` | Fuzz parsers and output policy across five sequential targets without the native library (`FUZZTIME` defaults to 30s). |
 | `lint` | Vet build variants and check Go code and workflow files. |
 | `vuln` | Check reachable Go vulnerabilities. |
 | `fmt` | Format maintained Go source files. |
@@ -330,6 +331,37 @@ The smoke test performs the following steps:
 All temporary files, fixture processes, and test containers are cleaned up on completion or failure.
 
 Every failed check stops the script with `container smoke: <reason>`. `make container-smoke-test IMAGE=<image>` builds two derived images, one running as root and one killed on stop, and checks that the smoke test rejects them with `container smoke: configured user is 0:0` and `container smoke: stop exit code is 137`. The derived images are removed afterwards. Both scripts need Go, Docker with `host-gateway` support, curl and Python 3.
+
+### Fuzz and property tests
+
+Go native fuzz targets in `internal/graph`, `internal/config`, `internal/api`, and `internal/service` test parser robustness, canonicalization, and output policy constraints against random and mutated inputs without requiring the native BAML library.
+
+Run all five fuzz targets sequentially:
+
+```sh
+make fuzz
+```
+
+The `FUZZTIME` variable sets the fuzzing duration per target (default: `30s`):
+
+```sh
+make fuzz FUZZTIME=1m
+```
+
+Individual targets can be executed using `go test`:
+
+```sh
+go test ./internal/graph -run='^$' -fuzz='^FuzzDecode$' -fuzztime=30s
+```
+
+Fuzz targets include:
+- `FuzzDecode` (`internal/graph/loader_fuzz_test.go`): decodes JSON graph definitions seeded with `seed.json`, invalid node names, cyclic graphs, and canonical collisions. Asserts that any accepted graph satisfies node naming constraints (at most 128 Unicode runes, no commas, no `Cc` or `Cf` characters, and no U+FFFD), canonical keys are unique, prerequisite graphs are acyclic, and prerequisite chains contain no self-references or duplicates.
+- `FuzzCanonical` (`internal/graph/loader_fuzz_test.go`): verifies that name canonicalization is idempotent (`Canonical(Canonical(s)) == Canonical(s)`).
+- `FuzzLoad` (`internal/config/config_fuzz_test.go`): mutates configuration keys and values through an environment lookup provider. Asserts that accepted configurations preserve timeout invariants (`0 < LLMQueueTimeout < LLMTimeout <= RequestTimeout`, `ShutdownTimeout >= 11s`, and `WriteTimeout == RequestTimeout + 10s`).
+- `FuzzStrictJSON` (`internal/api/decode_fuzz_test.go`): tests strict JSON decoding against arbitrary request bodies. Asserts that decoding never panics, error messages remain bounded within 1024 bytes, and accepted request payloads round-trip through JSON marshaling and decoding unchanged.
+- `FuzzOutputPolicy` (`internal/service/output_fuzz_test.go`): tests model output sanitation across learner VARK profiles. Asserts that retained resources have valid absolute HTTP or HTTPS URLs of at most 2048 runes with no userinfo, titles within 200 runes, explanations within 1000 runes, no control or format characters, resource types permitted for the learner profile, and at most three resources per item.
+
+Seed corpus files in package `testdata/fuzz/` directories run as standard unit tests during `go test`. When a crasher is discovered, its reproduction corpus entry is preserved under the matching package `testdata/fuzz/<TargetName>/` directory alongside the fix.
 
 ## Static analysis and checks
 
