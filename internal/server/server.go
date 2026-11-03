@@ -26,6 +26,7 @@ import (
 	"github.com/gofiber/fiber/v3/middleware/recover"
 	"github.com/gofiber/fiber/v3/middleware/requestid"
 	"github.com/google/uuid"
+	"github.com/valyala/fasthttp"
 
 	"github.com/Victoroide/axiom-engine/docs"
 	"github.com/Victoroide/axiom-engine/internal/api"
@@ -81,7 +82,37 @@ func New(cfg config.Config, deps Dependencies) *fiber.App {
 		app.Get("/metrics", adaptor.HTTPHandler(recorder.Handler()))
 	}
 	registerAPI(app, cfg, deps, logger, recorder)
+	wrapUnknownMethods(app, logger, errorHandler, recorder)
 	return app
+}
+
+func wrapUnknownMethods(app *fiber.App, logger *slog.Logger, errorHandler fiber.ErrorHandler, recorder *metrics.Metrics) {
+	methods := make(map[string]struct{}, len(app.Config().RequestMethods))
+	for _, method := range app.Config().RequestMethods {
+		methods[method] = struct{}{}
+	}
+	handler := app.Server().Handler
+	app.Server().Handler = func(ctx *fasthttp.RequestCtx) {
+		if _, ok := methods[string(ctx.Method())]; ok {
+			handler(ctx)
+			return
+		}
+		start := time.Now()
+		c := app.AcquireCtx(ctx)
+		defer app.ReleaseCtx(c)
+		if base, ok := fiber.GetState[context.Context](app.State(), requestContextKey); ok {
+			c.SetContext(base)
+		}
+		id := c.Get("X-Request-ID")
+		if !clientRequestIDPattern.MatchString(id) {
+			id = uuid.NewString()
+		}
+		c.Set("X-Request-ID", id)
+		if err := errorHandler(c, fiber.ErrNotImplemented); err != nil {
+			logger.ErrorContext(c.Context(), "request.failed", "request_id", id, "error_class", "internal_error")
+		}
+		observeHTTP(c, logger, recorder, start)
+	}
 }
 
 func newApp(cfg config.Config, errorHandler fiber.ErrorHandler) *fiber.App {
@@ -123,14 +154,7 @@ func useMiddleware(app *fiber.App, cfg config.Config, logger *slog.Logger, error
 				return handleErr
 			}
 		}
-		if recorder != nil {
-			route, method := "unmatched", "unmatched"
-			if endpoint := c.Endpoint(); endpoint != nil {
-				route, method = endpoint.Path, endpoint.Method
-			}
-			recorder.ObserveHTTP(route, method, c.Response().StatusCode(), time.Since(start))
-		}
-		logger.InfoContext(c.Context(), "http.access", "request_id", requestid.FromContext(c), "method", c.Method(), "path", c.Path(), "status", c.Response().StatusCode(), "duration_ms", float64(time.Since(start).Microseconds())/1000, "ip", c.IP())
+		observeHTTP(c, logger, recorder, start)
 		return nil
 	})
 	app.Use(recover.New(recover.Config{EnableStackTrace: true, StackTraceHandler: func(c fiber.Ctx, e any) {
@@ -140,6 +164,18 @@ func useMiddleware(app *fiber.App, cfg config.Config, logger *slog.Logger, error
 	if len(cfg.CORSAllowedOrigins) > 0 {
 		app.Use(cors.New(cors.Config{AllowOrigins: cfg.CORSAllowedOrigins, AllowMethods: []string{"GET", "POST", "HEAD", "OPTIONS"}, AllowHeaders: []string{"Origin", "Content-Type", "Accept", "Authorization", "X-Internal-Token", "X-Request-ID"}, ExposeHeaders: []string{"X-Request-ID"}, MaxAge: 3600}))
 	}
+}
+
+func observeHTTP(c fiber.Ctx, logger *slog.Logger, recorder *metrics.Metrics, start time.Time) {
+	elapsed := time.Since(start)
+	if recorder != nil {
+		route, method := "unmatched", "unmatched"
+		if endpoint := c.Endpoint(); endpoint != nil {
+			route, method = endpoint.Path, endpoint.Method
+		}
+		recorder.ObserveHTTP(route, method, c.Response().StatusCode(), elapsed)
+	}
+	logger.InfoContext(c.Context(), "http.access", "request_id", c.GetRespHeader("X-Request-ID"), "method", c.Method(), "path", c.Path(), "status", c.Response().StatusCode(), "duration_ms", float64(elapsed.Microseconds())/1000, "ip", c.IP())
 }
 
 func registerPublicRoutes(app *fiber.App, cfg config.Config) {
@@ -219,11 +255,12 @@ func newErrorHandler(logger *slog.Logger) fiber.ErrorHandler {
 		}
 		code := strings.ReplaceAll(strings.ToLower(http.StatusText(status)), " ", "_")
 		message := http.StatusText(status)
-		if status >= 500 {
+		// A 501 reflects the client's choice of method; its access record is enough.
+		if status >= 500 && status != fiber.StatusNotImplemented {
 			if status == 500 {
 				code = "internal_error"
 			}
-			logger.ErrorContext(c.Context(), "request.failed", "request_id", requestid.FromContext(c), "error_class", code)
+			logger.ErrorContext(c.Context(), "request.failed", "request_id", c.GetRespHeader("X-Request-ID"), "error_class", code)
 		}
 		if status == 413 {
 			code = "payload_too_large"

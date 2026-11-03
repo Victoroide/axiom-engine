@@ -19,6 +19,7 @@ import (
 	"time"
 
 	"github.com/gofiber/fiber/v3"
+	"github.com/google/uuid"
 	"github.com/valyala/fasthttp"
 
 	"github.com/Victoroide/axiom-engine/internal/config"
@@ -85,6 +86,133 @@ func call(t *testing.T, app *fiber.App, method, path, body string, headers map[s
 }
 
 const validBody = `{"student_id":"student-42","course_id":"cs101","failed_topics":["Recursion","Polymorphism"],"vark_profile":"visual"}`
+
+func TestUnknownMethodReturnsEnvelope(t *testing.T) {
+	assertResponse := func(t *testing.T, resp response, body, clientID string) string {
+		t.Helper()
+		if resp.StatusCode != http.StatusNotImplemented || resp.Header.Get("Content-Type") != "application/json; charset=utf-8" || body != `{"error":"not_implemented","details":"Not Implemented"}` {
+			t.Errorf("status=%d content-type=%q body=%s", resp.StatusCode, resp.Header.Get("Content-Type"), body)
+		}
+		id := resp.Header.Get("X-Request-ID")
+		if clientID == "unknown-42" {
+			if id != clientID {
+				t.Errorf("request ID=%q want=%q", id, clientID)
+			}
+		} else if _, err := uuid.Parse(id); err != nil || id == clientID {
+			t.Errorf("invalid client ID not replaced with UUID: %q", id)
+		}
+		return id
+	}
+	assertLogs := func(t *testing.T, logs *bytes.Buffer, method, path, id string) {
+		t.Helper()
+		access, failures := 0, 0
+		decoder := json.NewDecoder(logs)
+		for decoder.More() {
+			var entry struct {
+				Message   string `json:"msg"`
+				RequestID string `json:"request_id"`
+				Method    string `json:"method"`
+				Path      string `json:"path"`
+				Status    int    `json:"status"`
+			}
+			if err := decoder.Decode(&entry); err != nil {
+				t.Fatal(err)
+			}
+			switch entry.Message {
+			case "http.access":
+				access++
+				if entry.RequestID != id || entry.Method != method || entry.Path != path || entry.Status != 501 {
+					t.Errorf("access record=%+v", entry)
+				}
+			case "request.failed":
+				failures++
+			}
+		}
+		if access != 1 || failures != 0 {
+			t.Errorf("access records=%d failure records=%d want 1 and 0", access, failures)
+		}
+	}
+	for _, tc := range []struct{ method, path string }{
+		{"PROPFIND", "/health"},
+		{"FOO", "/api/v1/adaptive-plan"},
+	} {
+		for _, id := range []struct{ name, clientID string }{
+			{"valid", "unknown-42"},
+			{"invalid-char", "invalid/id"},
+			{"empty", ""},
+			{"oversized", strings.Repeat("a", 129)},
+		} {
+			clientID := id.clientID
+			t.Run(tc.method+"/"+id.name, func(t *testing.T) {
+				var logs bytes.Buffer
+				app := newTestApp(t, metricsConfig(t), nil, &logs)
+				resp, body := call(t, app, tc.method, tc.path, "", map[string]string{"X-Request-ID": clientID})
+				id := assertResponse(t, resp, body, clientID)
+				assertLogs(t, &logs, tc.method, tc.path, id)
+				_, body = call(t, app, "GET", "/metrics", "", nil)
+				if !strings.Contains(body, `http_server_requests_total{method="unmatched",route="unmatched",status="501"} 1`+"\n") || !strings.Contains(body, `http_server_request_duration_seconds_count{route="unmatched"} 1`+"\n") {
+					t.Errorf("missing unmatched 501 counter or duration")
+				}
+			})
+		}
+	}
+	t.Run("TCP", func(t *testing.T) {
+		var logs bytes.Buffer
+		app := newTestApp(t, defaultConfig(t), nil, &logs)
+		ln, err := (&net.ListenConfig{}).Listen(context.Background(), "tcp", "127.0.0.1:0")
+		if err != nil {
+			t.Fatal(err)
+		}
+		done := make(chan error, 1)
+		go func() { done <- app.Listener(ln, fiber.ListenConfig{DisableStartupMessage: true}) }()
+		t.Cleanup(func() {
+			if err := app.ShutdownWithTimeout(time.Second); err != nil {
+				t.Error(err)
+			}
+			if err := <-done; err != nil {
+				t.Error(err)
+			}
+			assertLogs(t, &logs, "PROPFIND", "/health", "unknown-42")
+		})
+		req := httptest.NewRequestWithContext(context.Background(), "PROPFIND", "http://"+ln.Addr().String()+"/health", nil)
+		req.RequestURI = ""
+		req.Header.Set("X-Request-ID", "unknown-42")
+		client := &http.Client{Timeout: time.Second}
+		resp, err := client.Do(req)
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer func() { _ = resp.Body.Close() }()
+		body, err := io.ReadAll(resp.Body)
+		if err != nil {
+			t.Fatal(err)
+		}
+		assertResponse(t, response{StatusCode: resp.StatusCode, Header: resp.Header}, string(body), "unknown-42")
+	})
+}
+
+func TestKnownMethodsKeepRouting(t *testing.T) {
+	app := newTestApp(t, defaultConfig(t), nil, nil)
+	app.Add([]string{"QUERY"}, "/query", func(c fiber.Ctx) error { return c.SendString("query accepted") })
+	for _, tc := range []struct {
+		method, path, body string
+		status             int
+	}{
+		{"GET", "/health", "", http.StatusOK},
+		{"HEAD", "/health", "", http.StatusOK},
+		{"QUERY", "/query", "", http.StatusOK},
+		{"DELETE", "/health", "", http.StatusMethodNotAllowed},
+		{"GET", "/missing", "", http.StatusNotFound},
+		{"POST", "/api/v1/adaptive-plan", validBody, http.StatusOK},
+	} {
+		t.Run(tc.method+tc.path, func(t *testing.T) {
+			resp, body := call(t, app, tc.method, tc.path, tc.body, nil)
+			if resp.StatusCode != tc.status || resp.Header.Get("X-Request-ID") == "" {
+				t.Fatalf("status=%d request ID=%q body=%s", resp.StatusCode, resp.Header.Get("X-Request-ID"), body)
+			}
+		})
+	}
+}
 
 func TestServiceUnavailableCarriesRetryAfter(t *testing.T) {
 	for _, tc := range []struct {
