@@ -384,6 +384,11 @@ Runs on a pushed `v*` tag and on manual dispatch (`workflow_dispatch`, input `dr
 - **`build`** (publishing): explicitly installs Docker CE `v29.9.2`, builds and loads each native image, runs `make container-smoke`, logs in, pushes it as `ghcr.io/victoroide/axiom-engine:<commit SHA>-<arch>`, checks that the pushed digest equals the built one, and uploads the digest as an artifact.
 - **`merge`**, **`attest`**, **`sign`**, **`release`**: combine both digests into one index tagged `<tag>`, `<version>`, `<major>.<minor>` and `latest`, attest and keylessly sign that index digest, then create the GitHub release. Publishing jobs run in the `release` environment.
 
+### `scorecard.yml`
+
+Runs on push to `main`, weekly schedule (`43 7 * * 1` / Monday 07:43 UTC), and manual dispatch (`workflow_dispatch`):
+- **`scorecard`**: runs `ossf/scorecard-action` (pinned to `fa7117db83c52d787ae5a89f350999701505d78e` / v2.5.0) on `ubuntu-latest` with `persist-credentials: false` to analyze repository security posture. Publishes results publicly and uploads `scorecard.sarif` under code-scanning category `scorecard` via `github/codeql-action/upload-sarif`. Workflow-level permission is `contents: read`; the job requires `contents: read`, `security-events: write`, and `id-token: write`. This workflow does not trigger on pull requests and is not a required check. Classic branch-protection triggers are omitted because the repository uses rulesets. While `workflow_dispatch` is available for initial manual checks (experimental upstream), push to `main` and weekly schedule are the publishing paths.
+
 ### `security-scan.yml`
 
 Triggers daily on a schedule (`17 6 * * *` / 06:17 UTC) and on manual dispatch (`workflow_dispatch`) with top-level `contents: read` permissions. Each scanning job requests `security-events: write` to upload SARIF results:
