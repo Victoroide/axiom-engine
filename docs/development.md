@@ -249,6 +249,31 @@ Tests execute serially because the BAML client reads process environment variabl
 - Upstream failure classification into typed sentinel errors (`ErrThrottled`, `ErrUpstreamRejected`, `ErrInvalidOutput`, `context.DeadlineExceeded`) across failure modes (`throttle`, `denied`, `garbage`, `hang`).
 - Transport failure classification into `ErrUpstreamUnavailable` when the endpoint connection is closed.
 
+### Swagger contract tests
+
+Swagger response contract tests in `test/contract/contract_test.go` validate that runtime HTTP responses conform to the committed OpenAPI specification.
+
+Execute the contract suite directly:
+
+```sh
+go test -race -count=1 ./test/contract
+```
+
+The suite is also included in `make test` and standard CI test runs via `./...`; no separate test harness or CI workflow is required.
+
+The contract runner loads `docs/swagger.json`, converts Swagger 2.0 to OpenAPI 3.0 via `kin-openapi` (`openapi2conv.ToV3`), routes operations with `routers/legacy`, and executes response validation via `openapi3filter.ValidateResponse` with `IncludeResponseStatus: true`. In addition to schema validation, the suite validates response headers, failing if `X-Request-ID`, `Retry-After`, or any `X-RateLimit-*` header appears on an endpoint response where it is not declared in the specification.
+
+Coverage includes:
+- Probes: HTTP 200, 400 for malformed requests, 408 on the read deadline, 413 for oversized bodies, and 431 for oversized headers on `/health`, `/livez`, and `/readyz`.
+- Adaptive plan (`/api/v1/adaptive-plan`): HTTP 200; 400 for malformed JSON and schema validation errors; 401, 408, 413, 415, 422, 429, 431; 500 route-handler panic recovery; 502 when upstream returns no usable items; 503 for upstream throttling, open circuit breaker, and queue saturation; and 504 on deadline expiration.
+- Cognitive graph (`/api/v1/tutor/student/:student_id/cognitive-graph`): HTTP 200; 400 for invalid student identifiers and target topics outside the resolved topic set; 401, 408, 413, 422, 429, 431, and 500.
+- Router path errors: HTTP 404 (unmatched routes), 405 (unsupported methods on registered routes), and 501 (methods outside router configuration, such as `PROPFIND`), asserting the standard `domain.ErrorResponse` envelope.
+
+Transport execution:
+- Standard scenarios execute in-process using Fiber's `app.Test`.
+- Parser-level HTTP 400 (`bad_request`), 408 (`request_timeout`), 413 (`payload_too_large`), and 431 (`request_header_fields_too_large`) tests run against ephemeral TCP listeners because Fiber masks low-level request parsing errors in `app.Test`. Every operation is tested with an oversized body and headers and with the configured read timeout lowered to 200 ms. Slow-client cases send incomplete requests through a raw TCP connection and read the response with `http.ReadResponse`; malformed requests exercise all three probes. Listeners bind `127.0.0.1:0` and shut down explicitly, with no fixed ports or sleeps.
+- HTTP 500 test cases verify panic recovery in route handlers; planner panics originating in detached child goroutines are not contained.
+
 ### Browser end-to-end tests
 
 Browser tests verify the Swagger UI interface using a real headless browser instance:
