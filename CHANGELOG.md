@@ -104,3 +104,4 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Update `golang.org/x/net` to v0.62.0 in the root and tools modules to remediate GO-2026-6860 and GO-2026-6866.
 - Update BAML to v0.226.3, whose native runtime rejects the distrusted eMudhra intermediate certificates in TLS verification, including AWS credential discovery.
 - **Breaking:** Reject invalid or explicitly empty `BAML_LOG` settings at startup to prevent native logging from silently falling back to INFO and exposing prompt text.
+- Send the standard security headers (`X-Content-Type-Options`, `X-Frame-Options`, `Referrer-Policy` and the cross-origin policies) on HTTP 501 responses for unimplemented methods, matching every other response.

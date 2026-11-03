@@ -13,6 +13,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"reflect"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -20,6 +21,7 @@ import (
 	"time"
 
 	"github.com/gofiber/fiber/v3"
+	"github.com/gofiber/fiber/v3/middleware/helmet"
 	"github.com/google/uuid"
 	"github.com/valyala/fasthttp"
 
@@ -190,6 +192,66 @@ func TestUnknownMethodReturnsEnvelope(t *testing.T) {
 		}
 		assertResponse(t, response{StatusCode: resp.StatusCode, Header: resp.Header}, string(body), "unknown-42")
 	})
+}
+
+func TestUnknownMethodCarriesSecurityHeaders(t *testing.T) {
+	app := newTestApp(t, defaultConfig(t), nil, nil)
+	notFound, _ := call(t, app, "GET", "/missing", "", nil)
+	unknown, _ := call(t, app, "PROPFIND", "/health", "", nil)
+	if notFound.StatusCode != http.StatusNotFound || unknown.StatusCode != http.StatusNotImplemented {
+		t.Fatalf("statuses %d and %d", notFound.StatusCode, unknown.StatusCode)
+	}
+	compared := 0
+	for name := range notFound.Header {
+		switch name {
+		case "Content-Length", "Content-Type", "Date", "X-Request-Id":
+			continue
+		}
+		if got, want := unknown.Header.Get(name), notFound.Header.Get(name); got != want {
+			t.Errorf("%s on 501 = %q, want %q as on 404", name, got, want)
+		}
+		compared++
+	}
+	if compared < 11 {
+		t.Fatalf("compared %d headers; the 404 response lacks the security headers", compared)
+	}
+}
+
+func TestSecurityHeadersMatchHelmet(t *testing.T) {
+	extended := securityHeaders
+	extended.ContentSecurityPolicy = "default-src 'none'"
+	extended.PermissionPolicy = "geolocation=()"
+	reportOnly := extended
+	reportOnly.CSPReportOnly = true
+	for name, cfg := range map[string]helmet.Config{"configured": securityHeaders, "extended": extended, "report only": reportOnly} {
+		t.Run(name, func(t *testing.T) {
+			headers := func(app *fiber.App) http.Header {
+				t.Helper()
+				resp, err := app.Test(httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/", nil))
+				if err != nil {
+					t.Fatal(err)
+				}
+				_ = resp.Body.Close()
+				for _, name := range []string{"Content-Length", "Content-Type", "Date"} {
+					resp.Header.Del(name)
+				}
+				return resp.Header
+			}
+			noContent := func(c fiber.Ctx) error { return c.SendStatus(fiber.StatusNoContent) }
+			withHelmet := fiber.New()
+			withHelmet.Use(helmet.New(cfg))
+			withHelmet.Get("/", noContent)
+			withHelper := fiber.New()
+			withHelper.Get("/", func(c fiber.Ctx) error {
+				setSecurityHeaders(c, cfg)
+				return noContent(c)
+			})
+			want, got := headers(withHelmet), headers(withHelper)
+			if len(want) < 11 || !reflect.DeepEqual(got, want) {
+				t.Fatalf("helper headers differ from helmet:\n got %v\nwant %v", got, want)
+			}
+		})
+	}
 }
 
 func TestKnownMethodsKeepRouting(t *testing.T) {
