@@ -363,6 +363,14 @@ Fuzz targets include:
 
 Seed corpus files in package `testdata/fuzz/` directories run as standard unit tests during `go test`. When a crasher is discovered, its reproduction corpus entry is preserved under the matching package `testdata/fuzz/<TargetName>/` directory alongside the fix.
 
+#### Property tests
+
+Property-based tests using `pgregory.net/rapid v1.3.0` generate randomized inputs to verify invariants across graph traversals and reasoning pipeline transformations. Each property test runs 100 iterations by default on every `go test` invocation:
+- `TestPrerequisiteOrderProperty` (`internal/graph/memory_property_test.go`): generates randomized directed acyclic graphs and asserts that prerequisite chains returned by `GetPrerequisiteChain` follow a strict topological order (deepest prerequisites first) with no duplicates.
+- `TestLocalSubgraphDistanceProperty` (`internal/graph/memory_property_test.go`): verifies `GetLocalSubgraph` against an independent undirected shortest-path matrix. Breadth-first traversal at depth $d$ includes all edges incident to nodes within distance $d$ of any seed, meaning an edge's opposite endpoint may reach distance $d+1$ (including at depth 0).
+- `TestMergeDeduplicateProperty` (`internal/service/pipeline_property_test.go`): asserts that plan deduplication in `mergeAndDeduplicate` is idempotent and preserves the first occurrence of each canonical topic across candidate plans.
+- `TestValidateGraphOrderProperty` (`internal/service/pipeline_property_test.go`): generates linear prerequisite chains and asserts that `validateAgainstGraph` retains only items within the requested topic prerequisite closure, orders retained items strictly by prerequisite rank, assigns sequential priorities starting at 1, and regenerates complete prerequisite chains.
+
 ## Static analysis and checks
 
 ### Lint
