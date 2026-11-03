@@ -456,7 +456,8 @@ Runs on push to `main`, weekly schedule (`43 7 * * 1` / Monday 07:43 UTC), and m
 
 ### `security-scan.yml`
 
-Triggers daily on a schedule (`17 6 * * *` / 06:17 UTC) and on manual dispatch (`workflow_dispatch`) with top-level `contents: read` permissions. Each scanning job requests `security-events: write` to upload SARIF results:
+Triggers daily on a schedule (`17 6 * * *` / 06:17 UTC) and on manual dispatch (`workflow_dispatch`) with top-level `contents: read` permissions. Vulnerability scanning jobs request `security-events: write` to upload SARIF results:
+- **`fuzz`**: runs `make fuzz FUZZTIME=4m` across all five targets sequentially under a 30-minute timeout with `contents: read` permissions. On failure, any crasher inputs under `internal/**/testdata/fuzz/**` are uploaded as `fuzz-crashers` using `actions/upload-artifact` and retained for 30 days. This job runs only on scheduled and manual workflow dispatches and is not a required pull-request check.
 - **`dependencies`**: sets up Go and runs `make vuln VULN_FLAGS="-show verbose"`, which lists module advisories and fails on reachable vulnerabilities. It then generates SARIF with `make --silent vuln VULN_FLAGS="-format sarif"` (this step always exits 0) and uploads it under the `go-dependencies` category, also when the text scan fails.
 - **`tools`**: sets up Go from `tools/go.mod` and runs `go -C tools tool govulncheck -scan package -show verbose tool`, which fails when a pinned tool imports a vulnerable package and lists module advisories. It then uploads SARIF under the `go-tools` category with findings attributed to `tools/go.mod`, also after a failure.
 - **`image`**: builds the `runtime` container target, scans it for fixable high and critical vulnerabilities with Anchore Grype (`anchore/scan-action`), and uploads SARIF under the `runtime-image` category even when the severity threshold fails.
