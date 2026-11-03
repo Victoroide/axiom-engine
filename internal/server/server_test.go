@@ -1,6 +1,7 @@
 package server
 
 import (
+	"bufio"
 	"bytes"
 	"context"
 	"encoding/json"
@@ -462,10 +463,20 @@ func TestBodyLimit(t *testing.T) {
 			t.Error(err)
 		}
 	}()
-	req = httptest.NewRequestWithContext(context.Background(), http.MethodPost, "http://"+ln.Addr().String()+"/api/v1/adaptive-plan", strings.NewReader(strings.Repeat("a", 64*1024+1)))
-	req.RequestURI = ""
-	client := &http.Client{Timeout: time.Second}
-	resp, err = client.Do(req)
+	conn, err := (&net.Dialer{Timeout: time.Second}).DialContext(context.Background(), "tcp", ln.Addr().String())
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = conn.Close() }()
+	if err := conn.SetDeadline(time.Now().Add(2 * time.Second)); err != nil {
+		t.Fatal(err)
+	}
+	// Declare the oversized body without sending it. The server rejects on the
+	// declared length, so reading the response never races a reset body write.
+	if _, err := fmt.Fprintf(conn, "POST /api/v1/adaptive-plan HTTP/1.1\r\nHost: %s\r\nContent-Type: application/json\r\nContent-Length: %d\r\n\r\n", ln.Addr(), 64*1024+1); err != nil {
+		t.Fatal(err)
+	}
+	resp, err = http.ReadResponse(bufio.NewReader(conn), nil)
 	if err != nil {
 		t.Fatal(err)
 	}

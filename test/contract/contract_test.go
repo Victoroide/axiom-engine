@@ -336,6 +336,10 @@ func TestSwaggerPathErrors(t *testing.T) {
 	}
 }
 
+// oversizedBody declares a body over the 64 KiB limit without sending it, so the
+// 413 response is read before the server closes the connection.
+const oversizedBody = "Content-Length: 66560\r\n\r\n"
+
 func TestSwaggerParserErrors(t *testing.T) {
 	_, router := loadContract(t)
 	for _, tc := range []struct {
@@ -345,11 +349,11 @@ func TestSwaggerParserErrors(t *testing.T) {
 		rawHeaders               string
 		readTimeout              time.Duration
 	}{
-		{name: "plan body", method: http.MethodPost, path: planPath, body: strings.Repeat("x", 65*1024), status: 413, code: "payload_too_large"},
-		{name: "graph body", method: http.MethodGet, path: graphPath, body: strings.Repeat("x", 65*1024), status: 413, code: "payload_too_large"},
-		{name: "health body", method: http.MethodGet, path: "/health", body: strings.Repeat("x", 65*1024), status: 413, code: "payload_too_large"},
-		{name: "liveness body", method: http.MethodGet, path: "/livez", body: strings.Repeat("x", 65*1024), status: 413, code: "payload_too_large"},
-		{name: "readiness body", method: http.MethodGet, path: "/readyz", body: strings.Repeat("x", 65*1024), status: 413, code: "payload_too_large"},
+		{name: "plan body", method: http.MethodPost, path: planPath, status: 413, rawHeaders: oversizedBody, code: "payload_too_large"},
+		{name: "graph body", method: http.MethodGet, path: graphPath, status: 413, rawHeaders: oversizedBody, code: "payload_too_large"},
+		{name: "health body", method: http.MethodGet, path: "/health", status: 413, rawHeaders: oversizedBody, code: "payload_too_large"},
+		{name: "liveness body", method: http.MethodGet, path: "/livez", status: 413, rawHeaders: oversizedBody, code: "payload_too_large"},
+		{name: "readiness body", method: http.MethodGet, path: "/readyz", status: 413, rawHeaders: oversizedBody, code: "payload_too_large"},
 		{name: "plan headers", method: http.MethodPost, path: planPath, body: validBody, status: 431, code: "request_header_fields_too_large"},
 		{name: "graph headers", method: http.MethodGet, path: graphPath, status: 431, code: "request_header_fields_too_large"},
 		{name: "health headers", method: http.MethodGet, path: "/health", status: 431, code: "request_header_fields_too_large"},
