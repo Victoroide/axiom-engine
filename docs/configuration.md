@@ -29,7 +29,9 @@ This document is the authoritative reference for all environment variables suppo
 | `SHUTDOWN_DRAIN_DELAY` | Duration | `0s` | Non-negative Go duration string (≥ `0s`) | Duration to wait after receiving a shutdown signal before closing the TCP listener, during which `/readyz` returns HTTP 503 while the listener continues accepting traffic. Negative, malformed, or overflowing durations fail startup. Configured in `internal/config/config.go`. |
 | `SHUTDOWN_TIMEOUT` | Duration | `max(REQUEST_TIMEOUT + 5s, 11s)` (`25s`) | Go duration of at least `11s` | Maximum duration allowed for draining in-flight HTTP connections during graceful shutdown on `SIGINT` or `SIGTERM`. Must be at least `11s`, so a client that holds an incomplete request until the 10-second read timeout cannot push shutdown past its budget. In-flight request work is cancelled 1s before this deadline to reserve time for responses. Configured in `internal/config/config.go`. |
 | `SWAGGER_ENABLED` | Boolean | `true` | `true` or `false` | When `true` (default), registers Swagger UI and OpenAPI documentation routes (`/swagger/*`, `/swagger/doc.json`) with a dedicated Content-Security-Policy header. When `false`, removes Swagger UI, specification, and asset routes so requests return HTTP 404 with the standard `not_found` error envelope. Accepts exactly `true` or `false`; empty or unset defaults to `true`, and invalid values fail startup. Configured in `internal/config/config.go`. |
-| `AWS_REGION` | String | `""` | Valid AWS region identifier (e.g. `us-east-1`) | AWS region where Amazon Bedrock runtime calls are dispatched. Evaluated by the underlying AWS SDK. |
+| `AWS_REGION` | String | `""` | Valid AWS region identifier (e.g. `us-east-1`) | AWS region where Amazon Bedrock runtime calls are dispatched. Required unless `AWS_DEFAULT_REGION`, the selected profile region, or instance metadata supplies one; the static check only confirms configured sources, not region availability. Evaluated by the underlying AWS SDK. |
+| `AWS_DEFAULT_REGION` | String | `""` (unset) | Valid AWS region identifier (e.g. `us-east-1`) | Fallback AWS region identifier evaluated when `AWS_REGION` is unset or empty. Evaluated by the underlying AWS SDK. |
+| `AWS_CONFIG_FILE` | String | `$HOME/.aws/config` | Filesystem path | Override path for the shared AWS configuration file. Used during region resolution. |
 | `AWS_ACCESS_KEY_ID` | String | `""` | IAM access key ID | Long-term IAM access key ID with `bedrock:InvokeModel` permissions. |
 | `AWS_SECRET_ACCESS_KEY` | String | `""` | IAM secret access key | Secret access key corresponding to `AWS_ACCESS_KEY_ID`. |
 | `AWS_SESSION_TOKEN` | String | `""` | STS session token string | Temporary session token when using assumed roles or temporary STS credentials. |
@@ -82,3 +84,16 @@ The IAM principal executing AxiomEngine requires permissions to invoke Amazon Be
   ]
 }
 ```
+
+---
+
+## Region Resolution
+
+At startup, the service statically inspects configured AWS region sources without performing network probes or credential lookups. Sources are evaluated in the following precedence order:
+1. Non-empty `AWS_REGION` environment variable.
+2. Non-empty `AWS_DEFAULT_REGION` environment variable.
+3. The `region` setting in the AWS configuration file specified by `AWS_CONFIG_FILE` (defaulting to `$HOME/.aws/config`), reading the `[profile <name>]` section selected by `AWS_PROFILE`. When `AWS_PROFILE` is unset or `default`, both `[default]` and `[profile default]` are accepted.
+
+When parsing the configuration file, blank lines and whole-line comments starting with `#` or `;` are ignored. If `AWS_PROFILE` specifies a named profile that lacks a `region` setting, resolution does not fall back to `[default]`. Missing or unreadable configuration files yield no confirmed static source.
+
+If no static region source is resolved, the native AWS SDK may still resolve a region from EC2 instance metadata (IMDS). The startup diagnostic emits a `WARN` record (`bedrock.region.unresolved`) rather than failing startup so that non-Bedrock operations (such as knowledge graph queries) remain available. An unreachable instance metadata service adds approximately 2 seconds of latency to each failing call. BAML caches the first successfully resolved region for the lifetime of the process; changing the region requires restarting the service.

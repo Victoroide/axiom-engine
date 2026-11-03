@@ -326,7 +326,15 @@ func TestStartupRecordOmitsSecrets(t *testing.T) {
 				t.Fatal(err)
 			}
 			var output bytes.Buffer
-			logStartup(slog.New(slog.NewJSONHandler(&output, nil)), cfg, g)
+			logStartup(slog.New(slog.NewJSONHandler(&output, nil)), cfg, g, func(key string) string {
+				if key == "AWS_REGION" {
+					return "us-east-1"
+				}
+				return ""
+			}, func(string) ([]byte, error) {
+				t.Fatal("region environment should avoid reading configuration files")
+				return nil, os.ErrNotExist
+			})
 			var record map[string]any
 			if err := json.Unmarshal(bytes.TrimSpace(output.Bytes()), &record); err != nil {
 				t.Fatal(err)
@@ -339,7 +347,7 @@ func TestStartupRecordOmitsSecrets(t *testing.T) {
 				"shutdown_timeout": "25s", "shutdown_drain_delay": "1s",
 				"llm_max_concurrency": float64(12), "max_failed_topics": float64(8),
 				"cors_origins_count": float64(1), "trusted_proxies_count": float64(2),
-				"graph_source": tc.graphSource, "graph_tuples": float64(1),
+				"graph_source": tc.graphSource, "graph_tuples": float64(1), "aws_region_source": "AWS_REGION",
 			} {
 				if got := record[key]; got != want {
 					t.Errorf("%s = %v, want %v", key, got, want)
@@ -352,6 +360,44 @@ func TestStartupRecordOmitsSecrets(t *testing.T) {
 				if secret != "" && strings.Contains(output.String(), secret) {
 					t.Errorf("startup output contains %q", secret)
 				}
+			}
+		})
+	}
+}
+
+func TestStartupWarnsWithoutRegion(t *testing.T) {
+	for _, metadata := range []string{"", "true", "false"} {
+		t.Run("metadata="+metadata, func(t *testing.T) {
+			var output bytes.Buffer
+			logStartup(slog.New(slog.NewJSONHandler(&output, nil)), config.Config{}, graph.NewInMemoryGraph(), func(key string) string {
+				if key == "AWS_EC2_METADATA_DISABLED" {
+					return metadata
+				}
+				return ""
+			}, func(string) ([]byte, error) { return nil, os.ErrNotExist })
+			decoder := json.NewDecoder(&output)
+			var started, warning map[string]any
+			if err := decoder.Decode(&started); err != nil {
+				t.Fatal(err)
+			}
+			if started["aws_region_source"] != "" {
+				t.Errorf("region source = %v, want empty", started["aws_region_source"])
+			}
+			if err := decoder.Decode(&warning); err != nil {
+				t.Fatalf("missing region warning: %v", err)
+			}
+			wantMetadata := "enabled"
+			if metadata == "true" {
+				wantMetadata = "disabled"
+			}
+			if warning["msg"] != "bedrock.region.unresolved" || warning["level"] != "WARN" || warning["instance_metadata"] != wantMetadata {
+				t.Errorf("unexpected warning: %v", warning)
+			}
+			if !strings.Contains(fmt.Sprint(warning["detail"]), "instance metadata may still supply a region") {
+				t.Errorf("warning does not explain region fallback: %v", warning)
+			}
+			if err := decoder.Decode(&warning); err != io.EOF {
+				t.Errorf("unexpected extra output: %v", err)
 			}
 		})
 	}
