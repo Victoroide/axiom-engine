@@ -56,7 +56,7 @@ Transport-level deadlines are derived from configuration in `internal/config/con
 
 ## AWS Credential Resolution
 
-Amazon Bedrock calls executed through BAML rely on the standard AWS credential provider chain. For detailed provider behavior and precedence, refer to the [AWS SDK Documentation](https://docs.aws.amazon.com/sdk-for-go/v1/developer-guide/configuring-sdk.html#specifying-credentials).
+Amazon Bedrock calls executed through BAML rely on the standard AWS credential provider chain. For detailed provider behavior and precedence, refer to the [AWS SDK Documentation](https://docs.aws.amazon.com/sdk-for-rust/latest/dg/credproviders.html).
 
 The runtime resolves credentials in the following standard order:
 1. Environment variables (`AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, and optional `AWS_SESSION_TOKEN`).
