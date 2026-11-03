@@ -19,41 +19,10 @@ AxiomEngine is a Go microservice that generates personalized, prerequisite-order
 
 ## Request Path
 
-```mermaid
-flowchart TD
-    Client["Client / Upstream Caller"] -->|"HTTP Request"| Router["HTTP Router and Middleware<br/>(RequestID, Logger, Recover, Helmet, Auth, Limiter)"]
-
-    subgraph ServerRoutes ["Server Endpoints (internal/server)"]
-        Router -->|"GET /livez, /readyz, /health"| H_Health["Health and Probe Handlers"]
-        Router -->|"GET /swagger/*"| H_Swagger["Swagger UI and Spec"]
-    end
-
-    subgraph Endpoints ["API Endpoints (internal/api)"]
-        Router -->|"GET /api/v1/tutor/student/:id/cognitive-graph"| H_Cognitive["Cognitive Graph Handler"]
-        Router -->|"POST /api/v1/adaptive-plan"| H_Plan["Adaptive Plan Handler"]
-    end
-
-    subgraph Service ["Reasoning Pipeline (internal/service)"]
-        H_Plan --> Step1["Validate Request and Check Topic Existence"]
-        Step1 --> Step2["Extract Subgraph BFS (depth 2) and Prerequisite Chain"]
-        Step2 --> Step3["Parallel Fan-Out per Topic behind Circuit Breaker"]
-        Step3 --> Step4["Merge Items and Deduplicate by Topic"]
-        Step4 --> Step5["Validate against Graph and Assign Priorities"]
-    end
-
-    subgraph GraphLayer ["Graph Layer (internal/graph)"]
-        H_Cognitive --> Shadow["GenerateCognitiveShadow (depth 1)"]
-        Step1 -.-> GraphStore[("InMemoryGraph<br/>(Forward and Reverse Adjacency)")]
-        Step2 -.-> GraphStore
-        Step5 -.-> GraphStore
-        Shadow -.-> GraphStore
-    end
-
-    subgraph Upstream ["Model Provider (internal/llm)"]
-        Step3 -->|"baml.GenerateTopicPlan"| BAML["BAML CFFI Client"]
-        BAML -->|"BedrockNovaMicro"| Bedrock["Amazon Bedrock<br/>(amazon.nova-micro-v1:0)"]
-    end
-```
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/assets/diagrams/request-path-dark.webp">
+  <img src="docs/assets/diagrams/request-path-light.webp" width="100%" alt="Request path: a client calls the router and middleware, which serves the public routes and passes /api/v1 requests through token authentication and the rate limiter to the adaptive plan and cognitive graph handlers. The plan handler runs the reasoning pipeline, which fans out per topic through the circuit breaker to the BAML client and Amazon Bedrock; the pipeline and the cognitive graph handler read the in-memory graph.">
+</picture>
 
 ## Quick Start
 

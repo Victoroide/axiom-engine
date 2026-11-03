@@ -1,0 +1,760 @@
+{
+  "schema_version": 1,
+  "diagram_type": "architecture",
+  "meta": {
+    "title": "Seed curriculum graph",
+    "locale": "en",
+    "output": "seed-graph.html",
+    "quality_profile": "showcase",
+    "repository": {
+      "url": "https://github.com/Victoroide/axiom-engine.git",
+      "provider": "github",
+      "revision": "f8b2d3f4af412a49cce1722e3c4db33aab176285"
+    },
+    "legend": {
+      "entries": {
+        "backend": {
+          "label": "Object-oriented"
+        },
+        "cloud": {
+          "label": "Algorithms"
+        },
+        "database": {
+          "label": "Linear and hashing"
+        },
+        "messagebus": {
+          "label": "Graphs and trees"
+        }
+      }
+    }
+  },
+  "components": [
+    {
+      "id": "generics",
+      "type": "backend",
+      "label": "Generics",
+      "icon": "none",
+      "pos": [
+        40,
+        40
+      ],
+      "size": [
+        150,
+        150
+      ],
+      "sources": [
+        {
+          "path": "internal/graph/seed.json",
+          "line": 32,
+          "end_line": 36
+        }
+      ]
+    },
+    {
+      "id": "polymorphism",
+      "type": "backend",
+      "label": "Polymorphism",
+      "icon": "none",
+      "pos": [
+        240,
+        40
+      ],
+      "size": [
+        150,
+        150
+      ],
+      "sources": [
+        {
+          "path": "internal/graph/seed.json",
+          "line": 2,
+          "end_line": 6
+        },
+        {
+          "path": "internal/graph/seed.json",
+          "line": 32,
+          "end_line": 36
+        },
+        {
+          "path": "internal/graph/seed.json",
+          "line": 37,
+          "end_line": 41
+        }
+      ]
+    },
+    {
+      "id": "inheritance",
+      "type": "backend",
+      "label": "Inheritance",
+      "icon": "none",
+      "pos": [
+        440,
+        40
+      ],
+      "size": [
+        150,
+        150
+      ],
+      "sources": [
+        {
+          "path": "internal/graph/seed.json",
+          "line": 7,
+          "end_line": 11
+        },
+        {
+          "path": "internal/graph/seed.json",
+          "line": 2,
+          "end_line": 6
+        }
+      ]
+    },
+    {
+      "id": "classes",
+      "type": "backend",
+      "label": "Classes",
+      "icon": "none",
+      "pos": [
+        640,
+        40
+      ],
+      "size": [
+        150,
+        150
+      ],
+      "sources": [
+        {
+          "path": "internal/graph/seed.json",
+          "line": 12,
+          "end_line": 16
+        },
+        {
+          "path": "internal/graph/seed.json",
+          "line": 7,
+          "end_line": 11
+        },
+        {
+          "path": "internal/graph/seed.json",
+          "line": 27,
+          "end_line": 31
+        }
+      ]
+    },
+    {
+      "id": "objects",
+      "type": "backend",
+      "label": "Objects",
+      "icon": "none",
+      "pos": [
+        840,
+        40
+      ],
+      "size": [
+        150,
+        150
+      ],
+      "sources": [
+        {
+          "path": "internal/graph/seed.json",
+          "line": 17,
+          "end_line": 21
+        },
+        {
+          "path": "internal/graph/seed.json",
+          "line": 12,
+          "end_line": 16
+        }
+      ]
+    },
+    {
+      "id": "variables",
+      "type": "backend",
+      "label": "Variables",
+      "icon": "none",
+      "pos": [
+        1040,
+        40
+      ],
+      "size": [
+        150,
+        150
+      ],
+      "sources": [
+        {
+          "path": "internal/graph/seed.json",
+          "line": 17,
+          "end_line": 21
+        }
+      ]
+    },
+    {
+      "id": "design_patterns",
+      "type": "backend",
+      "label": "Design Patterns",
+      "icon": "none",
+      "pos": [
+        40,
+        235
+      ],
+      "size": [
+        150,
+        150
+      ],
+      "sources": [
+        {
+          "path": "internal/graph/seed.json",
+          "line": 37,
+          "end_line": 41
+        },
+        {
+          "path": "internal/graph/seed.json",
+          "line": 42,
+          "end_line": 46
+        }
+      ]
+    },
+    {
+      "id": "interfaces",
+      "type": "backend",
+      "label": "Interfaces",
+      "icon": "none",
+      "pos": [
+        240,
+        430
+      ],
+      "size": [
+        150,
+        150
+      ],
+      "sources": [
+        {
+          "path": "internal/graph/seed.json",
+          "line": 22,
+          "end_line": 26
+        },
+        {
+          "path": "internal/graph/seed.json",
+          "line": 42,
+          "end_line": 46
+        }
+      ]
+    },
+    {
+      "id": "abstract_classes",
+      "type": "backend",
+      "label": "Abstract Classes",
+      "icon": "none",
+      "pos": [
+        440,
+        430
+      ],
+      "size": [
+        150,
+        150
+      ],
+      "sources": [
+        {
+          "path": "internal/graph/seed.json",
+          "line": 27,
+          "end_line": 31
+        },
+        {
+          "path": "internal/graph/seed.json",
+          "line": 22,
+          "end_line": 26
+        }
+      ]
+    },
+    {
+      "id": "dynamic_programming",
+      "type": "cloud",
+      "label": "Dynamic Programming",
+      "icon": "none",
+      "pos": [
+        40,
+        650
+      ],
+      "size": [
+        150,
+        150
+      ],
+      "sources": [
+        {
+          "path": "internal/graph/seed.json",
+          "line": 62,
+          "end_line": 66
+        }
+      ]
+    },
+    {
+      "id": "recursion",
+      "type": "cloud",
+      "label": "Recursion",
+      "icon": "none",
+      "pos": [
+        240,
+        650
+      ],
+      "size": [
+        150,
+        150
+      ],
+      "sources": [
+        {
+          "path": "internal/graph/seed.json",
+          "line": 57,
+          "end_line": 61
+        },
+        {
+          "path": "internal/graph/seed.json",
+          "line": 52,
+          "end_line": 56
+        },
+        {
+          "path": "internal/graph/seed.json",
+          "line": 62,
+          "end_line": 66
+        }
+      ]
+    },
+    {
+      "id": "functions",
+      "type": "cloud",
+      "label": "Functions",
+      "icon": "none",
+      "pos": [
+        440,
+        650
+      ],
+      "size": [
+        150,
+        150
+      ],
+      "sources": [
+        {
+          "path": "internal/graph/seed.json",
+          "line": 57,
+          "end_line": 61
+        }
+      ]
+    },
+    {
+      "id": "merge_sort",
+      "type": "cloud",
+      "label": "Merge Sort",
+      "icon": "none",
+      "pos": [
+        40,
+        845
+      ],
+      "size": [
+        150,
+        150
+      ],
+      "sources": [
+        {
+          "path": "internal/graph/seed.json",
+          "line": 52,
+          "end_line": 56
+        }
+      ]
+    },
+    {
+      "id": "binary_search",
+      "type": "database",
+      "label": "Binary Search",
+      "icon": "none",
+      "pos": [
+        640,
+        650
+      ],
+      "size": [
+        150,
+        150
+      ],
+      "sources": [
+        {
+          "path": "internal/graph/seed.json",
+          "line": 47,
+          "end_line": 51
+        }
+      ]
+    },
+    {
+      "id": "arrays",
+      "type": "database",
+      "label": "Arrays",
+      "icon": "none",
+      "pos": [
+        840,
+        650
+      ],
+      "size": [
+        150,
+        150
+      ],
+      "sources": [
+        {
+          "path": "internal/graph/seed.json",
+          "line": 47,
+          "end_line": 51
+        },
+        {
+          "path": "internal/graph/seed.json",
+          "line": 82,
+          "end_line": 86
+        }
+      ]
+    },
+    {
+      "id": "hash_tables",
+      "type": "database",
+      "label": "Hash Tables",
+      "icon": "none",
+      "pos": [
+        640,
+        845
+      ],
+      "size": [
+        150,
+        150
+      ],
+      "sources": [
+        {
+          "path": "internal/graph/seed.json",
+          "line": 82,
+          "end_line": 86
+        }
+      ]
+    },
+    {
+      "id": "graph_traversal",
+      "type": "messagebus",
+      "label": "Graph Traversal",
+      "icon": "none",
+      "pos": [
+        40,
+        1065
+      ],
+      "size": [
+        150,
+        150
+      ],
+      "sources": [
+        {
+          "path": "internal/graph/seed.json",
+          "line": 67,
+          "end_line": 71
+        }
+      ]
+    },
+    {
+      "id": "graphs",
+      "type": "messagebus",
+      "label": "Graphs",
+      "icon": "none",
+      "pos": [
+        240,
+        1065
+      ],
+      "size": [
+        150,
+        150
+      ],
+      "sources": [
+        {
+          "path": "internal/graph/seed.json",
+          "line": 72,
+          "end_line": 76
+        },
+        {
+          "path": "internal/graph/seed.json",
+          "line": 67,
+          "end_line": 71
+        }
+      ]
+    },
+    {
+      "id": "linked_lists",
+      "type": "messagebus",
+      "label": "Linked Lists",
+      "icon": "none",
+      "pos": [
+        440,
+        1065
+      ],
+      "size": [
+        150,
+        150
+      ],
+      "sources": [
+        {
+          "path": "internal/graph/seed.json",
+          "line": 77,
+          "end_line": 81
+        },
+        {
+          "path": "internal/graph/seed.json",
+          "line": 72,
+          "end_line": 76
+        },
+        {
+          "path": "internal/graph/seed.json",
+          "line": 87,
+          "end_line": 91
+        }
+      ]
+    },
+    {
+      "id": "pointers",
+      "type": "messagebus",
+      "label": "Pointers",
+      "icon": "none",
+      "pos": [
+        640,
+        1065
+      ],
+      "size": [
+        150,
+        150
+      ],
+      "sources": [
+        {
+          "path": "internal/graph/seed.json",
+          "line": 77,
+          "end_line": 81
+        }
+      ]
+    },
+    {
+      "id": "avl_trees",
+      "type": "messagebus",
+      "label": "AVL Trees",
+      "icon": "none",
+      "pos": [
+        40,
+        1260
+      ],
+      "size": [
+        150,
+        150
+      ],
+      "sources": [
+        {
+          "path": "internal/graph/seed.json",
+          "line": 97,
+          "end_line": 101
+        }
+      ]
+    },
+    {
+      "id": "binary_search_trees",
+      "type": "messagebus",
+      "label": "Binary Search Trees",
+      "icon": "none",
+      "pos": [
+        240,
+        1260
+      ],
+      "size": [
+        150,
+        150
+      ],
+      "sources": [
+        {
+          "path": "internal/graph/seed.json",
+          "line": 92,
+          "end_line": 96
+        },
+        {
+          "path": "internal/graph/seed.json",
+          "line": 97,
+          "end_line": 101
+        }
+      ]
+    },
+    {
+      "id": "trees",
+      "type": "messagebus",
+      "label": "Trees",
+      "icon": "none",
+      "pos": [
+        440,
+        1260
+      ],
+      "size": [
+        150,
+        150
+      ],
+      "sources": [
+        {
+          "path": "internal/graph/seed.json",
+          "line": 87,
+          "end_line": 91
+        },
+        {
+          "path": "internal/graph/seed.json",
+          "line": 92,
+          "end_line": 96
+        }
+      ]
+    }
+  ],
+  "connections": [
+    {
+      "id": "generics-polymorphism",
+      "from": "generics",
+      "to": "polymorphism",
+      "fromSide": "right",
+      "toSide": "left"
+    },
+    {
+      "id": "polymorphism-inheritance",
+      "from": "polymorphism",
+      "to": "inheritance",
+      "fromSide": "right",
+      "toSide": "left"
+    },
+    {
+      "id": "inheritance-classes",
+      "from": "inheritance",
+      "to": "classes",
+      "fromSide": "right",
+      "toSide": "left"
+    },
+    {
+      "id": "classes-objects",
+      "from": "classes",
+      "to": "objects",
+      "fromSide": "right",
+      "toSide": "left"
+    },
+    {
+      "id": "objects-variables",
+      "from": "objects",
+      "to": "variables",
+      "fromSide": "right",
+      "toSide": "left"
+    },
+    {
+      "id": "design_patterns-polymorphism",
+      "from": "design_patterns",
+      "to": "polymorphism",
+      "fromSide": "right",
+      "toSide": "bottom"
+    },
+    {
+      "id": "design_patterns-interfaces",
+      "from": "design_patterns",
+      "to": "interfaces",
+      "fromSide": "bottom",
+      "toSide": "left"
+    },
+    {
+      "id": "interfaces-abstract_classes",
+      "from": "interfaces",
+      "to": "abstract_classes",
+      "fromSide": "right",
+      "toSide": "left"
+    },
+    {
+      "id": "abstract_classes-classes",
+      "from": "abstract_classes",
+      "to": "classes",
+      "label": "is_a",
+      "variant": "dashed",
+      "fromSide": "right",
+      "toSide": "bottom"
+    },
+    {
+      "id": "dynamic_programming-recursion",
+      "from": "dynamic_programming",
+      "to": "recursion",
+      "fromSide": "right",
+      "toSide": "left"
+    },
+    {
+      "id": "recursion-functions",
+      "from": "recursion",
+      "to": "functions",
+      "fromSide": "right",
+      "toSide": "left"
+    },
+    {
+      "id": "merge_sort-recursion",
+      "from": "merge_sort",
+      "to": "recursion",
+      "fromSide": "right",
+      "toSide": "bottom"
+    },
+    {
+      "id": "binary_search-arrays",
+      "from": "binary_search",
+      "to": "arrays",
+      "fromSide": "right",
+      "toSide": "left"
+    },
+    {
+      "id": "hash_tables-arrays",
+      "from": "hash_tables",
+      "to": "arrays",
+      "fromSide": "right",
+      "toSide": "bottom"
+    },
+    {
+      "id": "graph_traversal-graphs",
+      "from": "graph_traversal",
+      "to": "graphs",
+      "fromSide": "right",
+      "toSide": "left"
+    },
+    {
+      "id": "graphs-linked_lists",
+      "from": "graphs",
+      "to": "linked_lists",
+      "fromSide": "right",
+      "toSide": "left"
+    },
+    {
+      "id": "linked_lists-pointers",
+      "from": "linked_lists",
+      "to": "pointers",
+      "fromSide": "right",
+      "toSide": "left"
+    },
+    {
+      "id": "avl_trees-binary_search_trees",
+      "from": "avl_trees",
+      "to": "binary_search_trees",
+      "label": "is_a",
+      "variant": "dashed",
+      "fromSide": "right",
+      "toSide": "left"
+    },
+    {
+      "id": "binary_search_trees-trees",
+      "from": "binary_search_trees",
+      "to": "trees",
+      "label": "is_a",
+      "variant": "dashed",
+      "fromSide": "right",
+      "toSide": "left"
+    },
+    {
+      "id": "trees-linked_lists",
+      "from": "trees",
+      "to": "linked_lists",
+      "fromSide": "top",
+      "toSide": "bottom"
+    }
+  ],
+  "cards": [
+    {
+      "dot": "slate",
+      "title": "Reading the arrows",
+      "items": [
+        "Each arrow points from a topic to its prerequisite.",
+        "Solid arrows are depends_on; dashed arrows are is_a.",
+        "Both relations count when prerequisite chains are built."
+      ]
+    }
+  ]
+}
