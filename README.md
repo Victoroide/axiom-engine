@@ -2,6 +2,7 @@
 
 [![CI](https://github.com/Victoroide/axiom-engine/actions/workflows/ci.yml/badge.svg)](https://github.com/Victoroide/axiom-engine/actions/workflows/ci.yml)
 [![CodeQL](https://github.com/Victoroide/axiom-engine/actions/workflows/codeql.yml/badge.svg)](https://github.com/Victoroide/axiom-engine/actions/workflows/codeql.yml)
+[![OpenSSF Scorecard](https://api.scorecard.dev/projects/github.com/Victoroide/axiom-engine/badge)](https://scorecard.dev/viewer/?uri=github.com/Victoroide/axiom-engine)
 [![Go Version](https://img.shields.io/badge/go-1.27.3-blue.svg)](https://golang.org)
 [![License: MIT](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 
