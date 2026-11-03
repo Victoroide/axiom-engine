@@ -46,13 +46,15 @@ The graph supports two edge relations:
 
 Concept node names in the knowledge graph are indexed canonically to support matching across casing, spacing, and Unicode representation differences.
 
+After outer whitespace is trimmed, subject and object node names must be non-empty and at most 128 Unicode runes. Node names cannot contain commas, Unicode control characters (`unicode.Cc`), format characters (`unicode.Cf`), or the Unicode replacement character U+FFFD. Commas cannot be addressed as a single name because the cognitive-graph `topics` query parameter splits values on commas. Printable Unicode such as `Recursión` and `Straße` remains supported. Invalid UTF-8 sequences are rejected because `encoding/json` replaces invalid bytes with U+FFFD. Canonical request matching remains unchanged.
+
 Canonical normalization (`internal/graph/canonical.go`) applies:
 1. Removal of Unicode format characters (`unicode.Cf`).
 2. Whitespace collapsing and trimming via `strings.Fields`.
 3. Unicode case folding via `cases.Fold()`.
 4. Unicode Normalization Form C (`norm.NFC`).
 
-Distinct stored node names cannot share the same canonical form. During graph loading, the loader rejects node names that become empty after normalization (`tuple %d has an empty node name after normalization`) and any collision where two distinct node names produce an identical canonical key with `tuple %d has canonical node name collision: %q and %q`.
+Distinct stored node names cannot share the same canonical form. During graph loading, the loader rejects any collision where two distinct node names produce an identical canonical key with `tuple %d has canonical node name collision: %q and %q`.
 
 Original spellings, casing, and spacing of stored graph nodes are preserved in memory and returned in API responses.
 
@@ -135,7 +137,8 @@ The graph loader (`Decode` in `internal/graph/loader.go`) enforces the following
 6. **No Self Loops**: A tuple cannot reference the same concept as both subject and object. Violations trigger `tuple %d is a self loop`.
 7. **Deduplication**: Repeated identical triples are deduplicated during decoding.
 8. **Acyclic Prerequisite Structure**: Both `depends_on` and `is_a` edges must form a directed acyclic graph (DAG). Cyclic prerequisite dependencies are rejected at startup with `graph contains a prerequisite cycle: <path>` (for example, `graph contains a prerequisite cycle: B -> C -> B`). Traversal evaluates starting nodes in sorted order and rotates the cycle to its smallest node to report the path deterministically. Diagnostics show at most 16 nodes and truncate node names exceeding 64 runes with an ellipsis, reporting total node count when nodes are omitted.
-9. **Canonical Node Name Uniqueness**: Distinct node names may not share the same canonical form, and names must not normalize to empty. Format-only names and collisions are rejected at startup (see [Node Naming](#node-naming)).
+9. **Canonical Node Name Uniqueness**: Distinct node names may not share the same canonical form. Canonical collisions are rejected at startup (see [Node Naming](#node-naming)).
+10. **Addressable Node Names**: After outer whitespace is trimmed, subject and object node names must be at most 128 Unicode runes and must not contain commas, Unicode control characters (`unicode.Cc`), format characters (`unicode.Cf`), or the replacement character U+FFFD (including invalid UTF-8 sequences). Violations fail startup validation reporting the tuple index, field (`subject` or `object`), a quoted prefix of at most 64 runes, and the violated rule (`tuple %d subject %.64q contains a comma`, `contains a control character`, `contains a format character`, `contains a replacement character`, or `exceeds 128 runes`).
 
 ---
 

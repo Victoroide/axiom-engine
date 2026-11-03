@@ -539,7 +539,7 @@ func TestUpstreamFailureLogsAreBounded(t *testing.T) {
 			topic := "Recursion"
 			g := graph.NewInMemoryGraph()
 			if longTopic {
-				topic = strings.Repeat("sensitive-topic-", 100)
+				topic = strings.Repeat("sensitive-topic-", 8)
 				var err error
 				g, err = graph.Decode(strings.NewReader(fmt.Sprintf(`[{"subject":%q,"relation":"depends_on","object":"Functions"}]`, topic)))
 				if err != nil {

@@ -10,6 +10,8 @@ import (
 	"path/filepath"
 	"slices"
 	"strings"
+	"unicode"
+	"unicode/utf8"
 
 	"github.com/Victoroide/axiom-engine/internal/domain"
 )
@@ -62,14 +64,17 @@ func Decode(r io.Reader) (*InMemoryGraph, error) {
 		if t.Relation != "depends_on" && t.Relation != "is_a" {
 			return nil, fmt.Errorf("tuple %d has unsupported relation %q", i, t.Relation)
 		}
+		if err := validNodeName(t.Subject); err != nil {
+			return nil, fmt.Errorf("tuple %d subject %.64q %w", i, t.Subject, err)
+		}
+		if err := validNodeName(t.Object); err != nil {
+			return nil, fmt.Errorf("tuple %d object %.64q %w", i, t.Object, err)
+		}
 		if t.Subject == t.Object {
 			return nil, fmt.Errorf("tuple %d is a self loop", i)
 		}
 		for _, name := range []string{t.Subject, t.Object} {
 			key := Canonical(name)
-			if key == "" {
-				return nil, fmt.Errorf("tuple %d has an empty node name after normalization", i)
-			}
 			if previous, exists := g.canonical[key]; exists && previous != name {
 				return nil, fmt.Errorf("tuple %d has canonical node name collision: %q and %q", i, previous, name)
 			}
@@ -84,6 +89,25 @@ func Decode(r io.Reader) (*InMemoryGraph, error) {
 		return nil, fmt.Errorf("graph contains a prerequisite cycle: %s", cycleSummary(cycle))
 	}
 	return g, nil
+}
+
+func validNodeName(name string) error {
+	if utf8.RuneCountInString(name) > 128 {
+		return fmt.Errorf("exceeds 128 runes")
+	}
+	for _, r := range name {
+		switch {
+		case r == ',':
+			return fmt.Errorf("contains a comma")
+		case unicode.Is(unicode.Cc, r):
+			return fmt.Errorf("contains a control character")
+		case unicode.Is(unicode.Cf, r):
+			return fmt.Errorf("contains a format character")
+		case r == utf8.RuneError:
+			return fmt.Errorf("contains a replacement character")
+		}
+	}
+	return nil
 }
 
 func (g *InMemoryGraph) prerequisiteCycle() []string {
