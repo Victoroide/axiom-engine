@@ -57,3 +57,17 @@ func AWSRegionSource(getenv func(string) string, readFile func(string) ([]byte, 
 	}
 	return ""
 }
+
+// ValidateBAMLLog rejects values that would enable native logging through a fallback.
+func ValidateBAMLLog(lookupEnv func(string) (string, bool)) error {
+	value, set := lookupEnv("BAML_LOG")
+	if !set {
+		return nil
+	}
+	switch strings.ToLower(value) {
+	case "off", "error", "warn", "warning", "info", "debug", "trace":
+		return nil
+	default:
+		return fmt.Errorf("BAML_LOG must be off, error, warn, warning, info, debug or trace")
+	}
+}

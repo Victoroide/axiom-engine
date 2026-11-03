@@ -47,6 +47,9 @@ func run(args []string, stdout io.Writer) (err error) {
 	if err := config.ValidateAWSRetry(os.LookupEnv); err != nil {
 		return err
 	}
+	if err := config.ValidateBAMLLog(os.LookupEnv); err != nil {
+		return err
+	}
 	cfg, err := config.Load(os.Getenv)
 	if err != nil {
 		return err
