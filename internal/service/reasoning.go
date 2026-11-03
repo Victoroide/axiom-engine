@@ -174,7 +174,7 @@ func (s *ReasoningService) GeneratePlan(ctx context.Context, req domain.Adaptive
 		s.logger.WarnContext(ctx, "stage.validation", "request_id", requestIDFromContext(ctx), "topic", missing)
 		return domain.PlanResponse{}, &TopicError{Topic: missing, cause: ErrInvalidOutput}
 	}
-	return domain.PlanResponse{StudentID: req.StudentID, CourseID: req.CourseID, Items: validated, Meta: domain.PipelineMeta{SubgraphTuples: len(subgraph), TopicsProcessed: len(req.FailedTopics), ItemsGenerated: countTotalItems(plans), ItemsValidated: len(validated), ItemsDropped: dropped, LLMLatencyMs: float64(llmLatency.Milliseconds()), TotalLatencyMs: float64(time.Since(start).Milliseconds())}}, nil
+	return domain.PlanResponse{StudentID: req.StudentID, CourseID: req.CourseID, Items: validated, Meta: domain.PipelineMeta{SubgraphTuples: len(subgraph), TopicsProcessed: len(req.FailedTopics), ItemsGenerated: countTotalItems(plans), ItemsValidated: len(validated), ItemsDropped: dropped, LLMLatencyMs: llmLatency.Milliseconds(), TotalLatencyMs: time.Since(start).Milliseconds()}}, nil
 }
 
 func (s *ReasoningService) generateTopic(ctx context.Context, req TopicRequest) ([]domain.PlanItem, error) {

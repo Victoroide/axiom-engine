@@ -216,6 +216,11 @@ func registerAPI(app *fiber.App, cfg config.Config, deps Dependencies, logger *s
 // @Tags System
 // @Produce json
 // @Success 200 {object} domain.HealthResponse
+// @Failure 400 {object} domain.ErrorResponse "Malformed HTTP request"
+// @Failure 408 {object} domain.ErrorResponse "Request not read within the 10 s read timeout"
+// @Failure 413 {object} domain.ErrorResponse "Request body exceeds 64 KiB"
+// @Failure 431 {object} domain.ErrorResponse "Request headers exceed the server limit"
+// @Header all {string} X-Request-ID "Resolved request correlation identifier"
 // @Router /health [get]
 func healthHandler(c fiber.Ctx) error { return livenessHandler(c) }
 
@@ -226,6 +231,11 @@ func healthHandler(c fiber.Ctx) error { return livenessHandler(c) }
 // @Tags System
 // @Produce json
 // @Success 200 {object} domain.HealthResponse
+// @Failure 400 {object} domain.ErrorResponse "Malformed HTTP request"
+// @Failure 408 {object} domain.ErrorResponse "Request not read within the 10 s read timeout"
+// @Failure 413 {object} domain.ErrorResponse "Request body exceeds 64 KiB"
+// @Failure 431 {object} domain.ErrorResponse "Request headers exceed the server limit"
+// @Header all {string} X-Request-ID "Resolved request correlation identifier"
 // @Router /livez [get]
 func livenessHandler(c fiber.Ctx) error { return c.JSON(domain.HealthResponse{Status: "ok"}) }
 
@@ -236,7 +246,12 @@ func livenessHandler(c fiber.Ctx) error { return c.JSON(domain.HealthResponse{St
 // @Tags System
 // @Produce json
 // @Success 200 {object} domain.HealthResponse
+// @Failure 400 {object} domain.ErrorResponse "Malformed HTTP request"
+// @Failure 408 {object} domain.ErrorResponse "Request not read within the 10 s read timeout"
+// @Failure 413 {object} domain.ErrorResponse "Request body exceeds 64 KiB"
 // @Failure 503 {object} domain.HealthResponse "Server draining"
+// @Failure 431 {object} domain.ErrorResponse "Request headers exceed the server limit"
+// @Header all {string} X-Request-ID "Resolved request correlation identifier"
 // @Router /readyz [get]
 func readinessHandler(c fiber.Ctx) error {
 	state := fiber.MustGetState[*drainState](c.App().State(), drainStateKey)

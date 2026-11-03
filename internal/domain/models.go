@@ -149,11 +149,11 @@ type PipelineMeta struct {
 
 	// LLMLatencyMs is the wall-clock time (milliseconds) spent waiting
 	// for all parallel LLM calls to complete.
-	LLMLatencyMs float64 `json:"llm_latency_ms" example:"3240.5"`
+	LLMLatencyMs int64 `json:"llm_latency_ms" example:"3240"`
 
 	// TotalLatencyMs is the end-to-end pipeline duration (milliseconds)
 	// from request receipt to response serialization.
-	TotalLatencyMs float64 `json:"total_latency_ms" example:"3312.8"`
+	TotalLatencyMs int64 `json:"total_latency_ms" example:"3312"`
 }
 
 // VisualNode represents a single concept node in the Cognitive Shadow Graph

@@ -94,8 +94,8 @@ definitions:
         description: |-
           LLMLatencyMs is the wall-clock time (milliseconds) spent waiting
           for all parallel LLM calls to complete.
-        example: 3240.5
-        type: number
+        example: 3240
+        type: integer
       subgraph_tuples:
         description: |-
           SubgraphTuples is the number of knowledge-graph triples extracted
@@ -112,8 +112,8 @@ definitions:
         description: |-
           TotalLatencyMs is the end-to-end pipeline duration (milliseconds)
           from request receipt to response serialization.
-        example: 3312.8
-        type: number
+        example: 3312
+        type: integer
     type: object
   domain.PlanItem:
     properties:
@@ -287,34 +287,147 @@ paths:
       responses:
         "200":
           description: OK
+          headers:
+            X-RateLimit-Limit:
+              description: Maximum requests per rate-limit window
+              type: integer
+            X-RateLimit-Remaining:
+              description: Requests remaining in the rate-limit window
+              type: integer
+            X-RateLimit-Reset:
+              description: Seconds until the rate-limit window resets
+              type: integer
+            X-Request-ID:
+              description: Resolved request correlation identifier
+              type: string
           schema:
             $ref: '#/definitions/domain.PlanResponse'
         "400":
           description: Bad Request
+          headers:
+            X-RateLimit-Limit:
+              description: Maximum requests per rate-limit window
+              type: integer
+            X-RateLimit-Remaining:
+              description: Requests remaining in the rate-limit window
+              type: integer
+            X-RateLimit-Reset:
+              description: Seconds until the rate-limit window resets
+              type: integer
+            X-Request-ID:
+              description: Resolved request correlation identifier
+              type: string
           schema:
             $ref: '#/definitions/domain.ErrorResponse'
         "401":
           description: Unauthorized
+          headers:
+            X-Request-ID:
+              description: Resolved request correlation identifier
+              type: string
+          schema:
+            $ref: '#/definitions/domain.ErrorResponse'
+        "408":
+          description: Request not read within the 10 s read timeout
+          headers:
+            X-Request-ID:
+              description: Resolved request correlation identifier
+              type: string
           schema:
             $ref: '#/definitions/domain.ErrorResponse'
         "413":
           description: Request Entity Too Large
+          headers:
+            X-RateLimit-Limit:
+              description: Maximum requests per rate-limit window
+              type: integer
+            X-RateLimit-Remaining:
+              description: Requests remaining in the rate-limit window
+              type: integer
+            X-RateLimit-Reset:
+              description: Seconds until the rate-limit window resets
+              type: integer
+            X-Request-ID:
+              description: Resolved request correlation identifier
+              type: string
           schema:
             $ref: '#/definitions/domain.ErrorResponse'
         "415":
           description: Unsupported Media Type
+          headers:
+            X-RateLimit-Limit:
+              description: Maximum requests per rate-limit window
+              type: integer
+            X-RateLimit-Remaining:
+              description: Requests remaining in the rate-limit window
+              type: integer
+            X-RateLimit-Reset:
+              description: Seconds until the rate-limit window resets
+              type: integer
+            X-Request-ID:
+              description: Resolved request correlation identifier
+              type: string
           schema:
             $ref: '#/definitions/domain.ErrorResponse'
         "422":
           description: Unprocessable Entity
+          headers:
+            X-RateLimit-Limit:
+              description: Maximum requests per rate-limit window
+              type: integer
+            X-RateLimit-Remaining:
+              description: Requests remaining in the rate-limit window
+              type: integer
+            X-RateLimit-Reset:
+              description: Seconds until the rate-limit window resets
+              type: integer
+            X-Request-ID:
+              description: Resolved request correlation identifier
+              type: string
           schema:
             $ref: '#/definitions/domain.ErrorResponse'
         "429":
           description: Too Many Requests
+          headers:
+            Retry-After:
+              description: Seconds to wait before retrying
+              type: integer
+            X-Request-ID:
+              description: Resolved request correlation identifier
+              type: string
+          schema:
+            $ref: '#/definitions/domain.ErrorResponse'
+        "431":
+          description: Request headers exceed the server limit
+          headers:
+            X-Request-ID:
+              description: Resolved request correlation identifier
+              type: string
+          schema:
+            $ref: '#/definitions/domain.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          headers:
+            X-Request-ID:
+              description: Resolved request correlation identifier
+              type: string
           schema:
             $ref: '#/definitions/domain.ErrorResponse'
         "502":
           description: Upstream failure or no usable item for a requested topic
+          headers:
+            X-RateLimit-Limit:
+              description: Maximum requests per rate-limit window
+              type: integer
+            X-RateLimit-Remaining:
+              description: Requests remaining in the rate-limit window
+              type: integer
+            X-RateLimit-Reset:
+              description: Seconds until the rate-limit window resets
+              type: integer
+            X-Request-ID:
+              description: Resolved request correlation identifier
+              type: string
           schema:
             $ref: '#/definitions/domain.ErrorResponse'
         "503":
@@ -323,10 +436,35 @@ paths:
             Retry-After:
               description: Seconds to wait before retrying
               type: integer
+            X-RateLimit-Limit:
+              description: Maximum requests per rate-limit window
+              type: integer
+            X-RateLimit-Remaining:
+              description: Requests remaining in the rate-limit window
+              type: integer
+            X-RateLimit-Reset:
+              description: Seconds until the rate-limit window resets
+              type: integer
+            X-Request-ID:
+              description: Resolved request correlation identifier
+              type: string
           schema:
             $ref: '#/definitions/domain.ErrorResponse'
         "504":
           description: Gateway Timeout
+          headers:
+            X-RateLimit-Limit:
+              description: Maximum requests per rate-limit window
+              type: integer
+            X-RateLimit-Remaining:
+              description: Requests remaining in the rate-limit window
+              type: integer
+            X-RateLimit-Reset:
+              description: Seconds until the rate-limit window resets
+              type: integer
+            X-Request-ID:
+              description: Resolved request correlation identifier
+              type: string
           schema:
             $ref: '#/definitions/domain.ErrorResponse'
       security:
@@ -362,22 +500,113 @@ paths:
       responses:
         "200":
           description: OK
+          headers:
+            X-RateLimit-Limit:
+              description: Maximum requests per rate-limit window
+              type: integer
+            X-RateLimit-Remaining:
+              description: Requests remaining in the rate-limit window
+              type: integer
+            X-RateLimit-Reset:
+              description: Seconds until the rate-limit window resets
+              type: integer
+            X-Request-ID:
+              description: Resolved request correlation identifier
+              type: string
           schema:
             $ref: '#/definitions/domain.CognitiveGraphResponse'
         "400":
           description: Bad Request
+          headers:
+            X-RateLimit-Limit:
+              description: Maximum requests per rate-limit window
+              type: integer
+            X-RateLimit-Remaining:
+              description: Requests remaining in the rate-limit window
+              type: integer
+            X-RateLimit-Reset:
+              description: Seconds until the rate-limit window resets
+              type: integer
+            X-Request-ID:
+              description: Resolved request correlation identifier
+              type: string
           schema:
             $ref: '#/definitions/domain.ErrorResponse'
         "401":
           description: Unauthorized
+          headers:
+            X-Request-ID:
+              description: Resolved request correlation identifier
+              type: string
+          schema:
+            $ref: '#/definitions/domain.ErrorResponse'
+        "408":
+          description: Request not read within the 10 s read timeout
+          headers:
+            X-Request-ID:
+              description: Resolved request correlation identifier
+              type: string
+          schema:
+            $ref: '#/definitions/domain.ErrorResponse'
+        "413":
+          description: Request body exceeds 64 KiB
+          headers:
+            X-RateLimit-Limit:
+              description: Maximum requests per rate-limit window
+              type: integer
+            X-RateLimit-Remaining:
+              description: Requests remaining in the rate-limit window
+              type: integer
+            X-RateLimit-Reset:
+              description: Seconds until the rate-limit window resets
+              type: integer
+            X-Request-ID:
+              description: Resolved request correlation identifier
+              type: string
           schema:
             $ref: '#/definitions/domain.ErrorResponse'
         "422":
           description: Unprocessable Entity
+          headers:
+            X-RateLimit-Limit:
+              description: Maximum requests per rate-limit window
+              type: integer
+            X-RateLimit-Remaining:
+              description: Requests remaining in the rate-limit window
+              type: integer
+            X-RateLimit-Reset:
+              description: Seconds until the rate-limit window resets
+              type: integer
+            X-Request-ID:
+              description: Resolved request correlation identifier
+              type: string
           schema:
             $ref: '#/definitions/domain.ErrorResponse'
         "429":
           description: Too Many Requests
+          headers:
+            Retry-After:
+              description: Seconds to wait before retrying
+              type: integer
+            X-Request-ID:
+              description: Resolved request correlation identifier
+              type: string
+          schema:
+            $ref: '#/definitions/domain.ErrorResponse'
+        "431":
+          description: Request headers exceed the server limit
+          headers:
+            X-Request-ID:
+              description: Resolved request correlation identifier
+              type: string
+          schema:
+            $ref: '#/definitions/domain.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          headers:
+            X-Request-ID:
+              description: Resolved request correlation identifier
+              type: string
           schema:
             $ref: '#/definitions/domain.ErrorResponse'
       security:
@@ -394,8 +623,44 @@ paths:
       responses:
         "200":
           description: OK
+          headers:
+            X-Request-ID:
+              description: Resolved request correlation identifier
+              type: string
           schema:
             $ref: '#/definitions/domain.HealthResponse'
+        "400":
+          description: Malformed HTTP request
+          headers:
+            X-Request-ID:
+              description: Resolved request correlation identifier
+              type: string
+          schema:
+            $ref: '#/definitions/domain.ErrorResponse'
+        "408":
+          description: Request not read within the 10 s read timeout
+          headers:
+            X-Request-ID:
+              description: Resolved request correlation identifier
+              type: string
+          schema:
+            $ref: '#/definitions/domain.ErrorResponse'
+        "413":
+          description: Request body exceeds 64 KiB
+          headers:
+            X-Request-ID:
+              description: Resolved request correlation identifier
+              type: string
+          schema:
+            $ref: '#/definitions/domain.ErrorResponse'
+        "431":
+          description: Request headers exceed the server limit
+          headers:
+            X-Request-ID:
+              description: Resolved request correlation identifier
+              type: string
+          schema:
+            $ref: '#/definitions/domain.ErrorResponse'
       summary: Health check
       tags:
       - System
@@ -409,8 +674,44 @@ paths:
       responses:
         "200":
           description: OK
+          headers:
+            X-Request-ID:
+              description: Resolved request correlation identifier
+              type: string
           schema:
             $ref: '#/definitions/domain.HealthResponse'
+        "400":
+          description: Malformed HTTP request
+          headers:
+            X-Request-ID:
+              description: Resolved request correlation identifier
+              type: string
+          schema:
+            $ref: '#/definitions/domain.ErrorResponse'
+        "408":
+          description: Request not read within the 10 s read timeout
+          headers:
+            X-Request-ID:
+              description: Resolved request correlation identifier
+              type: string
+          schema:
+            $ref: '#/definitions/domain.ErrorResponse'
+        "413":
+          description: Request body exceeds 64 KiB
+          headers:
+            X-Request-ID:
+              description: Resolved request correlation identifier
+              type: string
+          schema:
+            $ref: '#/definitions/domain.ErrorResponse'
+        "431":
+          description: Request headers exceed the server limit
+          headers:
+            X-Request-ID:
+              description: Resolved request correlation identifier
+              type: string
+          schema:
+            $ref: '#/definitions/domain.ErrorResponse'
       summary: Liveness probe
       tags:
       - System
@@ -424,10 +725,50 @@ paths:
       responses:
         "200":
           description: OK
+          headers:
+            X-Request-ID:
+              description: Resolved request correlation identifier
+              type: string
           schema:
             $ref: '#/definitions/domain.HealthResponse'
+        "400":
+          description: Malformed HTTP request
+          headers:
+            X-Request-ID:
+              description: Resolved request correlation identifier
+              type: string
+          schema:
+            $ref: '#/definitions/domain.ErrorResponse'
+        "408":
+          description: Request not read within the 10 s read timeout
+          headers:
+            X-Request-ID:
+              description: Resolved request correlation identifier
+              type: string
+          schema:
+            $ref: '#/definitions/domain.ErrorResponse'
+        "413":
+          description: Request body exceeds 64 KiB
+          headers:
+            X-Request-ID:
+              description: Resolved request correlation identifier
+              type: string
+          schema:
+            $ref: '#/definitions/domain.ErrorResponse'
+        "431":
+          description: Request headers exceed the server limit
+          headers:
+            X-Request-ID:
+              description: Resolved request correlation identifier
+              type: string
+          schema:
+            $ref: '#/definitions/domain.ErrorResponse'
         "503":
           description: Server draining
+          headers:
+            X-Request-ID:
+              description: Resolved request correlation identifier
+              type: string
           schema:
             $ref: '#/definitions/domain.HealthResponse'
       summary: Readiness probe
