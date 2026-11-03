@@ -160,6 +160,8 @@ Every HTTP request produces an `http.access` log record containing:
 
 Panics recovered by middleware generate a `panic.recovered` record with `request_id`, `error`, and stack trace, then return HTTP 500 to the caller.
 
+A panic in the planner, which runs outside the HTTP middleware, generates an `ERROR` record `planner.panic` with `request_id`, `topic`, `panic`, and `stack`. The request fails with HTTP 500 `internal_error`, and the process keeps serving.
+
 Pipeline and upstream failures generate a `request.failed` record with `request_id`, `error_class`, and (when known) `topic` capped at 128 characters. Upstream prompt content and error dumps are excluded from logs. When hallucinated topics returned by the planner are dropped, a `stage.validation` warning record is emitted with `request_id` and `items_dropped`.
 
 When a termination signal initiates graceful shutdown, the server emits an `INFO` record `server.shutdown_started` containing:

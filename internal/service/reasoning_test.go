@@ -625,3 +625,45 @@ func TestIncompleteRequestedTopicsFail(t *testing.T) {
 		t.Fatalf("error=%v", err)
 	}
 }
+
+func TestPlannerPanicFailsOnlyTheRequest(t *testing.T) {
+	var logs bytes.Buffer
+	svc := NewReasoningService(graph.NewInMemoryGraph(), plannerFunc(func(_ context.Context, r TopicRequest) ([]domain.PlanItem, error) {
+		if r.Topic == "Recursion" {
+			panic("planner defect")
+		}
+		return []domain.PlanItem{{Topic: r.Topic}}, nil
+	}), Options{LLMTimeout: time.Second, MaxFailedTopics: 10, Logger: slog.New(slog.NewJSONHandler(&logs, nil))})
+	ctx := WithRequestID(context.Background(), "panic-42")
+	for i := range 5 {
+		_, err := svc.GeneratePlan(ctx, request("Recursion"))
+		if !errors.Is(err, ErrPlannerPanic) || errors.Is(err, ErrUpstream) {
+			t.Fatalf("request %d: got %v, want a planner panic that is not an upstream error", i+1, err)
+		}
+	}
+	counts := svc.breaker.Counts()
+	if svc.breaker.State() != gobreaker.StateClosed || counts.TotalFailures != 0 || counts.TotalExclusions != 5 {
+		t.Fatalf("planner panics changed circuit health: state=%v counts=%+v", svc.breaker.State(), counts)
+	}
+	if _, err := svc.GeneratePlan(ctx, request("Polymorphism")); err != nil {
+		t.Fatalf("unrelated topic failed: %v", err)
+	}
+	panics := 0
+	decoder := json.NewDecoder(&logs)
+	for decoder.More() {
+		var entry map[string]any
+		if err := decoder.Decode(&entry); err != nil {
+			t.Fatal(err)
+		}
+		if entry["msg"] != "planner.panic" {
+			continue
+		}
+		panics++
+		if entry["level"] != "ERROR" || entry["request_id"] != "panic-42" || entry["topic"] != "Recursion" || entry["panic"] != "planner defect" || !strings.Contains(fmt.Sprint(entry["stack"]), "TestPlannerPanicFailsOnlyTheRequest") {
+			t.Fatalf("panic record=%v", entry)
+		}
+	}
+	if panics != 5 {
+		t.Fatalf("planner.panic records=%d, want one per panicking call", panics)
+	}
+}

@@ -346,6 +346,26 @@ func TestPipelineErrorMappingAndLogging(t *testing.T) {
 	}
 }
 
+func TestPlannerPanicReturnsInternalError(t *testing.T) {
+	var logs bytes.Buffer
+	app := newTestApp(t, defaultConfig(t), func(_ context.Context, r service.TopicRequest) ([]domain.PlanItem, error) {
+		if r.Topic == "Recursion" {
+			panic("planner secret")
+		}
+		return []domain.PlanItem{{Topic: r.Topic}}, nil
+	}, &logs)
+	r, b := call(t, app, "POST", "/api/v1/adaptive-plan", validBody, map[string]string{"X-Request-ID": "panic-42"})
+	if r.StatusCode != http.StatusInternalServerError || !strings.Contains(b, `"error":"internal_error"`) || strings.Contains(b, "planner secret") {
+		t.Fatalf("%d: %s", r.StatusCode, b)
+	}
+	if !strings.Contains(logs.String(), `"msg":"planner.panic"`) || !strings.Contains(logs.String(), `"request_id":"panic-42"`) {
+		t.Fatal(logs.String())
+	}
+	if r, b := call(t, app, "POST", "/api/v1/adaptive-plan", `{"student_id":"student-42","course_id":"cs101","failed_topics":["Polymorphism"],"vark_profile":"visual"}`, nil); r.StatusCode != http.StatusOK {
+		t.Fatalf("service stopped serving after a planner panic: %d: %s", r.StatusCode, b)
+	}
+}
+
 func TestFrameworkErrorsAndRecovery(t *testing.T) {
 	app := newTestApp(t, defaultConfig(t), nil, nil)
 	app.Get("/failure", func(fiber.Ctx) error { return errors.New("internal secret") })

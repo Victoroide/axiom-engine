@@ -4,7 +4,9 @@ package service
 import (
 	"context"
 	"errors"
+	"fmt"
 	"log/slog"
+	"runtime/debug"
 	"time"
 
 	"github.com/sony/gobreaker/v2"
@@ -82,7 +84,7 @@ func breakerSettings(logger *slog.Logger) gobreaker.Settings {
 		Name: "bedrock-nova-micro", MaxRequests: 2, Interval: 30 * time.Second, Timeout: circuitOpenTimeout,
 		ReadyToTrip: func(c gobreaker.Counts) bool { return c.ConsecutiveFailures >= 3 },
 		IsExcluded: func(err error) bool {
-			return errors.Is(err, context.Canceled) || errors.Is(err, ErrInvalidOutput) || errors.Is(err, ErrUpstreamRejected)
+			return errors.Is(err, context.Canceled) || errors.Is(err, ErrInvalidOutput) || errors.Is(err, ErrUpstreamRejected) || errors.Is(err, ErrPlannerPanic)
 		},
 		OnStateChange: func(name string, from, to gobreaker.State) {
 			logger.Warn("circuit_breaker.state_change", "name", name, "from", from.String(), "to", to.String())
@@ -146,6 +148,9 @@ func (s *ReasoningService) GeneratePlan(ctx context.Context, req domain.Adaptive
 				if errors.Is(err, ErrThrottled) {
 					return &TopicError{Topic: topic, cause: &UnavailableError{RetryAfter: 5 * time.Second, Err: err}}
 				}
+				if errors.Is(err, ErrPlannerPanic) {
+					return &TopicError{Topic: topic, cause: err}
+				}
 				return &TopicError{Topic: topic, cause: errors.Join(ErrUpstream, err)}
 			}
 			// Each goroutine owns one result index; completion order cannot change priorities.
@@ -185,9 +190,17 @@ func (s *ReasoningService) generateTopic(ctx context.Context, req TopicRequest) 
 	results := make(chan result, 1)
 	s.metrics.StartCall()
 	go func() {
-		got := func() result {
+		got := func() (r result) {
 			defer s.slots.Release(1)
 			defer s.metrics.FinishCall()
+			// This goroutine is outside the HTTP recover middleware, so an
+			// unrecovered panic would stop the whole process.
+			defer func() {
+				if p := recover(); p != nil {
+					s.logger.ErrorContext(ctx, "planner.panic", "request_id", requestIDFromContext(ctx), "topic", req.Topic, "panic", fmt.Sprint(p), "stack", string(debug.Stack()))
+					r = result{err: ErrPlannerPanic}
+				}
+			}()
 			items, err := s.planner.GenerateTopic(ctx, req)
 			return result{items: items, err: err}
 		}()

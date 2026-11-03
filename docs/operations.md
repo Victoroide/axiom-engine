@@ -12,7 +12,7 @@ AxiomEngine wraps calls to Amazon Bedrock with an in-memory circuit breaker (`go
 
 - The breaker enters the `Open` state for 15 seconds.
 - While open, incoming plan requests fail immediately without invoking Bedrock, returning HTTP 503 `service_unavailable` with header `Retry-After: 15`.
-- Three outcomes do not count: client cancellation (`context.Canceled`), unusable model output, and upstream 4xx rejections other than 429 (`ValidationException`, `AccessDeniedException`, `ResourceNotFoundException`, `ServiceQuotaExceededException`, `ModelErrorException`).
+- Four outcomes do not count: client cancellation (`context.Canceled`), unusable model output, a planner panic (`planner.panic`, HTTP 500), and upstream 4xx rejections other than 429 (`ValidationException`, `AccessDeniedException`, `ResourceNotFoundException`, `ServiceQuotaExceededException`, `ModelErrorException`).
 - When the 15-second open interval elapses, the breaker enters `Half-Open`, allowing two probe requests. If both probe requests succeed, the breaker returns to `Closed`. If either fails, the breaker trips to `Open` for another 15 seconds.
 
 ### Telemetry Signals

@@ -1,6 +1,7 @@
 package service
 
 import (
+	"errors"
 	"fmt"
 	"time"
 )
@@ -16,6 +17,10 @@ var ErrUpstreamRejected = fmt.Errorf("upstream rejected request: %w", ErrUpstrea
 
 // ErrInvalidOutput indicates an unusable upstream response.
 var ErrInvalidOutput = fmt.Errorf("invalid upstream output: %w", ErrUpstream)
+
+// ErrPlannerPanic indicates that the planner panicked. The request fails with an
+// internal error; the panic does not stop the process or count against the circuit.
+var ErrPlannerPanic = errors.New("planner panicked")
 
 // TopicError identifies a failed topic without formatting the upstream payload.
 type TopicError struct {
