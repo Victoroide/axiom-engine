@@ -20,6 +20,55 @@ func TestDecodeValidation(t *testing.T) {
 	}
 }
 
+func TestDecodeRejectsUnaddressableNames(t *testing.T) {
+	for _, tc := range []struct {
+		name, value, reason string
+		rawUTF8             bool
+	}{
+		{name: "comma", value: "Graphs, Trees", reason: "contains a comma"},
+		{name: "nul", value: "Rec\x00ursion", reason: "contains a control character"},
+		{name: "escape", value: "Rec\x1bursion", reason: "contains a control character"},
+		{name: "tab", value: "Rec\tursion", reason: "contains a control character"},
+		{name: "zero width space", value: "Recur\u200bsion", reason: "contains a format character"},
+		{name: "direction override", value: "Recur\u202esion", reason: "contains a format character"},
+		{name: "soft hyphen", value: "Recur\u00adsion", reason: "contains a format character"},
+		{name: "129 runes", value: strings.Repeat("界", 129), reason: "exceeds 128 runes"},
+		{name: "invalid UTF-8", value: "Bad\ufffdName", reason: "contains a replacement character", rawUTF8: true},
+		{name: "replacement character", value: "Bad\ufffdName", reason: "contains a replacement character"},
+		{name: "128 runes", value: strings.Repeat("界", 128)},
+		{name: "accented letters", value: "Recursión"},
+		{name: "sharp s", value: "Straße"},
+	} {
+		for _, field := range []string{"subject", "object"} {
+			t.Run(tc.name+"/"+field, func(t *testing.T) {
+				tuple := map[string]string{"subject": "Topic", "relation": "depends_on", "object": "Base"}
+				tuple[field] = tc.value
+				data, err := json.Marshal([]map[string]string{{"subject": "Other", "relation": "depends_on", "object": "Base"}, tuple})
+				if err != nil {
+					t.Fatal(err)
+				}
+				input := string(data)
+				if tc.rawUTF8 {
+					input = strings.ReplaceAll(input, "�", "\xff")
+				}
+				g, err := Decode(strings.NewReader(input))
+				if tc.reason == "" {
+					if err != nil {
+						t.Fatal(err)
+					}
+					if stored, ok := g.Resolve(tc.value); !ok || stored != tc.value {
+						t.Fatalf("name did not resolve: %q, %v", stored, ok)
+					}
+					return
+				}
+				if err == nil || !strings.HasPrefix(err.Error(), "tuple 1 "+field+" ") || !strings.Contains(err.Error(), tc.reason) {
+					t.Fatalf("expected tuple index, field and %q, got %v", tc.reason, err)
+				}
+			})
+		}
+	}
+}
+
 func TestLoadAndDefensiveCopy(t *testing.T) {
 	dir := t.TempDir()
 	path := filepath.Join(dir, "graph.json")
@@ -90,7 +139,7 @@ func TestDecodeBoundsCycleDetails(t *testing.T) {
 		prefix string
 	}{
 		{"many nodes", 1000, "Node"},
-		{"long names", 2, strings.Repeat("界", 1000)},
+		{"long names", 2, strings.Repeat("界", 100)},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			tuples := make([]map[string]string, tc.count)
@@ -134,7 +183,7 @@ func TestDecodeRejectsCanonicalCollisions(t *testing.T) {
 }
 
 func TestDecodeRejectsFoldedNameCollisions(t *testing.T) {
-	for _, pair := range [][2]string{{"Straße", "STRASSE"}, {"ΟΔΟΣ", "οδος"}, {"Recursion", "Recur\u200bsion"}} {
+	for _, pair := range [][2]string{{"Straße", "STRASSE"}, {"ΟΔΟΣ", "οδος"}, {"Merge Sort", "merge  sort"}} {
 		data, err := json.Marshal([]map[string]string{{"subject": pair[0], "relation": "depends_on", "object": "Base"}, {"subject": pair[1], "relation": "depends_on", "object": "Base"}})
 		if err != nil {
 			t.Fatal(err)
