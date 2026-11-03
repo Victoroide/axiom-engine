@@ -402,3 +402,28 @@ func TestStartupWarnsWithoutRegion(t *testing.T) {
 		})
 	}
 }
+
+func TestRunRejectsInvalidBAMLLog(t *testing.T) {
+	for _, value := range []string{"", " off", "none", "bogus"} {
+		t.Run("BAML_LOG="+value, func(t *testing.T) {
+			t.Setenv("AXIOM_AUTH_DISABLED", "true")
+			t.Setenv("AXIOM_INTERNAL_TOKEN", "")
+			t.Setenv("AWS_MAX_ATTEMPTS", "3")
+			t.Setenv("AWS_RETRY_MODE", "standard")
+			t.Setenv("BAML_LOG", value)
+			var output bytes.Buffer
+			err := run([]string{"unexpected"}, &output)
+			const want = "BAML_LOG must be off, error, warn, warning, info, debug or trace"
+			if err == nil || err.Error() != want {
+				t.Fatalf("expected logging configuration error before startup, got %v", err)
+			}
+			var record map[string]any
+			if err := json.Unmarshal(bytes.TrimSpace(output.Bytes()), &record); err != nil {
+				t.Fatal(err)
+			}
+			if record["msg"] != "server.failed" || record["level"] != "ERROR" || record["error"] != want {
+				t.Fatalf("unexpected failure record: %v", record)
+			}
+		})
+	}
+}

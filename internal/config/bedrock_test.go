@@ -53,3 +53,45 @@ func TestRegionSource(t *testing.T) {
 		})
 	}
 }
+
+func TestValidateBAMLLog(t *testing.T) {
+	for _, tc := range []struct {
+		name, value string
+		set, valid  bool
+	}{
+		{name: "unset", valid: true},
+		{name: "off", value: "off", set: true, valid: true},
+		{name: "uppercase", value: "OFF", set: true, valid: true},
+		{name: "mixed case", value: "Off", set: true, valid: true},
+		{name: "error", value: "error", set: true, valid: true},
+		{name: "warn", value: "warn", set: true, valid: true},
+		{name: "warning", value: "warning", set: true, valid: true},
+		{name: "uppercase warning", value: "WARNING", set: true, valid: true},
+		{name: "info", value: "info", set: true, valid: true},
+		{name: "debug", value: "debug", set: true, valid: true},
+		{name: "trace", value: "trace", set: true, valid: true},
+		{name: "empty", set: true},
+		{name: "leading space", value: " off", set: true},
+		{name: "trailing space", value: "off ", set: true},
+		{name: "none", value: "none", set: true},
+		{name: "unknown", value: "bogus", set: true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			err := ValidateBAMLLog(func(key string) (string, bool) {
+				if key != "BAML_LOG" {
+					t.Fatalf("unexpected environment lookup: %s", key)
+				}
+				return tc.value, tc.set
+			})
+			if tc.valid {
+				if err != nil {
+					t.Fatalf("valid value rejected: %v", err)
+				}
+				return
+			}
+			if err == nil || err.Error() != "BAML_LOG must be off, error, warn, warning, info, debug or trace" {
+				t.Fatalf("expected logging configuration error, got %v", err)
+			}
+		})
+	}
+}

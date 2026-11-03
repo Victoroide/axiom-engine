@@ -98,3 +98,4 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Scan Go dependencies and the runtime container image daily and on manual dispatch, uploading SARIF reports to GitHub Security.
 - Update `golang.org/x/net` to v0.62.0 in the root and tools modules to remediate GO-2026-6860 and GO-2026-6866.
 - Update BAML to v0.226.3, whose native runtime rejects the distrusted eMudhra intermediate certificates in TLS verification, including AWS credential discovery.
+- **Breaking:** Reject invalid or explicitly empty `BAML_LOG` settings at startup to prevent native logging from silently falling back to INFO and exposing prompt text.
