@@ -13,6 +13,7 @@ require (
 	github.com/sony/gobreaker/v2 v2.4.0
 	github.com/swaggo/swag v1.16.6
 	github.com/valyala/fasthttp v1.77.0
+	go.uber.org/goleak v1.3.0
 	golang.org/x/sync v0.24.0
 	golang.org/x/text v0.43.0
 )

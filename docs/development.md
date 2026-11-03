@@ -193,6 +193,33 @@ Coverage areas include:
 - `internal/service`: reasoning pipeline orchestration, duplicate elimination, unknown topic rejection, VARK style validation, and circuit breaker state transitions.
 - `internal/server` and `internal/api`: Fiber v3 routing, constant-time token verification, sliding-window rate limiting, request ID propagation, structured access logging, panic recovery, and error response formatting.
 
+#### Goroutine leak detection
+
+Unit test suites for `internal/service`, `internal/server`, and `internal/llm` enforce goroutine leak detection using `go.uber.org/goleak v1.3.0` inside `TestMain`, ensuring no unexpected background goroutines remain active after package test execution.
+
+- In `internal/service`, `goleak.VerifyTestMain(m)` executes with no ignore options.
+- In `internal/server` and `internal/llm`, `goleak.VerifyTestMain` configures four framework ignores to accommodate long-lived background goroutines from Fiber and fasthttp:
+  - `goleak.IgnoreTopFunction("github.com/gofiber/fiber/v3/internal/memory.(*Storage).gc")`
+  - `goleak.IgnoreTopFunction("github.com/gofiber/utils/v2.StartTimeStampUpdater.func1")`
+  - `goleak.IgnoreAnyFunction("github.com/valyala/fasthttp.updateServerDate.func1")`
+  - `goleak.IgnoreAnyFunction("github.com/valyala/fasthttp.(*workerPool).Start.func2")`
+
+Fiber's in-memory storage collector and timestamp updater, along with fasthttp's date updater, maintain persistent process-wide background loops. In addition, `fasthttp.(*workerPool)` goroutines can sleep until `MaxIdleWorkerDuration`. These ignores cover these known framework goroutines while retaining checks for application leaks.
+
+#### Synthetic time with synctest
+
+Six concurrency and timing tests in `internal/service/reasoning_test.go` execute inside `testing/synctest` bubbles using `synctest.Test`:
+- `TestGlobalConcurrencyBound`
+- `TestQueueTimeoutReturnsUnavailable`
+- `TestCanceledQueueWaitPreservesCancellation`
+- `TestPlannerIgnoringContextStillTimesOut`
+- `TestDeadlineAndUpstreamErrors`
+- `TestOrderingDedupeAndHallucinationGuard`
+
+Virtual time eliminates real wall-clock delays and timing jitter. `TestOrderingDedupeAndHallucinationGuard` executes without waiting on random jitter delays, and `TestDeadlineAndUpstreamErrors` asserts exactly 1 ms of virtual elapsed time without real clock waits.
+
+Server, lifecycle, and real transport tests retain wall-clock execution: constructing a Fiber application inside a `synctest` bubble leaves process-wide framework loops blocked and causes bubble-exit deadlock.
+
 ### Fake Bedrock contract tests
 
 Contract tests in `internal/llm/adapter_contract_test.go` exercise the generated BAML client and native CFFI runtime against an in-process HTTP server provided by `test/fakebedrock`.

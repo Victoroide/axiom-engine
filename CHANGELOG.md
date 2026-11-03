@@ -33,6 +33,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Validate workflow files with actionlint, including ShellCheck on `run:` steps, as part of the lint gate; `make lint` now requires `shellcheck` on PATH.
 - Exercise runtime container image behavior, privacy, throttling, and shutdown through a local Bedrock fixture; a negative check confirms that a root-user image and an unclean stop are rejected.
 - Check Go version consistency across both modules, the builder image and documentation with `make toolchain-check`, enforced by CI.
+- Detect goroutine leaks in service, server and Bedrock adapter tests, and use fake time for service deadline and ordering tests.
 
 ### Changed
 
