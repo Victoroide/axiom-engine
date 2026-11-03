@@ -36,3 +36,18 @@ func TestCanonicalFoldsUnicode(t *testing.T) {
 		}
 	}
 }
+
+func TestCanonicalFoldsCherokeeToUppercase(t *testing.T) {
+	for _, input := range []string{"ꮋ", "Ꮋ", " \u200bꮋ\t"} {
+		if got := Canonical(input); got != "Ꮋ" {
+			t.Errorf("Canonical(%q) = %q, want %q", input, got, "Ꮋ")
+		}
+	}
+	g, err := Decode(strings.NewReader(`[{"subject":"Ꮋ","relation":"depends_on","object":"Base"}]`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got, ok := g.Resolve("ꮋ"); !ok || got != "Ꮋ" {
+		t.Fatalf("Resolve(%q) = %q, %v; want %q", "ꮋ", got, ok, "Ꮋ")
+	}
+}

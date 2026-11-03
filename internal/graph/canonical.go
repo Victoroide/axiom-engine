@@ -16,5 +16,14 @@ func Canonical(s string) string {
 		}
 		return r
 	}, s)
-	return norm.NFC.String(cases.Fold().String(strings.Join(strings.Fields(s), " ")))
+	folded := cases.Fold().String(strings.Join(strings.Fields(s), " "))
+	// x/text cases.Fold maps uppercase Cherokee to lowercase, while Unicode
+	// CaseFolding maps lowercase Cherokee to uppercase; follow Unicode.
+	folded = strings.Map(func(r rune) rune {
+		if unicode.Is(unicode.Cherokee, r) {
+			return unicode.ToUpper(r)
+		}
+		return r
+	}, folded)
+	return norm.NFC.String(folded)
 }
