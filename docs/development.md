@@ -271,6 +271,10 @@ Execution flow:
    - Re-executes `POST /api/v1/adaptive-plan` with topics, asserting HTTP 200 and verifying expected topics in the response payload.
    - Expands `GET /api/v1/tutor/student/{student_id}/cognitive-graph`, provides student ID and topic parameters, executes the request, and verifies HTTP 200 with node and edge data.
 
+CI requires runner-provided `google-chrome`, prints its version, and exports its path through `ROD_BROWSER_BIN`; missing Chrome emits a workflow error and fails without downloading a browser. Local browser discovery remains unchanged.
+
+Optional `E2E_ARTIFACTS_DIR` has no default: when unset no files are saved; when set, a failed browser test saves `page.png` and `page.html` there before closing the page and browser. The directory is created with 0750 permissions and files with 0600.
+
 ### Container smoke test
 
 The container smoke test script `scripts/container-smoke.sh` exercises the runtime container image against a local stubbed Bedrock endpoint:
@@ -352,7 +356,7 @@ Runs on push to `main` and on pull requests:
 - **`generated`**: runs `make tools-baml generate-check tidy-check toolchain-check` to enforce that generated code matches definitions and verify Go version consistency across modules, the container image, and documentation.
 - **`vulnerabilities`**: runs `make vuln` to verify zero reachable vulnerability findings.
 - **`image`**: builds and loads runtime image `axiom-ci` through pinned `docker/setup-buildx-action` and `docker/build-push-action`, then executes `make container-smoke container-smoke-test IMAGE=axiom-ci`. Layer caching uses GitHub Actions cache with scope `ci-runtime`: pull requests read the cache, while pushes to `main` export cache layers with `mode=max`. Provenance and SBOM generation are disabled for this temporary image. Root Markdown files, `scripts`, and `tools` are excluded from the Docker build context in `.dockerignore`, enabling layer reuse for changes outside the image context. Code changes still compile cold because BuildKit cache mounts are not exported to GitHub Actions cache. Native library downloads remain uncached as their measured preparation overhead is 1 s.
-- **`browser`**: verifies or installs Google Chrome stable, sets `ROD_BROWSER_BIN`, and runs `make test-e2e`.
+- **`browser`**: verifies preinstalled `google-chrome`, exports its path through `ROD_BROWSER_BIN`, and runs `make test-e2e` with `E2E_ARTIFACTS_DIR=${{ runner.temp }}/browser-artifacts`. On test failure, uploads `browser-failure` from `${{ runner.temp }}/browser-artifacts`, warns if no files exist, and retains artifacts for 14 days. This job backs the required check named "Test API docs in browser".
 
 ### `codeql.yml`
 

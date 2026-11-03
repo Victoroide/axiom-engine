@@ -46,14 +46,14 @@ func TestSwaggerTryItOut(t *testing.T) {
 	}
 	done := make(chan error, 1)
 	go func() { done <- app.Listener(ln, fiber.ListenConfig{DisableStartupMessage: true}) }()
-	defer func() {
+	t.Cleanup(func() {
 		if err := app.ShutdownWithTimeout(3 * time.Second); err != nil {
 			t.Error(err)
 		}
 		if err := <-done; err != nil {
 			t.Error(err)
 		}
-	}()
+	})
 	l := launcher.New().Headless(true).NoSandbox(true).Set("disable-dev-shm-usage")
 	if bin := os.Getenv("ROD_BROWSER_BIN"); bin != "" {
 		l.Bin(bin)
@@ -64,12 +64,17 @@ func TestSwaggerTryItOut(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer l.Cleanup()
+	t.Cleanup(l.Cleanup)
 	browser := rod.New().ControlURL(controlURL).MustConnect()
-	defer browser.MustClose()
+	t.Cleanup(func() {
+		if err := browser.Close(); err != nil {
+			t.Error(err)
+		}
+	})
 	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
-	defer cancel()
+	t.Cleanup(cancel)
 	page := browser.Context(ctx).MustPage()
+	t.Cleanup(func() { saveFailureArtifacts(t, page) })
 	defer func() {
 		if failure := recover(); failure != nil {
 			text, readErr := page.Context(context.Background()).Timeout(3 * time.Second).Element("body")
@@ -166,4 +171,38 @@ func TestSwaggerTryItOut(t *testing.T) {
 	cognitive.MustElement(`tr[data-param-name="topics"] input`).MustSelectAllText().MustInput("Recursion,Polymorphism")
 	cognitive.MustElement(`tr[data-param-name="target_topic"] input`).MustSelectAllText().MustInput("Recursion")
 	execute(cognitive, "200", `"nodes"`, `"Recursion"`, `"edges"`)
+}
+
+func saveFailureArtifacts(t *testing.T, page *rod.Page) {
+	t.Helper()
+	dir := os.Getenv("E2E_ARTIFACTS_DIR")
+	if !t.Failed() || dir == "" {
+		return
+	}
+	if err := os.MkdirAll(dir, 0o750); err != nil { // #nosec G703 -- The test caller selects the artifact directory.
+		t.Errorf("create browser artifact directory: %v", err)
+		return
+	}
+	root, err := os.OpenRoot(dir)
+	if err != nil {
+		t.Errorf("open browser artifact directory: %v", err)
+		return
+	}
+	defer func() {
+		if err := root.Close(); err != nil {
+			t.Error(err)
+		}
+	}()
+	screenshot, err := page.Context(context.Background()).Timeout(5*time.Second).Screenshot(true, nil)
+	if err != nil {
+		t.Errorf("capture browser screenshot: %v", err)
+	} else if err := root.WriteFile("page.png", screenshot, 0o600); err != nil {
+		t.Errorf("write browser screenshot: %v", err)
+	}
+	html, err := page.Context(context.Background()).Timeout(5 * time.Second).HTML()
+	if err != nil {
+		t.Errorf("capture browser DOM: %v", err)
+	} else if err := root.WriteFile("page.html", []byte(html), 0o600); err != nil {
+		t.Errorf("write browser DOM: %v", err)
+	}
 }
