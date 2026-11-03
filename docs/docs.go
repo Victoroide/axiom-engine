@@ -143,7 +143,7 @@ const docTemplate = `{
                     {
                         "type": "string",
                         "example": "Polymorphism,Recursion",
-                        "description": "Comma-separated failed topic names",
+                        "description": "Comma-separated failed topic names; may be repeated",
                         "name": "topics",
                         "in": "query",
                         "required": true
@@ -151,7 +151,7 @@ const docTemplate = `{
                     {
                         "type": "string",
                         "example": "Recursion",
-                        "description": "Center the subgraph on one topic",
+                        "description": "Center the subgraph on one topic; must be one of topics",
                         "name": "target_topic",
                         "in": "query"
                     }

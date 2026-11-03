@@ -346,13 +346,13 @@ paths:
         name: student_id
         required: true
         type: string
-      - description: Comma-separated failed topic names
+      - description: Comma-separated failed topic names; may be repeated
         example: Polymorphism,Recursion
         in: query
         name: topics
         required: true
         type: string
-      - description: Center the subgraph on one topic
+      - description: Center the subgraph on one topic; must be one of topics
         example: Recursion
         in: query
         name: target_topic
