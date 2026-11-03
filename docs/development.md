@@ -351,7 +351,7 @@ Runs on push to `main` and on pull requests:
 - **`test`**: runs `make cover` with data race detection and uploads `coverage.out` as a workflow artifact.
 - **`generated`**: runs `make tools-baml generate-check tidy-check toolchain-check` to enforce that generated code matches definitions and verify Go version consistency across modules, the container image, and documentation.
 - **`vulnerabilities`**: runs `make vuln` to verify zero reachable vulnerability findings.
-- **`image`**: builds the Docker runtime container `axiom-ci` and executes `make container-smoke container-smoke-test IMAGE=axiom-ci` to verify health probes, authentication, end-to-end plan generation, upstream throttling handling, log privacy, and graceful termination, emitting container logs on failure.
+- **`image`**: builds and loads runtime image `axiom-ci` through pinned `docker/setup-buildx-action` and `docker/build-push-action`, then executes `make container-smoke container-smoke-test IMAGE=axiom-ci`. Layer caching uses GitHub Actions cache with scope `ci-runtime`: pull requests read the cache, while pushes to `main` export cache layers with `mode=max`. Provenance and SBOM generation are disabled for this temporary image. Root Markdown files, `scripts`, and `tools` are excluded from the Docker build context in `.dockerignore`, enabling layer reuse for changes outside the image context. Code changes still compile cold because BuildKit cache mounts are not exported to GitHub Actions cache. Native library downloads remain uncached as their measured preparation overhead is 1 s.
 - **`browser`**: verifies or installs Google Chrome stable, sets `ROD_BROWSER_BIN`, and runs `make test-e2e`.
 
 ### `codeql.yml`

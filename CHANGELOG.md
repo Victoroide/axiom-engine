@@ -58,6 +58,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Updated `make lint` to vet both standard and e2e build tags before running `golangci-lint`.
 - Surface BAML releases in a separate Dependabot group and apply a three-day default cooldown to version updates.
 - Pin developer tool dependency graphs and checksums in a dedicated module, have Dependabot update it, and scan the tools for vulnerabilities daily.
+- CI reuses main runtime-image layers through a GHA buildx cache while PRs only read that cache.
 
 ### Removed
 

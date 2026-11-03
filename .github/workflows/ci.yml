@@ -104,11 +104,25 @@ jobs:
             go.sum
             tools/go.sum
       - run: make build
-      - name: Build runtime image
+      - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
+      - name: Read BAML version
+        id: baml
         shell: bash
         run: |
           version=$(sed -n 's/^[[:space:]]*version[[:space:]]*"\([^"]*\)".*/\1/p' baml_src/generators.baml)
-          docker build --target runtime --build-arg BAML_VERSION="$version" -t axiom-ci .
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+      - name: Build runtime image
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
+        with:
+          context: .
+          target: runtime
+          build-args: BAML_VERSION=${{ steps.baml.outputs.version }}
+          tags: axiom-ci
+          load: true
+          provenance: false
+          sbom: false
+          cache-from: type=gha,scope=ci-runtime
+          cache-to: ${{ github.event_name == 'push' && 'type=gha,mode=max,scope=ci-runtime' || '' }}
       - name: Exercise runtime image
         run: make container-smoke container-smoke-test IMAGE=axiom-ci
   browser:
