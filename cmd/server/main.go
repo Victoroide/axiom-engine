@@ -12,10 +12,16 @@ package main
 import (
 	"context"
 	"fmt"
+	"io"
 	"log/slog"
+	"net"
 	"os"
 	"os/signal"
+	"runtime/debug"
+	"strings"
 	"syscall"
+
+	"github.com/gofiber/fiber/v3"
 
 	"github.com/Victoroide/axiom-engine/internal/config"
 	"github.com/Victoroide/axiom-engine/internal/graph"
@@ -24,13 +30,20 @@ import (
 )
 
 func main() {
-	if err := run(os.Args[1:]); err != nil {
-		slog.Error("server.failed", "error", err)
+	if err := run(os.Args[1:], os.Stdout); err != nil {
 		os.Exit(1)
 	}
 }
 
-func run(args []string) error {
+func run(args []string, stdout io.Writer) (err error) {
+	var level slog.LevelVar
+	logger := slog.New(slog.NewJSONHandler(stdout, &slog.HandlerOptions{Level: &level}))
+	slog.SetDefault(logger)
+	defer func() {
+		if err != nil {
+			logger.Error("server.failed", "error", err)
+		}
+	}()
 	if err := config.ValidateAWSRetry(os.LookupEnv); err != nil {
 		return err
 	}
@@ -38,19 +51,23 @@ func run(args []string) error {
 	if err != nil {
 		return err
 	}
+	level.Set(cfg.LogLevel)
 	if len(args) > 0 {
 		if len(args) == 1 && args[0] == "healthcheck" {
 			return server.Healthcheck(context.Background(), cfg.Port)
 		}
 		return fmt.Errorf("usage: axiom-server [healthcheck]")
 	}
-	logger := slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{Level: cfg.LogLevel}))
-	slog.SetDefault(logger)
 	g, err := graph.Load(cfg.GraphFile)
 	if err != nil {
 		return err
 	}
+	logStartup(logger, cfg, g)
 	app := server.New(cfg, server.Dependencies{Graph: g, Planner: llm.New(), Logger: logger})
+	app.Hooks().OnListen(func(data fiber.ListenData) error {
+		logger.Info("server.listening", "address", net.JoinHostPort(strings.Trim(data.Host, "[]"), data.Port))
+		return nil
+	})
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	signals := make(chan os.Signal, 2)
@@ -75,4 +92,36 @@ func run(args []string) error {
 		}
 	}()
 	return server.Run(ctx, app, ":"+cfg.Port, cfg.ShutdownTimeout)
+}
+
+func logStartup(logger *slog.Logger, cfg config.Config, g *graph.InMemoryGraph) {
+	auth := "token"
+	if cfg.AuthDisabled {
+		auth = "disabled"
+	} else if cfg.InternalTokenPrevious != "" {
+		auth = "token+previous"
+	}
+	source := "embedded"
+	if cfg.GraphFile != "" {
+		source = "file"
+	}
+	version := "unknown"
+	if info, ok := debug.ReadBuildInfo(); ok {
+		for _, dep := range info.Deps {
+			if dep.Path == "github.com/boundaryml/baml" {
+				version = dep.Version
+				break
+			}
+		}
+	}
+	logger.Info("server.started",
+		"port", cfg.Port, "auth", auth,
+		"swagger_enabled", cfg.SwaggerEnabled, "metrics_enabled", cfg.MetricsEnabled,
+		"rate_limit_max", cfg.RateLimitMax, "rate_limit_window", cfg.RateLimitWindow.String(),
+		"request_timeout", cfg.RequestTimeout.String(), "llm_timeout", cfg.LLMTimeout.String(),
+		"llm_queue_timeout", cfg.LLMQueueTimeout.String(), "shutdown_timeout", cfg.ShutdownTimeout.String(),
+		"shutdown_drain_delay", cfg.ShutdownDrainDelay.String(),
+		"llm_max_concurrency", cfg.LLMMaxConcurrency, "max_failed_topics", cfg.MaxFailedTopics,
+		"cors_origins_count", len(cfg.CORSAllowedOrigins), "trusted_proxies_count", len(cfg.TrustedProxies),
+		"graph_source", source, "graph_tuples", len(g.All()), "baml_version", version)
 }

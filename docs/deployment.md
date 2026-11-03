@@ -102,6 +102,45 @@ Release builds attach SLSA build provenance and an SPDX Software Bill of Materia
 
 The service writes structured JSON logs to standard output using the Go standard library `log/slog` package. Log level is configured through `LOG_LEVEL` (`debug`, `info`, `warn`, `error`; default is `info`).
 
+During initialization, the structured JSON logger is configured before validating configuration, starting at `INFO` level and switching to the configured `LOG_LEVEL` once configuration is loaded. If configuration parsing, AWS retry validation, health checks, or server initialization fail, the process logs a single `ERROR` record `server.failed` containing `error` before exiting with code 1:
+
+```json
+{"time":"2026-11-02T22:40:57.539156-04:00","level":"ERROR","msg":"server.failed","error":"PORT must be an integer between 1 and 65535"}
+```
+
+A missing or mismatched BAML CFFI native library aborts during package initialization before `main` runs, resulting in a plain-text panic rather than a JSON log record.
+
+When the service starts successfully, it emits two `INFO` records in sequence before serving requests (subject to `LOG_LEVEL`):
+1. `server.started`: reports operational settings and graph metadata while omitting sensitive tokens and secret material. Fields include:
+   - `port`: HTTP listener port string.
+   - `auth`: authentication configuration (`token`, `token+previous`, or `disabled`).
+   - `swagger_enabled`: boolean indicating whether Swagger documentation routes are active.
+   - `metrics_enabled`: boolean indicating whether Prometheus metrics exposition is active.
+   - `rate_limit_max`: sliding-window request limit.
+   - `rate_limit_window`: rate limit sliding-window duration as a Go duration string.
+   - `request_timeout`: request execution timeout duration string.
+   - `llm_timeout`: downstream per-topic LLM timeout duration string.
+   - `llm_queue_timeout`: queue acquisition timeout duration string.
+   - `shutdown_timeout`: graceful shutdown drain timeout duration string.
+   - `shutdown_drain_delay`: pre-shutdown listener drain delay duration string.
+   - `llm_max_concurrency`: maximum concurrent in-flight LLM calls.
+   - `max_failed_topics`: maximum accepted unique failed topics.
+   - `cors_origins_count`: integer count of allowed CORS origins.
+   - `trusted_proxies_count`: integer count of configured trusted proxies.
+   - `graph_source`: curriculum graph origin (`embedded` or `file`).
+   - `graph_tuples`: count of loaded curriculum graph tuples.
+   - `baml_version`: build dependency version string for BAML, or `"unknown"`.
+
+```json
+{"level":"INFO","msg":"server.started","port":"8080","auth":"token","swagger_enabled":true,"metrics_enabled":false,"rate_limit_max":50,"rate_limit_window":"1m0s","request_timeout":"20s","llm_timeout":"15s","llm_queue_timeout":"2s","shutdown_timeout":"25s","shutdown_drain_delay":"0s","llm_max_concurrency":16,"max_failed_topics":10,"cors_origins_count":0,"trusted_proxies_count":0,"graph_source":"embedded","graph_tuples":20,"baml_version":"v0.226.3"}
+```
+
+2. `server.listening`: emitted after the TCP socket binds:
+
+```json
+{"level":"INFO","msg":"server.listening","address":"[::]:8080"}
+```
+
 Every HTTP request produces an `http.access` log record containing:
 - `request_id`: the client's `X-Request-ID` when it matches `^[A-Za-z0-9._:-]{1,128}$`, otherwise a generated 43-character URL-safe token. A fallback UUID is generated only for errors raised before the request-ID middleware runs.
 - `method`: HTTP method (`GET`, `POST`, `HEAD`, `OPTIONS`).
