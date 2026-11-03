@@ -3,6 +3,7 @@ package service
 import (
 	"fmt"
 	"regexp"
+	"strconv"
 	"strings"
 
 	"github.com/Victoroide/axiom-engine/internal/domain"
@@ -22,6 +23,18 @@ func (e *ValidationError) Error() string { return e.Details }
 
 // ValidIdentifier reports whether an identifier matches the request format.
 func ValidIdentifier(id string) bool { return identifierPattern.MatchString(id) }
+
+// QuoteValue quotes a value for diagnostics, marking truncation beyond 128 runes.
+func QuoteValue(s string) string {
+	runes := 0
+	for i := range s {
+		if runes == 128 {
+			return strconv.Quote(s[:i]) + "…"
+		}
+		runes++
+	}
+	return strconv.Quote(s)
+}
 
 // ValidateTopics resolves and deduplicates topics while preserving request order.
 func ValidateTopics(field string, topics []string, maxTopics int, g *graph.InMemoryGraph) ([]string, error) {
@@ -51,7 +64,16 @@ func ValidateTopics(field string, topics []string, maxTopics int, g *graph.InMem
 		}
 	}
 	if len(unknown) > 0 {
-		return nil, &ValidationError{Details: field + " contains unknown topics: " + strings.Join(unknown, ", "), UnknownTopics: unknown}
+		shown := unknown[:min(len(unknown), 10)]
+		quoted := make([]string, len(shown))
+		for i, topic := range shown {
+			quoted[i] = QuoteValue(topic)
+		}
+		details := field + " contains unknown topics: " + strings.Join(quoted, ", ")
+		if len(unknown) > len(shown) {
+			details += fmt.Sprintf(" (+%d more)", len(unknown)-len(shown))
+		}
+		return nil, &ValidationError{Details: details, UnknownTopics: unknown}
 	}
 	return normalized, nil
 }
