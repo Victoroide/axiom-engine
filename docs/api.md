@@ -2,7 +2,7 @@
 
 AxiomEngine provides HTTP endpoints for generating adaptive study plans, visualizing student cognitive states, inspecting API schemas, and verifying process health.
 
-When `SWAGGER_ENABLED=true` (the default), interactive documentation is available at `/swagger/index.html` and the specification is served at `/swagger/doc.json`. Complete machine-readable schemas are maintained in [docs/swagger.yaml](swagger.yaml).
+When `SWAGGER_ENABLED=true` (the default), interactive documentation is available at `/swagger/index.html` and the specification is served at `/swagger/doc.json`. Machine-readable operation schemas are maintained in [docs/swagger.yaml](swagger.yaml).
 
 ---
 
@@ -79,14 +79,16 @@ The `details` field provides context when available and is omitted when empty. U
 |---|---|---|---|
 | `400 Bad Request` | `invalid_request_body` | Request body fails JSON parsing or strict schema decoding | Malformed JSON, non-object body, trailing tokens, unknown or duplicate fields, case mismatches, or null array elements |
 | `400 Bad Request` | `validation_error` | Request payload fails schema validation | Missing required fields, invalid VARK profile, or too many topics |
-| `400 Bad Request` | `bad_request` | Generic client error | Malformed query parameters or invalid path encoding |
+| `400 Bad Request` | `bad_request` | Generic client error | Malformed HTTP request, query parameters, or path encoding |
 | `401 Unauthorized` | `unauthorized` | Token authentication failure | Missing or incorrect `X-Internal-Token` or `Authorization: Bearer` |
 | `404 Not Found` | `not_found` | Resource does not exist | Unmatched route path |
 | `405 Method Not Allowed` | `method_not_allowed` | HTTP method not supported | Unsupported HTTP verb on an existing path |
+| `408 Request Timeout` | `request_timeout` | Request read deadline exceeded | Request not read within the 10 s read timeout |
 | `413 Payload Too Large` | `payload_too_large` | Request body exceeds limit | Inbound payload exceeds the 64 KiB (65,536 bytes) limit |
 | `415 Unsupported Media Type` | `unsupported_media_type` | Media type not supported | Missing, malformed, unsupported charset, or non-JSON `Content-Type` header on `POST /api/v1/adaptive-plan` requests |
 | `422 Unprocessable Entity` | `validation_error` | Concept not found in knowledge graph | One or more topics in `failed_topics`, `topics`, or `target_topic` do not exist |
 | `429 Too Many Requests` | `rate_limit_exceeded` | Client rate limit exceeded | Inbound requests exceed `RATE_LIMIT_MAX` within `RATE_LIMIT_WINDOW` |
+| `431 Request Header Fields Too Large` | `request_header_fields_too_large` | Request header fields exceed limit | Inbound request headers exceed the server header limit |
 | `500 Internal Server Error` | `internal_error` | Unhandled server error | Unexpected internal failure or recovered panic |
 | `501 Not Implemented` | `not_implemented` | HTTP method not implemented | Method outside the router's configured method set, such as `PROPFIND` |
 | `502 Bad Gateway` | `bad_gateway` | Upstream model failure or missing topic item | Amazon Bedrock invocation error, unparseable model response, or no usable item returned for a requested topic |
@@ -95,6 +97,8 @@ The `details` field provides context when available and is omitted when empty. U
 | `503 Service Unavailable` | `service_unavailable` | Upstream throttling | Upstream capacity limit or rate throttling (`Retry-After: 5`, details `upstream throttled`) |
 | `503 Service Unavailable` | `service_unavailable` | Server shutting down | In-flight request canceled during graceful shutdown (`Retry-After: 1`, details `server shutting down`) |
 | `504 Gateway Timeout` | `gateway_timeout` | Processing deadline exceeded | Pipeline execution exceeded `REQUEST_TIMEOUT` or `LLM_TIMEOUT` |
+
+404, 405 and 501 can occur on any path. Swagger 2.0 attaches responses only to declared operations, so these three appear here but not in `docs/swagger.yaml`.
 
 ---
 
@@ -113,6 +117,10 @@ Returns process liveness status, including during shutdown draining. Does not re
 #### Responses
 
 - **200 OK**: Process is alive and operational.
+- **400 Bad Request**: Malformed HTTP request.
+- **408 Request Timeout**: Request not read within the 10 s read timeout.
+- **413 Payload Too Large**: Request body exceeds 64 KiB.
+- **431 Request Header Fields Too Large**: Inbound request headers exceed the server limit.
 
 #### Example
 
@@ -145,6 +153,10 @@ Returns local process readiness without authorization or upstream calls. During 
 #### Responses
 
 - **200 OK**: Process is ready to receive traffic.
+- **400 Bad Request**: Malformed HTTP request.
+- **408 Request Timeout**: Request not read within the 10 s read timeout.
+- **413 Payload Too Large**: Request body exceeds 64 KiB.
+- **431 Request Header Fields Too Large**: Inbound request headers exceed the server limit.
 - **503 Service Unavailable**: During shutdown draining, returns HTTP 503 with `{"status":"draining"}`.
 
 #### Examples
@@ -188,6 +200,10 @@ Alias of `/livez` for backwards compatibility. Returns process liveness without 
 #### Responses
 
 - **200 OK**: Process is alive and operational.
+- **400 Bad Request**: Malformed HTTP request.
+- **408 Request Timeout**: Request not read within the 10 s read timeout.
+- **413 Payload Too Large**: Request body exceeds 64 KiB.
+- **431 Request Header Fields Too Large**: Inbound request headers exceed the server limit.
 
 #### Example
 
@@ -229,10 +245,13 @@ Generates a personalized, prerequisite-ordered study plan for a student based on
 - **200 OK**: Successfully generated adaptive plan. Every requested canonical topic is guaranteed to retain a study item. Response metadata (`_meta`) reports execution statistics: `items_after_validation` counts study items retained within the requested topics and their prerequisite closure, while `items_dropped` counts distinct items outside this closure or absent from the graph (also emitted in `stage.validation` warning logs). Duplicate items removed during merging are not counted.
 - **400 Bad Request**: Malformed body, missing required fields, or identifier syntax error.
 - **401 Unauthorized**: Missing or invalid authentication token.
+- **408 Request Timeout**: Request not read within the 10 s read timeout.
 - **413 Payload Too Large**: Payload exceeds 64 KiB.
 - **415 Unsupported Media Type**: Request `Content-Type` is missing, malformed, or not `application/json`.
 - **422 Unprocessable Entity**: One or more topics are not found in the knowledge graph.
 - **429 Too Many Requests**: Rate limit exceeded.
+- **431 Request Header Fields Too Large**: Inbound request headers exceed the server limit.
+- **500 Internal Server Error**: Unexpected internal failure or recovered panic.
 - **502 Bad Gateway**: details `model returned no usable item` when the model reply cannot be parsed or has no item for a requested topic; `upstream reasoning failed` for other Bedrock failures.
 - **503 Service Unavailable**: Upstream circuit breaker open, concurrency limit reached, upstream throttling, or server shutdown.
 - **504 Gateway Timeout**: Request exceeded pipeline deadline.
@@ -321,8 +340,8 @@ X-Request-ID: k9m7Lx4fPUH5TzEerTGLjuuPm2qLVSzmkFDEe6UxwJ0
     "items_generated": 2,
     "items_after_validation": 2,
     "items_dropped": 0,
-    "llm_latency_ms": 1120.0,
-    "total_latency_ms": 1135.0
+    "llm_latency_ms": 1120,
+    "total_latency_ms": 1135
   }
 }
 ```
@@ -348,8 +367,12 @@ Computes a depth-1 concept neighborhood around failed topics for a learner, clas
 - **200 OK**: Cognitive shadow graph calculated and pruned of orphan nodes.
 - **400 Bad Request**: Invalid `student_id` (does not match identifier format); no non-empty topics supplied; more than `MAX_FAILED_TOPICS` unique topics across all `topics` values; repeated `target_topic` query parameter; or known `target_topic` outside the resolved `topics` union (`target_topic must be one of topics`).
 - **401 Unauthorized**: Missing or invalid authentication token.
+- **408 Request Timeout**: Request not read within the 10 s read timeout.
+- **413 Payload Too Large**: Request body exceeds 64 KiB.
 - **422 Unprocessable Entity**: Unrecognized topic in `topics` or `target_topic`.
 - **429 Too Many Requests**: Rate limit exceeded.
+- **431 Request Header Fields Too Large**: Inbound request headers exceed the server limit.
+- **500 Internal Server Error**: Unexpected internal failure or recovered panic.
 
 #### Example
 

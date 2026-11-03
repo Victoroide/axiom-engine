@@ -50,48 +50,208 @@ const docTemplate = `{
                         "description": "OK",
                         "schema": {
                             "$ref": "#/definitions/domain.PlanResponse"
+                        },
+                        "headers": {
+                            "X-RateLimit-Limit": {
+                                "type": "integer",
+                                "description": "Maximum requests per rate-limit window"
+                            },
+                            "X-RateLimit-Remaining": {
+                                "type": "integer",
+                                "description": "Requests remaining in the rate-limit window"
+                            },
+                            "X-RateLimit-Reset": {
+                                "type": "integer",
+                                "description": "Seconds until the rate-limit window resets"
+                            },
+                            "X-Request-ID": {
+                                "type": "string",
+                                "description": "Resolved request correlation identifier"
+                            }
                         }
                     },
                     "400": {
                         "description": "Bad Request",
                         "schema": {
                             "$ref": "#/definitions/domain.ErrorResponse"
+                        },
+                        "headers": {
+                            "X-RateLimit-Limit": {
+                                "type": "integer",
+                                "description": "Maximum requests per rate-limit window"
+                            },
+                            "X-RateLimit-Remaining": {
+                                "type": "integer",
+                                "description": "Requests remaining in the rate-limit window"
+                            },
+                            "X-RateLimit-Reset": {
+                                "type": "integer",
+                                "description": "Seconds until the rate-limit window resets"
+                            },
+                            "X-Request-ID": {
+                                "type": "string",
+                                "description": "Resolved request correlation identifier"
+                            }
                         }
                     },
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
                             "$ref": "#/definitions/domain.ErrorResponse"
+                        },
+                        "headers": {
+                            "X-Request-ID": {
+                                "type": "string",
+                                "description": "Resolved request correlation identifier"
+                            }
+                        }
+                    },
+                    "408": {
+                        "description": "Request not read within the 10 s read timeout",
+                        "schema": {
+                            "$ref": "#/definitions/domain.ErrorResponse"
+                        },
+                        "headers": {
+                            "X-Request-ID": {
+                                "type": "string",
+                                "description": "Resolved request correlation identifier"
+                            }
                         }
                     },
                     "413": {
                         "description": "Request Entity Too Large",
                         "schema": {
                             "$ref": "#/definitions/domain.ErrorResponse"
+                        },
+                        "headers": {
+                            "X-RateLimit-Limit": {
+                                "type": "integer",
+                                "description": "Maximum requests per rate-limit window"
+                            },
+                            "X-RateLimit-Remaining": {
+                                "type": "integer",
+                                "description": "Requests remaining in the rate-limit window"
+                            },
+                            "X-RateLimit-Reset": {
+                                "type": "integer",
+                                "description": "Seconds until the rate-limit window resets"
+                            },
+                            "X-Request-ID": {
+                                "type": "string",
+                                "description": "Resolved request correlation identifier"
+                            }
                         }
                     },
                     "415": {
                         "description": "Unsupported Media Type",
                         "schema": {
                             "$ref": "#/definitions/domain.ErrorResponse"
+                        },
+                        "headers": {
+                            "X-RateLimit-Limit": {
+                                "type": "integer",
+                                "description": "Maximum requests per rate-limit window"
+                            },
+                            "X-RateLimit-Remaining": {
+                                "type": "integer",
+                                "description": "Requests remaining in the rate-limit window"
+                            },
+                            "X-RateLimit-Reset": {
+                                "type": "integer",
+                                "description": "Seconds until the rate-limit window resets"
+                            },
+                            "X-Request-ID": {
+                                "type": "string",
+                                "description": "Resolved request correlation identifier"
+                            }
                         }
                     },
                     "422": {
                         "description": "Unprocessable Entity",
                         "schema": {
                             "$ref": "#/definitions/domain.ErrorResponse"
+                        },
+                        "headers": {
+                            "X-RateLimit-Limit": {
+                                "type": "integer",
+                                "description": "Maximum requests per rate-limit window"
+                            },
+                            "X-RateLimit-Remaining": {
+                                "type": "integer",
+                                "description": "Requests remaining in the rate-limit window"
+                            },
+                            "X-RateLimit-Reset": {
+                                "type": "integer",
+                                "description": "Seconds until the rate-limit window resets"
+                            },
+                            "X-Request-ID": {
+                                "type": "string",
+                                "description": "Resolved request correlation identifier"
+                            }
                         }
                     },
                     "429": {
                         "description": "Too Many Requests",
                         "schema": {
                             "$ref": "#/definitions/domain.ErrorResponse"
+                        },
+                        "headers": {
+                            "Retry-After": {
+                                "type": "integer",
+                                "description": "Seconds to wait before retrying"
+                            },
+                            "X-Request-ID": {
+                                "type": "string",
+                                "description": "Resolved request correlation identifier"
+                            }
+                        }
+                    },
+                    "431": {
+                        "description": "Request headers exceed the server limit",
+                        "schema": {
+                            "$ref": "#/definitions/domain.ErrorResponse"
+                        },
+                        "headers": {
+                            "X-Request-ID": {
+                                "type": "string",
+                                "description": "Resolved request correlation identifier"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/domain.ErrorResponse"
+                        },
+                        "headers": {
+                            "X-Request-ID": {
+                                "type": "string",
+                                "description": "Resolved request correlation identifier"
+                            }
                         }
                     },
                     "502": {
                         "description": "Upstream failure or no usable item for a requested topic",
                         "schema": {
                             "$ref": "#/definitions/domain.ErrorResponse"
+                        },
+                        "headers": {
+                            "X-RateLimit-Limit": {
+                                "type": "integer",
+                                "description": "Maximum requests per rate-limit window"
+                            },
+                            "X-RateLimit-Remaining": {
+                                "type": "integer",
+                                "description": "Requests remaining in the rate-limit window"
+                            },
+                            "X-RateLimit-Reset": {
+                                "type": "integer",
+                                "description": "Seconds until the rate-limit window resets"
+                            },
+                            "X-Request-ID": {
+                                "type": "string",
+                                "description": "Resolved request correlation identifier"
+                            }
                         }
                     },
                     "503": {
@@ -103,6 +263,22 @@ const docTemplate = `{
                             "Retry-After": {
                                 "type": "integer",
                                 "description": "Seconds to wait before retrying"
+                            },
+                            "X-RateLimit-Limit": {
+                                "type": "integer",
+                                "description": "Maximum requests per rate-limit window"
+                            },
+                            "X-RateLimit-Remaining": {
+                                "type": "integer",
+                                "description": "Requests remaining in the rate-limit window"
+                            },
+                            "X-RateLimit-Reset": {
+                                "type": "integer",
+                                "description": "Seconds until the rate-limit window resets"
+                            },
+                            "X-Request-ID": {
+                                "type": "string",
+                                "description": "Resolved request correlation identifier"
                             }
                         }
                     },
@@ -110,6 +286,24 @@ const docTemplate = `{
                         "description": "Gateway Timeout",
                         "schema": {
                             "$ref": "#/definitions/domain.ErrorResponse"
+                        },
+                        "headers": {
+                            "X-RateLimit-Limit": {
+                                "type": "integer",
+                                "description": "Maximum requests per rate-limit window"
+                            },
+                            "X-RateLimit-Remaining": {
+                                "type": "integer",
+                                "description": "Requests remaining in the rate-limit window"
+                            },
+                            "X-RateLimit-Reset": {
+                                "type": "integer",
+                                "description": "Seconds until the rate-limit window resets"
+                            },
+                            "X-Request-ID": {
+                                "type": "string",
+                                "description": "Resolved request correlation identifier"
+                            }
                         }
                     }
                 }
@@ -161,30 +355,160 @@ const docTemplate = `{
                         "description": "OK",
                         "schema": {
                             "$ref": "#/definitions/domain.CognitiveGraphResponse"
+                        },
+                        "headers": {
+                            "X-RateLimit-Limit": {
+                                "type": "integer",
+                                "description": "Maximum requests per rate-limit window"
+                            },
+                            "X-RateLimit-Remaining": {
+                                "type": "integer",
+                                "description": "Requests remaining in the rate-limit window"
+                            },
+                            "X-RateLimit-Reset": {
+                                "type": "integer",
+                                "description": "Seconds until the rate-limit window resets"
+                            },
+                            "X-Request-ID": {
+                                "type": "string",
+                                "description": "Resolved request correlation identifier"
+                            }
                         }
                     },
                     "400": {
                         "description": "Bad Request",
                         "schema": {
                             "$ref": "#/definitions/domain.ErrorResponse"
+                        },
+                        "headers": {
+                            "X-RateLimit-Limit": {
+                                "type": "integer",
+                                "description": "Maximum requests per rate-limit window"
+                            },
+                            "X-RateLimit-Remaining": {
+                                "type": "integer",
+                                "description": "Requests remaining in the rate-limit window"
+                            },
+                            "X-RateLimit-Reset": {
+                                "type": "integer",
+                                "description": "Seconds until the rate-limit window resets"
+                            },
+                            "X-Request-ID": {
+                                "type": "string",
+                                "description": "Resolved request correlation identifier"
+                            }
                         }
                     },
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
                             "$ref": "#/definitions/domain.ErrorResponse"
+                        },
+                        "headers": {
+                            "X-Request-ID": {
+                                "type": "string",
+                                "description": "Resolved request correlation identifier"
+                            }
+                        }
+                    },
+                    "408": {
+                        "description": "Request not read within the 10 s read timeout",
+                        "schema": {
+                            "$ref": "#/definitions/domain.ErrorResponse"
+                        },
+                        "headers": {
+                            "X-Request-ID": {
+                                "type": "string",
+                                "description": "Resolved request correlation identifier"
+                            }
+                        }
+                    },
+                    "413": {
+                        "description": "Request body exceeds 64 KiB",
+                        "schema": {
+                            "$ref": "#/definitions/domain.ErrorResponse"
+                        },
+                        "headers": {
+                            "X-RateLimit-Limit": {
+                                "type": "integer",
+                                "description": "Maximum requests per rate-limit window"
+                            },
+                            "X-RateLimit-Remaining": {
+                                "type": "integer",
+                                "description": "Requests remaining in the rate-limit window"
+                            },
+                            "X-RateLimit-Reset": {
+                                "type": "integer",
+                                "description": "Seconds until the rate-limit window resets"
+                            },
+                            "X-Request-ID": {
+                                "type": "string",
+                                "description": "Resolved request correlation identifier"
+                            }
                         }
                     },
                     "422": {
                         "description": "Unprocessable Entity",
                         "schema": {
                             "$ref": "#/definitions/domain.ErrorResponse"
+                        },
+                        "headers": {
+                            "X-RateLimit-Limit": {
+                                "type": "integer",
+                                "description": "Maximum requests per rate-limit window"
+                            },
+                            "X-RateLimit-Remaining": {
+                                "type": "integer",
+                                "description": "Requests remaining in the rate-limit window"
+                            },
+                            "X-RateLimit-Reset": {
+                                "type": "integer",
+                                "description": "Seconds until the rate-limit window resets"
+                            },
+                            "X-Request-ID": {
+                                "type": "string",
+                                "description": "Resolved request correlation identifier"
+                            }
                         }
                     },
                     "429": {
                         "description": "Too Many Requests",
                         "schema": {
                             "$ref": "#/definitions/domain.ErrorResponse"
+                        },
+                        "headers": {
+                            "Retry-After": {
+                                "type": "integer",
+                                "description": "Seconds to wait before retrying"
+                            },
+                            "X-Request-ID": {
+                                "type": "string",
+                                "description": "Resolved request correlation identifier"
+                            }
+                        }
+                    },
+                    "431": {
+                        "description": "Request headers exceed the server limit",
+                        "schema": {
+                            "$ref": "#/definitions/domain.ErrorResponse"
+                        },
+                        "headers": {
+                            "X-Request-ID": {
+                                "type": "string",
+                                "description": "Resolved request correlation identifier"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/domain.ErrorResponse"
+                        },
+                        "headers": {
+                            "X-Request-ID": {
+                                "type": "string",
+                                "description": "Resolved request correlation identifier"
+                            }
                         }
                     }
                 }
@@ -206,6 +530,60 @@ const docTemplate = `{
                         "description": "OK",
                         "schema": {
                             "$ref": "#/definitions/domain.HealthResponse"
+                        },
+                        "headers": {
+                            "X-Request-ID": {
+                                "type": "string",
+                                "description": "Resolved request correlation identifier"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Malformed HTTP request",
+                        "schema": {
+                            "$ref": "#/definitions/domain.ErrorResponse"
+                        },
+                        "headers": {
+                            "X-Request-ID": {
+                                "type": "string",
+                                "description": "Resolved request correlation identifier"
+                            }
+                        }
+                    },
+                    "408": {
+                        "description": "Request not read within the 10 s read timeout",
+                        "schema": {
+                            "$ref": "#/definitions/domain.ErrorResponse"
+                        },
+                        "headers": {
+                            "X-Request-ID": {
+                                "type": "string",
+                                "description": "Resolved request correlation identifier"
+                            }
+                        }
+                    },
+                    "413": {
+                        "description": "Request body exceeds 64 KiB",
+                        "schema": {
+                            "$ref": "#/definitions/domain.ErrorResponse"
+                        },
+                        "headers": {
+                            "X-Request-ID": {
+                                "type": "string",
+                                "description": "Resolved request correlation identifier"
+                            }
+                        }
+                    },
+                    "431": {
+                        "description": "Request headers exceed the server limit",
+                        "schema": {
+                            "$ref": "#/definitions/domain.ErrorResponse"
+                        },
+                        "headers": {
+                            "X-Request-ID": {
+                                "type": "string",
+                                "description": "Resolved request correlation identifier"
+                            }
                         }
                     }
                 }
@@ -227,6 +605,60 @@ const docTemplate = `{
                         "description": "OK",
                         "schema": {
                             "$ref": "#/definitions/domain.HealthResponse"
+                        },
+                        "headers": {
+                            "X-Request-ID": {
+                                "type": "string",
+                                "description": "Resolved request correlation identifier"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Malformed HTTP request",
+                        "schema": {
+                            "$ref": "#/definitions/domain.ErrorResponse"
+                        },
+                        "headers": {
+                            "X-Request-ID": {
+                                "type": "string",
+                                "description": "Resolved request correlation identifier"
+                            }
+                        }
+                    },
+                    "408": {
+                        "description": "Request not read within the 10 s read timeout",
+                        "schema": {
+                            "$ref": "#/definitions/domain.ErrorResponse"
+                        },
+                        "headers": {
+                            "X-Request-ID": {
+                                "type": "string",
+                                "description": "Resolved request correlation identifier"
+                            }
+                        }
+                    },
+                    "413": {
+                        "description": "Request body exceeds 64 KiB",
+                        "schema": {
+                            "$ref": "#/definitions/domain.ErrorResponse"
+                        },
+                        "headers": {
+                            "X-Request-ID": {
+                                "type": "string",
+                                "description": "Resolved request correlation identifier"
+                            }
+                        }
+                    },
+                    "431": {
+                        "description": "Request headers exceed the server limit",
+                        "schema": {
+                            "$ref": "#/definitions/domain.ErrorResponse"
+                        },
+                        "headers": {
+                            "X-Request-ID": {
+                                "type": "string",
+                                "description": "Resolved request correlation identifier"
+                            }
                         }
                     }
                 }
@@ -248,12 +680,72 @@ const docTemplate = `{
                         "description": "OK",
                         "schema": {
                             "$ref": "#/definitions/domain.HealthResponse"
+                        },
+                        "headers": {
+                            "X-Request-ID": {
+                                "type": "string",
+                                "description": "Resolved request correlation identifier"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Malformed HTTP request",
+                        "schema": {
+                            "$ref": "#/definitions/domain.ErrorResponse"
+                        },
+                        "headers": {
+                            "X-Request-ID": {
+                                "type": "string",
+                                "description": "Resolved request correlation identifier"
+                            }
+                        }
+                    },
+                    "408": {
+                        "description": "Request not read within the 10 s read timeout",
+                        "schema": {
+                            "$ref": "#/definitions/domain.ErrorResponse"
+                        },
+                        "headers": {
+                            "X-Request-ID": {
+                                "type": "string",
+                                "description": "Resolved request correlation identifier"
+                            }
+                        }
+                    },
+                    "413": {
+                        "description": "Request body exceeds 64 KiB",
+                        "schema": {
+                            "$ref": "#/definitions/domain.ErrorResponse"
+                        },
+                        "headers": {
+                            "X-Request-ID": {
+                                "type": "string",
+                                "description": "Resolved request correlation identifier"
+                            }
+                        }
+                    },
+                    "431": {
+                        "description": "Request headers exceed the server limit",
+                        "schema": {
+                            "$ref": "#/definitions/domain.ErrorResponse"
+                        },
+                        "headers": {
+                            "X-Request-ID": {
+                                "type": "string",
+                                "description": "Resolved request correlation identifier"
+                            }
                         }
                     },
                     "503": {
                         "description": "Server draining",
                         "schema": {
                             "$ref": "#/definitions/domain.HealthResponse"
+                        },
+                        "headers": {
+                            "X-Request-ID": {
+                                "type": "string",
+                                "description": "Resolved request correlation identifier"
+                            }
                         }
                     }
                 }
@@ -364,8 +856,8 @@ const docTemplate = `{
                 },
                 "llm_latency_ms": {
                     "description": "LLMLatencyMs is the wall-clock time (milliseconds) spent waiting\nfor all parallel LLM calls to complete.",
-                    "type": "number",
-                    "example": 3240.5
+                    "type": "integer",
+                    "example": 3240
                 },
                 "subgraph_tuples": {
                     "description": "SubgraphTuples is the number of knowledge-graph triples extracted\nby the BFS subgraph traversal for the given failed topics.",
@@ -379,8 +871,8 @@ const docTemplate = `{
                 },
                 "total_latency_ms": {
                     "description": "TotalLatencyMs is the end-to-end pipeline duration (milliseconds)\nfrom request receipt to response serialization.",
-                    "type": "number",
-                    "example": 3312.8
+                    "type": "integer",
+                    "example": 3312
                 }
             }
         },

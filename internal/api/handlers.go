@@ -53,6 +53,7 @@ func (h *Handler) RegisterRoutes(app *fiber.App) {
 // @Success 200 {object} domain.PlanResponse
 // @Failure 400 {object} domain.ErrorResponse
 // @Failure 401 {object} domain.ErrorResponse
+// @Failure 408 {object} domain.ErrorResponse "Request not read within the 10 s read timeout"
 // @Failure 413 {object} domain.ErrorResponse
 // @Failure 415 {object} domain.ErrorResponse
 // @Failure 422 {object} domain.ErrorResponse
@@ -61,6 +62,13 @@ func (h *Handler) RegisterRoutes(app *fiber.App) {
 // @Failure 503 {object} domain.ErrorResponse "Temporary unavailability, upstream throttling or server shutdown"
 // @Header 503 {integer} Retry-After "Seconds to wait before retrying"
 // @Failure 504 {object} domain.ErrorResponse
+// @Failure 431 {object} domain.ErrorResponse "Request headers exceed the server limit"
+// @Failure 500 {object} domain.ErrorResponse
+// @Header all {string} X-Request-ID "Resolved request correlation identifier"
+// @Header 200,400,413,415,422,502,503,504 {integer} X-RateLimit-Limit "Maximum requests per rate-limit window"
+// @Header 200,400,413,415,422,502,503,504 {integer} X-RateLimit-Remaining "Requests remaining in the rate-limit window"
+// @Header 200,400,413,415,422,502,503,504 {integer} X-RateLimit-Reset "Seconds until the rate-limit window resets"
+// @Header 429 {integer} Retry-After "Seconds to wait before retrying"
 // @Router /api/v1/adaptive-plan [post]
 func (h *Handler) handleAdaptivePlan(c fiber.Ctx) error {
 	mediaType, params, err := mime.ParseMediaType(c.Get("Content-Type"))
@@ -153,8 +161,17 @@ func validationResponse(c fiber.Ctx, err *service.ValidationError) error {
 // @Success 200 {object} domain.CognitiveGraphResponse
 // @Failure 400 {object} domain.ErrorResponse
 // @Failure 401 {object} domain.ErrorResponse
+// @Failure 408 {object} domain.ErrorResponse "Request not read within the 10 s read timeout"
+// @Failure 413 {object} domain.ErrorResponse "Request body exceeds 64 KiB"
 // @Failure 422 {object} domain.ErrorResponse
 // @Failure 429 {object} domain.ErrorResponse
+// @Failure 431 {object} domain.ErrorResponse "Request headers exceed the server limit"
+// @Failure 500 {object} domain.ErrorResponse
+// @Header all {string} X-Request-ID "Resolved request correlation identifier"
+// @Header 200,400,413,422 {integer} X-RateLimit-Limit "Maximum requests per rate-limit window"
+// @Header 200,400,413,422 {integer} X-RateLimit-Remaining "Requests remaining in the rate-limit window"
+// @Header 200,400,413,422 {integer} X-RateLimit-Reset "Seconds until the rate-limit window resets"
+// @Header 429 {integer} Retry-After "Seconds to wait before retrying"
 // @Router /api/v1/tutor/student/{student_id}/cognitive-graph [get]
 func (h *Handler) handleCognitiveGraph(c fiber.Ctx) error {
 	if !service.ValidIdentifier(c.Params("student_id")) {

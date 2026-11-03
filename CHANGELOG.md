@@ -84,6 +84,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Restore default signal behavior synchronously on the first termination signal before canceling the serving context, re-deliver queued signals so back-to-back `SIGTERM` and `SIGINT` terminate the process immediately, and emit `server.shutdown_started` with the signal and unit-bearing shutdown timeout.
 - Return the standard JSON error envelope and a request ID for unimplemented HTTP methods, with correlated access logs and unmatched HTTP metrics.
 - Quote and bound echoed topic values in unknown-topic and `target_topic` validation errors using Go string escaping (`strconv.Quote`), escaping non-printable characters and invalid bytes while preserving printable Unicode, capping echoed values to 128 runes with an ellipsis (`…`), and summarizing lists of unknown topics after ten items with ` (+N more)`.
+- Document all returned HTTP status codes (including HTTP 408 and 431 across all endpoints, HTTP 400 and 413 on probes, HTTP 413 on the cognitive graph, and HTTP 500 on API routes), response headers (`X-Request-ID`, `Retry-After`, and `X-RateLimit-*`), and integer millisecond latency fields in Swagger documentation.
 
 ### Security
 
