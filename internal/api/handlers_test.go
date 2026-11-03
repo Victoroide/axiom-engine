@@ -62,6 +62,131 @@ func TestUnknownTargetTopicIsBounded(t *testing.T) {
 	}
 }
 
+func TestCognitiveGraphMergesRepeatedTopics(t *testing.T) {
+	g := graph.NewInMemoryGraph()
+	want := g.GenerateCognitiveShadow([]string{"Recursion", "Polymorphism"}, "")
+	for _, tc := range []struct {
+		name, query, details, target string
+		maxTopics, status            int
+	}{
+		{name: "comma separated", query: "topics=Recursion,Polymorphism", maxTopics: 2, status: http.StatusOK},
+		{name: "repeated", query: "topics=Recursion&topics=Polymorphism", maxTopics: 2, status: http.StatusOK},
+		{name: "mixed canonical duplicates", query: "topics=recursion,Recursion&topics=Polymorphism,polymorphism", maxTopics: 2, status: http.StatusOK},
+		{name: "empty first value", query: "topics=&topics=Recursion,Polymorphism", maxTopics: 2, status: http.StatusOK},
+		{name: "target from later value", query: "topics=Recursion&topics=Polymorphism&target_topic=polymorphism", maxTopics: 2, status: http.StatusOK, target: "Polymorphism"},
+		{name: "repeated union exceeds limit", query: "topics=Recursion&topics=Polymorphism", maxTopics: 1, status: http.StatusBadRequest, details: "topics must contain at most 1 unique topics"},
+		{name: "comma separated union exceeds limit", query: "topics=Recursion,Polymorphism", maxTopics: 1, status: http.StatusBadRequest, details: "topics must contain at most 1 unique topics"},
+		{name: "mixed union exceeds limit", query: "topics=Recursion,Polymorphism&topics=Functions", maxTopics: 2, status: http.StatusBadRequest, details: "topics must contain at most 2 unique topics"},
+		{name: "unknown in repeated value", query: "topics=Recursion&topics=unknown", maxTopics: 2, status: http.StatusUnprocessableEntity, details: `topics contains unknown topics: "unknown"`},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			cfg, err := config.Load(func(k string) string {
+				if k == "AXIOM_AUTH_DISABLED" {
+					return "true"
+				}
+				return ""
+			})
+			if err != nil {
+				t.Fatal(err)
+			}
+			cfg.MaxFailedTopics = tc.maxTopics
+			app := server.New(cfg, server.Dependencies{Graph: g, Logger: slog.New(slog.NewJSONHandler(io.Discard, nil))})
+			req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/api/v1/tutor/student/student-42/cognitive-graph?"+tc.query, nil)
+			resp, err := app.Test(req)
+			if err != nil {
+				t.Fatal(err)
+			}
+			defer func() { _ = resp.Body.Close() }()
+			if resp.StatusCode != tc.status {
+				t.Fatalf("status = %d; want %d", resp.StatusCode, tc.status)
+			}
+			if tc.status != http.StatusOK {
+				var got domain.ErrorResponse
+				if err := json.NewDecoder(resp.Body).Decode(&got); err != nil {
+					t.Fatal(err)
+				}
+				if got.Error != "validation_error" || got.Details != tc.details {
+					t.Fatalf("error = %+v; want validation_error with %q", got, tc.details)
+				}
+				return
+			}
+			var got domain.CognitiveGraphResponse
+			if err := json.NewDecoder(resp.Body).Decode(&got); err != nil {
+				t.Fatal(err)
+			}
+			expected := want
+			if tc.target != "" {
+				expected = g.GenerateCognitiveShadow([]string{"Recursion", "Polymorphism"}, tc.target)
+			}
+			if !reflect.DeepEqual(got, expected) {
+				t.Fatal("graph does not match the union of Recursion and Polymorphism")
+			}
+		})
+	}
+}
+
+func TestCognitiveGraphTargetMustBeRequested(t *testing.T) {
+	for _, target := range []string{"Polymorphism", "polymorphism"} {
+		t.Run(target, func(t *testing.T) {
+			cfg, err := config.Load(func(k string) string {
+				if k == "AXIOM_AUTH_DISABLED" {
+					return "true"
+				}
+				return ""
+			})
+			if err != nil {
+				t.Fatal(err)
+			}
+			app := server.New(cfg, server.Dependencies{Graph: graph.NewInMemoryGraph(), Logger: slog.New(slog.NewJSONHandler(io.Discard, nil))})
+			query := url.Values{"topics": {"Recursion"}, "target_topic": {target}}
+			req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/api/v1/tutor/student/student-42/cognitive-graph?"+query.Encode(), nil)
+			resp, err := app.Test(req)
+			if err != nil {
+				t.Fatal(err)
+			}
+			defer func() { _ = resp.Body.Close() }()
+			var got domain.ErrorResponse
+			if err := json.NewDecoder(resp.Body).Decode(&got); err != nil {
+				t.Fatal(err)
+			}
+			if resp.StatusCode != http.StatusBadRequest || got.Error != "validation_error" || got.Details != "target_topic must be one of topics" {
+				t.Fatalf("status = %d, error = %+v; want 400 validation_error for target outside topics", resp.StatusCode, got)
+			}
+		})
+	}
+}
+
+func TestCognitiveGraphRejectsRepeatedTarget(t *testing.T) {
+	for _, targets := range [][]string{{"Recursion", "Recursion"}, {"Recursion", "Polymorphism"}, {"", ""}, {"", "Recursion"}} {
+		t.Run(strings.Join(targets, ","), func(t *testing.T) {
+			cfg, err := config.Load(func(k string) string {
+				if k == "AXIOM_AUTH_DISABLED" {
+					return "true"
+				}
+				return ""
+			})
+			if err != nil {
+				t.Fatal(err)
+			}
+			app := server.New(cfg, server.Dependencies{Graph: graph.NewInMemoryGraph(), Logger: slog.New(slog.NewJSONHandler(io.Discard, nil))})
+			query := url.Values{"topics": {"Recursion,Polymorphism"}, "target_topic": targets}
+			req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/api/v1/tutor/student/student-42/cognitive-graph?"+query.Encode(), nil)
+			resp, err := app.Test(req)
+			if err != nil {
+				t.Fatal(err)
+			}
+			defer func() { _ = resp.Body.Close() }()
+			var got domain.ErrorResponse
+			if err := json.NewDecoder(resp.Body).Decode(&got); err != nil {
+				t.Fatal(err)
+			}
+			if resp.StatusCode != http.StatusBadRequest || got.Error != "validation_error" {
+				t.Fatalf("status = %d, error = %+v; want 400 validation_error for repeated target", resp.StatusCode, got)
+			}
+		})
+	}
+}
+
 func TestCognitiveGraphResolvesTargetTopics(t *testing.T) {
 	g, err := graph.Decode(strings.NewReader(`[{"subject":"Recursion","relation":"depends_on","object":"Functions"},{"subject":"Merge Sort","relation":"depends_on","object":"Recursion"},{"subject":"Recursión","relation":"depends_on","object":"Funciones"},{"subject":"Straße","relation":"depends_on","object":"Basis"},{"subject":"ΟΔΟΣ","relation":"depends_on","object":"Basis"}]`))
 	if err != nil {

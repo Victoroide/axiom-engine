@@ -340,13 +340,13 @@ Computes a depth-1 concept neighborhood around failed topics for a learner, clas
 - **Path Parameters**:
   - `student_id`: Required string. Must match regex `^[A-Za-z0-9._:-]{1,128}$`. (Validated at the route boundary; omitted from the cognitive shadow graph response).
 - **Query Parameters**:
-  - `topics`: Required string. Comma-separated list of failed topics. Must contain between 1 and `MAX_FAILED_TOPICS` unique topics. Resolves topics canonically and deduplicates by canonical form before count validation; every topic must exist in the knowledge graph.
-  - `target_topic`: Optional string. When provided, centers the depth-1 subgraph around this specific topic instead of all failed topics. Resolves canonically across case, whitespace, and Unicode composition variants (see [Node Naming](knowledge-graph.md#node-naming)), and must exist in the knowledge graph if specified.
+  - `topics`: Required string. Comma-separated list of failed topic names; may also be supplied across repeated query parameters (for example, `topics=Recursion&topics=Polymorphism`), and comma-separated lists and repeated parameters may be mixed. All supplied values form a unified topic collection. Canonical resolution and deduplication occur before validating that the union contains between 1 and `MAX_FAILED_TOPICS` unique topics; every topic in the union must exist in the knowledge graph.
+  - `target_topic`: Optional string. At most one occurrence is allowed, including empty occurrences; repeated `target_topic` parameters return HTTP 400 `validation_error` (`target_topic must not be repeated`). When a single non-empty value is provided, it centers the depth-1 subgraph around this specific topic instead of all failed topics. It resolves canonically across case, whitespace, and Unicode composition variants (see [Node Naming](knowledge-graph.md#node-naming)) and must be a member of the resolved `topics` union. A missing or single empty value leaves the graph centered on all requested topics. If non-empty and not present in the knowledge graph, returns HTTP 422 with a bounded quoted echo; if present in the knowledge graph but outside the resolved `topics` union, returns HTTP 400 `validation_error` with `target_topic must be one of topics`.
 
 #### Responses
 
 - **200 OK**: Cognitive shadow graph calculated and pruned of orphan nodes.
-- **400 Bad Request**: Invalid `student_id` or query parameters.
+- **400 Bad Request**: Invalid `student_id` (does not match identifier format); no non-empty topics supplied; more than `MAX_FAILED_TOPICS` unique topics across all `topics` values; repeated `target_topic` query parameter; or known `target_topic` outside the resolved `topics` union (`target_topic must be one of topics`).
 - **401 Unauthorized**: Missing or invalid authentication token.
 - **422 Unprocessable Entity**: Unrecognized topic in `topics` or `target_topic`.
 - **429 Too Many Requests**: Rate limit exceeded.

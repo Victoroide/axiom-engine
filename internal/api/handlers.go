@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"log/slog"
 	"mime"
+	"slices"
 	"strconv"
 	"strings"
 	"time"
@@ -147,8 +148,8 @@ func validationResponse(c fiber.Ctx, err *service.ValidationError) error {
 // @Produce json
 // @Security InternalToken
 // @Param student_id path string true "Student identifier" example(student-42)
-// @Param topics query string true "Comma-separated failed topic names" example(Polymorphism,Recursion)
-// @Param target_topic query string false "Center the subgraph on one topic" example(Recursion)
+// @Param topics query string true "Comma-separated failed topic names; may be repeated" example(Polymorphism,Recursion)
+// @Param target_topic query string false "Center the subgraph on one topic; must be one of topics" example(Recursion)
 // @Success 200 {object} domain.CognitiveGraphResponse
 // @Failure 400 {object} domain.ErrorResponse
 // @Failure 401 {object} domain.ErrorResponse
@@ -159,17 +160,27 @@ func (h *Handler) handleCognitiveGraph(c fiber.Ctx) error {
 	if !service.ValidIdentifier(c.Params("student_id")) {
 		return validationResponse(c, &service.ValidationError{Details: "student_id must match ^[A-Za-z0-9._:-]{1,128}$"})
 	}
-	topics, err := service.ValidateTopics("topics", strings.Split(c.Query("topics"), ","), h.maxTopics, h.graph)
+	var requested []string
+	for _, value := range c.Request().URI().QueryArgs().PeekMulti("topics") {
+		requested = append(requested, strings.Split(string(value), ",")...)
+	}
+	topics, err := service.ValidateTopics("topics", requested, h.maxTopics, h.graph)
 	if err != nil {
 		var validation *service.ValidationError
 		errors.As(err, &validation)
 		return validationResponse(c, validation)
+	}
+	if len(c.Request().URI().QueryArgs().PeekMulti("target_topic")) > 1 {
+		return validationResponse(c, &service.ValidationError{Details: "target_topic must not be repeated"})
 	}
 	target := strings.TrimSpace(c.Query("target_topic"))
 	if target != "" {
 		stored, ok := h.graph.Resolve(target)
 		if !ok {
 			return validationResponse(c, &service.ValidationError{Details: "unknown target_topic: " + service.QuoteValue(target), UnknownTopics: []string{target}})
+		}
+		if !slices.Contains(topics, stored) {
+			return validationResponse(c, &service.ValidationError{Details: "target_topic must be one of topics"})
 		}
 		target = stored
 	}
