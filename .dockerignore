@@ -18,7 +18,9 @@ coverage*
 *.log
 test
 **/*_test.go
-README.md
+*.md
+scripts
+tools
 LICENSE
 Makefile
 docker-compose.yml
