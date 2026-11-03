@@ -181,6 +181,8 @@ Unit tests execute in-process with race detection enabled:
 make test
 ```
 
+`make test` verifies the native BAML library and sets `BAML_LIBRARY_PATH` and `BAML_LIBRARY_DISABLE_DOWNLOAD=true`. The `internal/llm` tests stop with a message when either is missing: without them the runtime may download the library, and the download leaves an idle connection that the goroutine leak check reports. To run `go test` directly, run `make native-baml` first and set both variables, as in the BAML upgrade steps above.
+
 To run unit tests and report statement coverage:
 
 ```sh
