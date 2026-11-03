@@ -223,6 +223,18 @@ Response:
 }
 ```
 
+## Limitations
+
+- **In-Memory Rate Limiting**: Rate limiting operates per replica in memory, keyed by client IP (masked to `/64` for IPv6). Distributed deployments requiring global rate limits should enforce quotas at an API gateway or reverse proxy.
+- **Client Disconnects**: Client HTTP disconnects do not cancel in-flight Bedrock reasoning. Work continues until `REQUEST_TIMEOUT` expires.
+- **Single Shared Secret**: Authentication relies on a single shared secret without caller identity or per-tenant authorization. Fine-grained authorization and multi-tenant isolation belong at the platform or gateway tier.
+- **Non-Idempotent Inferences**: Study plans are non-deterministic and not idempotent. Retried POST requests trigger new Bedrock model inferences and incur token costs.
+- **Native Library Initialization**: The BAML CFFI dynamic library is loaded during package initialization before `main` executes; missing or mismatched libraries panic directly to `stderr` in plain text prior to structured JSON logger initialization.
+- **Region Resolution and Caching**: Bedrock regions resolved dynamically from IMDS cannot be confirmed at startup, and the first resolved region is cached for the process lifetime.
+- **Scorecard Governance**: Repository OpenSSF Scorecard branch protection and code review scores reflect a single-maintainer project with zero required external approvals.
+
+For diagnostic runbooks and operational troubleshooting, refer to the [Operations Runbook](docs/operations.md).
+
 ## Documentation
 
 | Document | Description |
@@ -233,6 +245,7 @@ Response:
 | [Knowledge Graph](docs/knowledge-graph.md) | Subject-Relation-Object data model, relation semantics, seed graph, file schemas, and shadow computation |
 | [Deployment](docs/deployment.md) | Multi-stage Docker build, non-root execution, compose configuration, and operating instructions |
 | [Development](docs/development.md) | Prerequisites, make targets, BAML and Swagger generation, and test suite execution |
+| [Operations Runbook](docs/operations.md) | Diagnostic runbooks for open breakers, throttling, credential errors, native library panics, and production metrics |
 
 For project governance and contribution standards, refer to [CONTRIBUTING.md](CONTRIBUTING.md), [SECURITY.md](SECURITY.md), [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md), and [CHANGELOG.md](CHANGELOG.md).
 

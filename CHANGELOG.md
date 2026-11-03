@@ -37,6 +37,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Public OpenSSF Scorecard results, a README badge, and SARIF uploaded under category 'scorecard' by a weekly and main-push workflow.
 - Emit structured JSON records on standard output for startup configuration (`server.started`) and listener binding (`server.listening`) without secrets, and log configuration validation and startup failures as `server.failed` JSON records.
 - Report the static AWS region source (`aws_region_source`) in `server.started` and emit a `bedrock.region.unresolved` warning at startup when no static region is configured.
+- Operations runbook (`docs/operations.md`) covering circuit breaker trips, Bedrock throttling, queue saturation, credential and region resolution, native library failures, cost controls, and production metrics.
 
 ### Changed
 
