@@ -15,7 +15,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Liveness (`/livez`) and readiness (`/readyz`) probe endpoints with backwards-compatible `/health` liveness alias, readiness that reports draining with HTTP 503 on shutdown, configurable `SHUTDOWN_DRAIN_DELAY`, and `/livez` binary container healthcheck.
 - Prometheus metrics exposition at `/metrics` controlled by `METRICS_ENABLED`, tracking route-template HTTP request counts and latency distributions, LLM call outcomes, duration, in-flight executions, queue wait times, circuit breaker state, dropped items, and Go and process runtime series.
 - Upstream response classification mapping malformed 2xx responses and truncated model outputs to HTTP 502 `bad_gateway`.
-- BAML v0.226.2 client generation with pinned CFFI native libraries for `linux/amd64`, `linux/arm64`, `darwin/amd64`, and `darwin/arm64`.
+- BAML v0.226.3 client generation with pinned CFFI native libraries for `linux/amd64`, `linux/arm64`, `darwin/amd64`, and `darwin/arm64`.
 - Host native library verification target `make native-baml` with SHA256 checksum validation and cached asset verification.
 - Fiber v3 HTTP application with structured JSON logging (`http.access`), request ID tracing, panic recovery (`panic.recovered`), and helmet security headers.
 - Constant-time internal token authentication via `X-Internal-Token` or `Authorization: Bearer <token>` for `/api/v1` routes with case-insensitive scheme matching.
@@ -87,3 +87,4 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Move the runtime container base image to distroless Debian 13 pinned by digest to remediate fixable OpenSSL advisories in the Debian 12 runtime.
 - Scan Go dependencies and the runtime container image daily and on manual dispatch, uploading SARIF reports to GitHub Security.
 - Update `golang.org/x/net` to v0.62.0 in the root and tools modules to remediate GO-2026-6860 and GO-2026-6866.
+- Update BAML to v0.226.3, whose native runtime rejects the distrusted eMudhra intermediate certificates in TLS verification, including AWS credential discovery.
