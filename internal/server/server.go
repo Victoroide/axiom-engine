@@ -12,6 +12,7 @@ import (
 	"net/netip"
 	"regexp"
 	"runtime/debug"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -108,10 +109,54 @@ func wrapUnknownMethods(app *fiber.App, logger *slog.Logger, errorHandler fiber.
 			id = uuid.NewString()
 		}
 		c.Set("X-Request-ID", id)
+		setSecurityHeaders(c, securityHeaders)
 		if err := errorHandler(c, fiber.ErrNotImplemented); err != nil {
 			logger.ErrorContext(c.Context(), "request.failed", "request_id", id, "error_class", "internal_error")
 		}
 		observeHTTP(c, logger, recorder, start)
+	}
+}
+
+// securityHeaders configures the helmet middleware for every routed response.
+var securityHeaders = helmet.ConfigDefault
+
+// setSecurityHeaders writes the headers the helmet middleware sets for cfg, for
+// responses answered before the middleware chain runs.
+func setSecurityHeaders(c fiber.Ctx, cfg helmet.Config) {
+	for _, header := range [...][2]string{
+		{fiber.HeaderXXSSProtection, cfg.XSSProtection},
+		{fiber.HeaderXContentTypeOptions, cfg.ContentTypeNosniff},
+		{fiber.HeaderXFrameOptions, cfg.XFrameOptions},
+		{"Cross-Origin-Embedder-Policy", cfg.CrossOriginEmbedderPolicy},
+		{"Cross-Origin-Opener-Policy", cfg.CrossOriginOpenerPolicy},
+		{"Cross-Origin-Resource-Policy", cfg.CrossOriginResourcePolicy},
+		{"Origin-Agent-Cluster", cfg.OriginAgentCluster},
+		{"Referrer-Policy", cfg.ReferrerPolicy},
+		{"X-DNS-Prefetch-Control", cfg.XDNSPrefetchControl},
+		{"X-Download-Options", cfg.XDownloadOptions},
+		{"X-Permitted-Cross-Domain-Policies", cfg.XPermittedCrossDomain},
+		{fiber.HeaderPermissionsPolicy, cfg.PermissionPolicy},
+	} {
+		if header[1] != "" {
+			c.Set(header[0], header[1])
+		}
+	}
+	if cfg.ContentSecurityPolicy != "" {
+		name := fiber.HeaderContentSecurityPolicy
+		if cfg.CSPReportOnly {
+			name = fiber.HeaderContentSecurityPolicyReportOnly
+		}
+		c.Set(name, cfg.ContentSecurityPolicy)
+	}
+	if c.Secure() && cfg.HSTSMaxAge > 0 {
+		value := "max-age=" + strconv.Itoa(cfg.HSTSMaxAge)
+		if !cfg.HSTSExcludeSubdomains {
+			value += "; includeSubDomains"
+		}
+		if cfg.HSTSPreloadEnabled {
+			value += "; preload"
+		}
+		c.Set(fiber.HeaderStrictTransportSecurity, value)
 	}
 }
 
@@ -160,7 +205,7 @@ func useMiddleware(app *fiber.App, cfg config.Config, logger *slog.Logger, error
 	app.Use(recover.New(recover.Config{EnableStackTrace: true, StackTraceHandler: func(c fiber.Ctx, e any) {
 		logger.ErrorContext(c.Context(), "panic.recovered", "request_id", requestid.FromContext(c), "error", fmt.Sprint(e), "stack", string(debug.Stack()))
 	}}))
-	app.Use(helmet.New())
+	app.Use(helmet.New(securityHeaders))
 	if len(cfg.CORSAllowedOrigins) > 0 {
 		app.Use(cors.New(cors.Config{AllowOrigins: cfg.CORSAllowedOrigins, AllowMethods: []string{"GET", "POST", "HEAD", "OPTIONS"}, AllowHeaders: []string{"Origin", "Content-Type", "Accept", "Authorization", "X-Internal-Token", "X-Request-ID"}, ExposeHeaders: []string{"X-Request-ID"}, MaxAge: 3600}))
 	}
