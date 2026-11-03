@@ -3,7 +3,7 @@ module github.com/Victoroide/axiom-engine
 go 1.27.3
 
 require (
-	github.com/boundaryml/baml v0.226.2
+	github.com/boundaryml/baml v0.226.3
 	github.com/go-rod/rod v0.116.2
 	github.com/goccy/go-json v0.11.2
 	github.com/gofiber/contrib/v3/swaggo v1.0.14

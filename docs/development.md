@@ -48,7 +48,7 @@ Go marks the four provider requirements as indirect, so each named allow rule re
 
 `tools/go.mod` explicitly requires `golang.org/x/net v0.62.0` to fix GO-2026-6860 and GO-2026-6866. Swag reaches this module through `go-openapi/spec`, `go-openapi/jsonreference`, and `purell`. The tools Dependabot allowlist selects only the four tool-provider modules, so this transitive security update needs an explicit requirement. After updating the parent tools, check the selected version with `go -C tools list -m golang.org/x/net` and repeat the tools vulnerability scan before changing the override.
 
-`golangci-lint` (`v2.15.0`) intentionally remains executed via `go run github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v2.15.0` in accordance with upstream guidance. `baml-cli` (`0.226.2`) is installed into `bin/` via `make tools-baml` matching the version in `baml_src/generators.baml`. CI caches modules by both `go.sum` and `tools/go.sum`.
+`golangci-lint` (`v2.15.0`) intentionally remains executed via `go run github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v2.15.0` in accordance with upstream guidance. `baml-cli` is installed into `bin/` via `make tools-baml` at the version declared in `baml_src/generators.baml`. CI caches modules by both `go.sum` and `tools/go.sum`.
 
 ## Make targets
 
@@ -91,31 +91,40 @@ make generate
 
 This target performs the following actions:
 1. Runs `make native-baml` to download and verify the host native library against pinned checksums declared in [Dockerfile](../Dockerfile).
-2. Runs `make baml-check` to verify that `baml_src/generators.baml`, `ARG BAML_LIB_VERSION` in [Dockerfile](../Dockerfile), and `github.com/boundaryml/baml` in [go.mod](../go.mod) all specify version `0.226.2`.
-3. Compiles `baml-cli` into `bin/baml-cli-0.226.2` via `make tools-baml`.
-4. Executes `bin/baml-cli-0.226.2 generate --from baml_src`.
+2. Runs `make baml-check` to verify that `baml_src/generators.baml`, `ARG BAML_LIB_VERSION` in [Dockerfile](../Dockerfile), and `github.com/boundaryml/baml` in [go.mod](../go.mod) all specify `<version>` from `baml_src/generators.baml`.
+3. Compiles `baml-cli` into `bin/baml-cli-<version>` via `make tools-baml`.
+4. Executes `bin/baml-cli-<version> generate --from baml_src`.
 5. Formats generated source files with `gofmt -w baml_client`.
 6. Cleans and sorts import statements using `goimports -w baml_client`.
 
 ### BAML upgrade
 
-Dependabot surfaces BAML updates in a dedicated first-match `baml` group evaluated before general version grouping rules, with a three-day default cooldown (`cooldown.default-days: 3`) across all ecosystems. The previous blanket ignore directive for `github.com/boundaryml/baml` is removed so upstream releases trigger automated pull requests. Until the coordinated update below is pushed to the same branch, a Dependabot BAML pull request fails every job that checks the pins: `make baml-check` in `Test with race detection`, `Check generated code` and `Test API docs in browser`, and the Dockerfile version check in `Build service and runtime image`.
+Dependabot surfaces BAML updates in a dedicated first-match `baml` group evaluated before general version grouping rules, with a three-day default cooldown (`cooldown.default-days: 3`) across all ecosystems. The previous blanket ignore directive for `github.com/boundaryml/baml` is removed so upstream releases trigger automated pull requests. Dependabot updates only `go.mod` and `go.sum`, so its pull request fails every job that checks the pins: `make baml-check` in `Test with race detection`, `Check generated code` and `Test API docs in browser`, and the Dockerfile version check in `Build service and runtime image`. Do not push to the Dependabot branch. Open a separate pull request with the coordinated update below and state `Supersedes #<number>` in its description. Leave the Dependabot pull request open until the replacement merges; Dependabot closes it on its next run. Close it by hand, linking the merged pull request, only if it is still open after the next weekly run.
 
 When upgrading BAML dependencies or native CFFI binaries:
-1. Update `baml_src/generators.baml`, `ARG BAML_LIB_VERSION` in [Dockerfile](../Dockerfile), and all four platform native library SHA256 checksums (`ARG BAML_LIB_SHA256_AMD64`, `ARG BAML_LIB_SHA256_ARM64`, `ARG BAML_LIB_SHA256_DARWIN_AMD64`, and `ARG BAML_LIB_SHA256_DARWIN_ARM64`) in [Dockerfile](../Dockerfile). Obtain new release assets directly from upstream releases and independently verify each SHA256 checksum.
+1. Update `baml_src/generators.baml`, `ARG BAML_LIB_VERSION` in [Dockerfile](../Dockerfile), and all four platform native library SHA256 checksums (`ARG BAML_LIB_SHA256_AMD64`, `ARG BAML_LIB_SHA256_ARM64`, `ARG BAML_LIB_SHA256_DARWIN_AMD64`, and `ARG BAML_LIB_SHA256_DARWIN_ARM64`) in [Dockerfile](../Dockerfile). Download all four native assets for the chosen release, run `shasum -a 256` on each, and cross-check each with:
+   ```sh
+   gh api repos/BoundaryML/baml/releases/tags/<version> --jq '.assets[] | select(.name == "<asset-name>") | .digest'
+   ```
+   Strip the `sha256:` prefix when comparing with Dockerfile ARGs. GitHub digests check upload/transport integrity, not publisher integrity; native CFFI assets have no published checksum sidecars or signatures.
 2. Update the Go module dependency:
    ```sh
-   go get github.com/boundaryml/baml@v<VERSION>
+   go get github.com/boundaryml/baml@v<version>
+   go mod tidy
    ```
-3. Regenerate client code and verify native library parity:
+   Run `go mod tidy` immediately after `go get github.com/boundaryml/baml@v<version>`; otherwise stale `go.sum` entries fail `make tidy-check`.
+3. Clear cached native binaries, verify native library parity, and regenerate client code:
    ```sh
-   make generate
+   rm -f bin/libbaml_cffi.*
    make native-baml
+   make baml-check
+   make generate
    ```
+   Run `rm -f bin/libbaml_cffi.*` before `make native-baml`; an already cached library from the previous version fails checksum validation rather than being replaced automatically.
 4. Execute tests and verify container builds:
    ```sh
    make test
-   make docker-build
+   make docker-build container-smoke
    ```
 5. Execute classifier message-table tests, fake Bedrock adapter contract tests, and retry attempt tests using the verified native library:
    ```sh
@@ -123,7 +132,7 @@ When upgrading BAML dependencies or native CFFI binaries:
    BAML_LIBRARY_DISABLE_DOWNLOAD=true BAML_LOG=off \
    go test -race -count=1 -run 'Classif|Adapter|Attempts' ./internal/llm
    ```
-   (Use `bin/libbaml_cffi.so` on Linux). BAML exposes runtime errors as string messages wrapped in `BamlError`. The unit tests in `internal/llm/classify_test.go`, contract tests in `internal/llm/adapter_contract_test.go`, and retry tests in `internal/llm/retry_contract_test.go` pin expected error message formats, status code extractions, context cancellation normalization, and SDK attempt counts. Executing these tests verifies that upstream message format and retry behavior changes are detected before merging.
+   (Use `bin/libbaml_cffi.so` on Linux). BAML Go exposes runtime errors as string messages wrapped in `BamlError`. The unit tests in `internal/llm/classify_test.go`, contract tests in `internal/llm/adapter_contract_test.go`, and retry tests in `internal/llm/retry_contract_test.go` pin expected error message formats, status code extractions, context cancellation normalization, and SDK attempt counts. Executing these tests verifies that upstream message format and retry behavior changes are detected before merging.
 
 ### Swagger documentation
 
