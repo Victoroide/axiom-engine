@@ -94,7 +94,7 @@ export AXIOM_INTERNAL_TOKEN="$(openssl rand -hex 32)"
 make run
 ```
 
-Alternatively, build the binary with `make build` and run `./bin/axiom-server`.
+Running `./bin/axiom-server` directly requires `BAML_LIBRARY_PATH` and `BAML_LIBRARY_DISABLE_DOWNLOAD=true`. Without them, BAML loads a user-cache copy or downloads an unverified one. Prefer `make run`.
 
 The server binds `:8080`, accepting connections on all interfaces (`http://0.0.0.0:8080`). When `SWAGGER_ENABLED=true` (the default), interactive documentation is available at `http://127.0.0.1:8080/swagger/index.html`.
 
