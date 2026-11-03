@@ -56,6 +56,7 @@ make test
 make test-e2e
 make generate-check
 make tidy-check
+make toolchain-check
 make docker-build
 ```
 
@@ -66,6 +67,7 @@ Ensure that:
 - `make test` runs with race detection and passes.
 - `make test-e2e` completes browser end-to-end verification.
 - `make generate-check` and `make tidy-check` report a clean git working tree without modified or untracked generated files.
+- `make toolchain-check` confirms all seven Go version sites match `go.mod`.
 - `make docker-build` builds the non-root container image successfully.
 
 ## Commits and pull requests
