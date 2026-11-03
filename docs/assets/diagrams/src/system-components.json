@@ -1,0 +1,534 @@
+{
+  "schema_version": 1,
+  "diagram_type": "architecture",
+  "meta": {
+    "title": "System components",
+    "locale": "en",
+    "output": "system-components.html",
+    "quality_profile": "showcase",
+    "repository": {
+      "url": "https://github.com/Victoroide/axiom-engine.git",
+      "provider": "github",
+      "revision": "f8b2d3f4af412a49cce1722e3c4db33aab176285"
+    }
+  },
+  "components": [
+    {
+      "id": "client",
+      "type": "external",
+      "label": "Client",
+      "sublabel": "upstream caller",
+      "pos": [
+        290,
+        40
+      ],
+      "size": [
+        170,
+        64
+      ]
+    },
+    {
+      "id": "public",
+      "type": "backend",
+      "label": "Public routes",
+      "sublabel": "probes \u00b7 /swagger \u00b7 /metrics",
+      "pos": [
+        40,
+        200
+      ],
+      "size": [
+        170,
+        64
+      ],
+      "sources": [
+        {
+          "path": "internal/server/server.go",
+          "line": 226,
+          "end_line": 242
+        },
+        {
+          "path": "internal/server/server.go",
+          "line": 82,
+          "end_line": 84
+        }
+      ]
+    },
+    {
+      "id": "router",
+      "type": "backend",
+      "label": "Router + middleware",
+      "sublabel": "request ID \u00b7 recover \u00b7 helmet",
+      "pos": [
+        290,
+        200
+      ],
+      "size": [
+        170,
+        64
+      ],
+      "sources": [
+        {
+          "path": "internal/server/server.go",
+          "line": 180,
+          "end_line": 212
+        }
+      ]
+    },
+    {
+      "id": "auth",
+      "type": "security",
+      "label": "Token auth + limiter",
+      "sublabel": "/api/v1 routes only",
+      "pos": [
+        540,
+        200
+      ],
+      "size": [
+        170,
+        64
+      ],
+      "sources": [
+        {
+          "path": "internal/server/server.go",
+          "line": 244,
+          "end_line": 252
+        },
+        {
+          "path": "internal/server/server.go",
+          "line": 359,
+          "end_line": 388
+        }
+      ]
+    },
+    {
+      "id": "cognitive",
+      "type": "backend",
+      "label": "Cognitive graph handler",
+      "sublabel": "GET \u2026/cognitive-graph",
+      "pos": [
+        290,
+        360
+      ],
+      "size": [
+        170,
+        64
+      ],
+      "sources": [
+        {
+          "path": "internal/api/handlers.go",
+          "line": 38,
+          "end_line": 42
+        },
+        {
+          "path": "internal/api/handlers.go",
+          "line": 176,
+          "end_line": 205
+        }
+      ]
+    },
+    {
+      "id": "plan",
+      "type": "backend",
+      "label": "Adaptive plan handler",
+      "sublabel": "POST /api/v1/adaptive-plan",
+      "pos": [
+        540,
+        360
+      ],
+      "size": [
+        170,
+        64
+      ],
+      "sources": [
+        {
+          "path": "internal/api/handlers.go",
+          "line": 38,
+          "end_line": 42
+        },
+        {
+          "path": "internal/api/handlers.go",
+          "line": 73,
+          "end_line": 90
+        }
+      ]
+    },
+    {
+      "id": "store",
+      "type": "database",
+      "label": "InMemoryGraph",
+      "sublabel": "forward + reverse maps",
+      "pos": [
+        40,
+        520
+      ],
+      "size": [
+        170,
+        64
+      ],
+      "sources": [
+        {
+          "path": "internal/graph/memory.go",
+          "line": 32,
+          "end_line": 38
+        },
+        {
+          "path": "internal/graph/loader.go",
+          "line": 19,
+          "end_line": 20
+        },
+        {
+          "path": "internal/graph/loader.go",
+          "line": 36,
+          "end_line": 40
+        }
+      ]
+    },
+    {
+      "id": "queries",
+      "type": "backend",
+      "label": "Graph queries",
+      "sublabel": "subgraph \u00b7 chains \u00b7 shadow",
+      "pos": [
+        290,
+        520
+      ],
+      "size": [
+        170,
+        64
+      ],
+      "sources": [
+        {
+          "path": "internal/graph/memory.go",
+          "line": 88,
+          "end_line": 114
+        },
+        {
+          "path": "internal/graph/memory.go",
+          "line": 127,
+          "end_line": 175
+        },
+        {
+          "path": "internal/graph/memory.go",
+          "line": 193,
+          "end_line": 261
+        }
+      ]
+    },
+    {
+      "id": "reasoning",
+      "type": "backend",
+      "label": "ReasoningService",
+      "sublabel": "validate \u00b7 errgroup fan-out",
+      "pos": [
+        540,
+        520
+      ],
+      "size": [
+        170,
+        64
+      ],
+      "sources": [
+        {
+          "path": "internal/service/reasoning.go",
+          "line": 96,
+          "end_line": 163
+        },
+        {
+          "path": "internal/service/validation.go",
+          "line": 81,
+          "end_line": 96
+        }
+      ]
+    },
+    {
+      "id": "breaker",
+      "type": "security",
+      "label": "Circuit breaker",
+      "sublabel": "bedrock-nova-micro",
+      "pos": [
+        790,
+        520
+      ],
+      "size": [
+        170,
+        64
+      ],
+      "sources": [
+        {
+          "path": "internal/service/reasoning.go",
+          "line": 80,
+          "end_line": 93
+        }
+      ]
+    },
+    {
+      "id": "assembly",
+      "type": "backend",
+      "label": "Plan assembly",
+      "sublabel": "merge \u00b7 policy \u00b7 graph check",
+      "pos": [
+        540,
+        680
+      ],
+      "size": [
+        170,
+        64
+      ],
+      "sources": [
+        {
+          "path": "internal/service/reasoning.go",
+          "line": 164,
+          "end_line": 183
+        },
+        {
+          "path": "internal/service/pipeline.go",
+          "line": 11,
+          "end_line": 62
+        },
+        {
+          "path": "internal/service/output.go",
+          "line": 13,
+          "end_line": 35
+        }
+      ]
+    },
+    {
+      "id": "bedrock",
+      "type": "cloud",
+      "label": "Amazon Bedrock",
+      "sublabel": "amazon.nova-micro-v1:0",
+      "pos": [
+        40,
+        840
+      ],
+      "size": [
+        170,
+        64
+      ],
+      "sources": [
+        {
+          "path": "baml_src/clients.baml",
+          "line": 1,
+          "end_line": 9
+        }
+      ]
+    },
+    {
+      "id": "runtime",
+      "type": "backend",
+      "label": "BAML runtime",
+      "sublabel": "baml_client \u00b7 libbaml_cffi",
+      "pos": [
+        540,
+        840
+      ],
+      "size": [
+        170,
+        64
+      ],
+      "sources": [
+        {
+          "path": "baml_client/functions.go",
+          "line": 24,
+          "end_line": 96
+        },
+        {
+          "path": "Dockerfile",
+          "line": 61,
+          "end_line": 63
+        }
+      ]
+    },
+    {
+      "id": "adapter",
+      "type": "backend",
+      "label": "BAML adapter",
+      "sublabel": "implements service.Planner",
+      "pos": [
+        790,
+        840
+      ],
+      "size": [
+        170,
+        64
+      ],
+      "sources": [
+        {
+          "path": "internal/llm/baml.go",
+          "line": 15,
+          "end_line": 47
+        }
+      ]
+    }
+  ],
+  "boundaries": [
+    {
+      "kind": "region",
+      "label": "internal/server",
+      "wraps": [
+        "public",
+        "router",
+        "auth"
+      ]
+    },
+    {
+      "kind": "region",
+      "label": "internal/api",
+      "wraps": [
+        "cognitive",
+        "plan"
+      ]
+    },
+    {
+      "kind": "region",
+      "label": "internal/graph",
+      "wraps": [
+        "store",
+        "queries"
+      ]
+    },
+    {
+      "kind": "region",
+      "label": "internal/service",
+      "wraps": [
+        "reasoning",
+        "breaker",
+        "assembly"
+      ]
+    },
+    {
+      "kind": "region",
+      "label": "internal/llm and baml_client",
+      "wraps": [
+        "runtime",
+        "adapter"
+      ]
+    }
+  ],
+  "connections": [
+    {
+      "id": "client-router",
+      "from": "client",
+      "to": "router",
+      "fromSide": "bottom",
+      "toSide": "top",
+      "label": "HTTP",
+      "variant": "emphasis"
+    },
+    {
+      "id": "router-public",
+      "from": "router",
+      "to": "public",
+      "fromSide": "left",
+      "toSide": "right"
+    },
+    {
+      "id": "router-auth",
+      "from": "router",
+      "to": "auth",
+      "fromSide": "right",
+      "toSide": "left",
+      "label": "/api/v1",
+      "variant": "emphasis"
+    },
+    {
+      "id": "auth-plan",
+      "from": "auth",
+      "to": "plan",
+      "fromSide": "bottom",
+      "toSide": "top",
+      "label": "POST",
+      "variant": "emphasis"
+    },
+    {
+      "id": "auth-cognitive",
+      "from": "auth",
+      "to": "cognitive",
+      "fromSide": "bottom",
+      "toSide": "top"
+    },
+    {
+      "id": "plan-reasoning",
+      "from": "plan",
+      "to": "reasoning",
+      "fromSide": "bottom",
+      "toSide": "top",
+      "label": "GeneratePlan",
+      "variant": "emphasis"
+    },
+    {
+      "id": "reasoning-breaker",
+      "from": "reasoning",
+      "to": "breaker",
+      "fromSide": "right",
+      "toSide": "left",
+      "label": "fan-out",
+      "variant": "emphasis"
+    },
+    {
+      "id": "breaker-adapter",
+      "from": "breaker",
+      "to": "adapter",
+      "fromSide": "bottom",
+      "toSide": "top",
+      "label": "GenerateTopic",
+      "variant": "emphasis"
+    },
+    {
+      "id": "adapter-runtime",
+      "from": "adapter",
+      "to": "runtime",
+      "fromSide": "left",
+      "toSide": "right",
+      "variant": "emphasis"
+    },
+    {
+      "id": "runtime-bedrock",
+      "from": "runtime",
+      "to": "bedrock",
+      "fromSide": "left",
+      "toSide": "right",
+      "label": "Converse",
+      "variant": "emphasis"
+    },
+    {
+      "id": "reasoning-assembly",
+      "from": "reasoning",
+      "to": "assembly",
+      "fromSide": "bottom",
+      "toSide": "top",
+      "label": "merge"
+    },
+    {
+      "id": "reasoning-queries",
+      "from": "reasoning",
+      "to": "queries",
+      "fromSide": "left",
+      "toSide": "right"
+    },
+    {
+      "id": "cognitive-queries",
+      "from": "cognitive",
+      "to": "queries",
+      "fromSide": "bottom",
+      "toSide": "top",
+      "label": "shadow"
+    },
+    {
+      "id": "assembly-queries",
+      "from": "assembly",
+      "to": "queries",
+      "fromSide": "left",
+      "toSide": "bottom",
+      "label": "graph check"
+    },
+    {
+      "id": "queries-store",
+      "from": "queries",
+      "to": "store",
+      "fromSide": "left",
+      "toSide": "right",
+      "label": "read"
+    }
+  ]
+}

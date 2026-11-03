@@ -4,48 +4,10 @@
 
 AxiomEngine organizes responsibilities into distinct Go packages under `cmd/` and `internal/`, wired together at startup in `cmd/server/main.go`.
 
-```mermaid
-flowchart TD
-    Client["Client / Upstream Caller"] -->|"HTTP Request"| Router["Fiber v3 Router & Middleware<br/>(RequestID, Logger, Recover, Helmet, Auth, Limiter)"]
-
-    subgraph ServerRoutes ["Server Boundary (internal/server)"]
-        Router --> H_Health["Health and Probe Handlers<br/>GET /livez, /readyz, /health"]
-        Router --> H_Swagger["Swagger UI<br/>GET /swagger/*"]
-        Router --> H_Doc["Swagger Spec<br/>GET /swagger/doc.json"]
-    end
-
-    subgraph API ["Transport Boundary (internal/api)"]
-        Router --> H_Cognitive["Cognitive Graph Handler<br/>GET /api/v1/tutor/student/:id/cognitive-graph"]
-        Router --> H_Plan["Adaptive Plan Handler<br/>POST /api/v1/adaptive-plan"]
-    end
-
-    subgraph Service ["Reasoning Orchestration (internal/service)"]
-        H_Plan --> S_Validate["Request Validation<br/>(Identifiers, VARK, Max Topics)"]
-        S_Validate --> S_Reasoning["ReasoningService.GeneratePlan"]
-        S_Reasoning --> S_Fanout["Parallel Fan-Out (errgroup)<br/>plans[i] = items"]
-        S_Fanout --> S_Merge["mergeAndDeduplicate"]
-        S_Merge --> S_Filter["validateAgainstGraph<br/>(Prerequisite Ordering & Hallucination Guard)"]
-        S_Fanout -.-> Breaker["Circuit Breaker<br/>(bedrock-nova-micro)"]
-    end
-
-    subgraph Graph ["Graph Engine (internal/graph)"]
-        H_Cognitive --> G_Shadow["GenerateCognitiveShadow<br/>(depth 1, state classification)"]
-        S_Validate -.-> G_Exists["NodeExists"]
-        S_Reasoning -.-> G_Subgraph["GetLocalSubgraph (depth 2 BFS)"]
-        S_Fanout -.-> G_Chain["GetPrerequisiteChain (DFS)"]
-        S_Filter -.-> G_Exists
-        G_Shadow -.-> G_Store[("InMemoryGraph<br/>(Forward & Reverse Maps)")]
-        G_Subgraph -.-> G_Store
-        G_Chain -.-> G_Store
-    end
-
-    subgraph LLM ["Model Adapter (internal/llm)"]
-        Breaker --> Adapter["BAML Adapter (service.Planner)"]
-        Adapter --> BAMLClient["baml.GenerateTopicPlan<br/>(baml_client)"]
-        BAMLClient --> NativeLib["BAML CFFI Engine<br/>(libbaml_cffi.so)"]
-        NativeLib --> Bedrock["Amazon Bedrock<br/>(amazon.nova-micro-v1:0)"]
-    end
-```
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="assets/diagrams/system-components-dark.webp">
+  <img src="assets/diagrams/system-components-light.webp" width="100%" alt="System components grouped by package. internal/server holds the router and middleware, the public routes, and token authentication with the rate limiter. internal/api holds the adaptive plan and cognitive graph handlers. internal/service holds ReasoningService, the circuit breaker and plan assembly. internal/graph holds the graph queries and the in-memory graph. internal/llm and baml_client hold the BAML adapter and runtime, which call Amazon Bedrock.">
+</picture>
 
 ### Package Layout
 

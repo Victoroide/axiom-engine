@@ -171,6 +171,18 @@ make toolchain-check
 
 Dependabot updates to the Dockerfile builder image that bump the `golang` tag fail this check until the remaining sites are updated in the same change. Digest-only base image updates do not change the Go version tag and pass without modifying other files.
 
+### Documentation diagrams
+
+The animated diagrams in [README.md](../README.md), [architecture.md](architecture.md) and [knowledge-graph.md](knowledge-graph.md) are rendered from the diagram documents in [docs/assets/diagrams/src](assets/diagrams/src). Each document pins a repository revision in `meta.repository` and cites the source lines its nodes depict, so update the revision and citations together with the change the diagram reflects.
+
+To regenerate the images after editing a document:
+
+```sh
+DIAGRAM_RENDERER=/path/to/renderer.mjs python3 scripts/render-diagrams.py [name ...]
+```
+
+`DIAGRAM_RENDERER` is the diagram renderer's command-line script. The script also needs Node.js 18 or later, Google Chrome, and the Python packages `playwright` and `Pillow`. For each document it runs the renderer's checks, records one motion cycle in the light and dark themes, and writes `docs/assets/diagrams/<name>-light.webp` and `<name>-dark.webp`. The Markdown shows them with `<picture>`, so they follow the reader's color scheme. Nodes of `seed-graph` are drawn as circles; the component diagrams keep boxes.
+
 ## Test layers
 
 ### Unit tests

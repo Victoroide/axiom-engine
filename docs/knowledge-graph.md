@@ -66,36 +66,12 @@ When `GRAPH_FILE` is unset, AxiomEngine loads an embedded seed graph containing 
 
 ### Seed Graph Topology
 
-```mermaid
-flowchart TD
-    %% Object-Oriented Hierarchy
-    DP["Design Patterns"] -->|"depends_on"| Poly["Polymorphism"]
-    DP -->|"depends_on"| Inter["Interfaces"]
-    Gen["Generics"] -->|"depends_on"| Poly
-    Poly -->|"depends_on"| Inherit["Inheritance"]
-    Inherit -->|"depends_on"| Classes["Classes"]
-    Inter -->|"depends_on"| AbsClasses["Abstract Classes"]
-    AbsClasses -->|"is_a"| Classes
-    Classes -->|"depends_on"| Objects["Objects"]
-    Objects -->|"depends_on"| Vars["Variables"]
+Each arrow points from a topic to its prerequisite. Solid arrows are `depends_on`; dashed arrows are `is_a`.
 
-    %% Algorithms and Recursion
-    DP_Algo["Dynamic Programming"] -->|"depends_on"| Rec["Recursion"]
-    MS["Merge Sort"] -->|"depends_on"| Rec
-    Rec -->|"depends_on"| Func["Functions"]
-
-    %% Data Structures: Linear and Hashing
-    BS["Binary Search"] -->|"depends_on"| Arr["Arrays"]
-    HT["Hash Tables"] -->|"depends_on"| Arr
-
-    %% Data Structures: Graphs and Trees
-    GT["Graph Traversal"] -->|"depends_on"| Graphs["Graphs"]
-    Graphs -->|"depends_on"| LL["Linked Lists"]
-    LL -->|"depends_on"| Ptr["Pointers"]
-    Trees["Trees"] -->|"depends_on"| LL
-    BST["Binary Search Trees"] -->|"is_a"| Trees
-    AVL["AVL Trees"] -->|"is_a"| BST
-```
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="assets/diagrams/seed-graph-dark.webp">
+  <img src="assets/diagrams/seed-graph-light.webp" width="100%" alt="Seed graph of 23 topics in four groups. Object-oriented: Generics and Design Patterns depend on Polymorphism, which depends on Inheritance, Classes, Objects and Variables; Design Patterns also depends on Interfaces, which depends on Abstract Classes, an is_a of Classes. Algorithms: Dynamic Programming and Merge Sort depend on Recursion, which depends on Functions. Linear and hashing: Binary Search and Hash Tables depend on Arrays. Graphs and trees: Graph Traversal depends on Graphs, Linked Lists and Pointers; AVL Trees is_a Binary Search Trees is_a Trees, which depends on Linked Lists.">
+</picture>
 
 ---
 
