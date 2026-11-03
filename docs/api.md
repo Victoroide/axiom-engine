@@ -293,6 +293,9 @@ Response:
 HTTP/1.1 200 OK
 Content-Type: application/json; charset=utf-8
 X-Request-ID: k9m7Lx4fPUH5TzEerTGLjuuPm2qLVSzmkFDEe6UxwJ0
+X-RateLimit-Limit: 50
+X-RateLimit-Remaining: 49
+X-RateLimit-Reset: 60
 
 {
   "student_id": "student-42",
@@ -302,9 +305,9 @@ X-Request-ID: k9m7Lx4fPUH5TzEerTGLjuuPm2qLVSzmkFDEe6UxwJ0
       "topic": "Inheritance",
       "priority": 1,
       "prerequisite_chain": [
-        "Classes",
+        "Variables",
         "Objects",
-        "Variables"
+        "Classes"
       ],
       "explanation": "Understanding class hierarchies is required before applying dynamic dispatch.",
       "resources": [
@@ -319,10 +322,10 @@ X-Request-ID: k9m7Lx4fPUH5TzEerTGLjuuPm2qLVSzmkFDEe6UxwJ0
       "topic": "Polymorphism",
       "priority": 2,
       "prerequisite_chain": [
-        "Inheritance",
-        "Classes",
+        "Variables",
         "Objects",
-        "Variables"
+        "Classes",
+        "Inheritance"
       ],
       "explanation": "Mastering method overriding and dynamic polymorphism allows flexible design.",
       "resources": [
@@ -387,6 +390,9 @@ Response:
 HTTP/1.1 200 OK
 Content-Type: application/json; charset=utf-8
 X-Request-ID: fNcA126ed_poawgiDblg4oCmy_nm1WQGdCL5NjEGiB8
+X-RateLimit-Limit: 50
+X-RateLimit-Remaining: 49
+X-RateLimit-Reset: 60
 
 {
   "nodes": [
