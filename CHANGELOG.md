@@ -66,6 +66,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Breaking:** Enforce addressable node name constraints during knowledge graph loading; subject and object node names must be at most 128 Unicode runes and cannot contain commas, Unicode control characters (`Cc`), format characters (`Cf`), or the Unicode replacement character U+FFFD (including invalid UTF-8 sequences replaced during JSON decoding). Previously accepted `GRAPH_FILE` inputs containing these names fail startup validation and must be corrected before startup.
 - Browser CI requires preinstalled Chrome and retains screenshots and HTML from failing browser tests.
 - **Breaking:** Define cognitive graph query semantics for `GET /api/v1/tutor/student/:student_id/cognitive-graph`: merge repeated `topics` query parameters with comma-separated values into a single union, enforce canonical deduplication and `MAX_FAILED_TOPICS` limits across all values, reject repeated `target_topic` parameters with HTTP 400 `validation_error` (`target_topic must not be repeated`), and require a known non-empty `target_topic` to belong to the resolved `topics` set (`target_topic must be one of topics`, returning HTTP 400). Existing single-value requests specifying a target from `topics` continue to work unchanged.
+- Link the private vulnerability reporting form from the security policy.
 
 ### Removed
 

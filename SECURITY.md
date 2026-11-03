@@ -6,7 +6,7 @@ Security fixes are maintained on the `main` branch and the latest release tag. O
 
 ## Reporting a vulnerability
 
-Use GitHub private vulnerability reporting: open the repository's **Security** tab and select **Report a vulnerability**.
+Use GitHub private vulnerability reporting: [report a vulnerability](https://github.com/Victoroide/axiom-engine/security/advisories/new), or open the repository's **Security** tab and select **Report a vulnerability**.
 
 If private vulnerability reporting is unavailable, use the contact details on Victoroide's GitHub profile to arrange a private report. Do not report vulnerabilities through public issues, pull requests, or public discussions.
 
