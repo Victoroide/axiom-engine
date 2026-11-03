@@ -35,6 +35,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Check Go version consistency across both modules, the builder image and documentation with `make toolchain-check`, enforced by CI.
 - Detect goroutine leaks in service, server and Bedrock adapter tests, and use fake time for service deadline and ordering tests.
 - Public OpenSSF Scorecard results, a README badge, and SARIF uploaded under category 'scorecard' by a weekly and main-push workflow.
+- Emit structured JSON records on standard output for startup configuration (`server.started`) and listener binding (`server.listening`) without secrets, and log configuration validation and startup failures as `server.failed` JSON records.
 
 ### Changed
 

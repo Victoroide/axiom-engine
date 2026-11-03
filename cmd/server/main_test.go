@@ -2,9 +2,12 @@ package main
 
 import (
 	"bufio"
+	"bytes"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
+	"log/slog"
 	"net"
 	"net/http"
 	"os"
@@ -13,7 +16,48 @@ import (
 	"syscall"
 	"testing"
 	"time"
+
+	"github.com/Victoroide/axiom-engine/internal/config"
+	"github.com/Victoroide/axiom-engine/internal/graph"
 )
+
+func TestRunLogsConfigErrorAsJSON(t *testing.T) {
+	testRunLogsErrorAsJSON(t, "PORT", "abc", "PORT must be")
+}
+
+func TestRunLogsRetryErrorAsJSON(t *testing.T) {
+	testRunLogsErrorAsJSON(t, "AWS_MAX_ATTEMPTS", "0", "AWS_MAX_ATTEMPTS must be")
+}
+
+func testRunLogsErrorAsJSON(t *testing.T, key, value, want string) {
+	t.Helper()
+	if os.Getenv("AXIOM_ERROR_TEST") == "1" {
+		main()
+		return
+	}
+	cmd := exec.CommandContext(t.Context(), os.Args[0], "-test.run=^"+t.Name()+"$") //nolint:gosec // Reexecute this test binary to exercise process startup.
+	cmd.Env = append(os.Environ(), "AXIOM_ERROR_TEST=1", "AXIOM_AUTH_DISABLED=true", "AXIOM_INTERNAL_TOKEN=", "PORT=8080", "AWS_MAX_ATTEMPTS=3", "AWS_RETRY_MODE=standard", key+"="+value, "BAML_LOG=off")
+	output, err := cmd.CombinedOutput()
+	var exitErr *exec.ExitError
+	if !errors.As(err, &exitErr) || exitErr.ExitCode() != 1 {
+		t.Fatalf("expected exit 1, got %v: %s", err, output)
+	}
+	lines := strings.Split(strings.TrimSpace(string(output)), "\n")
+	if len(lines) != 1 {
+		t.Fatalf("expected one JSON line, got %q", output)
+	}
+	var record map[string]any
+	if err := json.Unmarshal([]byte(lines[0]), &record); err != nil {
+		t.Fatalf("expected JSON record: %v: %s", err, output)
+	}
+	if record["level"] != "ERROR" || record["msg"] != "server.failed" || !strings.Contains(fmt.Sprint(record["error"]), want) {
+		t.Fatalf("unexpected failure record: %v", record)
+	}
+}
+
+func TestStartupRecordsPrecedeServing(t *testing.T) {
+	testSecondSignalStopsServer(t, false)
+}
 
 func TestRunRejectsInvalidRetrySettings(t *testing.T) {
 	for _, tc := range []struct{ key, value string }{
@@ -28,7 +72,7 @@ func TestRunRejectsInvalidRetrySettings(t *testing.T) {
 			t.Setenv("AWS_MAX_ATTEMPTS", "3")
 			t.Setenv("AWS_RETRY_MODE", "standard")
 			t.Setenv(tc.key, tc.value)
-			if err := run([]string{"unexpected"}); err == nil || !strings.Contains(err.Error(), tc.key+" must be") {
+			if err := run([]string{"unexpected"}, io.Discard); err == nil || !strings.Contains(err.Error(), tc.key+" must be") {
 				t.Fatalf("expected retry configuration error before startup, got %v", err)
 			}
 		})
@@ -50,7 +94,7 @@ func TestRunAcceptsRetrySettings(t *testing.T) {
 					}
 				}
 			}
-			if err := run([]string{"unexpected"}); err == nil || err.Error() != "usage: axiom-server [healthcheck]" {
+			if err := run([]string{"unexpected"}, io.Discard); err == nil || err.Error() != "usage: axiom-server [healthcheck]" {
 				t.Fatalf("expected argument validation after configuration, got %v", err)
 			}
 		})
@@ -68,7 +112,7 @@ func TestBackToBackSignalsStopServer(t *testing.T) {
 func testSecondSignalStopsServer(t *testing.T, backToBack bool) {
 	t.Helper()
 	if os.Getenv("AXIOM_SIGNAL_TEST") == "1" {
-		if err := run(nil); err != nil {
+		if err := run(nil, os.Stdout); err != nil {
 			os.Exit(1)
 		}
 		os.Exit(0)
@@ -100,16 +144,27 @@ func testSecondSignalStopsServer(t *testing.T, backToBack bool) {
 	done := make(chan error, 1)
 	type shutdownRecord struct {
 		Message string `json:"msg"`
+		Address string `json:"address"`
 		Level   string `json:"level"`
 		Signal  string `json:"signal"`
 		Timeout any    `json:"timeout"`
 	}
 	shutdownStarted := make(chan shutdownRecord, 1)
+	startupRecords := make(chan shutdownRecord, 3)
 	go func() {
 		scanner := bufio.NewScanner(output)
 		for scanner.Scan() {
 			var record shutdownRecord
-			if json.Unmarshal(scanner.Bytes(), &record) == nil && record.Message == "server.shutdown_started" {
+			if json.Unmarshal(scanner.Bytes(), &record) != nil {
+				continue
+			}
+			if t.Name() == "TestStartupRecordsPrecedeServing" && (record.Message == "server.started" || record.Message == "server.listening" || record.Message == "http.access") {
+				select {
+				case startupRecords <- record:
+				default:
+				}
+			}
+			if record.Message == "server.shutdown_started" {
 				select {
 				case shutdownStarted <- record:
 				default:
@@ -147,6 +202,27 @@ func testSecondSignalStopsServer(t *testing.T, backToBack bool) {
 			t.Fatal("server did not start")
 		}
 		time.Sleep(10 * time.Millisecond)
+	}
+	if t.Name() == "TestStartupRecordsPrecedeServing" {
+		for _, want := range []string{"server.started", "server.listening"} {
+			select {
+			case got := <-startupRecords:
+				if got.Message != want {
+					t.Fatalf("startup message = %q, want %q", got.Message, want)
+				}
+				if got.Message == "server.listening" {
+					host, boundPort, err := net.SplitHostPort(got.Address)
+					if err != nil {
+						t.Fatalf("invalid listener address %q: %v", got.Address, err)
+					}
+					if boundPort != port || net.ParseIP(host) == nil {
+						t.Fatalf("listener address = %q, want IP host and port %s", got.Address, port)
+					}
+				}
+			case <-time.After(waitTimeout):
+				t.Fatalf("missing %s before serving", want)
+			}
+		}
 	}
 	conn, err := (&net.Dialer{}).DialContext(t.Context(), "tcp", address)
 	if err != nil {
@@ -217,5 +293,66 @@ func testSecondSignalStopsServer(t *testing.T, backToBack bool) {
 		}
 	case <-shutdownTimer.C:
 		t.Fatal("second signal did not stop the process")
+	}
+}
+func TestStartupRecordOmitsSecrets(t *testing.T) {
+	for _, tc := range []struct {
+		name, auth, graphSource string
+		disabled, previous      bool
+	}{
+		{name: "token", auth: "token", graphSource: "embedded"},
+		{name: "rotation", auth: "token+previous", graphSource: "file", previous: true},
+		{name: "disabled", auth: "disabled", graphSource: "embedded", disabled: true, previous: true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			cfg := config.Config{
+				Port: "8081", AuthDisabled: tc.disabled,
+				InternalToken:  "current-secret-0123456789abcdef-0123456789",
+				SwaggerEnabled: true, MetricsEnabled: true,
+				RateLimitMax: 70, RateLimitWindow: 30 * time.Second,
+				RequestTimeout: 20 * time.Second, LLMTimeout: 15 * time.Second,
+				LLMQueueTimeout: 2 * time.Second, ShutdownTimeout: 25 * time.Second,
+				ShutdownDrainDelay: time.Second, LLMMaxConcurrency: 12, MaxFailedTopics: 8,
+				CORSAllowedOrigins: []string{"https://private.example"}, TrustedProxies: []string{"10.0.0.1", "10.0.0.2"},
+			}
+			if tc.previous {
+				cfg.InternalTokenPrevious = "previous-secret-0123456789abcdef-0123456789"
+			}
+			if tc.graphSource == "file" {
+				cfg.GraphFile = "/private/graph.json"
+			}
+			g, err := graph.Decode(strings.NewReader(`[{"subject":"A","relation":"depends_on","object":"B"}]`))
+			if err != nil {
+				t.Fatal(err)
+			}
+			var output bytes.Buffer
+			logStartup(slog.New(slog.NewJSONHandler(&output, nil)), cfg, g)
+			var record map[string]any
+			if err := json.Unmarshal(bytes.TrimSpace(output.Bytes()), &record); err != nil {
+				t.Fatal(err)
+			}
+			for key, want := range map[string]any{
+				"level": "INFO", "msg": "server.started", "port": "8081", "auth": tc.auth,
+				"swagger_enabled": true, "metrics_enabled": true,
+				"rate_limit_max": float64(70), "rate_limit_window": "30s",
+				"request_timeout": "20s", "llm_timeout": "15s", "llm_queue_timeout": "2s",
+				"shutdown_timeout": "25s", "shutdown_drain_delay": "1s",
+				"llm_max_concurrency": float64(12), "max_failed_topics": float64(8),
+				"cors_origins_count": float64(1), "trusted_proxies_count": float64(2),
+				"graph_source": tc.graphSource, "graph_tuples": float64(1),
+			} {
+				if got := record[key]; got != want {
+					t.Errorf("%s = %v, want %v", key, got, want)
+				}
+			}
+			if version, ok := record["baml_version"].(string); !ok || version == "" {
+				t.Errorf("missing BAML version: %v", record["baml_version"])
+			}
+			for _, secret := range []string{cfg.InternalToken, cfg.InternalTokenPrevious, "https://private.example", "10.0.0.1", "/private/graph.json"} {
+				if secret != "" && strings.Contains(output.String(), secret) {
+					t.Errorf("startup output contains %q", secret)
+				}
+			}
+		})
 	}
 }
