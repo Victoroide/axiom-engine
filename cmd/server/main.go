@@ -62,7 +62,7 @@ func run(args []string, stdout io.Writer) (err error) {
 	if err != nil {
 		return err
 	}
-	logStartup(logger, cfg, g)
+	logStartup(logger, cfg, g, os.Getenv, os.ReadFile)
 	app := server.New(cfg, server.Dependencies{Graph: g, Planner: llm.New(), Logger: logger})
 	app.Hooks().OnListen(func(data fiber.ListenData) error {
 		logger.Info("server.listening", "address", net.JoinHostPort(strings.Trim(data.Host, "[]"), data.Port))
@@ -94,7 +94,7 @@ func run(args []string, stdout io.Writer) (err error) {
 	return server.Run(ctx, app, ":"+cfg.Port, cfg.ShutdownTimeout)
 }
 
-func logStartup(logger *slog.Logger, cfg config.Config, g *graph.InMemoryGraph) {
+func logStartup(logger *slog.Logger, cfg config.Config, g *graph.InMemoryGraph, getenv func(string) string, readFile func(string) ([]byte, error)) {
 	auth := "token"
 	if cfg.AuthDisabled {
 		auth = "disabled"
@@ -114,6 +114,7 @@ func logStartup(logger *slog.Logger, cfg config.Config, g *graph.InMemoryGraph) 
 			}
 		}
 	}
+	regionSource := config.AWSRegionSource(getenv, readFile)
 	logger.Info("server.started",
 		"port", cfg.Port, "auth", auth,
 		"swagger_enabled", cfg.SwaggerEnabled, "metrics_enabled", cfg.MetricsEnabled,
@@ -123,5 +124,14 @@ func logStartup(logger *slog.Logger, cfg config.Config, g *graph.InMemoryGraph) 
 		"shutdown_drain_delay", cfg.ShutdownDrainDelay.String(),
 		"llm_max_concurrency", cfg.LLMMaxConcurrency, "max_failed_topics", cfg.MaxFailedTopics,
 		"cors_origins_count", len(cfg.CORSAllowedOrigins), "trusted_proxies_count", len(cfg.TrustedProxies),
-		"graph_source", source, "graph_tuples", len(g.All()), "baml_version", version)
+		"graph_source", source, "graph_tuples", len(g.All()), "baml_version", version,
+		"aws_region_source", regionSource)
+	if regionSource == "" {
+		metadata := "enabled"
+		if getenv("AWS_EC2_METADATA_DISABLED") == "true" {
+			metadata = "disabled"
+		}
+		logger.Warn("bedrock.region.unresolved", "instance_metadata", metadata,
+			"detail", "instance metadata may still supply a region")
+	}
 }

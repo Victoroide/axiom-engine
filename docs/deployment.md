@@ -130,10 +130,19 @@ When the service starts successfully, it emits two `INFO` records in sequence be
    - `graph_source`: curriculum graph origin (`embedded` or `file`).
    - `graph_tuples`: count of loaded curriculum graph tuples.
    - `baml_version`: build dependency version string for BAML, or `"unknown"`.
+   - `aws_region_source`: resolved static AWS region source (`AWS_REGION`, `AWS_DEFAULT_REGION`, `profile:<name>`, or `""`).
 
 ```json
-{"level":"INFO","msg":"server.started","port":"8080","auth":"token","swagger_enabled":true,"metrics_enabled":false,"rate_limit_max":50,"rate_limit_window":"1m0s","request_timeout":"20s","llm_timeout":"15s","llm_queue_timeout":"2s","shutdown_timeout":"25s","shutdown_drain_delay":"0s","llm_max_concurrency":16,"max_failed_topics":10,"cors_origins_count":0,"trusted_proxies_count":0,"graph_source":"embedded","graph_tuples":20,"baml_version":"v0.226.3"}
+{"level":"INFO","msg":"server.started","port":"8080","auth":"token","swagger_enabled":true,"metrics_enabled":false,"rate_limit_max":50,"rate_limit_window":"1m0s","request_timeout":"20s","llm_timeout":"15s","llm_queue_timeout":"2s","shutdown_timeout":"25s","shutdown_drain_delay":"0s","llm_max_concurrency":16,"max_failed_topics":10,"cors_origins_count":0,"trusted_proxies_count":0,"graph_source":"embedded","graph_tuples":20,"baml_version":"v0.226.3","aws_region_source":"AWS_REGION"}
 ```
+
+When no static AWS region source is resolved (`aws_region_source` is `""`), the server emits a `WARN` record `bedrock.region.unresolved` (subject to `LOG_LEVEL`):
+
+```json
+{"level":"WARN","msg":"bedrock.region.unresolved","instance_metadata":"enabled","detail":"instance metadata may still supply a region"}
+```
+
+The `instance_metadata` field reports `disabled` when `AWS_EC2_METADATA_DISABLED=true`, or `enabled` otherwise.
 
 2. `server.listening`: emitted after the TCP socket binds:
 
