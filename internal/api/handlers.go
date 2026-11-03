@@ -169,7 +169,7 @@ func (h *Handler) handleCognitiveGraph(c fiber.Ctx) error {
 	if target != "" {
 		stored, ok := h.graph.Resolve(target)
 		if !ok {
-			return validationResponse(c, &service.ValidationError{Details: "unknown target_topic: " + target, UnknownTopics: []string{target}})
+			return validationResponse(c, &service.ValidationError{Details: "unknown target_topic: " + service.QuoteValue(target), UnknownTopics: []string{target}})
 		}
 		target = stored
 	}

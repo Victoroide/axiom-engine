@@ -71,7 +71,7 @@ All non-2xx responses adhere to the standard `domain.ErrorResponse` envelope:
 }
 ```
 
-The `details` field provides context when available and is omitted when empty. All HTTP 503 `service_unavailable` responses include an integer `Retry-After` header indicating the backoff duration in seconds.
+The `details` field provides context when available and is omitted when empty. Unknown topic values echoed in validation error details are quoted using Go string escaping (`strconv.Quote`), which escapes non-printable characters, format characters, and invalid bytes while leaving printable Unicode intact. Each echoed value is capped to a 128-rune prefix, followed by `…` after the closing quote if truncated. Validation messages display at most ten unknown topics, appending ` (+N more)` when more remain. The same quoting and 128-rune boundary apply to unknown `target_topic` error details. All HTTP 503 `service_unavailable` responses include an integer `Retry-After` header indicating the backoff duration in seconds.
 
 ### Error Codes and HTTP Statuses
 

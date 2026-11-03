@@ -26,6 +26,42 @@ func (f planner) GenerateTopic(ctx context.Context, r service.TopicRequest) ([]d
 	return f(ctx, r)
 }
 
+func TestUnknownTargetTopicIsBounded(t *testing.T) {
+	for _, tc := range []struct{ name, target, quoted string }{
+		{"long value", strings.Repeat("x", 1024), `"` + strings.Repeat("x", 128) + `"…`},
+		{"control and format characters", "Unknown\t\u200b\u202e\x1bName", `"Unknown\t\u200b\u202e\x1bName"`},
+		{"printable Unicode", "Recursión", `"Recursión"`},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			cfg, err := config.Load(func(k string) string {
+				if k == "AXIOM_AUTH_DISABLED" {
+					return "true"
+				}
+				return ""
+			})
+			if err != nil {
+				t.Fatal(err)
+			}
+			app := server.New(cfg, server.Dependencies{Graph: graph.NewInMemoryGraph(), Logger: slog.New(slog.NewJSONHandler(io.Discard, nil))})
+			query := url.Values{"topics": {"Recursion"}, "target_topic": {tc.target}}
+			req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/api/v1/tutor/student/student-42/cognitive-graph?"+query.Encode(), nil)
+			resp, err := app.Test(req)
+			if err != nil {
+				t.Fatal(err)
+			}
+			defer func() { _ = resp.Body.Close() }()
+			var got domain.ErrorResponse
+			if err := json.NewDecoder(resp.Body).Decode(&got); err != nil {
+				t.Fatal(err)
+			}
+			want := "unknown target_topic: " + tc.quoted
+			if resp.StatusCode != http.StatusUnprocessableEntity || got.Error != "validation_error" || got.Details != want {
+				t.Fatalf("status = %d, error = %q, details (%d bytes) = %.256q; want %q", resp.StatusCode, got.Error, len(got.Details), got.Details, want)
+			}
+		})
+	}
+}
+
 func TestCognitiveGraphResolvesTargetTopics(t *testing.T) {
 	g, err := graph.Decode(strings.NewReader(`[{"subject":"Recursion","relation":"depends_on","object":"Functions"},{"subject":"Merge Sort","relation":"depends_on","object":"Recursion"},{"subject":"Recursión","relation":"depends_on","object":"Funciones"},{"subject":"Straße","relation":"depends_on","object":"Basis"},{"subject":"ΟΔΟΣ","relation":"depends_on","object":"Basis"}]`))
 	if err != nil {
