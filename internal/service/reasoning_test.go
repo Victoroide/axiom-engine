@@ -35,41 +35,43 @@ func newService(f plannerFunc) *ReasoningService {
 }
 
 func TestOrderingDedupeAndHallucinationGuard(t *testing.T) {
-	for range 20 {
-		var mu sync.Mutex
-		calls := map[string]int{}
-		svc := newService(func(ctx context.Context, r TopicRequest) ([]domain.PlanItem, error) {
-			select {
-			case <-time.After(time.Duration(rand.IntN(5)) * time.Millisecond):
-			case <-ctx.Done():
-				return nil, ctx.Err()
+	synctest.Test(t, func(t *testing.T) {
+		for range 20 {
+			var mu sync.Mutex
+			calls := map[string]int{}
+			svc := newService(func(ctx context.Context, r TopicRequest) ([]domain.PlanItem, error) {
+				select {
+				case <-time.After(time.Duration(rand.IntN(5)) * time.Millisecond):
+				case <-ctx.Done():
+					return nil, ctx.Err()
+				}
+				mu.Lock()
+				calls[r.Topic]++
+				mu.Unlock()
+				if len(r.GraphContext) == 0 || r.VARKProfile != "visual" {
+					return nil, errors.New("context missing")
+				}
+				return []domain.PlanItem{{Topic: r.Topic, Explanation: r.Topic}, {Topic: "invented"}, {Topic: "Functions"}}, nil
+			})
+			got, err := svc.GeneratePlan(context.Background(), request(" Recursion ", "", "Polymorphism", "Recursion", "  "))
+			if err != nil {
+				t.Fatal(err)
 			}
-			mu.Lock()
-			calls[r.Topic]++
-			mu.Unlock()
-			if len(r.GraphContext) == 0 || r.VARKProfile != "visual" {
-				return nil, errors.New("context missing")
+			if got.StudentID != "student-42" || got.CourseID != "cs101" {
+				t.Fatalf("response identifiers = %q, %q", got.StudentID, got.CourseID)
 			}
-			return []domain.PlanItem{{Topic: r.Topic, Explanation: r.Topic}, {Topic: "invented"}, {Topic: "Functions"}}, nil
-		})
-		got, err := svc.GeneratePlan(context.Background(), request(" Recursion ", "", "Polymorphism", "Recursion", "  "))
-		if err != nil {
-			t.Fatal(err)
-		}
-		if got.StudentID != "student-42" || got.CourseID != "cs101" {
-			t.Fatalf("response identifiers = %q, %q", got.StudentID, got.CourseID)
-		}
-		topics := make([]string, 0, len(got.Items))
-		for i, item := range got.Items {
-			topics = append(topics, item.Topic)
-			if item.Priority != i+1 {
-				t.Fatal(got.Items)
+			topics := make([]string, 0, len(got.Items))
+			for i, item := range got.Items {
+				topics = append(topics, item.Topic)
+				if item.Priority != i+1 {
+					t.Fatal(got.Items)
+				}
+			}
+			if !reflect.DeepEqual(topics, []string{"Functions", "Recursion", "Polymorphism"}) || calls["Recursion"] != 1 || calls["Polymorphism"] != 1 || len(calls) != 2 || got.Meta.TopicsProcessed != 2 || got.Meta.ItemsGenerated != 6 || got.Meta.ItemsValidated != 3 {
+				t.Fatalf("response=%+v calls=%v", got, calls)
 			}
 		}
-		if !reflect.DeepEqual(topics, []string{"Functions", "Recursion", "Polymorphism"}) || calls["Recursion"] != 1 || calls["Polymorphism"] != 1 || len(calls) != 2 || got.Meta.TopicsProcessed != 2 || got.Meta.ItemsGenerated != 6 || got.Meta.ItemsValidated != 3 {
-			t.Fatalf("response=%+v calls=%v", got, calls)
-		}
-	}
+	})
 }
 
 func TestValidationBeforePlanner(t *testing.T) {
@@ -120,25 +122,31 @@ func TestValidationBeforePlanner(t *testing.T) {
 }
 
 func TestDeadlineAndUpstreamErrors(t *testing.T) {
-	svc := newService(func(ctx context.Context, _ TopicRequest) ([]domain.PlanItem, error) {
-		<-ctx.Done()
-		return nil, ctx.Err()
-	})
-	svc.llmTimeout = time.Millisecond
-	if _, err := svc.GeneratePlan(context.Background(), request("Recursion")); !errors.Is(err, context.DeadlineExceeded) {
-		t.Fatal(err)
-	}
-	svc = newService(func(context.Context, TopicRequest) ([]domain.PlanItem, error) {
-		return nil, errors.New("backend secret")
-	})
-	for range 3 {
-		if _, err := svc.GeneratePlan(context.Background(), request("Recursion")); !errors.Is(err, ErrUpstream) {
+	synctest.Test(t, func(t *testing.T) {
+		svc := newService(func(ctx context.Context, _ TopicRequest) ([]domain.PlanItem, error) {
+			<-ctx.Done()
+			return nil, ctx.Err()
+		})
+		svc.llmTimeout = time.Millisecond
+		start := time.Now()
+		if _, err := svc.GeneratePlan(context.Background(), request("Recursion")); !errors.Is(err, context.DeadlineExceeded) {
 			t.Fatal(err)
 		}
-	}
-	if _, err := svc.GeneratePlan(context.Background(), request("Recursion")); !errors.Is(err, ErrCircuitOpen) {
-		t.Fatal(err)
-	}
+		if elapsed := time.Since(start); elapsed != time.Millisecond {
+			t.Fatalf("deadline elapsed = %v, want %v", elapsed, time.Millisecond)
+		}
+		svc = newService(func(context.Context, TopicRequest) ([]domain.PlanItem, error) {
+			return nil, errors.New("backend secret")
+		})
+		for range 3 {
+			if _, err := svc.GeneratePlan(context.Background(), request("Recursion")); !errors.Is(err, ErrUpstream) {
+				t.Fatal(err)
+			}
+		}
+		if _, err := svc.GeneratePlan(context.Background(), request("Recursion")); !errors.Is(err, ErrCircuitOpen) {
+			t.Fatal(err)
+		}
+	})
 }
 
 func TestCancellationDoesNotTripBreaker(t *testing.T) {
