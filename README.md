@@ -178,7 +178,11 @@ Response:
     {
       "topic": "Inheritance",
       "priority": 1,
-      "prerequisite_chain": ["Classes", "Objects", "Variables"],
+      "prerequisite_chain": [
+        "Variables",
+        "Objects",
+        "Classes"
+      ],
       "explanation": "Understanding class hierarchies is required before applying dynamic dispatch.",
       "resources": [
         {
@@ -191,7 +195,12 @@ Response:
     {
       "topic": "Polymorphism",
       "priority": 2,
-      "prerequisite_chain": ["Inheritance", "Classes", "Objects", "Variables"],
+      "prerequisite_chain": [
+        "Variables",
+        "Objects",
+        "Classes",
+        "Inheritance"
+      ],
       "explanation": "Mastering method overriding and dynamic polymorphism allows flexible design.",
       "resources": [
         {
@@ -207,8 +216,9 @@ Response:
     "topics_processed": 1,
     "items_generated": 2,
     "items_after_validation": 2,
-    "llm_latency_ms": 1120.0,
-    "total_latency_ms": 1135.0
+    "items_dropped": 0,
+    "llm_latency_ms": 1120,
+    "total_latency_ms": 1135
   }
 }
 ```
