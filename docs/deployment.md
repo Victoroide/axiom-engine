@@ -240,3 +240,7 @@ default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-
 ```
 
 This policy blocks third-party Google Fonts requests so the interface renders using native fallback fonts, while local scripts, styles, and the interactive "Try it out" feature remain fully functional. `base-uri 'none'` and `form-action 'self'` stop injected markup from changing the page's base URL or submitting forms to another origin.
+
+### Operational runbook
+
+For operational troubleshooting procedures, circuit breaker responses, throttling metrics, region and credential diagnostics, and production telemetry, see the [Operations Runbook](operations.md).

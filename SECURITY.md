@@ -43,6 +43,12 @@ Remediation timing depends on severity and operational considerations. Critical 
 - Provision an internal token before starting the service. Generate high-entropy secrets using `openssl rand -hex 32`. The configuration loader enforces character and minimum length rules, not entropy. Keep authentication enabled for all exposed deployments.
 - Docker Compose publishes the HTTP service port exclusively to loopback (`127.0.0.1:8080:8080`) by default.
 
+### Deployment assumptions
+
+- **Authentication model**: AxiomEngine uses a single shared secret (`AXIOM_INTERNAL_TOKEN`) to authenticate callers. The service does not identify individual callers, issue session tokens, or enforce per-tenant access control. The service stores and looks up no per-student data. Fine-grained authorization, caller identity verification, and multi-tenant segmentation belong at the network gateway or service mesh tier (for example, mTLS or API gateway policy).
+- **Network protection**: Inbound authentication executes before rate limiting: unauthenticated requests receive HTTP 401 without consuming rate-limit tokens. To prevent volumetric resource exhaustion from unauthenticated clients, production deployments must enforce network-level DDoS mitigation, edge firewall filtering, or gateway rate limiting in front of AxiomEngine.
+- **Trusted operator inputs**: The knowledge graph specified by `GRAPH_FILE` is trusted operator input. While topic identifiers are constrained to bounded, printable, and addressable strings, graph relation text directly populates LLM prompt context. Operators must verify graph file integrity and control access to configuration assets.
+
 ### Input validation and prompt injection defenses
 
 - Topics supplied to `POST /api/v1/adaptive-plan` (`failed_topics`) and `GET /api/v1/tutor/student/{student_id}/cognitive-graph` (`topics` and optional `target_topic`) are trimmed, non-empty, and deduplicated in order.
