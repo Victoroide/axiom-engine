@@ -71,6 +71,7 @@ Run `make help` to inspect available Makefile targets:
 | `vuln` | Check reachable Go vulnerabilities. |
 | `fmt` | Format maintained Go source files. |
 | `tidy-check` | Fail if module metadata is not tidy. |
+| `toolchain-check` | Check Go versions in modules, the image and documentation. |
 | `generate-check` | Fail if committed generated code is stale. |
 | `docker-build` | Build the non-root runtime image. |
 | `container-smoke` | Check runtime responses, log privacy and shutdown. |
@@ -140,6 +141,25 @@ This target runs:
 2. `gofmt -w docs/docs.go`
 
 Committed files produced include `docs/docs.go`, `docs/swagger.json`, and `docs/swagger.yaml`.
+
+### Updating Go
+
+When upgrading the Go toolchain version, update all seven declaration sites in one pull request:
+1. Root module: `go` directive in [go.mod](../go.mod)
+2. Tooling module: `go` directive in [tools/go.mod](../tools/go.mod)
+3. Builder image tag: `golang` base image in [Dockerfile](../Dockerfile)
+4. Go version badge in [README.md](../README.md)
+5. Prerequisites section in [README.md](../README.md)
+6. Prerequisites section in [CONTRIBUTING.md](../CONTRIBUTING.md)
+7. Prerequisites section in [docs/development.md](development.md)
+
+Run `make toolchain-check` to verify that all seven sites declare matching versions:
+
+```sh
+make toolchain-check
+```
+
+Dependabot updates to the Dockerfile builder image that bump the `golang` tag fail this check until the remaining sites are updated in the same change. Digest-only base image updates do not change the Go version tag and pass without modifying other files.
 
 ## Test layers
 
@@ -279,9 +299,10 @@ CI verifies that committed generated files and module dependencies are completel
 ```sh
 make tidy-check
 make generate-check
+make toolchain-check
 ```
 
-`tidy-check` runs `go mod tidy` and `go -C tools mod tidy`, asserting no changes to `go.mod`, `go.sum`, `tools/go.mod`, or `tools/go.sum`. `generate-check` regenerates BAML and Swagger artifacts and asserts no modified or untracked files remain.
+`tidy-check` runs `go mod tidy` and `go -C tools mod tidy`, asserting no changes to `go.mod`, `go.sum`, `tools/go.mod`, or `tools/go.sum`. `generate-check` regenerates BAML and Swagger artifacts and asserts no modified or untracked files remain. `toolchain-check` prints seven Go version sites and fails if any is absent or differs from the root `go.mod` directive.
 
 ## Continuous integration jobs
 
@@ -292,7 +313,7 @@ GitHub Actions workflows are defined in `.github/workflows/`.
 Runs on push to `main` and on pull requests:
 - **`lint`**: runs `make lint`.
 - **`test`**: runs `make cover` with data race detection and uploads `coverage.out` as a workflow artifact.
-- **`generated`**: runs `make tools-baml generate-check tidy-check` to enforce that generated code matches definitions.
+- **`generated`**: runs `make tools-baml generate-check tidy-check toolchain-check` to enforce that generated code matches definitions and verify Go version consistency across modules, the container image, and documentation.
 - **`vulnerabilities`**: runs `make vuln` to verify zero reachable vulnerability findings.
 - **`image`**: builds the Docker runtime container `axiom-ci` and executes `make container-smoke container-smoke-test IMAGE=axiom-ci` to verify health probes, authentication, end-to-end plan generation, upstream throttling handling, log privacy, and graceful termination, emitting container logs on failure.
 - **`browser`**: verifies or installs Google Chrome stable, sets `ROD_BROWSER_BIN`, and runs `make test-e2e`.

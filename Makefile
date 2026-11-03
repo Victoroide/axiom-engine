@@ -14,7 +14,7 @@ export BAML_LOG ?= off
 IMAGE ?= axiom-engine:local
 VULN_FLAGS ?=
 
-.PHONY: help generate swagger build run test cover test-e2e lint vuln fmt tidy-check generate-check docker-build container-smoke container-smoke-test clean tools-baml baml-check native-baml
+.PHONY: help generate swagger build run test cover test-e2e lint vuln fmt tidy-check generate-check toolchain-check docker-build container-smoke container-smoke-test clean tools-baml baml-check native-baml
 
 help: ## List available targets
 	@awk 'BEGIN {FS = ":.*## "} /^[a-zA-Z0-9_-]+:.*## / {printf "  %-18s %s\n", $$1, $$2}' $(MAKEFILE_LIST)
@@ -98,6 +98,9 @@ tidy-check: ## Fail if module metadata is not tidy
 	go mod tidy
 	go -C tools mod tidy
 	git diff --exit-code -- go.mod go.sum tools/go.mod tools/go.sum
+
+toolchain-check: ## Check Go versions in modules, the image and documentation
+	./scripts/toolchain-check.sh
 
 generate-check: generate swagger ## Fail if committed generated code is stale
 	git diff --exit-code

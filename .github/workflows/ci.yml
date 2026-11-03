@@ -73,7 +73,7 @@ jobs:
             tools/go.sum
       - name: Prepare verified BAML native library
         run: make native-baml
-      - run: make tools-baml generate-check tidy-check
+      - run: make tools-baml generate-check tidy-check toolchain-check
   vulnerabilities:
     name: Check reachable vulnerabilities
     runs-on: ubuntu-latest
