@@ -60,6 +60,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Pin developer tool dependency graphs and checksums in a dedicated module, have Dependabot update it, and scan the tools for vulnerabilities daily.
 - CI reuses main runtime-image layers through a GHA buildx cache while PRs only read that cache.
 - **Breaking:** Enforce addressable node name constraints during knowledge graph loading; subject and object node names must be at most 128 Unicode runes and cannot contain commas, Unicode control characters (`Cc`), format characters (`Cf`), or the Unicode replacement character U+FFFD (including invalid UTF-8 sequences replaced during JSON decoding). Previously accepted `GRAPH_FILE` inputs containing these names fail startup validation and must be corrected before startup.
+- Browser CI requires preinstalled Chrome and retains screenshots and HTML from failing browser tests.
 
 ### Removed
 

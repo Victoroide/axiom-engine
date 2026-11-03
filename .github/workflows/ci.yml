@@ -139,18 +139,25 @@ jobs:
           cache-dependency-path: |
             go.sum
             tools/go.sum
-      - name: Install or verify Chrome
+      - name: Verify preinstalled Chrome
         shell: bash
         run: |
           if ! command -v google-chrome >/dev/null; then
-            curl --fail --silent --show-error --location \
-              https://dl.google.com/linux/direct/google-chrome-stable_current_amd64.deb \
-              --output "$RUNNER_TEMP/google-chrome.deb"
-            sudo apt-get update
-            sudo apt-get install -y "$RUNNER_TEMP/google-chrome.deb"
+            echo '::error::The runner must provide google-chrome for browser tests.' >&2
+            exit 1
           fi
           google-chrome --version
           echo "ROD_BROWSER_BIN=$(command -v google-chrome)" >> "$GITHUB_ENV"
       - name: Prepare verified BAML native library
         run: make native-baml
       - run: make test-e2e
+        env:
+          E2E_ARTIFACTS_DIR: ${{ runner.temp }}/browser-artifacts
+      - name: Upload browser failure artifacts
+        if: failure()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: browser-failure
+          path: ${{ runner.temp }}/browser-artifacts
+          if-no-files-found: warn
+          retention-days: 14
