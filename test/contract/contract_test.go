@@ -218,6 +218,13 @@ func TestSwaggerResponses(t *testing.T) {
 		{name: "graph unauthorized", method: http.MethodGet, path: graphPath, status: 401, code: "unauthorized", prepare: func(r *http.Request) { r.Header.Del("X-Internal-Token") }},
 		{name: "graph unknown topic", method: http.MethodGet, path: graphPath + ",Unknown", status: 422, code: "validation_error"},
 		{name: "graph rate limited", method: http.MethodGet, path: graphPath, status: 429, code: "rate_limit_exceeded", configure: func(c *config.Config) { c.RateLimitMax = 1 }, prime: true},
+		{name: "topics success", method: http.MethodGet, path: "/api/v1/topics", status: 200},
+		{name: "topics unauthorized", method: http.MethodGet, path: "/api/v1/topics", status: 401, code: "unauthorized", prepare: func(r *http.Request) { r.Header.Del("X-Internal-Token") }},
+		{name: "topics rate limited", method: http.MethodGet, path: "/api/v1/topics", status: 429, code: "rate_limit_exceeded", configure: func(c *config.Config) { c.RateLimitMax = 1 }, prime: true},
+		{name: "topic path success", method: http.MethodGet, path: "/api/v1/topics/Recursion/path", status: 200},
+		{name: "topic path unauthorized", method: http.MethodGet, path: "/api/v1/topics/Recursion/path", status: 401, code: "unauthorized", prepare: func(r *http.Request) { r.Header.Del("X-Internal-Token") }},
+		{name: "topic path rate limited", method: http.MethodGet, path: "/api/v1/topics/Recursion/path", status: 429, code: "rate_limit_exceeded", configure: func(c *config.Config) { c.RateLimitMax = 1 }, prime: true},
+		{name: "topic path unknown", method: http.MethodGet, path: "/api/v1/topics/Unknown/path", status: 422, code: "validation_error"},
 		{name: "health", method: http.MethodGet, path: "/health", status: 200},
 		{name: "liveness", method: http.MethodGet, path: "/livez", status: 200},
 		{name: "readiness", method: http.MethodGet, path: "/readyz", status: 200},
@@ -351,6 +358,12 @@ func TestSwaggerParserErrors(t *testing.T) {
 	}{
 		{name: "plan body", method: http.MethodPost, path: planPath, status: 413, rawHeaders: oversizedBody, code: "payload_too_large"},
 		{name: "graph body", method: http.MethodGet, path: graphPath, status: 413, rawHeaders: oversizedBody, code: "payload_too_large"},
+		{name: "topics body", method: http.MethodGet, path: "/api/v1/topics", status: 413, rawHeaders: oversizedBody, code: "payload_too_large"},
+		{name: "topics headers", method: http.MethodGet, path: "/api/v1/topics", status: 431, code: "request_header_fields_too_large"},
+		{name: "topics timeout", method: http.MethodGet, path: "/api/v1/topics", status: 408, code: "request_timeout", rawHeaders: "Content-Length: 1\r\n\r\n", readTimeout: 200 * time.Millisecond},
+		{name: "topic path body", method: http.MethodGet, path: "/api/v1/topics/Recursion/path", status: 413, rawHeaders: oversizedBody, code: "payload_too_large"},
+		{name: "topic path headers", method: http.MethodGet, path: "/api/v1/topics/Recursion/path", status: 431, code: "request_header_fields_too_large"},
+		{name: "topic path timeout", method: http.MethodGet, path: "/api/v1/topics/Recursion/path", status: 408, code: "request_timeout", rawHeaders: "Content-Length: 1\r\n\r\n", readTimeout: 200 * time.Millisecond},
 		{name: "health body", method: http.MethodGet, path: "/health", status: 413, rawHeaders: oversizedBody, code: "payload_too_large"},
 		{name: "liveness body", method: http.MethodGet, path: "/livez", status: 413, rawHeaders: oversizedBody, code: "payload_too_large"},
 		{name: "readiness body", method: http.MethodGet, path: "/readyz", status: 413, rawHeaders: oversizedBody, code: "payload_too_large"},
@@ -430,6 +443,8 @@ func TestSwaggerRecoveredPanic(t *testing.T) {
 	for _, tc := range []struct{ method, path string }{
 		{http.MethodPost, planPath},
 		{http.MethodGet, graphPath},
+		{http.MethodGet, "/api/v1/topics"},
+		{http.MethodGet, "/api/v1/topics/Recursion/path"},
 	} {
 		t.Run(tc.method, func(t *testing.T) {
 			app := newApp(t, nil, nil)

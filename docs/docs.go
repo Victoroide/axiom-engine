@@ -309,6 +309,309 @@ const docTemplate = `{
                 }
             }
         },
+        "/api/v1/topics": {
+            "get": {
+                "security": [
+                    {
+                        "InternalToken": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Curriculum"
+                ],
+                "summary": "List curriculum topics",
+                "operationId": "listTopics",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Canonical substring of a topic name",
+                        "name": "q",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/domain.TopicsResponse"
+                        },
+                        "headers": {
+                            "X-RateLimit-Limit": {
+                                "type": "integer",
+                                "description": "Maximum requests per rate-limit window"
+                            },
+                            "X-RateLimit-Remaining": {
+                                "type": "integer",
+                                "description": "Requests remaining in the rate-limit window"
+                            },
+                            "X-RateLimit-Reset": {
+                                "type": "integer",
+                                "description": "Seconds until the rate-limit window resets"
+                            },
+                            "X-Request-ID": {
+                                "type": "string",
+                                "description": "Resolved request correlation identifier"
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/domain.ErrorResponse"
+                        },
+                        "headers": {
+                            "X-Request-ID": {
+                                "type": "string",
+                                "description": "Resolved request correlation identifier"
+                            }
+                        }
+                    },
+                    "408": {
+                        "description": "Request Timeout",
+                        "schema": {
+                            "$ref": "#/definitions/domain.ErrorResponse"
+                        },
+                        "headers": {
+                            "X-Request-ID": {
+                                "type": "string",
+                                "description": "Resolved request correlation identifier"
+                            }
+                        }
+                    },
+                    "413": {
+                        "description": "Request Entity Too Large",
+                        "schema": {
+                            "$ref": "#/definitions/domain.ErrorResponse"
+                        },
+                        "headers": {
+                            "X-RateLimit-Limit": {
+                                "type": "integer",
+                                "description": "Maximum requests per rate-limit window"
+                            },
+                            "X-RateLimit-Remaining": {
+                                "type": "integer",
+                                "description": "Requests remaining in the rate-limit window"
+                            },
+                            "X-RateLimit-Reset": {
+                                "type": "integer",
+                                "description": "Seconds until the rate-limit window resets"
+                            },
+                            "X-Request-ID": {
+                                "type": "string",
+                                "description": "Resolved request correlation identifier"
+                            }
+                        }
+                    },
+                    "429": {
+                        "description": "Too Many Requests",
+                        "schema": {
+                            "$ref": "#/definitions/domain.ErrorResponse"
+                        },
+                        "headers": {
+                            "Retry-After": {
+                                "type": "integer",
+                                "description": "Seconds to wait before retrying"
+                            },
+                            "X-Request-ID": {
+                                "type": "string",
+                                "description": "Resolved request correlation identifier"
+                            }
+                        }
+                    },
+                    "431": {
+                        "description": "Request Header Fields Too Large",
+                        "schema": {
+                            "$ref": "#/definitions/domain.ErrorResponse"
+                        },
+                        "headers": {
+                            "X-Request-ID": {
+                                "type": "string",
+                                "description": "Resolved request correlation identifier"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/domain.ErrorResponse"
+                        },
+                        "headers": {
+                            "X-Request-ID": {
+                                "type": "string",
+                                "description": "Resolved request correlation identifier"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/topics/{topic}/path": {
+            "get": {
+                "security": [
+                    {
+                        "InternalToken": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Curriculum"
+                ],
+                "summary": "Get a topic's prerequisite path",
+                "operationId": "getTopicPath",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Topic name with canonical matching",
+                        "name": "topic",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/domain.TopicPathResponse"
+                        },
+                        "headers": {
+                            "X-RateLimit-Limit": {
+                                "type": "integer",
+                                "description": "Maximum requests per rate-limit window"
+                            },
+                            "X-RateLimit-Remaining": {
+                                "type": "integer",
+                                "description": "Requests remaining in the rate-limit window"
+                            },
+                            "X-RateLimit-Reset": {
+                                "type": "integer",
+                                "description": "Seconds until the rate-limit window resets"
+                            },
+                            "X-Request-ID": {
+                                "type": "string",
+                                "description": "Resolved request correlation identifier"
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/domain.ErrorResponse"
+                        },
+                        "headers": {
+                            "X-Request-ID": {
+                                "type": "string",
+                                "description": "Resolved request correlation identifier"
+                            }
+                        }
+                    },
+                    "408": {
+                        "description": "Request Timeout",
+                        "schema": {
+                            "$ref": "#/definitions/domain.ErrorResponse"
+                        },
+                        "headers": {
+                            "X-Request-ID": {
+                                "type": "string",
+                                "description": "Resolved request correlation identifier"
+                            }
+                        }
+                    },
+                    "413": {
+                        "description": "Request Entity Too Large",
+                        "schema": {
+                            "$ref": "#/definitions/domain.ErrorResponse"
+                        },
+                        "headers": {
+                            "X-RateLimit-Limit": {
+                                "type": "integer",
+                                "description": "Maximum requests per rate-limit window"
+                            },
+                            "X-RateLimit-Remaining": {
+                                "type": "integer",
+                                "description": "Requests remaining in the rate-limit window"
+                            },
+                            "X-RateLimit-Reset": {
+                                "type": "integer",
+                                "description": "Seconds until the rate-limit window resets"
+                            },
+                            "X-Request-ID": {
+                                "type": "string",
+                                "description": "Resolved request correlation identifier"
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Unprocessable Entity",
+                        "schema": {
+                            "$ref": "#/definitions/domain.ErrorResponse"
+                        },
+                        "headers": {
+                            "X-RateLimit-Limit": {
+                                "type": "integer",
+                                "description": "Maximum requests per rate-limit window"
+                            },
+                            "X-RateLimit-Remaining": {
+                                "type": "integer",
+                                "description": "Requests remaining in the rate-limit window"
+                            },
+                            "X-RateLimit-Reset": {
+                                "type": "integer",
+                                "description": "Seconds until the rate-limit window resets"
+                            },
+                            "X-Request-ID": {
+                                "type": "string",
+                                "description": "Resolved request correlation identifier"
+                            }
+                        }
+                    },
+                    "429": {
+                        "description": "Too Many Requests",
+                        "schema": {
+                            "$ref": "#/definitions/domain.ErrorResponse"
+                        },
+                        "headers": {
+                            "Retry-After": {
+                                "type": "integer",
+                                "description": "Seconds to wait before retrying"
+                            },
+                            "X-Request-ID": {
+                                "type": "string",
+                                "description": "Resolved request correlation identifier"
+                            }
+                        }
+                    },
+                    "431": {
+                        "description": "Request Header Fields Too Large",
+                        "schema": {
+                            "$ref": "#/definitions/domain.ErrorResponse"
+                        },
+                        "headers": {
+                            "X-Request-ID": {
+                                "type": "string",
+                                "description": "Resolved request correlation identifier"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/domain.ErrorResponse"
+                        },
+                        "headers": {
+                            "X-Request-ID": {
+                                "type": "string",
+                                "description": "Resolved request correlation identifier"
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/tutor/student/{student_id}/cognitive-graph": {
             "get": {
                 "security": [
@@ -992,6 +1295,73 @@ const docTemplate = `{
                     "description": "TimestampUnix is the Unix epoch (seconds) at which the client created the request.",
                     "type": "integer",
                     "example": 1713340800
+                }
+            }
+        },
+        "domain.Topic": {
+            "type": "object",
+            "properties": {
+                "dependents": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    },
+                    "example": [
+                        "Dynamic Programming",
+                        "Merge Sort"
+                    ]
+                },
+                "name": {
+                    "type": "string",
+                    "example": "Recursion"
+                },
+                "prerequisites": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    },
+                    "example": [
+                        "Functions"
+                    ]
+                }
+            }
+        },
+        "domain.TopicPathResponse": {
+            "type": "object",
+            "properties": {
+                "dependents": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    },
+                    "example": [
+                        "Dynamic Programming",
+                        "Merge Sort"
+                    ]
+                },
+                "prerequisite_chain": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    },
+                    "example": [
+                        "Functions"
+                    ]
+                },
+                "topic": {
+                    "type": "string",
+                    "example": "Recursion"
+                }
+            }
+        },
+        "domain.TopicsResponse": {
+            "type": "object",
+            "properties": {
+                "topics": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/domain.Topic"
+                    }
                 }
             }
         },

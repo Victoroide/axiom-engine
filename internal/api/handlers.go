@@ -38,6 +38,8 @@ func NewHandler(r *service.ReasoningService, g *graph.InMemoryGraph, timeout tim
 func (h *Handler) RegisterRoutes(app *fiber.App) {
 	v1 := app.Group("/api/v1")
 	v1.Post("/adaptive-plan", h.handleAdaptivePlan)
+	v1.Get("/topics", h.handleTopics)
+	v1.Get("/topics/:topic/path", h.handleTopicPath)
 	v1.Get("/tutor/student/:student_id/cognitive-graph", h.handleCognitiveGraph)
 }
 

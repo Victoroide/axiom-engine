@@ -38,6 +38,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Emit structured JSON records on standard output for startup configuration (`server.started`) and listener binding (`server.listening`) without secrets, and log configuration validation and startup failures as `server.failed` JSON records.
 - Report the static AWS region source (`aws_region_source`) in `server.started` and emit a `bedrock.region.unresolved` warning at startup when no static region is configured.
 - Operations runbook (`docs/operations.md`) covering circuit breaker trips, Bedrock throttling, queue saturation, credential and region resolution, native library failures, cost controls, and production metrics.
+- Authenticated curriculum topic listing (`GET /api/v1/topics`) and prerequisite path inspection (`GET /api/v1/topics/{topic}/path`) endpoints providing canonical substring filtering, direct prerequisite and dependent sets, and study-ordered prerequisite chains without model provider calls.
 
 ### Changed
 

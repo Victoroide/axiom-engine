@@ -60,6 +60,19 @@ Original spellings, casing, and spacing of stored graph nodes are preserved in m
 
 ---
 
+## Querying Topics and Prerequisite Paths
+
+`InMemoryGraph` provides methods for inspecting topics, direct neighbor relationships, and topological study paths:
+
+- `Topics(filter string) []domain.Topic`: Returns all curriculum concepts sorted alphabetically by stored name. When `filter` is non-empty, matches topics whose canonical name contains the canonical filter string (`strings.Contains(Canonical(name), Canonical(filter))`). Each `domain.Topic` entry contains the stored `Name`, direct `Prerequisites`, and direct `Dependents`. If no concepts match, returns an empty slice.
+- `Prerequisites(topic string) []string`: Returns a sorted, deduplicated slice of direct prerequisites for a concept, following outgoing edges from `forward` across both `depends_on` and `is_a` relations.
+- `Dependents(topic string) []string`: Returns a sorted, deduplicated slice of direct dependents for a concept, following incoming edges from `reverse` across both `depends_on` and `is_a` relations.
+- `Path(topic string) (domain.TopicPathResponse, bool)`: Resolves `topic` against canonical node names. If found, returns a `domain.TopicPathResponse` with `Topic` set to the stored name, `PrerequisiteChain` containing all transitive prerequisites in topological study order (excluding the requested concept itself), and `Dependents` containing direct dependents. Returns `false` if the concept is not found in the graph.
+
+All querying methods return newly allocated defensive copies of topic and relationship slices, ensuring concurrent callers cannot mutate internal graph indices.
+
+---
+
 ## Seed Graph Summary
 
 When `GRAPH_FILE` is unset, AxiomEngine loads an embedded seed graph containing 20 triples across 23 computer science concepts defined in [internal/graph/seed.json](../internal/graph/seed.json).
