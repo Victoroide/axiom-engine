@@ -6,7 +6,7 @@
 [![Go Version](https://img.shields.io/badge/go-1.27.3-blue.svg)](https://golang.org)
 [![License: MIT](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 
-AxiomEngine is a Go microservice that generates personalized, prerequisite-ordered adaptive study plans from student assessment deficits. It combines an in-memory curriculum knowledge graph with Amazon Bedrock model inference executed through a generated BAML client. The service exposes HTTP endpoints for study plan generation, cognitive shadow graph visualization, and system health checks.
+AxiomEngine is a Go microservice that generates personalized, prerequisite-ordered adaptive study plans from student assessment deficits. It combines an in-memory curriculum knowledge graph with Amazon Bedrock model inference executed through a generated BAML client. The service exposes HTTP endpoints for study plan generation, cognitive shadow graph visualization, and system health checks, as well as a Model Context Protocol (MCP) server over stdio (`axiom-server mcp`) exposing reasoning and curriculum tools.
 
 ## Features
 
@@ -214,6 +214,16 @@ curl -N -i -X POST http://localhost:8080/api/v1/adaptive-plan/stream \
 
 The server sends periodic `: keepalive` comments every 2 seconds. If a client disconnects prematurely, in-flight topic reasoning is cancelled immediately to release concurrency slots and avoid unnecessary token consumption.
 
+### Model Context Protocol (MCP) Stdio Server
+
+Run the server locally over stdio for MCP-compatible clients:
+
+```sh
+axiom-server mcp
+```
+
+Exposes `generate_study_plan`, `get_cognitive_graph`, `list_topics`, and `get_topic_path` tools over JSON-RPC. See [docs/mcp.md](docs/mcp.md) for tool schemas, client configuration, and container usage.
+
 ## Limitations
 
 - **In-Memory Rate Limiting**: When `REDIS_URL` is unset, rate limiting operates per replica in memory, keyed by client IP (masked to `/64` for IPv6). Setting `REDIS_URL` shares rate-limit budgets and plan idempotency records across all replicas. For multi-tenant platform limits, gateway enforcement remains recommended.
@@ -234,6 +244,7 @@ For diagnostic runbooks and operational troubleshooting, refer to the [Operation
 | [API Reference](docs/api.md) | Authentication schemes, common headers, error envelopes, and endpoint specifications |
 | [Configuration](docs/configuration.md) | Exhaustive environment variable table and AWS credential resolution mechanics |
 | [Knowledge Graph](docs/knowledge-graph.md) | Subject-Relation-Object data model, relation semantics, seed graph, file schemas, and shadow computation |
+| [Model Context Protocol](docs/mcp.md) | Stdio MCP server setup, client configuration, tool specifications, error handling, and testing |
 | [Deployment](docs/deployment.md) | Multi-stage Docker build, non-root execution, compose configuration, and operating instructions |
 | [Development](docs/development.md) | Prerequisites, make targets, BAML and Swagger generation, and test suite execution |
 | [Operations Runbook](docs/operations.md) | Diagnostic runbooks for open breakers, throttling, credential errors, native library panics, and production metrics |
