@@ -14,8 +14,12 @@ export BAML_LOG ?= off
 IMAGE ?= axiom-engine:local
 VULN_FLAGS ?=
 FUZZTIME ?= 30s
+RELEASE_VERSION ?= dev
+RELEASE_DIR ?= $(BIN_DIR)/release
+SOURCE_DATE_EPOCH ?= $(shell git log -1 --format=%ct)
 
 .PHONY: help generate swagger build run test cover test-e2e fuzz lint vuln fmt tidy-check generate-check toolchain-check docker-build container-smoke container-smoke-test clean tools-baml baml-check native-baml
+.PHONY: release-archive release-archive-smoke release-archive-test
 
 help: ## List available targets
 	@awk 'BEGIN {FS = ":.*## "} /^[a-zA-Z0-9_-]+:.*## / {printf "  %-18s %s\n", $$1, $$2}' $(MAKEFILE_LIST)
@@ -69,6 +73,15 @@ build: ## Build the stripped service binary with CGO
 	@mkdir -p "$(BIN_DIR)"
 	CGO_ENABLED=1 go build -trimpath -ldflags='-s -w' -o "$(BIN_DIR)/axiom-server" ./cmd/server
 
+release-archive: native-baml build ## Package the binary and verified native library for this host
+	SOURCE_DATE_EPOCH="$(SOURCE_DATE_EPOCH)" ./scripts/release-archive.sh "$(RELEASE_VERSION)" "$(RELEASE_DIR)"
+
+release-archive-smoke: ## Check an extracted archive's liveness and clean shutdown
+	./scripts/release-archive-smoke.sh "$(RELEASE_DIR)/axiom-engine_$(RELEASE_VERSION)_$(BAML_HOST_OS)_$(BAML_HOST_ARCH).tar.gz"
+
+release-archive-test: native-baml build ## Check archive contents, repeatability and runtime behavior
+	./scripts/test-release-archive.sh
+
 run: native-baml ## Run the service using the current environment
 	CGO_ENABLED=1 go run ./cmd/server
 
@@ -91,6 +104,7 @@ fuzz: ## Fuzz parsers and output policy without the native library
 
 lint: ## Vet build variants and check Go code and workflow files
 	@command -v shellcheck >/dev/null || { echo "shellcheck is required for workflow linting; install it and add it to PATH" >&2; exit 1; }
+	shellcheck scripts/release-archive.sh scripts/release-archive-smoke.sh scripts/test-release-archive.sh
 	go vet ./...
 	go vet -tags e2e ./...
 	go run github.com/golangci/golangci-lint/v2/cmd/golangci-lint@$(GOLANGCI_LINT_VERSION) run ./...
