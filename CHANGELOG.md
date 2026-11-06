@@ -46,6 +46,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Share IP sliding-window rate limit budgets and adaptive plan idempotency records across replicas when `REDIS_URL` is configured, failing closed with HTTP 503 `service_unavailable` and `Retry-After: 1` on storage failures.
 - Stream adaptive study plan progress and final plan or error payloads via Server-Sent Events on `POST /api/v1/adaptive-plan/stream`, detecting client disconnects with 2-second keepalive pings to cancel downstream topic reasoning and observe disconnects in access logs.
 - Model Context Protocol (MCP) stdio server command (`axiom-server mcp`) exposing curriculum and study-plan tools (`generate_study_plan`, `get_cognitive_graph`, `list_topics`, `get_topic_path`) over JSON-RPC with structured tool responses, stderr logging, and caller trust boundary.
+- Curriculum validation subcommand (`axiom-server validate-graph <file>`) reporting concept counts, relation counts, roots, and longest prerequisite chains without credentials or server startup, alongside an optional 130-concept computer science curriculum (`examples/graphs/computer-science.json`).
 
 ### Changed
 

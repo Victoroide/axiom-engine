@@ -59,6 +59,7 @@ LABEL org.opencontainers.image.title="axiom-engine" \
 WORKDIR /app
 COPY --from=builder /out/axiom-server /app/axiom-server
 COPY --from=native /out/libbaml_cffi.so /app/libbaml_cffi.so
+COPY --chown=0:0 examples/graphs/ /usr/share/axiom-engine/graphs/
 ENV PORT=8080 \
     BAML_LIBRARY_PATH=/app/libbaml_cffi.so \
     BAML_LIBRARY_DISABLE_DOWNLOAD=true \

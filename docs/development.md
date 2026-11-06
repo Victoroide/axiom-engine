@@ -347,6 +347,7 @@ The smoke test performs the following steps:
 9. Stops the container with `docker stop --time 30`, verifies a clean exit code 0, and asserts that container logs are exclusively valid JSON objects containing no sensitive learner identifiers (`student-42`) and no raw native `[BAML` records.
 10. Starts the stub in `throttle` mode, launches a fresh container, and sends an authenticated plan request to assert HTTP 503 `service_unavailable` with header `Retry-After: 5`.
 11. Stops the container and verifies clean shutdown and structured JSON log privacy.
+12. Starts the container configured with `GRAPH_FILE=/usr/share/axiom-engine/graphs/computer-science.json`, confirms that it serves 130 topics (including `SQL` and `TCP`), generates a plan, stops the container, and verifies clean shutdown and private JSON logs.
 
 All temporary files, fixture processes, and test containers are cleaned up on completion or failure.
 

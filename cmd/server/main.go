@@ -38,6 +38,8 @@ func main() {
 func run(args []string, stdout io.Writer) error {
 	if len(args) > 0 {
 		switch args[0] {
+		case "validate-graph":
+			return runValidateGraph(args[1:], stdout)
 		case "mcp":
 			return runMCP(args[1:])
 		case "healthcheck":
