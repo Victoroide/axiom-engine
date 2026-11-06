@@ -492,7 +492,7 @@ Runs on a pushed `v*` tag and on manual dispatch (`workflow_dispatch`, input `dr
 - **`build`** (publishing): explicitly installs Docker CE `v29.9.2`, builds and loads each native image, runs `make container-smoke`, logs in, pushes it as `ghcr.io/victoroide/axiom-engine:<commit SHA>-<arch>`, checks that the pushed digest equals the built one, and uploads the digest as an artifact.
 - **`merge`**, **`attest`**, **`sign`**, **`release`**: combine both digests into one index tagged `<tag>`, `<version>`, `<major>.<minor>` and `latest`, attest and keylessly sign that index digest, then create the GitHub release. Publishing jobs run in the `release` environment.
 - **`publish-archives`** (publishing): signs `checksums.txt` keylessly with Cosign (`checksums.txt.sigstore.json`) and uploads archives, checksums, and signature bundle to the release.
-- **`provenance`** (publishing): generates SLSA Level 3 build provenance for the archives using `slsa-framework/slsa-github-generator` and attaches `axiom-engine_<version>.intoto.jsonl`.
+- **`provenance`** (publishing): generates SLSA build provenance for the archives using `actions/attest-build-provenance` from `checksums.txt`, and attaches the Sigstore bundle (`axiom-engine_<version>.sigstore.json`) and extracted DSSE envelope (`axiom-engine_<version>.intoto.jsonl`).
 
 ### `scorecard.yml`
 
