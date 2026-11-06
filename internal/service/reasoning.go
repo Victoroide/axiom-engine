@@ -100,9 +100,14 @@ func breakerSettings(logger *slog.Logger) gobreaker.Settings {
 }
 
 // GeneratePlan returns a deterministic plan or a classified pipeline error.
-func (s *ReasoningService) GeneratePlan(ctx context.Context, req domain.AdaptivePlanRequest) (domain.PlanResponse, error) {
+func (s *ReasoningService) GeneratePlan(ctx context.Context, req domain.AdaptivePlanRequest, options ...PlanOption) (domain.PlanResponse, error) {
 	start := time.Now()
-	req, err := validateRequest(req, s.maxFailedTopics, s.maxMasteredTopics, s.graph)
+	var opts planOptions
+	for _, option := range options {
+		option(&opts)
+	}
+	requested := req.FailedTopics
+	req, err := s.ValidateRequest(req)
 	if err != nil {
 		return domain.PlanResponse{}, err
 	}
@@ -127,6 +132,13 @@ func (s *ReasoningService) GeneratePlan(ctx context.Context, req domain.Adaptive
 	eg, egCtx := errgroup.WithContext(ctx)
 	plans := make([][]domain.PlanItem, len(req.FailedTopics))
 	for i, topic := range req.FailedTopics {
+		requestIndex := i
+		for index, original := range requested {
+			if graph.Canonical(original) == graph.Canonical(topic) {
+				requestIndex = index
+				break
+			}
+		}
 		eg.Go(func() error {
 			queueStart := time.Now()
 			queueCtx, queueCancel := context.WithTimeout(egCtx, s.queueTimeout)
@@ -161,6 +173,9 @@ func (s *ReasoningService) GeneratePlan(ctx context.Context, req domain.Adaptive
 				}
 				return items, nil
 			})
+			if started && opts.progress != nil {
+				opts.progress(domain.TopicProgress{Topic: topic, Index: requestIndex, ItemsGenerated: len(items)})
+			}
 			if err != nil {
 				if errors.Is(err, gobreaker.ErrTooManyRequests) {
 					return &TopicError{Topic: topic, cause: &UnavailableError{RetryAfter: time.Second, Err: ErrCircuitOpen}}
