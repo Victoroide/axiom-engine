@@ -619,7 +619,7 @@ const docTemplate = `{
                         "InternalToken": []
                     }
                 ],
-                "description": "Return concept nodes annotated with failed, learning or mastered state.",
+                "description": "Return concept nodes annotated with failed, learning, mastered or unassessed state.",
                 "produces": [
                     "application/json"
                 ],
@@ -644,6 +644,16 @@ const docTemplate = `{
                         "name": "topics",
                         "in": "query",
                         "required": true
+                    },
+                    {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        },
+                        "collectionFormat": "multi",
+                        "description": "Mastered topic names; may be repeated or comma-separated",
+                        "name": "mastered",
+                        "in": "query"
                     },
                     {
                         "type": "string",
@@ -1075,6 +1085,16 @@ const docTemplate = `{
                         "Recursion"
                     ]
                 },
+                "mastered_topics": {
+                    "description": "MasteredTopics lists concepts already known by the learner.",
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    },
+                    "example": [
+                        "Functions"
+                    ]
+                },
                 "student_id": {
                     "description": "StudentID is the platform-level identifier for the learner.",
                     "type": "string",
@@ -1156,6 +1176,11 @@ const docTemplate = `{
                     "description": "ItemsGenerated is the total number of study items returned across\nall per-topic LLM calls before deduplication.",
                     "type": "integer",
                     "example": 6
+                },
+                "items_skipped_mastered": {
+                    "description": "ItemsSkippedMastered counts distinct mastered prerequisites excluded from study.",
+                    "type": "integer",
+                    "example": 2
                 },
                 "llm_latency_ms": {
                     "description": "LLMLatencyMs is the wall-clock time (milliseconds) spent waiting\nfor all parallel LLM calls to complete.",
@@ -1389,8 +1414,14 @@ const docTemplate = `{
             "type": "object",
             "properties": {
                 "cognitive_state": {
-                    "description": "CognitiveState indicates the student's cognitive state for this concept.\nPossible values:\n  \"failed\"   -- the student explicitly failed this topic.\n  \"learning\" -- this topic is a prerequisite of a failed topic.\n  \"mastered\" -- no evidence of deficit; presumed mastered.",
+                    "description": "CognitiveState indicates the student's cognitive state for this concept.\nPossible values:\n  \"failed\"   -- the student explicitly failed this topic.\n  \"learning\" -- this topic is a prerequisite of a failed topic.\n  \"mastered\" -- no evidence of deficit; presumed mastered.\n  \"unassessed\" -- no evidence when learner history is supplied.",
                     "type": "string",
+                    "enum": [
+                        "failed",
+                        "learning",
+                        "mastered",
+                        "unassessed"
+                    ],
                     "example": "failed"
                 },
                 "id": {

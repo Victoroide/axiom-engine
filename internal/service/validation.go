@@ -78,7 +78,7 @@ func ValidateTopics(field string, topics []string, maxTopics int, g *graph.InMem
 	return normalized, nil
 }
 
-func validateRequest(req domain.AdaptivePlanRequest, maxTopics int, g *graph.InMemoryGraph) (domain.AdaptivePlanRequest, error) {
+func validateRequest(req domain.AdaptivePlanRequest, maxTopics, maxMastered int, g *graph.InMemoryGraph) (domain.AdaptivePlanRequest, error) {
 	switch req.VARKProfile {
 	case "visual", "auditory", "read_write", "kinesthetic":
 	default:
@@ -91,6 +91,29 @@ func validateRequest(req domain.AdaptivePlanRequest, maxTopics int, g *graph.InM
 		return req, &ValidationError{Details: "course_id must match ^[A-Za-z0-9._:-]{1,128}$"}
 	}
 	topics, err := ValidateTopics("failed_topics", req.FailedTopics, maxTopics, g)
+	if err != nil {
+		return req, err
+	}
 	req.FailedTopics = topics
+	req.MasteredTopics, err = ValidateMasteredTopics("mastered_topics", req.MasteredTopics, topics, maxMastered, g)
 	return req, err
+}
+
+// ValidateMasteredTopics resolves optional history and rejects contradictory evidence.
+func ValidateMasteredTopics(field string, topics, failed []string, maxTopics int, g *graph.InMemoryGraph) ([]string, error) {
+	if len(topics) == 0 {
+		return topics, nil
+	}
+	mastered, err := ValidateTopics(field, topics, maxTopics, g)
+	if err != nil {
+		return nil, err
+	}
+	for _, topic := range mastered {
+		for _, other := range failed {
+			if graph.Canonical(topic) == graph.Canonical(other) {
+				return nil, &ValidationError{Details: "a topic must not be both failed and mastered: " + QuoteValue(topic)}
+			}
+		}
+	}
+	return mastered, nil
 }

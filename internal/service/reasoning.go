@@ -41,25 +41,27 @@ type Planner interface {
 
 // Options configures the bounded reasoning pipeline.
 type Options struct {
-	LLMTimeout      time.Duration
-	MaxFailedTopics int
-	MaxConcurrency  int
-	QueueTimeout    time.Duration
-	Logger          *slog.Logger
-	Metrics         *metrics.Metrics
+	LLMTimeout        time.Duration
+	MaxFailedTopics   int
+	MaxMasteredTopics int
+	MaxConcurrency    int
+	QueueTimeout      time.Duration
+	Logger            *slog.Logger
+	Metrics           *metrics.Metrics
 }
 
 // ReasoningService coordinates validated, concurrent topic generation.
 type ReasoningService struct {
-	metrics         *metrics.Metrics
-	logger          *slog.Logger
-	graph           *graph.InMemoryGraph
-	planner         Planner
-	llmTimeout      time.Duration
-	maxFailedTopics int
-	queueTimeout    time.Duration
-	slots           *semaphore.Weighted
-	breaker         *gobreaker.CircuitBreaker[[]domain.PlanItem]
+	metrics           *metrics.Metrics
+	logger            *slog.Logger
+	graph             *graph.InMemoryGraph
+	planner           Planner
+	llmTimeout        time.Duration
+	maxFailedTopics   int
+	maxMasteredTopics int
+	queueTimeout      time.Duration
+	slots             *semaphore.Weighted
+	breaker           *gobreaker.CircuitBreaker[[]domain.PlanItem]
 }
 
 // NewReasoningService constructs a pipeline with a shared backend circuit breaker.
@@ -74,9 +76,12 @@ func NewReasoningService(g *graph.InMemoryGraph, planner Planner, opts Options) 
 	if opts.QueueTimeout <= 0 {
 		opts.QueueTimeout = 2 * time.Second
 	}
+	if opts.MaxMasteredTopics <= 0 {
+		opts.MaxMasteredTopics = 100
+	}
 	cb := gobreaker.NewCircuitBreaker[[]domain.PlanItem](breakerSettings(logger))
 	opts.Metrics.SetBreakerStateSource(func() int { return int(cb.State()) })
-	return &ReasoningService{metrics: opts.Metrics, logger: logger, graph: g, planner: planner, llmTimeout: opts.LLMTimeout, maxFailedTopics: opts.MaxFailedTopics, breaker: cb, queueTimeout: opts.QueueTimeout, slots: semaphore.NewWeighted(int64(opts.MaxConcurrency))}
+	return &ReasoningService{metrics: opts.Metrics, logger: logger, graph: g, planner: planner, llmTimeout: opts.LLMTimeout, maxFailedTopics: opts.MaxFailedTopics, maxMasteredTopics: opts.MaxMasteredTopics, breaker: cb, queueTimeout: opts.QueueTimeout, slots: semaphore.NewWeighted(int64(opts.MaxConcurrency))}
 }
 
 func breakerSettings(logger *slog.Logger) gobreaker.Settings {
@@ -95,9 +100,25 @@ func breakerSettings(logger *slog.Logger) gobreaker.Settings {
 // GeneratePlan returns a deterministic plan or a classified pipeline error.
 func (s *ReasoningService) GeneratePlan(ctx context.Context, req domain.AdaptivePlanRequest) (domain.PlanResponse, error) {
 	start := time.Now()
-	req, err := validateRequest(req, s.maxFailedTopics, s.graph)
+	req, err := validateRequest(req, s.maxFailedTopics, s.maxMasteredTopics, s.graph)
 	if err != nil {
 		return domain.PlanResponse{}, err
+	}
+	mastered := make(map[string]bool, len(req.MasteredTopics))
+	for _, topic := range req.MasteredTopics {
+		mastered[topic] = true
+	}
+	skipped := make(map[string]bool)
+	orders := make([][]string, len(req.FailedTopics))
+	for i, topic := range req.FailedTopics {
+		orders[i] = make([]string, 0)
+		for _, prerequisite := range s.graph.GetPrerequisiteChain(topic) {
+			if mastered[prerequisite] {
+				skipped[prerequisite] = true
+			} else {
+				orders[i] = append(orders[i], prerequisite)
+			}
+		}
 	}
 	subgraph := s.graph.GetLocalSubgraph(req.FailedTopics, 2)
 	llmStart := time.Now()
@@ -128,7 +149,7 @@ func (s *ReasoningService) GeneratePlan(ctx context.Context, req domain.Adaptive
 				callStart := time.Now()
 				defer func() { s.metrics.ObserveLLM(llmOutcome(callErr), time.Since(callStart)) }()
 				started = true
-				items, callErr = s.generateTopic(llmCtx, TopicRequest{GraphContext: subgraph, Topic: topic, PrerequisiteOrder: s.graph.GetPrerequisiteChain(topic), VARKProfile: req.VARKProfile})
+				items, callErr = s.generateTopic(llmCtx, TopicRequest{GraphContext: subgraph, Topic: topic, PrerequisiteOrder: orders[i], VARKProfile: req.VARKProfile})
 				if callErr != nil {
 					return nil, callErr
 				}
@@ -169,7 +190,7 @@ func (s *ReasoningService) GeneratePlan(ctx context.Context, req domain.Adaptive
 	if resourcesDropped > 0 {
 		s.logger.WarnContext(ctx, "stage.output", "request_id", requestIDFromContext(ctx), "resources_dropped", resourcesDropped)
 	}
-	validated, dropped := validateAgainstGraph(merged, s.graph, req.FailedTopics)
+	validated, dropped := validateAgainstGraph(merged, s.graph, req.FailedTopics, req.MasteredTopics)
 	s.metrics.ObserveDroppedItems(duplicates, dropped)
 	if dropped > 0 {
 		s.logger.WarnContext(ctx, "stage.validation", "request_id", requestIDFromContext(ctx), "items_dropped", dropped)
@@ -179,7 +200,7 @@ func (s *ReasoningService) GeneratePlan(ctx context.Context, req domain.Adaptive
 		s.logger.WarnContext(ctx, "stage.validation", "request_id", requestIDFromContext(ctx), "topic", missing)
 		return domain.PlanResponse{}, &TopicError{Topic: missing, cause: ErrInvalidOutput}
 	}
-	return domain.PlanResponse{StudentID: req.StudentID, CourseID: req.CourseID, Items: validated, Meta: domain.PipelineMeta{SubgraphTuples: len(subgraph), TopicsProcessed: len(req.FailedTopics), ItemsGenerated: countTotalItems(plans), ItemsValidated: len(validated), ItemsDropped: dropped, LLMLatencyMs: llmLatency.Milliseconds(), TotalLatencyMs: time.Since(start).Milliseconds()}}, nil
+	return domain.PlanResponse{StudentID: req.StudentID, CourseID: req.CourseID, Items: validated, Meta: domain.PipelineMeta{SubgraphTuples: len(subgraph), TopicsProcessed: len(req.FailedTopics), ItemsGenerated: countTotalItems(plans), ItemsValidated: len(validated), ItemsDropped: dropped, ItemsSkippedMastered: len(skipped), LLMLatencyMs: llmLatency.Milliseconds(), TotalLatencyMs: time.Since(start).Milliseconds()}}, nil
 }
 
 func (s *ReasoningService) generateTopic(ctx context.Context, req TopicRequest) ([]domain.PlanItem, error) {

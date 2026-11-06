@@ -17,6 +17,13 @@ definitions:
         items:
           type: string
         type: array
+      mastered_topics:
+        description: MasteredTopics lists concepts already known by the learner.
+        example:
+        - Functions
+        items:
+          type: string
+        type: array
       student_id:
         description: StudentID is the platform-level identifier for the learner.
         example: student-42
@@ -89,6 +96,11 @@ definitions:
           ItemsGenerated is the total number of study items returned across
           all per-topic LLM calls before deduplication.
         example: 6
+        type: integer
+      items_skipped_mastered:
+        description: ItemsSkippedMastered counts distinct mastered prerequisites excluded
+          from study.
+        example: 2
         type: integer
       llm_latency_ms:
         description: |-
@@ -295,6 +307,12 @@ definitions:
             "failed"   -- the student explicitly failed this topic.
             "learning" -- this topic is a prerequisite of a failed topic.
             "mastered" -- no evidence of deficit; presumed mastered.
+            "unassessed" -- no evidence when learner history is supplied.
+        enum:
+        - failed
+        - learning
+        - mastered
+        - unassessed
         example: failed
         type: string
       id:
@@ -723,8 +741,8 @@ paths:
       - Curriculum
   /api/v1/tutor/student/{student_id}/cognitive-graph:
     get:
-      description: Return concept nodes annotated with failed, learning or mastered
-        state.
+      description: Return concept nodes annotated with failed, learning, mastered
+        or unassessed state.
       operationId: getCognitiveGraph
       parameters:
       - description: Student identifier
@@ -739,6 +757,13 @@ paths:
         name: topics
         required: true
         type: string
+      - collectionFormat: multi
+        description: Mastered topic names; may be repeated or comma-separated
+        in: query
+        items:
+          type: string
+        name: mastered
+        type: array
       - description: Center the subgraph on one topic; must be one of topics
         example: Recursion
         in: query

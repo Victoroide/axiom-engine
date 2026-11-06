@@ -177,7 +177,7 @@ func (g *InMemoryGraph) GetLocalSubgraph(failedTopics []string, depth int) []dom
 // GenerateCognitiveShadow constructs a filtered Cognitive Shadow Graph for
 // frontend visualization (Cytoscape.js / D3.js). Given a target topic, it
 // extracts a depth-1 local subgraph around each failed topic, classifies
-// every node into one of three cognitive states, and prunes orphan nodes
+// every node using failure and prerequisite evidence, and prunes orphan nodes
 // (nodes with no edges in the filtered subgraph).
 //
 // Cognitive state classification:
@@ -190,7 +190,14 @@ func (g *InMemoryGraph) GetLocalSubgraph(failedTopics []string, depth int) []dom
 // The targetTopic parameter selects which failed topic's local neighborhood
 // to visualize. If targetTopic is empty, all failedTopics are used as BFS
 // seeds. The subgraph is limited to depth 1 (direct neighbors only).
-func (g *InMemoryGraph) GenerateCognitiveShadow(failedTopics []string, targetTopic string) domain.CognitiveGraphResponse {
+// Optional mastered topics override learning; other unevidenced nodes become unassessed.
+func (g *InMemoryGraph) GenerateCognitiveShadow(failedTopics []string, targetTopic string, masteredTopics ...[]string) domain.CognitiveGraphResponse {
+	masteredSet := make(map[string]bool)
+	for _, topics := range masteredTopics {
+		for _, topic := range topics {
+			masteredSet[topic] = true
+		}
+	}
 	failedSet := make(map[string]bool, len(failedTopics))
 	for _, t := range failedTopics {
 		failedSet[t] = true
@@ -232,9 +239,15 @@ func (g *InMemoryGraph) GenerateCognitiveShadow(failedTopics []string, targetTop
 	nodes := make([]domain.VisualNode, 0, len(connectedNodes))
 	for name := range connectedNodes {
 		state := "mastered"
-		if failedSet[name] {
+		if len(masteredTopics) > 0 {
+			state = "unassessed"
+		}
+		switch {
+		case failedSet[name]:
 			state = "failed"
-		} else if learningSet[name] {
+		case masteredSet[name]:
+			state = "mastered"
+		case learningSet[name]:
 			state = "learning"
 		}
 		nodes = append(nodes, domain.VisualNode{
