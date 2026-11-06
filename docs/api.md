@@ -31,9 +31,11 @@ The `/livez`, `/readyz`, and `/health` routes (and `/swagger/*` and `/swagger/do
 
 ## Rate Limiting
 
-Requests to `/api/v1` routes are rate limited using an in-memory sliding window keyed by client IP (see [configuration reference](configuration.md#environment-variables)); the default budget is 50 requests per minute. When authentication is enabled, credentials are verified first: requests with a missing or invalid token receive HTTP 401 Unauthorized, consume no quota, and are not rate limited by the service. Limit unauthenticated traffic at a reverse proxy or WAF if needed.
+Requests to `/api/v1` routes are rate limited using a sliding window keyed by client IP (see [configuration reference](configuration.md#environment-variables)); the default budget is 50 requests per minute. When `REDIS_URL` is configured, whole-second sliding windows are tracked atomically in Redis using server time; when `REDIS_URL` is unset, an in-memory sliding window is evaluated per process replica. When authentication is enabled, credentials are verified first: requests with a missing or invalid token receive HTTP 401 Unauthorized, consume no quota, and are not rate limited by the service. Limit unauthenticated traffic at a reverse proxy or WAF if needed.
 
-Rate limits are evaluated per process replica and are not shared across instances:
+Rate limits are evaluated per process replica by default. When `REDIS_URL` is configured, rate-limit buckets are stored in Redis under key prefix `axiom:rate:` and shared across all replicas (see [Replicas and shared storage](deployment.md#replicas-and-shared-storage)). If Redis becomes unavailable at runtime, the limiter fails closed: requests return HTTP 503 `service_unavailable` with `Retry-After: 1`.
+
+When `REDIS_URL` is unset, rate limits are evaluated per process replica and budgets are never shared across instances:
 - **IPv4**: Individual IPv4 addresses maintain separate rate-limit buckets. IPv4-mapped IPv6 addresses (`::ffff:x.x.x.x`) are unmapped and share the canonical IPv4 bucket.
 - **IPv6**: Client IPv6 addresses are masked to their `/64` subnet prefix, grouping callers within the same `/64` subnet into a shared bucket.
 - **Reverse proxies**: Client IP addresses are resolved from `X-Forwarded-For` only when the remote peer is recognized as a trusted proxy via `TRUSTED_PROXIES`. Untrusted proxy headers are ignored.
@@ -262,7 +264,7 @@ Generates a personalized, prerequisite-ordered study plan for a student based on
 - **431 Request Header Fields Too Large**: Inbound request headers exceed the server limit.
 - **500 Internal Server Error**: Unexpected internal failure or recovered panic.
 - **502 Bad Gateway**: details `model returned no usable item` when the model reply cannot be parsed or has no item for a requested topic; `upstream reasoning failed` for other Bedrock failures.
-- **503 Service Unavailable**: Upstream circuit breaker open, concurrency limit reached, upstream throttling, or server shutdown.
+- **503 Service Unavailable**: Shared rate limit or idempotency storage unavailable (`service_unavailable`, `Retry-After: 1`), upstream circuit breaker open, concurrency limit reached, upstream throttling, or server shutdown.
 - **504 Gateway Timeout**: Request exceeded pipeline deadline.
 
 #### Response Contract
@@ -387,6 +389,7 @@ Computes a depth-1 concept neighborhood around failed topics for a learner, clas
 - **429 Too Many Requests**: Rate limit exceeded.
 - **431 Request Header Fields Too Large**: Inbound request headers exceed the server limit.
 - **500 Internal Server Error**: Unexpected internal failure or recovered panic.
+- **503 Service Unavailable**: Shared rate limit storage unavailable (`service_unavailable`, `Retry-After: 1`).
 
 #### Example
 
@@ -471,6 +474,7 @@ Lists curriculum topics sorted by concept name, with direct prerequisites and di
 - **429 Too Many Requests**: Rate limit exceeded.
 - **431 Request Header Fields Too Large**: Inbound request headers exceed the server limit.
 - **500 Internal Server Error**: Unexpected internal failure or recovered panic.
+- **503 Service Unavailable**: Shared rate limit storage unavailable (`service_unavailable`, `Retry-After: 1`).
 
 #### Example
 
@@ -527,6 +531,7 @@ Returns the full prerequisite chain in topological study order and direct depend
 - **429 Too Many Requests**: Rate limit exceeded.
 - **431 Request Header Fields Too Large**: Inbound request headers exceed the server limit.
 - **500 Internal Server Error**: Unexpected internal failure or recovered panic.
+- **503 Service Unavailable**: Shared rate limit storage unavailable (`service_unavailable`, `Retry-After: 1`).
 
 #### Example
 

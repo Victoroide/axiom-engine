@@ -293,7 +293,7 @@ const docTemplate = `{
                         }
                     },
                     "503": {
-                        "description": "Temporary unavailability, upstream throttling or server shutdown",
+                        "description": "Shared storage unavailable",
                         "schema": {
                             "$ref": "#/definitions/domain.ErrorResponse"
                         },
@@ -482,6 +482,22 @@ const docTemplate = `{
                                 "description": "Resolved request correlation identifier"
                             }
                         }
+                    },
+                    "503": {
+                        "description": "Shared storage unavailable",
+                        "schema": {
+                            "$ref": "#/definitions/domain.ErrorResponse"
+                        },
+                        "headers": {
+                            "Retry-After": {
+                                "type": "integer",
+                                "description": "Seconds to wait before retrying"
+                            },
+                            "X-Request-ID": {
+                                "type": "string",
+                                "description": "Resolved request correlation identifier"
+                            }
+                        }
                     }
                 }
             }
@@ -641,6 +657,22 @@ const docTemplate = `{
                             "$ref": "#/definitions/domain.ErrorResponse"
                         },
                         "headers": {
+                            "X-Request-ID": {
+                                "type": "string",
+                                "description": "Resolved request correlation identifier"
+                            }
+                        }
+                    },
+                    "503": {
+                        "description": "Shared storage unavailable",
+                        "schema": {
+                            "$ref": "#/definitions/domain.ErrorResponse"
+                        },
+                        "headers": {
+                            "Retry-After": {
+                                "type": "integer",
+                                "description": "Seconds to wait before retrying"
+                            },
                             "X-Request-ID": {
                                 "type": "string",
                                 "description": "Resolved request correlation identifier"
@@ -856,6 +888,22 @@ const docTemplate = `{
                             "$ref": "#/definitions/domain.ErrorResponse"
                         },
                         "headers": {
+                            "X-Request-ID": {
+                                "type": "string",
+                                "description": "Resolved request correlation identifier"
+                            }
+                        }
+                    },
+                    "503": {
+                        "description": "Shared storage unavailable",
+                        "schema": {
+                            "$ref": "#/definitions/domain.ErrorResponse"
+                        },
+                        "headers": {
+                            "Retry-After": {
+                                "type": "integer",
+                                "description": "Seconds to wait before retrying"
+                            },
                             "X-Request-ID": {
                                 "type": "string",
                                 "description": "Resolved request correlation identifier"

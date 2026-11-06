@@ -323,6 +323,16 @@ scrape_configs:
       - targets: ['axiom-engine:8080']
 ```
 
+### Replicas and shared storage
+
+In deployments running multiple service replicas behind a load balancer, configure `REDIS_URL` with a shared Redis endpoint (`redis://` or TLS `rediss://`) reachable by all instances:
+
+- **Shared Quotas**: Replicas share the sliding-window IP rate limit budget (`RATE_LIMIT_MAX` per `RATE_LIMIT_WINDOW`) using an atomic Redis Lua script under key prefix `axiom:rate:`. Quota evaluation uses Redis server time for consistent whole-second window rotation.
+- **Shared Idempotency Records**: Replicas share plan reservations and responses under key prefix `axiom:idempotency:`. A pending reservation is leased for `REQUEST_TIMEOUT + 3s`, ensuring active reasoning executions are not timed out by response TTL while abandoned reservations expire automatically after replica failure. Successful responses are cached for `IDEMPOTENCY_TTL`.
+- **Fail-Closed Availability**: If Redis is unreachable at startup, the initial 3-second ping fails and the process exits 1 immediately. At runtime, storage errors fail closed: requests return HTTP 503 `service_unavailable` with header `Retry-After: 1` and log a structured error (`storage.failed` with operation `rate_limit.consume`, `idempotency.begin`, `idempotency.complete`, or `idempotency.abort`). Downstream model reasoning calls are never admitted without a working rate decision. When Redis recovers, later requests resume automatically.
+- **Local Health Endpoints**: Health probes (`/health`, `/livez`, `/readyz`) remain strictly process-local and do not query Redis.
+- **Tenant Quotas**: Multi-tenant platform quotas remain best enforced at an API gateway or ingress tier; Redis enables the service's own rate limit and idempotency guarantees to remain correct across horizontal scaling.
+
 ### Production settings
 
 Setting `SWAGGER_ENABLED=false` (see [configuration](configuration.md)) is recommended in production deployments to disable Swagger UI interactive documentation, OpenAPI specification endpoints, and static asset routes. When disabled, `/swagger/index.html`, `/swagger/doc.json`, and static assets are not registered and return HTTP 404 with the standard `not_found` error envelope.

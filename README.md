@@ -196,7 +196,7 @@ Response:
 
 ## Limitations
 
-- **In-Memory Rate Limiting**: Rate limiting operates per replica in memory, keyed by client IP (masked to `/64` for IPv6). Distributed deployments requiring global rate limits should enforce quotas at an API gateway or reverse proxy.
+- **In-Memory Rate Limiting**: When `REDIS_URL` is unset, rate limiting operates per replica in memory, keyed by client IP (masked to `/64` for IPv6). Setting `REDIS_URL` shares rate-limit budgets and plan idempotency records across all replicas. For multi-tenant platform limits, gateway enforcement remains recommended.
 - **Client Disconnects**: Client HTTP disconnects do not cancel in-flight Bedrock reasoning. Work continues until `REQUEST_TIMEOUT` expires.
 - **Single Shared Secret**: Authentication relies on a single shared secret without caller identity or per-tenant authorization. Fine-grained authorization and multi-tenant isolation belong at the platform or gateway tier.
 - **Native Library Initialization**: The BAML CFFI dynamic library is loaded during package initialization before `main` executes; missing or mismatched libraries panic directly to `stderr` in plain text prior to structured JSON logger initialization.

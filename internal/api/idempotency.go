@@ -40,24 +40,32 @@ func Idempotency(store idempotency.Store, scope func(fiber.Ctx) string, logger *
 			c.Set("Retry-After", "1")
 			return c.Status(409).JSON(domain.ErrorResponse{Error: "idempotency_key_in_progress", Details: "request with this Idempotency-Key is still in progress"})
 		}
-		completed := false
+		settled := false
 		defer func() {
-			if !completed {
+			if !settled {
 				if err := store.Abort(c.Context(), key, reservation.Token); err != nil {
 					logger.ErrorContext(c.Context(), "storage.failed", "operation", "idempotency.abort")
 				}
 			}
 		}()
-		if err := c.Next(); err != nil {
-			return err
-		}
-		if c.Response().StatusCode() == 200 {
-			response := idempotency.Response{Status: 200, Body: c.Response().Body(), ContentType: strings.Clone(c.GetRespHeader("Content-Type"))}
-			if err := store.Complete(c.Context(), key, reservation.Token, response); err != nil {
-				return storageUnavailable(c, logger, "idempotency.complete")
+		nextErr := c.Next()
+		if nextErr != nil || c.Response().StatusCode() != 200 {
+			abortErr := store.Abort(c.Context(), key, reservation.Token)
+			settled = true
+			if abortErr != nil {
+				return storageUnavailable(c, logger, "idempotency.abort")
 			}
-			completed = true
+			return nextErr
 		}
+		response := idempotency.Response{Status: 200, Body: c.Response().Body(), ContentType: strings.Clone(c.GetRespHeader("Content-Type"))}
+		if err := store.Complete(c.Context(), key, reservation.Token, response); err != nil {
+			if abortErr := store.Abort(c.Context(), key, reservation.Token); abortErr != nil {
+				logger.ErrorContext(c.Context(), "storage.failed", "operation", "idempotency.abort")
+			}
+			settled = true
+			return storageUnavailable(c, logger, "idempotency.complete")
+		}
+		settled = true
 		return nil
 	}
 }
