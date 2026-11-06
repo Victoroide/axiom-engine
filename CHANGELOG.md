@@ -40,6 +40,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Operations runbook (`docs/operations.md`) covering circuit breaker trips, Bedrock throttling, queue saturation, credential and region resolution, native library failures, cost controls, and production metrics.
 - Authenticated curriculum topic listing (`GET /api/v1/topics`) and prerequisite path inspection (`GET /api/v1/topics/{topic}/path`) endpoints providing canonical substring filtering, direct prerequisite and dependent sets, and study-ordered prerequisite chains without model provider calls.
 - Attach native release archives for Linux and macOS, signed checksums, and SLSA build provenance to published releases, with build and smoke verification coverage in dry-run mode.
+- Accept optional learner history on adaptive plan (`mastered_topics`) and cognitive graph (`mastered`) requests to omit mastered prerequisites from study recommendations and distinguish unassessed concepts, bounded by `MAX_MASTERED_TOPICS` (default 100).
 
 ### Changed
 

@@ -206,11 +206,11 @@ make cover
 ```
 
 Coverage areas include:
-- `internal/config`: validation of environment variables, timeouts, port numbers, log levels, CIDR proxy allowlists, and origin URLs.
-- `internal/graph`: in-memory graph construction, cycle-safe BFS traversal, topological sorting, prerequisite extraction, and JSON file parsing.
-- `internal/llm`: BAML adapter translation, context cancellation propagation, and error wrapping.
-- `internal/service`: reasoning pipeline orchestration, duplicate elimination, unknown topic rejection, VARK style validation, and circuit breaker state transitions.
-- `internal/server` and `internal/api`: Fiber v3 routing, constant-time token verification, sliding-window rate limiting, request ID propagation, structured access logging, panic recovery, and error response formatting.
+- `internal/config`: validation of environment variables, timeouts, port numbers, log levels, CIDR proxy allowlists, origin URLs, and learner history limits (`MAX_MASTERED_TOPICS`).
+- `internal/graph`: in-memory graph construction, cycle-safe BFS traversal, topological sorting, prerequisite extraction, JSON file parsing, cognitive shadow state classification with and without learner history, and response byte-compatibility assertions for legacy requests.
+- `internal/llm`: BAML adapter translation, context cancellation propagation, error wrapping, and prompt exclusion of mastered prerequisites.
+- `internal/service`: reasoning pipeline orchestration, duplicate elimination, unknown topic rejection, VARK style validation, learner history validation, exclusion of mastered prerequisites from study sequences, full graph prerequisite chain retention, removal of generated mastered items during validation, `_meta.items_skipped_mastered` accounting, and circuit breaker state transitions.
+- `internal/server` and `internal/api`: Fiber v3 routing, constant-time token verification, sliding-window rate limiting, request ID propagation, structured access logging, panic recovery, error response formatting, query and body validation for learner history (contradictory topic history, mastery limits, repeated, comma-separated, and empty query parameters, and cognitive shadow states including `unassessed`).
 
 #### Goroutine leak detection
 
@@ -284,8 +284,8 @@ The contract runner loads `docs/swagger.json`, converts Swagger 2.0 to OpenAPI 3
 
 Coverage includes:
 - Probes: HTTP 200, 400 for malformed requests, 408 on the read deadline, 413 for oversized bodies, and 431 for oversized headers on `/health`, `/livez`, and `/readyz`.
-- Adaptive plan (`/api/v1/adaptive-plan`): HTTP 200; 400 for malformed JSON and schema validation errors; 401, 408, 413, 415, 422, 429, 431; 500 route-handler panic recovery; 502 when upstream returns no usable items; 503 for upstream throttling, open circuit breaker, and queue saturation; and 504 on deadline expiration.
-- Cognitive graph (`/api/v1/tutor/student/:student_id/cognitive-graph`): HTTP 200; 400 for invalid student identifiers and target topics outside the resolved topic set; 401, 408, 413, 422, 429, 431, and 500.
+- Adaptive plan (`/api/v1/adaptive-plan`): HTTP 200; 400 for malformed JSON and schema validation errors; 401, 408, 413, 415, 422, 429, 431; 500 route-handler panic recovery; 502 when upstream returns no usable items; 503 for upstream throttling, open circuit breaker, and queue saturation; and 504 on deadline expiration. Validates `mastered_topics` and `_meta.items_skipped_mastered` response metadata.
+- Cognitive graph (`/api/v1/tutor/student/:student_id/cognitive-graph`): HTTP 200; 400 for invalid student identifiers and target topics outside the resolved topic set; 401, 408, 413, 422, 429, 431, and 500. Validates `mastered` query parameter.
 - Router path errors: HTTP 404 (unmatched routes), 405 (unsupported methods on registered routes), and 501 (methods outside router configuration, such as `PROPFIND`), asserting the standard `domain.ErrorResponse` envelope.
 
 Transport execution:

@@ -22,16 +22,17 @@ import (
 
 // Handler contains the dependencies of the versioned HTTP API.
 type Handler struct {
-	reasoning *service.ReasoningService
-	graph     *graph.InMemoryGraph
-	timeout   time.Duration
-	maxTopics int
-	logger    *slog.Logger
+	reasoning   *service.ReasoningService
+	graph       *graph.InMemoryGraph
+	timeout     time.Duration
+	maxTopics   int
+	maxMastered int
+	logger      *slog.Logger
 }
 
 // NewHandler constructs the reasoning HTTP boundary.
-func NewHandler(r *service.ReasoningService, g *graph.InMemoryGraph, timeout time.Duration, maxTopics int, logger *slog.Logger) *Handler {
-	return &Handler{reasoning: r, graph: g, timeout: timeout, maxTopics: maxTopics, logger: logger}
+func NewHandler(r *service.ReasoningService, g *graph.InMemoryGraph, timeout time.Duration, maxTopics, maxMastered int, logger *slog.Logger) *Handler {
+	return &Handler{reasoning: r, graph: g, timeout: timeout, maxTopics: maxTopics, maxMastered: maxMastered, logger: logger}
 }
 
 // RegisterRoutes attaches the versioned API routes.
@@ -152,13 +153,14 @@ func validationResponse(c fiber.Ctx, err *service.ValidationError) error {
 
 // handleCognitiveGraph returns a deterministic concept neighborhood.
 // @Summary Get cognitive shadow graph
-// @Description Return concept nodes annotated with failed, learning or mastered state.
+// @Description Return concept nodes annotated with failed, learning, mastered or unassessed state.
 // @ID getCognitiveGraph
 // @Tags Tutor
 // @Produce json
 // @Security InternalToken
 // @Param student_id path string true "Student identifier" example(student-42)
 // @Param topics query string true "Comma-separated failed topic names; may be repeated" example(Polymorphism,Recursion)
+// @Param mastered query []string false "Mastered topic names; may be repeated or comma-separated" collectionFormat(multi)
 // @Param target_topic query string false "Center the subgraph on one topic; must be one of topics" example(Recursion)
 // @Success 200 {object} domain.CognitiveGraphResponse
 // @Failure 400 {object} domain.ErrorResponse
@@ -202,6 +204,25 @@ func (h *Handler) handleCognitiveGraph(c fiber.Ctx) error {
 			return validationResponse(c, &service.ValidationError{Details: "target_topic must be one of topics"})
 		}
 		target = stored
+	}
+
+	values := c.Request().URI().QueryArgs().PeekMulti("mastered")
+	if len(values) > 0 {
+		mastered := make([]string, 0)
+		for _, value := range values {
+			for _, topic := range strings.Split(string(value), ",") {
+				if strings.TrimSpace(topic) != "" {
+					mastered = append(mastered, topic)
+				}
+			}
+		}
+		mastered, err = service.ValidateMasteredTopics("mastered", mastered, topics, h.maxMastered, h.graph)
+		if err != nil {
+			var validation *service.ValidationError
+			errors.As(err, &validation)
+			return validationResponse(c, validation)
+		}
+		return c.JSON(h.graph.GenerateCognitiveShadow(topics, target, mastered))
 	}
 	return c.JSON(h.graph.GenerateCognitiveShadow(topics, target))
 }

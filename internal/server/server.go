@@ -250,8 +250,8 @@ func registerAPI(app *fiber.App, cfg config.Config, deps Dependencies, logger *s
 	app.Use("/api/v1", limiter.New(limiter.Config{Max: cfg.RateLimitMax, Expiration: cfg.RateLimitWindow, LimiterMiddleware: limiter.SlidingWindow{}, KeyGenerator: rateLimitKey, LimitReached: func(c fiber.Ctx) error {
 		return c.Status(fiber.StatusTooManyRequests).JSON(domain.ErrorResponse{Error: "rate_limit_exceeded", Details: "too many requests"})
 	}}))
-	reasoning := service.NewReasoningService(deps.Graph, deps.Planner, service.Options{LLMTimeout: cfg.LLMTimeout, MaxFailedTopics: cfg.MaxFailedTopics, MaxConcurrency: cfg.LLMMaxConcurrency, QueueTimeout: cfg.LLMQueueTimeout, Logger: logger, Metrics: recorder})
-	api.NewHandler(reasoning, deps.Graph, cfg.RequestTimeout, cfg.MaxFailedTopics, logger).RegisterRoutes(app)
+	reasoning := service.NewReasoningService(deps.Graph, deps.Planner, service.Options{LLMTimeout: cfg.LLMTimeout, MaxFailedTopics: cfg.MaxFailedTopics, MaxMasteredTopics: cfg.Mastery.MaxTopics, MaxConcurrency: cfg.LLMMaxConcurrency, QueueTimeout: cfg.LLMQueueTimeout, Logger: logger, Metrics: recorder})
+	api.NewHandler(reasoning, deps.Graph, cfg.RequestTimeout, cfg.MaxFailedTopics, cfg.Mastery.MaxTopics, logger).RegisterRoutes(app)
 }
 
 // healthHandler provides the legacy liveness alias.

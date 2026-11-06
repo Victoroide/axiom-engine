@@ -13,6 +13,7 @@ import (
 
 // Config contains startup configuration for the service.
 type Config struct {
+	Mastery               Mastery
 	Port                  string
 	AuthDisabled          bool
 	InternalToken         string
@@ -211,6 +212,9 @@ func Load(getenv func(string) string) (Config, error) {
 	}
 	if c.AuthDisabled && c.InternalToken != "" {
 		return Config{}, fmt.Errorf("AXIOM_AUTH_DISABLED must be false when AXIOM_INTERNAL_TOKEN is configured")
+	}
+	if err := loadMastery(getenv, &c); err != nil {
+		return Config{}, err
 	}
 	return c, nil
 }

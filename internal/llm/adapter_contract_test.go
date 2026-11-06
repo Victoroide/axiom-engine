@@ -258,3 +258,20 @@ func TestAdapterRequestFailuresKeepCircuitAvailable(t *testing.T) {
 		})
 	}
 }
+
+func TestPromptExcludesMasteredPrerequisiteOrder(t *testing.T) {
+	upstream := bedrockEndpoint(t, "ok")
+	svc := service.NewReasoningService(graph.NewInMemoryGraph(), New(), service.Options{LLMTimeout: 5 * time.Second, MaxFailedTopics: 10})
+	_, err := svc.GeneratePlan(t.Context(), domain.AdaptivePlanRequest{FailedTopics: []string{"Recursion"}, MasteredTopics: []string{"Functions"}, VARKProfile: "visual"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	bodies := upstream.Bodies()
+	if len(bodies) != 1 {
+		t.Fatalf("requests=%d", len(bodies))
+	}
+	// The graph remains complete, but the study sequence excludes known material.
+	if !strings.Contains(bodies[0], "PREREQUISITE ORDER") || strings.Contains(bodies[0], "1. Functions") || !strings.Contains(bodies[0], "TARGET FAILED TOPIC: Recursion") {
+		t.Fatalf("unexpected prerequisite order: %s", bodies[0])
+	}
+}

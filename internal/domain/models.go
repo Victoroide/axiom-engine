@@ -20,6 +20,9 @@ type AdaptivePlanRequest struct {
 	// representing concepts the student has not yet mastered.
 	FailedTopics []string `json:"failed_topics" example:"Polymorphism,Recursion"`
 
+	// MasteredTopics lists concepts already known by the learner.
+	MasteredTopics []string `json:"mastered_topics,omitempty" example:"Functions"`
+
 	// VARKProfile specifies the student's dominant learning modality.
 	// Accepted values: "visual", "auditory", "read_write", "kinesthetic".
 	VARKProfile string `json:"vark_profile" example:"visual"`
@@ -147,6 +150,9 @@ type PipelineMeta struct {
 	// ItemsDropped counts distinct items outside the requested prerequisite closure.
 	ItemsDropped int `json:"items_dropped" example:"1"`
 
+	// ItemsSkippedMastered counts distinct mastered prerequisites excluded from study.
+	ItemsSkippedMastered int `json:"items_skipped_mastered,omitempty" example:"2"`
+
 	// LLMLatencyMs is the wall-clock time (milliseconds) spent waiting
 	// for all parallel LLM calls to complete.
 	LLMLatencyMs int64 `json:"llm_latency_ms" example:"3240"`
@@ -171,7 +177,8 @@ type VisualNode struct {
 	//   "failed"   -- the student explicitly failed this topic.
 	//   "learning" -- this topic is a prerequisite of a failed topic.
 	//   "mastered" -- no evidence of deficit; presumed mastered.
-	CognitiveState string `json:"cognitive_state" example:"failed"`
+	//   "unassessed" -- no evidence when learner history is supplied.
+	CognitiveState string `json:"cognitive_state" example:"failed" enums:"failed,learning,mastered,unassessed"`
 }
 
 // VisualEdge represents a directed relationship between two nodes in the

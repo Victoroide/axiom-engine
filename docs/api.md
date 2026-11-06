@@ -78,7 +78,7 @@ The `details` field provides context when available and is omitted when empty. U
 | HTTP Status | Error Code (`error`) | Description | Trigger |
 |---|---|---|---|
 | `400 Bad Request` | `invalid_request_body` | Request body fails JSON parsing or strict schema decoding | Malformed JSON, non-object body, trailing tokens, unknown or duplicate fields, case mismatches, or null array elements |
-| `400 Bad Request` | `validation_error` | Request payload fails schema validation | Missing required fields, invalid VARK profile, or too many topics |
+| `400 Bad Request` | `validation_error` | Request payload fails schema validation | Missing required fields, invalid VARK profile, too many topics, or contradictory topic history |
 | `400 Bad Request` | `bad_request` | Generic client error | Malformed HTTP request, query parameters, or path encoding |
 | `401 Unauthorized` | `unauthorized` | Token authentication failure | Missing or incorrect `X-Internal-Token` or `Authorization: Bearer` |
 | `404 Not Found` | `not_found` | Resource does not exist | Unmatched route path |
@@ -86,7 +86,7 @@ The `details` field provides context when available and is omitted when empty. U
 | `408 Request Timeout` | `request_timeout` | Request read deadline exceeded | Request not read within the 10 s read timeout |
 | `413 Payload Too Large` | `payload_too_large` | Request body exceeds limit | Inbound payload exceeds the 64 KiB (65,536 bytes) limit |
 | `415 Unsupported Media Type` | `unsupported_media_type` | Media type not supported | Missing, malformed, unsupported charset, or non-JSON `Content-Type` header on `POST /api/v1/adaptive-plan` requests |
-| `422 Unprocessable Entity` | `validation_error` | Concept not found in knowledge graph | One or more topics in `failed_topics`, `topics`, or `target_topic` do not exist, or unresolvable topic in `GET /api/v1/topics/{topic}/path` |
+| `422 Unprocessable Entity` | `validation_error` | Concept not found in knowledge graph | One or more topics in `failed_topics`, `mastered_topics`, `topics`, `mastered`, or `target_topic` do not exist, or unresolvable topic in `GET /api/v1/topics/{topic}/path` |
 | `429 Too Many Requests` | `rate_limit_exceeded` | Client rate limit exceeded | Inbound requests exceed `RATE_LIMIT_MAX` within `RATE_LIMIT_WINDOW` |
 | `431 Request Header Fields Too Large` | `request_header_fields_too_large` | Request header fields exceed limit | Inbound request headers exceed the server header limit |
 | `500 Internal Server Error` | `internal_error` | Unhandled server error | Unexpected internal failure or recovered panic |
@@ -237,13 +237,14 @@ Generates a personalized, prerequisite-ordered study plan for a student based on
   - `student_id`: Optional. If provided, must match regex `^[A-Za-z0-9._:-]{1,128}$`.
   - `course_id`: Optional. If provided, must match regex `^[A-Za-z0-9._:-]{1,128}$`.
   - `failed_topics`: Required. Array of strings. Must contain at least 1 and at most `MAX_FAILED_TOPICS` (default 10) unique items. Elements must not be null (`failed_topics must not contain null elements`). Topics resolve canonically across case, whitespace, and Unicode composition differences (see [Node Naming](knowledge-graph.md#node-naming)). Inbound topics are deduplicated by canonical form while preserving request order before validating the `MAX_FAILED_TOPICS` limit. Responses return authoritative stored node names. Upstream model recommendations are also matched canonically, deduplicated, and mapped to authoritative stored graph node names. Topics that do not resolve to a graph node return HTTP 422 `validation_error`.
+  - `mastered_topics`: Optional. Array of strings. Lists concepts already mastered by the learner. Must contain at most `MAX_MASTERED_TOPICS` (default 100) unique items. Elements must not be null (`mastered_topics must not contain null elements`). Topics resolve canonically across case, whitespace, and Unicode composition differences and are deduplicated by canonical form while preserving request order before validating the `MAX_MASTERED_TOPICS` limit. Topics that do not resolve to a graph node return HTTP 422 `validation_error`. If any topic appears in both `failed_topics` and `mastered_topics`, the request returns HTTP 400 `validation_error` (`a topic must not be both failed and mastered: "TOPIC"`). Exceeding `MAX_MASTERED_TOPICS` returns HTTP 400 `validation_error`. Mastered prerequisites are excluded from the prerequisite order passed upstream to the model and from returned items; requested failed topics always remain. Returned items retain their full graph prerequisite chain (`prerequisite_chain`).
   - `vark_profile`: Required. String enum. Must be one of `visual`, `auditory`, `read_write`, or `kinesthetic`.
   - `telemetry`: Optional object containing client telemetry (`session_id`, `timestamp_unix`, `duration_ms`, `client_version`). Unknown nested fields are rejected.
 
 #### Responses
 
-- **200 OK**: Successfully generated adaptive plan. Every requested canonical topic is guaranteed to retain a study item. Response metadata (`_meta`) reports execution statistics: `items_after_validation` counts study items retained within the requested topics and their prerequisite closure, while `items_dropped` counts distinct items outside this closure or absent from the graph (also emitted in `stage.validation` warning logs). Duplicate items removed during merging are not counted.
-- **400 Bad Request**: Malformed body, missing required fields, or identifier syntax error.
+- **200 OK**: Successfully generated adaptive plan. Every requested canonical topic is guaranteed to retain a study item. Response metadata (`_meta`) reports execution statistics: `items_after_validation` counts study items retained within the requested topics and their prerequisite closure, while `items_dropped` counts distinct items outside this closure, absent from the graph, or matching mastered topics removed during validation (also emitted in `stage.validation` warning logs). `items_skipped_mastered` counts distinct mastered prerequisites across the requested topics' prerequisite closures omitted from study; it is omitted when zero. Duplicate items removed during merging are not counted.
+- **400 Bad Request**: Malformed body, missing required fields, contradictory topic history, or identifier syntax error.
 - **401 Unauthorized**: Missing or invalid authentication token.
 - **408 Request Timeout**: Request not read within the 10 s read timeout.
 - **413 Payload Too Large**: Payload exceeds 64 KiB.
@@ -353,7 +354,7 @@ X-RateLimit-Reset: 60
 
 ### GET /api/v1/tutor/student/:student_id/cognitive-graph
 
-Computes a depth-1 concept neighborhood around failed topics for a learner, classifying each concept into `failed`, `learning`, or `mastered` states.
+Computes a depth-1 concept neighborhood around failed topics for a learner, classifying each concept into `failed`, `learning`, or `mastered` states (or `unassessed` when learner history is supplied).
 
 - **Method**: `GET`
 - **Path**: `/api/v1/tutor/student/:student_id/cognitive-graph`
@@ -363,16 +364,17 @@ Computes a depth-1 concept neighborhood around failed topics for a learner, clas
   - `student_id`: Required string. Must match regex `^[A-Za-z0-9._:-]{1,128}$`. Validated and otherwise unused; the service stores and looks up no per-student data.
 - **Query Parameters**:
   - `topics`: Required string. Comma-separated list of failed topic names; may also be supplied across repeated query parameters (for example, `topics=Recursion&topics=Polymorphism`), and comma-separated lists and repeated parameters may be mixed. All supplied values form a unified topic collection. Canonical resolution and deduplication occur before validating that the union contains between 1 and `MAX_FAILED_TOPICS` unique topics; every topic in the union must exist in the knowledge graph.
+  - `mastered`: Optional string. Comma-separated list of mastered topic names; may also be supplied across repeated query parameters (for example, `mastered=Functions&mastered=Variables`), and comma-separated lists and repeated parameters may be mixed. Canonical resolution and deduplication occur before validating that the union contains at most `MAX_MASTERED_TOPICS` unique topics. Every topic in the union must exist in the knowledge graph; unknown topics return HTTP 422 `validation_error` naming `mastered`. A topic present in both `topics` and `mastered` returns HTTP 400 `validation_error` (`a topic must not be both failed and mastered: "TOPIC"`). Exceeding `MAX_MASTERED_TOPICS` returns HTTP 400 `validation_error` naming `mastered`. An explicit empty `mastered=` or `mastered=,` parameter supplies empty history. When `mastered` is supplied, concept states follow precedence `failed` > `mastered` > `learning` > `unassessed`; without `mastered`, legacy states (`failed`, `learning`, `mastered`) are returned unchanged.
   - `target_topic`: Optional string. At most one occurrence is allowed, including empty occurrences; repeated `target_topic` parameters return HTTP 400 `validation_error` (`target_topic must not be repeated`). When a single non-empty value is provided, it centers the depth-1 subgraph around this specific topic instead of all failed topics. It resolves canonically across case, whitespace, and Unicode composition variants (see [Node Naming](knowledge-graph.md#node-naming)) and must be a member of the resolved `topics` union. A missing or single empty value leaves the graph centered on all requested topics. If non-empty and not present in the knowledge graph, returns HTTP 422 with a bounded quoted echo; if present in the knowledge graph but outside the resolved `topics` union, returns HTTP 400 `validation_error` with `target_topic must be one of topics`.
 
 #### Responses
 
 - **200 OK**: Cognitive shadow graph calculated and pruned of orphan nodes.
-- **400 Bad Request**: Invalid `student_id` (does not match identifier format); no non-empty topics supplied; more than `MAX_FAILED_TOPICS` unique topics across all `topics` values; repeated `target_topic` query parameter; or known `target_topic` outside the resolved `topics` union (`target_topic must be one of topics`).
+- **400 Bad Request**: Invalid `student_id` (does not match identifier format); no non-empty topics supplied; more than `MAX_FAILED_TOPICS` unique topics across all `topics` values; more than `MAX_MASTERED_TOPICS` unique topics across `mastered` values; topic present in both `topics` and `mastered`; repeated `target_topic` query parameter; or known `target_topic` outside the resolved `topics` union (`target_topic must be one of topics`).
 - **401 Unauthorized**: Missing or invalid authentication token.
 - **408 Request Timeout**: Request not read within the 10 s read timeout.
 - **413 Payload Too Large**: Request body exceeds 64 KiB.
-- **422 Unprocessable Entity**: Unrecognized topic in `topics` or `target_topic`.
+- **422 Unprocessable Entity**: Unrecognized topic in `topics`, `mastered`, or `target_topic`.
 - **429 Too Many Requests**: Rate limit exceeded.
 - **431 Request Header Fields Too Large**: Inbound request headers exceed the server limit.
 - **500 Internal Server Error**: Unexpected internal failure or recovered panic.
