@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"log/slog"
 	"mime"
-	"slices"
 	"strconv"
 	"strings"
 	"time"
@@ -114,67 +113,25 @@ func (h *Handler) writePipelineError(c fiber.Ctx, ctx context.Context, err error
 }
 
 func (h *Handler) classifyPipelineError(ctx context.Context, requestID string, err error, parentCanceled bool) pipelineFailure {
-	var validation *service.ValidationError
-	if errors.As(err, &validation) {
-		status := fiber.StatusBadRequest
-		if len(validation.UnknownTopics) > 0 {
-			status = fiber.StatusUnprocessableEntity
-		}
-		return pipelineFailure{status: status, envelope: domain.ErrorResponse{Error: "validation_error", Details: validation.Details}}
+	failure := service.ClassifyError(err, errors.Is(err, context.Canceled) && parentCanceled)
+	retrySeconds := int64(failure.RetryAfter / time.Second)
+	if failure.RetryAfter%time.Second != 0 {
+		retrySeconds++
 	}
-	shuttingDown := errors.Is(err, context.Canceled) && parentCanceled
-	var unavailable *service.UnavailableError
-	status, code, message := fiber.StatusInternalServerError, "internal_error", "reasoning failed"
-	switch {
-	case errors.Is(err, context.DeadlineExceeded):
-		status, code, message = fiber.StatusGatewayTimeout, "gateway_timeout", "reasoning exceeded deadline"
-	case errors.Is(err, service.ErrThrottled):
-		status, code, message = fiber.StatusServiceUnavailable, "service_unavailable", "upstream throttled"
-	case errors.Is(err, service.ErrCircuitOpen) || errors.As(err, &unavailable):
-		status, code, message = fiber.StatusServiceUnavailable, "service_unavailable", "reasoning temporarily unavailable"
-	case shuttingDown:
-		status, code, message = fiber.StatusServiceUnavailable, "service_unavailable", "server shutting down"
-	case errors.Is(err, context.Canceled):
-		status, code, message = fiber.StatusRequestTimeout, "request_timeout", "request canceled"
-	case errors.Is(err, service.ErrInvalidOutput):
-		status, code, message = fiber.StatusBadGateway, "bad_gateway", "model returned no usable item"
-	case errors.Is(err, service.ErrUpstream):
-		status, code, message = fiber.StatusBadGateway, "bad_gateway", "upstream reasoning failed"
+	if failure.Response.Error != "validation_error" {
+		attrs := []slog.Attr{slog.String("request_id", requestID), slog.String("error_class", failure.Response.Error)}
+		var topicErr *service.TopicError
+		if errors.As(err, &topicErr) {
+			attrs = append(attrs, slog.String("topic", fmt.Sprintf("%.128s", topicErr.Topic)))
+		}
+		h.logger.LogAttrs(ctx, slog.LevelError, "request.failed", attrs...)
 	}
-
-	retrySeconds := int64(0)
-	if status == fiber.StatusServiceUnavailable {
-		retryAfter := 15 * time.Second
-		if errors.Is(err, service.ErrThrottled) {
-			retryAfter = 5 * time.Second
-		}
-		if errors.As(err, &unavailable) && unavailable.RetryAfter > 0 {
-			retryAfter = unavailable.RetryAfter
-		}
-		if shuttingDown {
-			retryAfter = time.Second
-		}
-		seconds := retryAfter / time.Second
-		if retryAfter%time.Second != 0 {
-			seconds++
-		}
-		retrySeconds = int64(seconds)
-	}
-	attrs := []slog.Attr{slog.String("request_id", requestID), slog.String("error_class", code)}
-	var topicErr *service.TopicError
-	if errors.As(err, &topicErr) {
-		attrs = append(attrs, slog.String("topic", fmt.Sprintf("%.128s", topicErr.Topic)))
-	}
-	h.logger.LogAttrs(ctx, slog.LevelError, "request.failed", attrs...)
-	return pipelineFailure{status: status, envelope: domain.ErrorResponse{Error: code, Details: message}, retrySeconds: retrySeconds}
+	return pipelineFailure{status: failure.Status, envelope: failure.Response, retrySeconds: retrySeconds}
 }
 
 func validationResponse(c fiber.Ctx, err *service.ValidationError) error {
-	status := fiber.StatusBadRequest
-	if len(err.UnknownTopics) > 0 {
-		status = fiber.StatusUnprocessableEntity
-	}
-	return c.Status(status).JSON(domain.ErrorResponse{Error: "validation_error", Details: err.Details})
+	failure := service.ClassifyError(err, false)
+	return c.Status(failure.Status).JSON(failure.Response)
 }
 
 // handleCognitiveGraph returns a deterministic concept neighborhood.
@@ -213,46 +170,24 @@ func (h *Handler) handleCognitiveGraph(c fiber.Ctx) error {
 	for _, value := range c.Request().URI().QueryArgs().PeekMulti("topics") {
 		requested = append(requested, strings.Split(string(value), ",")...)
 	}
-	topics, err := service.ValidateTopics("topics", requested, h.maxTopics, h.graph)
+	targets := make([]string, 0, 1)
+	for _, value := range c.Request().URI().QueryArgs().PeekMulti("target_topic") {
+		targets = append(targets, string(value))
+	}
+	var mastered []string
+	if values := c.Request().URI().QueryArgs().PeekMulti("mastered"); len(values) > 0 {
+		mastered = make([]string, 0)
+		for _, value := range values {
+			mastered = append(mastered, strings.Split(string(value), ",")...)
+		}
+	}
+	result, err := service.CognitiveGraph(requested, targets, mastered, h.maxTopics, h.maxMastered, h.graph)
 	if err != nil {
 		var validation *service.ValidationError
 		errors.As(err, &validation)
 		return validationResponse(c, validation)
 	}
-	if len(c.Request().URI().QueryArgs().PeekMulti("target_topic")) > 1 {
-		return validationResponse(c, &service.ValidationError{Details: "target_topic must not be repeated"})
-	}
-	target := strings.TrimSpace(c.Query("target_topic"))
-	if target != "" {
-		stored, ok := h.graph.Resolve(target)
-		if !ok {
-			return validationResponse(c, &service.ValidationError{Details: "unknown target_topic: " + service.QuoteValue(target), UnknownTopics: []string{target}})
-		}
-		if !slices.Contains(topics, stored) {
-			return validationResponse(c, &service.ValidationError{Details: "target_topic must be one of topics"})
-		}
-		target = stored
-	}
-
-	values := c.Request().URI().QueryArgs().PeekMulti("mastered")
-	if len(values) > 0 {
-		mastered := make([]string, 0)
-		for _, value := range values {
-			for _, topic := range strings.Split(string(value), ",") {
-				if strings.TrimSpace(topic) != "" {
-					mastered = append(mastered, topic)
-				}
-			}
-		}
-		mastered, err = service.ValidateMasteredTopics("mastered", mastered, topics, h.maxMastered, h.graph)
-		if err != nil {
-			var validation *service.ValidationError
-			errors.As(err, &validation)
-			return validationResponse(c, validation)
-		}
-		return c.JSON(h.graph.GenerateCognitiveShadow(topics, target, mastered))
-	}
-	return c.JSON(h.graph.GenerateCognitiveShadow(topics, target))
+	return c.JSON(result)
 }
 
 func readPlanRequest(c fiber.Ctx) (domain.AdaptivePlanRequest, bool, error) {

@@ -1,6 +1,7 @@
 package api
 
 import (
+	"errors"
 	"net/url"
 
 	"github.com/gofiber/fiber/v3"
@@ -63,9 +64,11 @@ func (h *Handler) handleTopicPath(c fiber.Ctx) error {
 	if decoded, err := url.PathUnescape(topic); err == nil {
 		topic = decoded
 	}
-	path, ok := h.graph.Path(topic)
-	if !ok {
-		return validationResponse(c, &service.ValidationError{Details: "unknown topic: " + service.QuoteValue(topic), UnknownTopics: []string{topic}})
+	path, err := service.TopicPath(topic, h.graph)
+	if err != nil {
+		var validation *service.ValidationError
+		errors.As(err, &validation)
+		return validationResponse(c, validation)
 	}
 	return c.JSON(path)
 }
