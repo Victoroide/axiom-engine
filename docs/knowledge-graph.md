@@ -85,11 +85,13 @@ The embedded seed curriculum structural summary:
 
 ### Seed Graph Topology
 
-Each arrow points from a topic to its prerequisite. Solid arrows are `depends_on`; dashed arrows are `is_a`.
+In the visual legend, solid arrows mean “required before” and point from a prerequisite to the topic that needs it. Dashed arrows mean “has subtype” and point from a general topic to its subtype. Both relations are drawn in study order, pointing from the foundational concept to the dependent concept. This maps to the stored curriculum triples `(subject, relation, object)` where `subject` depends on or is a subtype of `object`: a stored `(A, depends_on, B)` tuple means B is required before A (drawn B → A), while a stored `(A, is_a, B)` tuple means B has subtype A (drawn B --▸ A).
+
+The diagram organizes topics into four category sections identified by node ring colors: Object-Oriented (purple), Algorithms (orange), Linear and Hashing (teal), and Graphs and Trees (green), with Binary Search grouped under Algorithms. Motion highlights study progression through Variables → Objects → Classes → Inheritance → Polymorphism, followed by Functions → Recursion → Merge Sort.
 
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="assets/diagrams/seed-graph-dark.webp">
-  <img src="assets/diagrams/seed-graph-light.webp" width="100%" alt="Seed graph of 23 topics in four groups. Object-oriented: Generics and Design Patterns depend on Polymorphism, which depends on Inheritance, Classes, Objects and Variables; Design Patterns also depends on Interfaces, which depends on Abstract Classes, an is_a of Classes. Algorithms: Dynamic Programming and Merge Sort depend on Recursion, which depends on Functions. Linear and hashing: Binary Search and Hash Tables depend on Arrays. Graphs and trees: Graph Traversal depends on Graphs, Linked Lists and Pointers; AVL Trees is_a Binary Search Trees is_a Trees, which depends on Linked Lists.">
+  <source media="(prefers-color-scheme: dark)" srcset="assets/diagrams/seed-graph-dark.svg">
+  <img src="assets/diagrams/seed-graph-light.svg" width="100%" alt="Seed graph of 23 topics. Solid arrows point from prerequisites to dependents: Variables to Objects to Classes to Inheritance to Polymorphism, which leads to Generics and Design Patterns; Abstract Classes leads to Interfaces, which also leads to Design Patterns. In Algorithms, Functions leads to Recursion, then Merge Sort and Dynamic Programming; Arrays leads to Binary Search. In Linear and hashing, Arrays leads to Hash Tables. In Graphs and trees, Pointers leads to Linked Lists, then Graphs and Trees; Graphs leads to Graph Traversal. Dashed arrows shown as ‘has subtype’ in the legend connect Classes to Abstract Classes, Trees to Binary Search Trees, and Binary Search Trees to AVL Trees.">
 </picture>
 
 ---

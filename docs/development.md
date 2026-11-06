@@ -62,6 +62,8 @@ Run `make help` to inspect available Makefile targets:
 | `baml-check` | Check generator, module, and native-library pins agree. |
 | `native-baml` | Download and verify the pinned native library for this host. |
 | `generate` | Regenerate and format the BAML client. |
+| `diagrams` | Regenerate the vector documentation diagrams. |
+| `diagrams-check` | Check diagram geometry, sources and generated SVGs. |
 | `swagger` | Regenerate the Swagger specification and embedded docs. |
 | `build` | Build the stripped service binary with CGO. |
 | `release-archive` | Package the binary and verified native library for this host. |
@@ -177,15 +179,37 @@ Dependabot updates to the Dockerfile builder image that bump the `golang` tag fa
 
 ### Documentation diagrams
 
-The animated diagrams in [README.md](../README.md), [architecture.md](architecture.md) and [knowledge-graph.md](knowledge-graph.md) are rendered from the diagram documents in [docs/assets/diagrams/src](assets/diagrams/src). Each document pins a repository revision in `meta.repository` and cites the source lines its nodes depict, so update the revision and citations together with the change the diagram reflects.
+The animated diagrams in [README.md](../README.md), [architecture.md](architecture.md), and [knowledge-graph.md](knowledge-graph.md) are generated from JSON layout specifications in [docs/assets/diagrams/src](assets/diagrams/src). The generator tool in `tools/diagrams` parses these layouts, validates layout geometry and source consistency, and renders deterministic `<name>-light.svg` and `<name>-dark.svg` vector images with transparent backgrounds.
 
-To regenerate the images after editing a document:
+To regenerate diagrams after modifying layout specifications:
 
 ```sh
-DIAGRAM_RENDERER=/path/to/renderer.mjs python3 scripts/render-diagrams.py [name ...]
+make diagrams
 ```
 
-`DIAGRAM_RENDERER` is the diagram renderer's command-line script. The script also needs Node.js 18 or later, Google Chrome, and the Python packages `playwright` and `Pillow`. For each document it runs the renderer's checks, records one motion cycle in the light and dark themes, and writes `docs/assets/diagrams/<name>-light.webp` and `<name>-dark.webp`. The Markdown shows them with `<picture>`, so they follow the reader's color scheme. Nodes of `seed-graph` are drawn as circles; the component diagrams keep boxes.
+To validate geometry, source synchronization, and committed SVG freshness:
+
+```sh
+make diagrams-check
+```
+
+`make diagrams-check` runs `go test -count=1` without `-race`, with Go test caching disabled. The CI lint workflow executes `make diagrams-check` and also vets and lints the `tools` module (`go -C tools vet ./...` and `golangci-lint` against `.golangci.yml`).
+
+#### Layout and geometry rules
+
+Layouts enforce strict canvas dimensions and geometric constraints:
+- **Canvas limits**: width is up to 960 units; height is at most 640 units for `request-path` and `system-components`, and 1000 units for `seed-graph`.
+- **Geometry validation**: automated checks reject edge crossings, overlapping segments, undeclared collinear paths, shared node attachment points, and edges intersecting unrelated group boundaries. Parallel segments from different edges must stay at least 12 px apart at their nearest points. Collinear segments are allowed only when all endpoint nodes share a declared row or column, their projections are disjoint, and their segment-to-segment gap is at least 12 px.
+- **Grid alignment**: layout `row` and `column` identifiers enforce center alignment for seed circles, aligned top coordinates and uniform heights for box rows, and centered box columns within a tolerance of 0.5 px (with cumulative drift across multiple nodes strictly bounded). Connectors within declared box rows and columns follow their shared centerlines. Client, BAML client and Amazon Bedrock share a left edge. Seed nodes align to a strict center grid, and box rows use equal horizontal gaps where the layout allows.
+- **Source synchronization**: `system-components` dependency edges are validated against an architectural subset of actual Go package imports. For `seed-graph`, concept nodes and relations are verified against [internal/graph/seed.json](../internal/graph/seed.json), with the layout supplying coordinates and category classifications. Every seed edge is a straight segment between calculated circle borders.
+
+#### Typography and motion
+
+Text is rendered using bundled static Inter 4.1 TrueType fonts (`Inter-Regular.ttf` and `Inter-SemiBold.ttf`) stored under `tools/diagrams/fonts/` alongside their Open Font License (`OFL.txt`) and release verification checksums. Glyphs are converted to outlined vector paths once in `<defs>` and reused via `<use>` elements, ensuring standalone vector rendering without external font dependencies.
+
+In `seed-graph`, concept nodes render as circles sharing a uniform radius (59 px) calculated from measured wrapped glyph bounds, with at least 8 px clearance between text and the category ring, and at least 24 px spacing between circles and section labels. Study highlight fills use `#d4e8ff` in light mode and `#1c3a5e` in dark mode.
+
+Each diagram runs a seamless, infinite 8-second CSS keyframe animation loop animating only `opacity` and `stroke-dashoffset`. Under `@media (prefers-reduced-motion: reduce)`, all keyframe animations and highlight overlays are disabled, displaying static diagrams.
 
 ## Test layers
 

@@ -33,6 +33,7 @@ jobs:
             go.sum
             tools/go.sum
       - run: make lint
+      - run: make diagrams-check
   test:
     name: Test with race detection
     runs-on: ubuntu-latest

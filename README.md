@@ -21,8 +21,8 @@ AxiomEngine is a Go microservice that generates personalized, prerequisite-order
 ## Request Path
 
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="docs/assets/diagrams/request-path-dark.webp">
-  <img src="docs/assets/diagrams/request-path-light.webp" width="100%" alt="Request path: a client calls the router and middleware, which serves the public routes and passes /api/v1 requests through token authentication and the rate limiter to the adaptive plan and cognitive graph handlers. The plan handler runs the reasoning pipeline, which fans out per topic through the circuit breaker to the BAML client and Amazon Bedrock; the pipeline and the cognitive graph handler read the in-memory graph.">
+  <source media="(prefers-color-scheme: dark)" srcset="docs/assets/diagrams/request-path-dark.svg">
+  <img src="docs/assets/diagrams/request-path-light.svg" width="100%" alt="Request path from client through router and middleware. Public routes branch before token authentication. Protected requests pass the sliding-window rate limiter. Adaptive plans read the in-memory knowledge graph and call Amazon Bedrock through the reasoning pipeline, concurrency limit, circuit breaker and BAML client. Cognitive graph requests read the knowledge graph directly.">
 </picture>
 
 ## Quick Start
