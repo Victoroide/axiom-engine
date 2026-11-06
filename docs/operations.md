@@ -135,9 +135,18 @@ Invocations to Amazon Bedrock incur operational costs based on input and output 
 ### Operational Cost Factors
 
 - **Non-Idempotent Inferences**: Requests omitting `Idempotency-Key` or retried after failure trigger fresh model inferences and generate additional token consumption. Callers should supply an `Idempotency-Key` on retryable requests to replay cached responses without incurring model token costs.
-- **Client Disconnects**: Inbound HTTP processing does not terminate downstream Bedrock generation if the client drops the TCP connection before receiving a response; the task runs until `REQUEST_TIMEOUT` expires. Client timeouts should be configured conservatively to avoid terminating connections while work is completing.
+- **Client Disconnects**: On the non-streaming route (`POST /api/v1/adaptive-plan`), client HTTP disconnects do not cancel in-flight Bedrock reasoning; work continues until `REQUEST_TIMEOUT` expires. On the streaming route (`POST /api/v1/adaptive-plan/stream`), closing the connection cancels in-flight topic reasoning when the response stream closes, and the slots are released; keepalive comments every 2 seconds surface a broken connection on the next write. Client timeouts on the non-streaming route should be configured conservatively.
 - **Concurrency Caps**: Configure `LLM_MAX_CONCURRENCY` to control maximum parallel model invocations and prevent traffic spikes from generating unbounded token usage.
 - **Aborted Calls**: Calls cut off by `LLM_TIMEOUT` or `REQUEST_TIMEOUT` close the connection, but AWS documents no billing rule for aborted Converse calls. Assume their tokens may be billed.
+
+---
+
+## Access Logs and Disconnect Monitoring
+
+Every HTTP request produces an `http.access` structured log record. For streaming requests (`POST /api/v1/adaptive-plan/stream`), access records are emitted when the stream ends and measure the full connection duration:
+- `duration_ms`: Total stream duration in milliseconds from initial request reception until stream termination.
+- `client_disconnected`: Boolean attribute present and set to `true` when a stream terminates after a failed client write or keepalive flush.
+- `http_server_request_duration_seconds`: Histogram metric records the full stream duration for streaming routes.
 
 ---
 

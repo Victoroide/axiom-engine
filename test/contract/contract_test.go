@@ -489,3 +489,41 @@ func TestIdempotencyContract(t *testing.T) {
 	<-done
 	validateResponse(t, router, req, conflict)
 }
+
+func TestPlanStreamContract(t *testing.T) {
+	doc, router := loadContract(t)
+	const path = "/api/v1/adaptive-plan/stream"
+	operation := doc.Paths.Find(path)
+	if operation == nil || operation.Post == nil {
+		t.Fatal("stream route missing from Swagger")
+	}
+	if operation.Post.Responses.Status(http.StatusOK).Value.Content["text/event-stream"] == nil {
+		t.Fatal("stream media type missing")
+	}
+	events, ok := operation.Post.Extensions["x-events"]
+	if !ok {
+		t.Fatal("stream event descriptions missing")
+	}
+	encoded, err := json.Marshal(events)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, name := range []string{`"topic"`, `"plan"`, `"error"`, `"index"`, `"items_generated"`, `"status"`} {
+		if !bytes.Contains(encoded, []byte(name)) {
+			t.Errorf("event field %s missing", name)
+		}
+	}
+	app := newApp(t, nil, nil)
+	req := request("POST", path, validBody)
+	resp := call(t, app, req, http.StatusOK, "")
+	if !strings.HasPrefix(resp.Header.Get("Content-Type"), "text/event-stream") || !bytes.Contains(resp.Body, []byte("event: topic\n")) || !bytes.Contains(resp.Body, []byte("event: plan\n")) {
+		t.Fatalf("type=%q body=%s", resp.Header.Get("Content-Type"), resp.Body)
+	}
+	req = request("POST", path, `{"failed_topics":["unknown"],"vark_profile":"visual"}`)
+	validateResponse(t, router, req, call(t, app, req, http.StatusUnprocessableEntity, "validation_error"))
+	req = request("POST", path, "{")
+	validateResponse(t, router, req, call(t, app, req, http.StatusBadRequest, "invalid_request_body"))
+	req = request("POST", path, validBody)
+	req.Header.Del("X-Internal-Token")
+	validateResponse(t, router, req, call(t, app, req, http.StatusUnauthorized, "unauthorized"))
+}

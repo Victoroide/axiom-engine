@@ -211,7 +211,7 @@ Coverage areas include:
 - `internal/llm`: BAML adapter translation, context cancellation propagation, error wrapping, and prompt exclusion of mastered prerequisites.
 - `internal/service`: reasoning pipeline orchestration, duplicate elimination, unknown topic rejection, VARK style validation, learner history validation, exclusion of mastered prerequisites from study sequences, full graph prerequisite chain retention, removal of generated mastered items during validation, `_meta.items_skipped_mastered` accounting, per-topic progress callbacks, circuit breaker state transitions, and outbound resource link validation (HEAD with GET fallback on 405/501, redirect limits, shared deadlines, bounded concurrency, proxy/cookie exclusion, non-public dialer refusals, and `_meta.resources_unreachable`).
 - `internal/idempotency`: in-memory bounded store, reservation lifecycle, response TTL expiration, capacity eviction of expired before oldest entries, and concurrent access safety.
-- `internal/server` and `internal/api`: Fiber v3 routing, constant-time token verification, sliding-window rate limiting, request ID propagation, structured access logging, panic recovery, error response formatting, query and body validation for learner history (contradictory topic history, mastery limits, repeated, comma-separated, and empty query parameters, and cognitive shadow states including `unassessed`), resource link check configuration wiring, and idempotency replay, mismatch, and conflict contracts.
+- `internal/server` and `internal/api`: Fiber v3 routing, constant-time token verification, sliding-window rate limiting, request ID propagation, structured access logging, panic recovery, error response formatting, query and body validation for learner history (contradictory topic history, mastery limits, repeated, comma-separated, and empty query parameters, and cognitive shadow states including `unassessed`), resource link check configuration wiring, idempotency replay, mismatch, and conflict contracts, Server-Sent Events streaming contracts (event sequence, JSON errors before streaming, upstream error events, and deadlines), and real TCP disconnect cancellation with slot release.
 
 #### Goroutine leak detection
 
@@ -314,6 +314,7 @@ Execution flow:
    - Expands `POST /api/v1/adaptive-plan`, executes without credentials, and verifies HTTP 401 Unauthorized.
    - Opens the **Authorize** modal, enters the configured service token for the `InternalToken` (`X-Internal-Token`) scheme, and applies authorization.
    - Re-executes `POST /api/v1/adaptive-plan` with topics, asserting HTTP 200 and verifying expected topics in the response payload.
+   - Expands `POST /api/v1/adaptive-plan/stream`, executes the request, and verifies interactive streaming execution and received events.
    - Expands `GET /api/v1/tutor/student/{student_id}/cognitive-graph`, provides student ID and topic parameters, executes the request, and verifies HTTP 200 with node and edge data.
 
 CI requires runner-provided `google-chrome`, prints its version, and exports its path through `ROD_BROWSER_BIN`; missing Chrome emits a workflow error and fails without downloading a browser. Local browser discovery remains unchanged.

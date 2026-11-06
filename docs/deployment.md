@@ -247,8 +247,9 @@ Every HTTP request produces an `http.access` log record containing:
 - `method`: HTTP method (`GET`, `POST`, `HEAD`, `OPTIONS`).
 - `path`: request route path.
 - `status`: HTTP response status code.
-- `duration_ms`: processing duration in milliseconds.
+- `duration_ms`: processing duration in milliseconds (for streaming routes, measures the full connection duration until stream close).
 - `ip`: client IP address resolved according to proxy configuration.
+- `client_disconnected`: boolean attribute present and set to `true` on streaming routes when the connection ends due to a failed write or flush.
 
 Panics recovered by middleware generate a `panic.recovered` record with `request_id`, `error`, and stack trace, then return HTTP 500 to the caller.
 

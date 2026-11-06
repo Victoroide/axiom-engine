@@ -114,7 +114,7 @@ func TestSwaggerTryItOut(t *testing.T) {
 	if !strings.Contains(title, "AxiomEngine API") {
 		t.Fatal(title)
 	}
-	paths := []string{"/health", "/livez", "/readyz", "/api/v1/adaptive-plan", "/api/v1/tutor/student/{student_id}/cognitive-graph", "/api/v1/topics", "/api/v1/topics/{topic}/path"}
+	paths := []string{"/health", "/livez", "/readyz", "/api/v1/adaptive-plan", "/api/v1/adaptive-plan/stream", "/api/v1/tutor/student/{student_id}/cognitive-graph", "/api/v1/topics", "/api/v1/topics/{topic}/path"}
 	for _, path := range paths {
 		page.MustElement(`.opblock .opblock-summary-path[data-path="` + path + `"]`).MustWaitVisible()
 	}
@@ -164,6 +164,12 @@ func TestSwaggerTryItOut(t *testing.T) {
 	dialog.MustElementR("button", "^Close$").MustClick()
 	t.Log("plan authorized Try it out")
 	execute(plan, "200", "Recursion", "Polymorphism")
+
+	t.Log("stream Try it out")
+	stream := operation("/api/v1/adaptive-plan/stream")
+	expand(stream)
+	stream.MustElement("textarea.body-param__text").MustSelectAllText().MustInput(`{"student_id":"student-42","course_id":"cs101","failed_topics":["Recursion","Polymorphism"],"vark_profile":"visual"}`)
+	execute(stream, "200", "event: topic", "event: plan", "Recursion", "Polymorphism")
 	t.Log("cognitive Try it out")
 	cognitive := operation("/api/v1/tutor/student/{student_id}/cognitive-graph")
 	expand(cognitive)

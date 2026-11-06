@@ -347,6 +347,264 @@ const docTemplate = `{
                 }
             }
         },
+        "/api/v1/adaptive-plan/stream": {
+            "post": {
+                "security": [
+                    {
+                        "InternalToken": []
+                    }
+                ],
+                "description": "Emit topic events with topic, zero-based index of its first occurrence in failed_topics, and items_generated; plan carries the same validated response as the JSON route; error carries error, details and the equivalent HTTP status. Failed topic calls report zero items. Flush each event and a : keepalive comment every 2 seconds; cancel work after a failed client write. REQUEST_TIMEOUT bounds generation. Invalid input returns JSON before streaming starts. Optional mastered_topics uses the same validation and prerequisite exclusions as the JSON route.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json",
+                    "text/event-stream"
+                ],
+                "tags": [
+                    "Adaptive Plan"
+                ],
+                "summary": "Stream adaptive study plan progress",
+                "operationId": "streamAdaptivePlan",
+                "parameters": [
+                    {
+                        "description": "Student profile and failed concepts",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/domain.AdaptivePlanRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Server-sent events: topic, then plan or error",
+                        "schema": {
+                            "type": "string"
+                        },
+                        "headers": {
+                            "X-RateLimit-Limit": {
+                                "type": "integer",
+                                "description": "Maximum requests per rate-limit window"
+                            },
+                            "X-RateLimit-Remaining": {
+                                "type": "integer",
+                                "description": "Requests remaining in the rate-limit window"
+                            },
+                            "X-RateLimit-Reset": {
+                                "type": "integer",
+                                "description": "Seconds until the rate-limit window resets"
+                            },
+                            "X-Request-ID": {
+                                "type": "string",
+                                "description": "Resolved request correlation identifier"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/domain.ErrorResponse"
+                        },
+                        "headers": {
+                            "X-RateLimit-Limit": {
+                                "type": "integer",
+                                "description": "Maximum requests per rate-limit window"
+                            },
+                            "X-RateLimit-Remaining": {
+                                "type": "integer",
+                                "description": "Requests remaining in the rate-limit window"
+                            },
+                            "X-RateLimit-Reset": {
+                                "type": "integer",
+                                "description": "Seconds until the rate-limit window resets"
+                            },
+                            "X-Request-ID": {
+                                "type": "string",
+                                "description": "Resolved request correlation identifier"
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/domain.ErrorResponse"
+                        },
+                        "headers": {
+                            "X-Request-ID": {
+                                "type": "string",
+                                "description": "Resolved request correlation identifier"
+                            }
+                        }
+                    },
+                    "408": {
+                        "description": "Request Timeout",
+                        "schema": {
+                            "$ref": "#/definitions/domain.ErrorResponse"
+                        },
+                        "headers": {
+                            "X-Request-ID": {
+                                "type": "string",
+                                "description": "Resolved request correlation identifier"
+                            }
+                        }
+                    },
+                    "413": {
+                        "description": "Request Entity Too Large",
+                        "schema": {
+                            "$ref": "#/definitions/domain.ErrorResponse"
+                        },
+                        "headers": {
+                            "X-RateLimit-Limit": {
+                                "type": "integer",
+                                "description": "Maximum requests per rate-limit window"
+                            },
+                            "X-RateLimit-Remaining": {
+                                "type": "integer",
+                                "description": "Requests remaining in the rate-limit window"
+                            },
+                            "X-RateLimit-Reset": {
+                                "type": "integer",
+                                "description": "Seconds until the rate-limit window resets"
+                            },
+                            "X-Request-ID": {
+                                "type": "string",
+                                "description": "Resolved request correlation identifier"
+                            }
+                        }
+                    },
+                    "415": {
+                        "description": "Unsupported Media Type",
+                        "schema": {
+                            "$ref": "#/definitions/domain.ErrorResponse"
+                        },
+                        "headers": {
+                            "X-RateLimit-Limit": {
+                                "type": "integer",
+                                "description": "Maximum requests per rate-limit window"
+                            },
+                            "X-RateLimit-Remaining": {
+                                "type": "integer",
+                                "description": "Requests remaining in the rate-limit window"
+                            },
+                            "X-RateLimit-Reset": {
+                                "type": "integer",
+                                "description": "Seconds until the rate-limit window resets"
+                            },
+                            "X-Request-ID": {
+                                "type": "string",
+                                "description": "Resolved request correlation identifier"
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Unprocessable Entity",
+                        "schema": {
+                            "$ref": "#/definitions/domain.ErrorResponse"
+                        },
+                        "headers": {
+                            "X-RateLimit-Limit": {
+                                "type": "integer",
+                                "description": "Maximum requests per rate-limit window"
+                            },
+                            "X-RateLimit-Remaining": {
+                                "type": "integer",
+                                "description": "Requests remaining in the rate-limit window"
+                            },
+                            "X-RateLimit-Reset": {
+                                "type": "integer",
+                                "description": "Seconds until the rate-limit window resets"
+                            },
+                            "X-Request-ID": {
+                                "type": "string",
+                                "description": "Resolved request correlation identifier"
+                            }
+                        }
+                    },
+                    "429": {
+                        "description": "Too Many Requests",
+                        "schema": {
+                            "$ref": "#/definitions/domain.ErrorResponse"
+                        },
+                        "headers": {
+                            "Retry-After": {
+                                "type": "integer",
+                                "description": "Seconds to wait before retrying"
+                            },
+                            "X-Request-ID": {
+                                "type": "string",
+                                "description": "Resolved request correlation identifier"
+                            }
+                        }
+                    },
+                    "431": {
+                        "description": "Request Header Fields Too Large",
+                        "schema": {
+                            "$ref": "#/definitions/domain.ErrorResponse"
+                        },
+                        "headers": {
+                            "X-Request-ID": {
+                                "type": "string",
+                                "description": "Resolved request correlation identifier"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/domain.ErrorResponse"
+                        },
+                        "headers": {
+                            "X-Request-ID": {
+                                "type": "string",
+                                "description": "Resolved request correlation identifier"
+                            }
+                        }
+                    },
+                    "503": {
+                        "description": "Shared storage unavailable or server shutdown",
+                        "schema": {
+                            "$ref": "#/definitions/domain.ErrorResponse"
+                        },
+                        "headers": {
+                            "Retry-After": {
+                                "type": "integer",
+                                "description": "Seconds to wait before retrying"
+                            },
+                            "X-Request-ID": {
+                                "type": "string",
+                                "description": "Resolved request correlation identifier"
+                            }
+                        }
+                    }
+                },
+                "x-events": {
+                    "error": {
+                        "description": "Usual error envelope plus equivalent HTTP status",
+                        "payload": {
+                            "details": "upstream reasoning failed",
+                            "error": "bad_gateway",
+                            "status": 502
+                        }
+                    },
+                    "plan": {
+                        "schema": {
+                            "$ref": "#/definitions/domain.PlanResponse"
+                        }
+                    },
+                    "topic": {
+                        "description": "Completed topic call",
+                        "payload": {
+                            "index": 0,
+                            "items_generated": 1,
+                            "topic": "Recursion"
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/topics": {
             "get": {
                 "security": [

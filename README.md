@@ -194,10 +194,30 @@ Response:
 }
 ```
 
+### Adaptive Study Plan Streaming
+
+Stream plan generation progress in real time over Server-Sent Events (SSE). Emits `topic` events as each concept plan completes, followed by a final validated `plan` or `error` event:
+
+```sh
+curl -N -i -X POST http://localhost:8080/api/v1/adaptive-plan/stream \
+  -H "X-Internal-Token: $AXIOM_INTERNAL_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "student_id": "student-42",
+    "course_id": "cs101",
+    "failed_topics": [
+      "Recursion"
+    ],
+    "vark_profile": "visual"
+  }'
+```
+
+The server sends periodic `: keepalive` comments every 2 seconds. If a client disconnects prematurely, in-flight topic reasoning is cancelled immediately to release concurrency slots and avoid unnecessary token consumption.
+
 ## Limitations
 
 - **In-Memory Rate Limiting**: When `REDIS_URL` is unset, rate limiting operates per replica in memory, keyed by client IP (masked to `/64` for IPv6). Setting `REDIS_URL` shares rate-limit budgets and plan idempotency records across all replicas. For multi-tenant platform limits, gateway enforcement remains recommended.
-- **Client Disconnects**: Client HTTP disconnects do not cancel in-flight Bedrock reasoning. Work continues until `REQUEST_TIMEOUT` expires.
+- **Client Disconnects**: On the non-streaming route (`POST /api/v1/adaptive-plan`), client HTTP disconnects do not cancel in-flight Bedrock reasoning; work continues until `REQUEST_TIMEOUT` expires. The streaming route (`POST /api/v1/adaptive-plan/stream`) detects client disconnects through two-second keepalives and cancels in-flight reasoning promptly.
 - **Single Shared Secret**: Authentication relies on a single shared secret without caller identity or per-tenant authorization. Fine-grained authorization and multi-tenant isolation belong at the platform or gateway tier.
 - **Native Library Initialization**: The BAML CFFI dynamic library is loaded during package initialization before `main` executes; missing or mismatched libraries panic directly to `stderr` in plain text prior to structured JSON logger initialization.
 - **Region Resolution and Caching**: Bedrock regions resolved dynamically from IMDS cannot be confirmed at startup, and the first resolved region is cached for the process lifetime.
