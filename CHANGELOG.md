@@ -105,3 +105,4 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Update BAML to v0.226.3, whose native runtime rejects the distrusted eMudhra intermediate certificates in TLS verification, including AWS credential discovery.
 - **Breaking:** Reject invalid or explicitly empty `BAML_LOG` settings at startup to prevent native logging from silently falling back to INFO and exposing prompt text.
 - Send the standard security headers (`X-Content-Type-Options`, `X-Frame-Options`, `Referrer-Policy` and the cross-origin policies) on HTTP 501 responses for unimplemented methods, matching every other response.
+- Require `golang.org/x/crypto v0.58.1-0.20261009181718-2f1f834330b2`, removing the module-version finding for GO-2026-5932; the affected OpenPGP package is not imported by the service.
