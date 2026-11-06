@@ -9,6 +9,8 @@ tool (
 	golang.org/x/vuln/cmd/govulncheck
 )
 
+require golang.org/x/image v0.47.0
+
 require (
 	github.com/KyleBanks/depth v1.2.1 // indirect
 	github.com/PuerkitoBio/purell v1.1.1 // indirect
