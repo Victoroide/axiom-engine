@@ -34,6 +34,7 @@ import (
 	"github.com/Victoroide/axiom-engine/internal/config"
 	"github.com/Victoroide/axiom-engine/internal/domain"
 	"github.com/Victoroide/axiom-engine/internal/graph"
+	"github.com/Victoroide/axiom-engine/internal/idempotency"
 	"github.com/Victoroide/axiom-engine/internal/metrics"
 	"github.com/Victoroide/axiom-engine/internal/service"
 )
@@ -207,7 +208,7 @@ func useMiddleware(app *fiber.App, cfg config.Config, logger *slog.Logger, error
 	}}))
 	app.Use(helmet.New(securityHeaders))
 	if len(cfg.CORSAllowedOrigins) > 0 {
-		app.Use(cors.New(cors.Config{AllowOrigins: cfg.CORSAllowedOrigins, AllowMethods: []string{"GET", "POST", "HEAD", "OPTIONS"}, AllowHeaders: []string{"Origin", "Content-Type", "Accept", "Authorization", "X-Internal-Token", "X-Request-ID"}, ExposeHeaders: []string{"X-Request-ID"}, MaxAge: 3600}))
+		app.Use(cors.New(cors.Config{AllowOrigins: cfg.CORSAllowedOrigins, AllowMethods: []string{"GET", "POST", "HEAD", "OPTIONS"}, AllowHeaders: []string{"Origin", "Content-Type", "Accept", "Authorization", "X-Internal-Token", "X-Request-ID", "Idempotency-Key"}, ExposeHeaders: []string{"X-Request-ID", "Idempotent-Replayed"}, MaxAge: 3600}))
 	}
 }
 
@@ -255,7 +256,17 @@ func registerAPI(app *fiber.App, cfg config.Config, deps Dependencies, logger *s
 		resourceLinks = service.NewResourceLinkChecker(cfg.ResourceLinks.Timeout, nil, recorder)
 	}
 	reasoning := service.NewReasoningService(deps.Graph, deps.Planner, service.Options{ResourceLinks: resourceLinks, LLMTimeout: cfg.LLMTimeout, MaxFailedTopics: cfg.MaxFailedTopics, MaxMasteredTopics: cfg.Mastery.MaxTopics, MaxConcurrency: cfg.LLMMaxConcurrency, QueueTimeout: cfg.LLMQueueTimeout, Logger: logger, Metrics: recorder})
-	api.NewHandler(reasoning, deps.Graph, cfg.RequestTimeout, cfg.MaxFailedTopics, cfg.Mastery.MaxTopics, logger).RegisterRoutes(app)
+	var planMiddleware []fiber.Handler
+	if cfg.Idempotency.TTL > 0 {
+		store := idempotency.NewMemory(cfg.Idempotency.TTL, cfg.Idempotency.MaxEntries)
+		planMiddleware = append(planMiddleware, api.Idempotency(store, func(c fiber.Ctx) string {
+			if cfg.AuthDisabled {
+				return "anonymous"
+			}
+			return fmt.Sprintf("%x", sha256.Sum256([]byte(presentedCredential(c))))
+		}, logger))
+	}
+	api.NewHandler(reasoning, deps.Graph, cfg.RequestTimeout, cfg.MaxFailedTopics, cfg.Mastery.MaxTopics, logger).RegisterRoutes(app, planMiddleware...)
 }
 
 // healthHandler provides the legacy liveness alias.
@@ -362,12 +373,7 @@ func tokenDigests(tokens ...string) [][sha256.Size]byte {
 
 func internalTokenMiddleware(expected [][sha256.Size]byte, logger *slog.Logger, recorder *metrics.Metrics) fiber.Handler {
 	return func(c fiber.Ctx) error {
-		provided := c.Get("X-Internal-Token")
-		if provided == "" {
-			if scheme, token, ok := strings.Cut(c.Get("Authorization"), " "); ok && strings.EqualFold(scheme, "Bearer") {
-				provided = token
-			}
-		}
+		provided := presentedCredential(c)
 		providedDigest := sha256.Sum256([]byte(provided))
 		matched := 0
 		previousMatched := 0
@@ -389,4 +395,14 @@ func internalTokenMiddleware(expected [][sha256.Size]byte, logger *slog.Logger, 
 		}
 		return c.Next()
 	}
+}
+
+func presentedCredential(c fiber.Ctx) string {
+	provided := c.Get("X-Internal-Token")
+	if provided == "" {
+		if scheme, token, ok := strings.Cut(c.Get("Authorization"), " "); ok && strings.EqualFold(scheme, "Bearer") {
+			provided = token
+		}
+	}
+	return provided
 }

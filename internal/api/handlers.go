@@ -36,9 +36,14 @@ func NewHandler(r *service.ReasoningService, g *graph.InMemoryGraph, timeout tim
 }
 
 // RegisterRoutes attaches the versioned API routes.
-func (h *Handler) RegisterRoutes(app *fiber.App) {
+func (h *Handler) RegisterRoutes(app *fiber.App, planMiddleware ...fiber.Handler) {
 	v1 := app.Group("/api/v1")
-	v1.Post("/adaptive-plan", h.handleAdaptivePlan)
+	handlers := make([]any, 0, len(planMiddleware)+1)
+	for _, middleware := range planMiddleware {
+		handlers = append(handlers, middleware)
+	}
+	handlers = append(handlers, h.handleAdaptivePlan)
+	v1.Post("/adaptive-plan", handlers[0], handlers[1:]...)
 	v1.Get("/topics", h.handleTopics)
 	v1.Get("/topics/:topic/path", h.handleTopicPath)
 	v1.Get("/tutor/student/:student_id/cognitive-graph", h.handleCognitiveGraph)
@@ -52,8 +57,12 @@ func (h *Handler) RegisterRoutes(app *fiber.App) {
 // @Accept json
 // @Produce json
 // @Security InternalToken
+// @Param Idempotency-Key header string false "1 to 255 visible ASCII characters; successful responses retained for 24h by default"
+// @Failure 409 {object} domain.ErrorResponse "idempotency_key_in_progress"
+// @Header 409 {integer} Retry-After "Seconds to wait before retrying"
 // @Param body body domain.AdaptivePlanRequest true "Student profile and failed concepts"
 // @Success 200 {object} domain.PlanResponse
+// @Header 200 {boolean} Idempotent-Replayed "True when replaying a stored response"
 // @Failure 400 {object} domain.ErrorResponse
 // @Failure 401 {object} domain.ErrorResponse
 // @Failure 408 {object} domain.ErrorResponse "Request not read within the 10 s read timeout"
@@ -68,9 +77,9 @@ func (h *Handler) RegisterRoutes(app *fiber.App) {
 // @Failure 431 {object} domain.ErrorResponse "Request headers exceed the server limit"
 // @Failure 500 {object} domain.ErrorResponse
 // @Header all {string} X-Request-ID "Resolved request correlation identifier"
-// @Header 200,400,413,415,422,502,503,504 {integer} X-RateLimit-Limit "Maximum requests per rate-limit window"
-// @Header 200,400,413,415,422,502,503,504 {integer} X-RateLimit-Remaining "Requests remaining in the rate-limit window"
-// @Header 200,400,413,415,422,502,503,504 {integer} X-RateLimit-Reset "Seconds until the rate-limit window resets"
+// @Header 200,400,409,413,415,422,502,503,504 {integer} X-RateLimit-Limit "Maximum requests per rate-limit window"
+// @Header 200,400,409,413,415,422,502,503,504 {integer} X-RateLimit-Remaining "Requests remaining in the rate-limit window"
+// @Header 200,400,409,413,415,422,502,503,504 {integer} X-RateLimit-Reset "Seconds until the rate-limit window resets"
 // @Header 429 {integer} Retry-After "Seconds to wait before retrying"
 // @Router /api/v1/adaptive-plan [post]
 func (h *Handler) handleAdaptivePlan(c fiber.Ctx) error {

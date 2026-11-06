@@ -344,6 +344,11 @@ paths:
         profile.
       operationId: generateAdaptivePlan
       parameters:
+      - description: 1 to 255 visible ASCII characters; successful responses retained
+          for 24h by default
+        in: header
+        name: Idempotency-Key
+        type: string
       - description: Student profile and failed concepts
         in: body
         name: body
@@ -356,6 +361,9 @@ paths:
         "200":
           description: OK
           headers:
+            Idempotent-Replayed:
+              description: True when replaying a stored response
+              type: boolean
             X-RateLimit-Limit:
               description: Maximum requests per rate-limit window
               type: integer
@@ -398,6 +406,26 @@ paths:
         "408":
           description: Request not read within the 10 s read timeout
           headers:
+            X-Request-ID:
+              description: Resolved request correlation identifier
+              type: string
+          schema:
+            $ref: '#/definitions/domain.ErrorResponse'
+        "409":
+          description: idempotency_key_in_progress
+          headers:
+            Retry-After:
+              description: Seconds to wait before retrying
+              type: integer
+            X-RateLimit-Limit:
+              description: Maximum requests per rate-limit window
+              type: integer
+            X-RateLimit-Remaining:
+              description: Requests remaining in the rate-limit window
+              type: integer
+            X-RateLimit-Reset:
+              description: Seconds until the rate-limit window resets
+              type: integer
             X-Request-ID:
               description: Resolved request correlation identifier
               type: string
