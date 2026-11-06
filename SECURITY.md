@@ -63,6 +63,7 @@ Remediation timing depends on severity and operational considerations. Critical 
 ### LLM output handling
 
 - Model-generated study items and learning resources are validated and sanitized in `internal/service/output.go` before response assembly (see [response contract](docs/api.md#response-contract)).
+- Outbound resource link verification: When optional link checking is enabled (`RESOURCE_LINK_CHECK=true`), outbound HTTP checks enforce strict network boundaries to prevent Server-Side Request Forgery (SSRF). The dialer verifies DNS-resolved socket addresses at connection time and on every redirect, refusing loopback, private, link-local, multicast, unspecified, IPv6 unique local, IPv4-mapped forms of these addresses, and IANA special-purpose or translation ranges. Outbound requests permit only `http` and `https` on ports 80 and 443, cap redirects at three, send no cookies or credentials, ignore proxy environment variables, and operate under bounded timeouts (`RESOURCE_LINK_TIMEOUT`) and per-request concurrency limits.
 - Client rendering duty: While the service filters unsafe URL schemes and removes control characters, client applications rendering returned titles and explanations must treat them as untrusted text and render them as plain text rather than unescaped HTML to prevent cross-site scripting (XSS) and DOM injection vulnerabilities. Escape URLs when placing them in HTML attributes; RFC 3986 sub-delimiters such as `'` are returned unencoded.
 
 ### Data handling

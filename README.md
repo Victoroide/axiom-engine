@@ -16,6 +16,7 @@ AxiomEngine is a Go microservice that generates personalized, prerequisite-order
 - **Hallucination validation**: Verifies model outputs against known graph nodes, dropping unrecognized concepts and concepts outside the requested topics and their prerequisites before assigning priorities.
 - **Cognitive shadow graphs**: Computes graph neighborhoods classifying concepts into failed, learning, and mastered states for frontend visualization.
 - **Configurable token authentication**: Restricts API access using constant-time verification of internal shared tokens.
+- **Optional resource link validation**: Verifies recommended resource URLs with outbound HEAD/GET checks and SSRF protections when enabled (`RESOURCE_LINK_CHECK=true`), dropping unreachable links.
 
 ## Request Path
 
@@ -200,6 +201,7 @@ Response:
 - **Non-Idempotent Inferences**: Study plans are non-deterministic and not idempotent. Retried POST requests trigger new Bedrock model inferences and incur token costs.
 - **Native Library Initialization**: The BAML CFFI dynamic library is loaded during package initialization before `main` executes; missing or mismatched libraries panic directly to `stderr` in plain text prior to structured JSON logger initialization.
 - **Region Resolution and Caching**: Bedrock regions resolved dynamically from IMDS cannot be confirmed at startup, and the first resolved region is cached for the process lifetime.
+- **Resource Link Reachability**: Recommended resource URLs are not checked for network reachability by default. Setting `RESOURCE_LINK_CHECK=true` enables outbound HTTP reachability checks that verify URLs and drop non-resolving or refused resources before returning plans.
 - **Scorecard Governance**: Repository OpenSSF Scorecard branch protection and code review scores reflect a single-maintainer project with zero required external approvals.
 
 For diagnostic runbooks and operational troubleshooting, refer to the [Operations Runbook](docs/operations.md).

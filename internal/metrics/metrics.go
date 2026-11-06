@@ -25,6 +25,7 @@ type Metrics struct {
 	queueTimeouts    prometheus.Counter
 	itemsDropped     *prometheus.CounterVec
 	resourcesDropped prometheus.Counter
+	resourceLinks    *prometheus.CounterVec
 	stateMu          sync.RWMutex
 	breakerState     func() int
 }
@@ -33,6 +34,7 @@ type Metrics struct {
 func New() *Metrics {
 	latencyBuckets := []float64{0.05, 0.1, 0.25, 0.5, 1, 2, 4, 8, 12, 16, 20, 30}
 	m := &Metrics{
+		resourceLinks:    prometheus.NewCounterVec(prometheus.CounterOpts{Name: "axiom_resource_links_checked_total", Help: "Resource link checks by bounded result."}, []string{"result"}),
 		registry:         prometheus.NewRegistry(),
 		httpDuration:     prometheus.NewHistogramVec(prometheus.HistogramOpts{Name: "http_server_request_duration_seconds", Buckets: latencyBuckets, Help: "HTTP request duration by route template."}, []string{"route"}),
 		httpRequests:     prometheus.NewCounterVec(prometheus.CounterOpts{Name: "http_server_requests_total", Help: "HTTP requests by route template, bounded method and status."}, []string{"route", "method", "status"}),
@@ -51,6 +53,9 @@ func New() *Metrics {
 	for _, reason := range []string{"duplicate", "validation"} {
 		m.itemsDropped.WithLabelValues(reason)
 	}
+	for _, result := range []string{"ok", "status", "timeout", "refused", "invalid"} {
+		m.resourceLinks.WithLabelValues(result)
+	}
 	state := prometheus.NewGaugeFunc(prometheus.GaugeOpts{Name: "axiom_circuit_breaker_state", Help: "Circuit state: 0 closed, 1 half-open, 2 open."}, func() float64 {
 		m.stateMu.RLock()
 		source := m.breakerState
@@ -60,7 +65,7 @@ func New() *Metrics {
 		}
 		return float64(source())
 	})
-	m.registry.MustRegister(m.httpDuration, m.httpRequests, m.previousToken, m.llmCalls, m.llmDuration, m.inflight, m.queueWait, m.queueTimeouts, m.itemsDropped, m.resourcesDropped, state, collectors.NewGoCollector(), collectors.NewProcessCollector(collectors.ProcessCollectorOpts{}))
+	m.registry.MustRegister(m.httpDuration, m.httpRequests, m.previousToken, m.llmCalls, m.llmDuration, m.inflight, m.queueWait, m.queueTimeouts, m.itemsDropped, m.resourcesDropped, m.resourceLinks, state, collectors.NewGoCollector(), collectors.NewProcessCollector(collectors.ProcessCollectorOpts{}))
 	return m
 }
 
@@ -145,5 +150,17 @@ func (m *Metrics) ObserveDroppedItems(duplicates, validation int) {
 func (m *Metrics) ObserveDroppedResources(count int) {
 	if m != nil {
 		m.resourcesDropped.Add(float64(count))
+	}
+}
+
+// ObserveResourceLink records one HTTP resource check with a bounded result.
+func (m *Metrics) ObserveResourceLink(result string) {
+	if m != nil {
+		switch result {
+		case "ok", "status", "timeout", "refused", "invalid":
+		default:
+			result = "invalid"
+		}
+		m.resourceLinks.WithLabelValues(result).Inc()
 	}
 }
