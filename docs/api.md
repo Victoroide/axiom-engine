@@ -86,7 +86,7 @@ The `details` field provides context when available and is omitted when empty. U
 | `408 Request Timeout` | `request_timeout` | Request read deadline exceeded | Request not read within the 10 s read timeout |
 | `413 Payload Too Large` | `payload_too_large` | Request body exceeds limit | Inbound payload exceeds the 64 KiB (65,536 bytes) limit |
 | `415 Unsupported Media Type` | `unsupported_media_type` | Media type not supported | Missing, malformed, unsupported charset, or non-JSON `Content-Type` header on `POST /api/v1/adaptive-plan` requests |
-| `422 Unprocessable Entity` | `validation_error` | Concept not found in knowledge graph | One or more topics in `failed_topics`, `topics`, or `target_topic` do not exist |
+| `422 Unprocessable Entity` | `validation_error` | Concept not found in knowledge graph | One or more topics in `failed_topics`, `topics`, or `target_topic` do not exist, or unresolvable topic in `GET /api/v1/topics/{topic}/path` |
 | `429 Too Many Requests` | `rate_limit_exceeded` | Client rate limit exceeded | Inbound requests exceed `RATE_LIMIT_MAX` within `RATE_LIMIT_WINDOW` |
 | `431 Request Header Fields Too Large` | `request_header_fields_too_large` | Request header fields exceed limit | Inbound request headers exceed the server header limit |
 | `500 Internal Server Error` | `internal_error` | Unhandled server error | Unexpected internal failure or recovered panic |
@@ -433,6 +433,115 @@ X-RateLimit-Reset: 60
       "target": "Functions",
       "relation": "depends_on"
     }
+  ]
+}
+```
+
+---
+
+### GET /api/v1/topics
+
+Lists curriculum topics sorted by concept name, with direct prerequisites and direct dependents. Does not perform model provider calls.
+
+- **Method**: `GET`
+- **Path**: `/api/v1/topics`
+- **Headers**:
+  - `X-Internal-Token: <token>` (if authentication is enabled)
+- **Query Parameters**:
+  - `q`: Optional string. Canonical substring filter. When provided, filters topics whose canonical concept name contains the canonical filter string. When omitted or empty, all curriculum topics are returned. If no topics match the filter, an empty array is returned.
+- **Request Body**: None
+
+#### Responses
+
+- **200 OK**: Topics retrieved successfully. Direct prerequisites and dependents are distinct and sorted, including both `depends_on` and `is_a` relations.
+- **401 Unauthorized**: Missing or invalid authentication token.
+- **408 Request Timeout**: Request not read within the 10 s read timeout.
+- **413 Payload Too Large**: Request body exceeds 64 KiB.
+- **429 Too Many Requests**: Rate limit exceeded.
+- **431 Request Header Fields Too Large**: Inbound request headers exceed the server limit.
+- **500 Internal Server Error**: Unexpected internal failure or recovered panic.
+
+#### Example
+
+```sh
+curl -i "http://localhost:8080/api/v1/topics?q=sort" \
+  -H "X-Internal-Token: $AXIOM_INTERNAL_TOKEN"
+```
+
+Response:
+
+```http
+HTTP/1.1 200 OK
+Content-Type: application/json; charset=utf-8
+X-Request-ID: m1Z8vN2pQRk0TsVeRtGLjuuPm2qLVSzmkFDEe6UxwJ1
+X-RateLimit-Limit: 50
+X-RateLimit-Remaining: 49
+X-RateLimit-Reset: 60
+
+{
+  "topics": [
+    {
+      "name": "Merge Sort",
+      "prerequisites": [
+        "Recursion"
+      ],
+      "dependents": []
+    }
+  ]
+}
+```
+
+---
+
+### GET /api/v1/topics/{topic}/path
+
+Returns the full prerequisite chain in topological study order and direct dependents for a single topic. Does not perform model provider calls.
+
+- **Method**: `GET`
+- **Path**: `/api/v1/topics/{topic}/path`
+- **Headers**:
+  - `X-Internal-Token: <token>` (if authentication is enabled)
+- **Path Parameters**:
+  - `topic`: Required string. Topic name to inspect. Resolves canonically across case, whitespace, and Unicode composition differences (see [Node Naming](knowledge-graph.md#node-naming)). Path-escaped characters are unescaped before canonical resolution.
+- **Query Parameters**: None
+- **Request Body**: None
+
+#### Responses
+
+- **200 OK**: Prerequisite path and dependents retrieved successfully. `prerequisite_chain` contains all transitive prerequisites in topological study order, excluding the target topic itself. `dependents` lists direct dependents in alphabetical order.
+- **401 Unauthorized**: Missing or invalid authentication token.
+- **408 Request Timeout**: Request not read within the 10 s read timeout.
+- **413 Payload Too Large**: Request body exceeds 64 KiB.
+- **422 Unprocessable Entity**: Topic is not found in the knowledge graph. Returns error code `validation_error` with quoted topic name details.
+- **429 Too Many Requests**: Rate limit exceeded.
+- **431 Request Header Fields Too Large**: Inbound request headers exceed the server limit.
+- **500 Internal Server Error**: Unexpected internal failure or recovered panic.
+
+#### Example
+
+```sh
+curl -i http://localhost:8080/api/v1/topics/Recursion/path \
+  -H "X-Internal-Token: $AXIOM_INTERNAL_TOKEN"
+```
+
+Response:
+
+```http
+HTTP/1.1 200 OK
+Content-Type: application/json; charset=utf-8
+X-Request-ID: p2Y7wM1oPQj9SrUeQsFKittOl1pKVRyljECDd5TwvI0
+X-RateLimit-Limit: 50
+X-RateLimit-Remaining: 49
+X-RateLimit-Reset: 60
+
+{
+  "topic": "Recursion",
+  "prerequisite_chain": [
+    "Functions"
+  ],
+  "dependents": [
+    "Dynamic Programming",
+    "Merge Sort"
   ]
 }
 ```

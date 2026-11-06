@@ -226,6 +226,51 @@ definitions:
         example: 1713340800
         type: integer
     type: object
+  domain.Topic:
+    properties:
+      dependents:
+        example:
+        - Dynamic Programming
+        - Merge Sort
+        items:
+          type: string
+        type: array
+      name:
+        example: Recursion
+        type: string
+      prerequisites:
+        example:
+        - Functions
+        items:
+          type: string
+        type: array
+    type: object
+  domain.TopicPathResponse:
+    properties:
+      dependents:
+        example:
+        - Dynamic Programming
+        - Merge Sort
+        items:
+          type: string
+        type: array
+      prerequisite_chain:
+        example:
+        - Functions
+        items:
+          type: string
+        type: array
+      topic:
+        example: Recursion
+        type: string
+    type: object
+  domain.TopicsResponse:
+    properties:
+      topics:
+        items:
+          $ref: '#/definitions/domain.Topic'
+        type: array
+    type: object
   domain.VisualEdge:
     properties:
       relation:
@@ -472,6 +517,210 @@ paths:
       summary: Generate adaptive study plan
       tags:
       - Adaptive Plan
+  /api/v1/topics:
+    get:
+      operationId: listTopics
+      parameters:
+      - description: Canonical substring of a topic name
+        in: query
+        name: q
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          headers:
+            X-RateLimit-Limit:
+              description: Maximum requests per rate-limit window
+              type: integer
+            X-RateLimit-Remaining:
+              description: Requests remaining in the rate-limit window
+              type: integer
+            X-RateLimit-Reset:
+              description: Seconds until the rate-limit window resets
+              type: integer
+            X-Request-ID:
+              description: Resolved request correlation identifier
+              type: string
+          schema:
+            $ref: '#/definitions/domain.TopicsResponse'
+        "401":
+          description: Unauthorized
+          headers:
+            X-Request-ID:
+              description: Resolved request correlation identifier
+              type: string
+          schema:
+            $ref: '#/definitions/domain.ErrorResponse'
+        "408":
+          description: Request Timeout
+          headers:
+            X-Request-ID:
+              description: Resolved request correlation identifier
+              type: string
+          schema:
+            $ref: '#/definitions/domain.ErrorResponse'
+        "413":
+          description: Request Entity Too Large
+          headers:
+            X-RateLimit-Limit:
+              description: Maximum requests per rate-limit window
+              type: integer
+            X-RateLimit-Remaining:
+              description: Requests remaining in the rate-limit window
+              type: integer
+            X-RateLimit-Reset:
+              description: Seconds until the rate-limit window resets
+              type: integer
+            X-Request-ID:
+              description: Resolved request correlation identifier
+              type: string
+          schema:
+            $ref: '#/definitions/domain.ErrorResponse'
+        "429":
+          description: Too Many Requests
+          headers:
+            Retry-After:
+              description: Seconds to wait before retrying
+              type: integer
+            X-Request-ID:
+              description: Resolved request correlation identifier
+              type: string
+          schema:
+            $ref: '#/definitions/domain.ErrorResponse'
+        "431":
+          description: Request Header Fields Too Large
+          headers:
+            X-Request-ID:
+              description: Resolved request correlation identifier
+              type: string
+          schema:
+            $ref: '#/definitions/domain.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          headers:
+            X-Request-ID:
+              description: Resolved request correlation identifier
+              type: string
+          schema:
+            $ref: '#/definitions/domain.ErrorResponse'
+      security:
+      - InternalToken: []
+      summary: List curriculum topics
+      tags:
+      - Curriculum
+  /api/v1/topics/{topic}/path:
+    get:
+      operationId: getTopicPath
+      parameters:
+      - description: Topic name with canonical matching
+        in: path
+        name: topic
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          headers:
+            X-RateLimit-Limit:
+              description: Maximum requests per rate-limit window
+              type: integer
+            X-RateLimit-Remaining:
+              description: Requests remaining in the rate-limit window
+              type: integer
+            X-RateLimit-Reset:
+              description: Seconds until the rate-limit window resets
+              type: integer
+            X-Request-ID:
+              description: Resolved request correlation identifier
+              type: string
+          schema:
+            $ref: '#/definitions/domain.TopicPathResponse'
+        "401":
+          description: Unauthorized
+          headers:
+            X-Request-ID:
+              description: Resolved request correlation identifier
+              type: string
+          schema:
+            $ref: '#/definitions/domain.ErrorResponse'
+        "408":
+          description: Request Timeout
+          headers:
+            X-Request-ID:
+              description: Resolved request correlation identifier
+              type: string
+          schema:
+            $ref: '#/definitions/domain.ErrorResponse'
+        "413":
+          description: Request Entity Too Large
+          headers:
+            X-RateLimit-Limit:
+              description: Maximum requests per rate-limit window
+              type: integer
+            X-RateLimit-Remaining:
+              description: Requests remaining in the rate-limit window
+              type: integer
+            X-RateLimit-Reset:
+              description: Seconds until the rate-limit window resets
+              type: integer
+            X-Request-ID:
+              description: Resolved request correlation identifier
+              type: string
+          schema:
+            $ref: '#/definitions/domain.ErrorResponse'
+        "422":
+          description: Unprocessable Entity
+          headers:
+            X-RateLimit-Limit:
+              description: Maximum requests per rate-limit window
+              type: integer
+            X-RateLimit-Remaining:
+              description: Requests remaining in the rate-limit window
+              type: integer
+            X-RateLimit-Reset:
+              description: Seconds until the rate-limit window resets
+              type: integer
+            X-Request-ID:
+              description: Resolved request correlation identifier
+              type: string
+          schema:
+            $ref: '#/definitions/domain.ErrorResponse'
+        "429":
+          description: Too Many Requests
+          headers:
+            Retry-After:
+              description: Seconds to wait before retrying
+              type: integer
+            X-Request-ID:
+              description: Resolved request correlation identifier
+              type: string
+          schema:
+            $ref: '#/definitions/domain.ErrorResponse'
+        "431":
+          description: Request Header Fields Too Large
+          headers:
+            X-Request-ID:
+              description: Resolved request correlation identifier
+              type: string
+          schema:
+            $ref: '#/definitions/domain.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          headers:
+            X-Request-ID:
+              description: Resolved request correlation identifier
+              type: string
+          schema:
+            $ref: '#/definitions/domain.ErrorResponse'
+      security:
+      - InternalToken: []
+      summary: Get a topic's prerequisite path
+      tags:
+      - Curriculum
   /api/v1/tutor/student/{student_id}/cognitive-graph:
     get:
       description: Return concept nodes annotated with failed, learning or mastered

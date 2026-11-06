@@ -114,7 +114,7 @@ func TestSwaggerTryItOut(t *testing.T) {
 	if !strings.Contains(title, "AxiomEngine API") {
 		t.Fatal(title)
 	}
-	paths := []string{"/health", "/livez", "/readyz", "/api/v1/adaptive-plan", "/api/v1/tutor/student/{student_id}/cognitive-graph"}
+	paths := []string{"/health", "/livez", "/readyz", "/api/v1/adaptive-plan", "/api/v1/tutor/student/{student_id}/cognitive-graph", "/api/v1/topics", "/api/v1/topics/{topic}/path"}
 	for _, path := range paths {
 		page.MustElement(`.opblock .opblock-summary-path[data-path="` + path + `"]`).MustWaitVisible()
 	}
