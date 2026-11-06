@@ -1,534 +1,450 @@
 {
-  "schema_version": 1,
-  "diagram_type": "architecture",
-  "meta": {
-    "title": "System components",
-    "locale": "en",
-    "output": "system-components.html",
-    "quality_profile": "showcase",
-    "repository": {
-      "url": "https://github.com/Victoroide/axiom-engine.git",
-      "provider": "github",
-      "revision": "f8b2d3f4af412a49cce1722e3c4db33aab176285"
+  "title": "System components",
+  "description": "Architectural dependencies from the entry point through configuration, the HTTP boundary, reasoning service, knowledge graph and BAML client to Amazon Bedrock. The model adapter implements the reasoning service Planner interface. Shared request, response and graph types form the internal/domain band.",
+  "width": 960,
+  "height": 640,
+  "nodes": [
+    {
+      "id": "entry",
+      "x": 420,
+      "y": 20,
+      "w": 160,
+      "h": 48,
+      "title": [
+        "cmd/server"
+      ],
+      "subtitle": [],
+      "package": "cmd/server",
+      "row": "entry"
+    },
+    {
+      "id": "config",
+      "x": 240,
+      "y": 110,
+      "w": 180,
+      "h": 44,
+      "title": [
+        "internal/config"
+      ],
+      "subtitle": [],
+      "package": "internal/config",
+      "row": "setup"
+    },
+    {
+      "id": "server",
+      "x": 500,
+      "y": 110,
+      "w": 190,
+      "h": 44,
+      "title": [
+        "internal/server"
+      ],
+      "subtitle": [],
+      "package": "internal/server",
+      "row": "setup",
+      "column": "reasoning"
+    },
+    {
+      "id": "api",
+      "x": 300,
+      "y": 190,
+      "w": 180,
+      "h": 44,
+      "title": [
+        "internal/api"
+      ],
+      "subtitle": [],
+      "package": "internal/api",
+      "row": "boundary"
+    },
+    {
+      "id": "metrics",
+      "x": 700,
+      "y": 190,
+      "w": 170,
+      "h": 44,
+      "title": [
+        "internal/metrics"
+      ],
+      "subtitle": [],
+      "package": "internal/metrics",
+      "row": "boundary"
+    },
+    {
+      "id": "service",
+      "x": 500,
+      "y": 270,
+      "w": 190,
+      "h": 44,
+      "title": [
+        "internal/service"
+      ],
+      "subtitle": [],
+      "package": "internal/service",
+      "row": "reasoning",
+      "column": "reasoning"
+    },
+    {
+      "id": "graph",
+      "x": 130,
+      "y": 350,
+      "w": 200,
+      "h": 44,
+      "title": [
+        "internal/graph"
+      ],
+      "subtitle": [],
+      "package": "internal/graph",
+      "row": "dependencies"
+    },
+    {
+      "id": "llm",
+      "x": 730,
+      "y": 350,
+      "w": 180,
+      "h": 44,
+      "title": [
+        "internal/llm"
+      ],
+      "subtitle": [],
+      "package": "internal/llm",
+      "row": "dependencies",
+      "column": "provider"
+    },
+    {
+      "id": "baml",
+      "x": 730,
+      "y": 430,
+      "w": 180,
+      "h": 44,
+      "title": [
+        "baml_client"
+      ],
+      "subtitle": [],
+      "package": "baml_client",
+      "row": "client",
+      "column": "provider"
+    },
+    {
+      "id": "provider",
+      "x": 730,
+      "y": 510,
+      "w": 180,
+      "h": 44,
+      "title": [
+        "Amazon Bedrock"
+      ],
+      "subtitle": [
+        "Nova Micro"
+      ],
+      "row": "provider",
+      "column": "provider"
+    },
+    {
+      "id": "domain",
+      "x": 30,
+      "y": 590,
+      "w": 900,
+      "h": 36,
+      "title": [
+        "internal/domain: shared request, response and graph types"
+      ],
+      "subtitle": [],
+      "package": "internal/domain",
+      "row": "shared"
     }
-  },
-  "components": [
+  ],
+  "edges": [
     {
-      "id": "client",
-      "type": "external",
-      "label": "Client",
-      "sublabel": "upstream caller",
-      "pos": [
-        290,
-        40
-      ],
-      "size": [
-        170,
-        64
-      ]
-    },
-    {
-      "id": "public",
-      "type": "backend",
-      "label": "Public routes",
-      "sublabel": "probes \u00b7 /swagger \u00b7 /metrics",
-      "pos": [
-        40,
-        200
-      ],
-      "size": [
-        170,
-        64
-      ],
-      "sources": [
+      "id": "entry/config",
+      "from": "entry",
+      "to": "config",
+      "points": [
         {
-          "path": "internal/server/server.go",
-          "line": 226,
-          "end_line": 242
+          "x": 430,
+          "y": 68
         },
         {
-          "path": "internal/server/server.go",
-          "line": 82,
-          "end_line": 84
+          "x": 340,
+          "y": 110
         }
       ]
     },
     {
-      "id": "router",
-      "type": "backend",
-      "label": "Router + middleware",
-      "sublabel": "request ID \u00b7 recover \u00b7 helmet",
-      "pos": [
-        290,
-        200
-      ],
-      "size": [
-        170,
-        64
-      ],
-      "sources": [
+      "id": "entry/server",
+      "from": "entry",
+      "to": "server",
+      "points": [
         {
-          "path": "internal/server/server.go",
-          "line": 180,
-          "end_line": 212
+          "x": 550,
+          "y": 68
+        },
+        {
+          "x": 550,
+          "y": 110
         }
       ]
     },
     {
-      "id": "auth",
-      "type": "security",
-      "label": "Token auth + limiter",
-      "sublabel": "/api/v1 routes only",
-      "pos": [
-        540,
-        200
-      ],
-      "size": [
-        170,
-        64
-      ],
-      "sources": [
+      "id": "entry/graph",
+      "from": "entry",
+      "to": "graph",
+      "points": [
         {
-          "path": "internal/server/server.go",
-          "line": 244,
-          "end_line": 252
+          "x": 420,
+          "y": 34
         },
         {
-          "path": "internal/server/server.go",
-          "line": 359,
-          "end_line": 388
+          "x": 200,
+          "y": 34
+        },
+        {
+          "x": 200,
+          "y": 350
         }
       ]
     },
     {
-      "id": "cognitive",
-      "type": "backend",
-      "label": "Cognitive graph handler",
-      "sublabel": "GET \u2026/cognitive-graph",
-      "pos": [
-        290,
-        360
-      ],
-      "size": [
-        170,
-        64
-      ],
-      "sources": [
+      "id": "entry/llm",
+      "from": "entry",
+      "to": "llm",
+      "points": [
         {
-          "path": "internal/api/handlers.go",
-          "line": 38,
-          "end_line": 42
+          "x": 580,
+          "y": 50
         },
         {
-          "path": "internal/api/handlers.go",
-          "line": 176,
-          "end_line": 205
+          "x": 880,
+          "y": 50
+        },
+        {
+          "x": 880,
+          "y": 350
         }
       ]
     },
     {
-      "id": "plan",
-      "type": "backend",
-      "label": "Adaptive plan handler",
-      "sublabel": "POST /api/v1/adaptive-plan",
-      "pos": [
-        540,
-        360
-      ],
-      "size": [
-        170,
-        64
-      ],
-      "sources": [
+      "id": "server/api",
+      "from": "server",
+      "to": "api",
+      "points": [
         {
-          "path": "internal/api/handlers.go",
-          "line": 38,
-          "end_line": 42
+          "x": 500,
+          "y": 130
         },
         {
-          "path": "internal/api/handlers.go",
-          "line": 73,
-          "end_line": 90
+          "x": 400,
+          "y": 190
         }
       ]
     },
     {
-      "id": "store",
-      "type": "database",
-      "label": "InMemoryGraph",
-      "sublabel": "forward + reverse maps",
-      "pos": [
-        40,
-        520
-      ],
-      "size": [
-        170,
-        64
-      ],
-      "sources": [
+      "id": "server/metrics",
+      "from": "server",
+      "to": "metrics",
+      "points": [
         {
-          "path": "internal/graph/memory.go",
-          "line": 32,
-          "end_line": 38
+          "x": 690,
+          "y": 135
         },
         {
-          "path": "internal/graph/loader.go",
-          "line": 19,
-          "end_line": 20
-        },
-        {
-          "path": "internal/graph/loader.go",
-          "line": 36,
-          "end_line": 40
+          "x": 760,
+          "y": 190
         }
       ]
     },
     {
-      "id": "queries",
-      "type": "backend",
-      "label": "Graph queries",
-      "sublabel": "subgraph \u00b7 chains \u00b7 shadow",
-      "pos": [
-        290,
-        520
-      ],
-      "size": [
-        170,
-        64
-      ],
-      "sources": [
+      "id": "server/service",
+      "from": "server",
+      "to": "service",
+      "points": [
         {
-          "path": "internal/graph/memory.go",
-          "line": 88,
-          "end_line": 114
+          "x": 595,
+          "y": 154
         },
         {
-          "path": "internal/graph/memory.go",
-          "line": 127,
-          "end_line": 175
-        },
-        {
-          "path": "internal/graph/memory.go",
-          "line": 193,
-          "end_line": 261
+          "x": 595,
+          "y": 270
         }
       ]
     },
     {
-      "id": "reasoning",
-      "type": "backend",
-      "label": "ReasoningService",
-      "sublabel": "validate \u00b7 errgroup fan-out",
-      "pos": [
-        540,
-        520
-      ],
-      "size": [
-        170,
-        64
-      ],
-      "sources": [
+      "id": "api/service",
+      "from": "api",
+      "to": "service",
+      "points": [
         {
-          "path": "internal/service/reasoning.go",
-          "line": 96,
-          "end_line": 163
+          "x": 480,
+          "y": 215
         },
         {
-          "path": "internal/service/validation.go",
-          "line": 81,
-          "end_line": 96
+          "x": 500,
+          "y": 282
         }
       ]
     },
     {
-      "id": "breaker",
-      "type": "security",
-      "label": "Circuit breaker",
-      "sublabel": "bedrock-nova-micro",
-      "pos": [
-        790,
-        520
-      ],
-      "size": [
-        170,
-        64
-      ],
-      "sources": [
+      "id": "api/graph",
+      "from": "api",
+      "to": "graph",
+      "points": [
         {
-          "path": "internal/service/reasoning.go",
-          "line": 80,
-          "end_line": 93
-        }
-      ]
-    },
-    {
-      "id": "assembly",
-      "type": "backend",
-      "label": "Plan assembly",
-      "sublabel": "merge \u00b7 policy \u00b7 graph check",
-      "pos": [
-        540,
-        680
-      ],
-      "size": [
-        170,
-        64
-      ],
-      "sources": [
-        {
-          "path": "internal/service/reasoning.go",
-          "line": 164,
-          "end_line": 183
+          "x": 325,
+          "y": 234
         },
         {
-          "path": "internal/service/pipeline.go",
-          "line": 11,
-          "end_line": 62
+          "x": 300,
+          "y": 350
+        }
+      ]
+    },
+    {
+      "id": "service/graph",
+      "from": "service",
+      "to": "graph",
+      "points": [
+        {
+          "x": 500,
+          "y": 302
         },
         {
-          "path": "internal/service/output.go",
-          "line": 13,
-          "end_line": 35
+          "x": 330,
+          "y": 370
         }
       ]
     },
     {
-      "id": "bedrock",
-      "type": "cloud",
-      "label": "Amazon Bedrock",
-      "sublabel": "amazon.nova-micro-v1:0",
-      "pos": [
-        40,
-        840
-      ],
-      "size": [
-        170,
-        64
-      ],
-      "sources": [
+      "id": "service/metrics",
+      "from": "service",
+      "to": "metrics",
+      "points": [
         {
-          "path": "baml_src/clients.baml",
-          "line": 1,
-          "end_line": 9
-        }
-      ]
-    },
-    {
-      "id": "runtime",
-      "type": "backend",
-      "label": "BAML runtime",
-      "sublabel": "baml_client \u00b7 libbaml_cffi",
-      "pos": [
-        540,
-        840
-      ],
-      "size": [
-        170,
-        64
-      ],
-      "sources": [
-        {
-          "path": "baml_client/functions.go",
-          "line": 24,
-          "end_line": 96
+          "x": 690,
+          "y": 282
         },
         {
-          "path": "Dockerfile",
-          "line": 61,
-          "end_line": 63
+          "x": 740,
+          "y": 234
         }
       ]
     },
     {
-      "id": "adapter",
-      "type": "backend",
-      "label": "BAML adapter",
-      "sublabel": "implements service.Planner",
-      "pos": [
-        790,
-        840
-      ],
-      "size": [
-        170,
-        64
-      ],
-      "sources": [
+      "id": "llm/service",
+      "from": "llm",
+      "to": "service",
+      "points": [
         {
-          "path": "internal/llm/baml.go",
-          "line": 15,
-          "end_line": 47
+          "x": 745,
+          "y": 350
+        },
+        {
+          "x": 690,
+          "y": 302
+        }
+      ]
+    },
+    {
+      "id": "llm/baml",
+      "from": "llm",
+      "to": "baml",
+      "points": [
+        {
+          "x": 820,
+          "y": 394
+        },
+        {
+          "x": 820,
+          "y": 430
+        }
+      ]
+    },
+    {
+      "id": "baml/provider",
+      "from": "baml",
+      "to": "provider",
+      "points": [
+        {
+          "x": 820,
+          "y": 474
+        },
+        {
+          "x": 820,
+          "y": 510
         }
       ]
     }
   ],
-  "boundaries": [
+  "labels": [
     {
-      "kind": "region",
-      "label": "internal/server",
-      "wraps": [
-        "public",
-        "router",
-        "auth"
-      ]
+      "text": "SYSTEM COMPONENTS",
+      "x": 30,
+      "y": 20,
+      "style": "group"
     },
     {
-      "kind": "region",
-      "label": "internal/api",
-      "wraps": [
-        "cognitive",
-        "plan"
-      ]
-    },
-    {
-      "kind": "region",
-      "label": "internal/graph",
-      "wraps": [
-        "store",
-        "queries"
-      ]
-    },
-    {
-      "kind": "region",
-      "label": "internal/service",
-      "wraps": [
-        "reasoning",
-        "breaker",
-        "assembly"
-      ]
-    },
-    {
-      "kind": "region",
-      "label": "internal/llm and baml_client",
-      "wraps": [
-        "runtime",
-        "adapter"
-      ]
+      "text": "implements",
+      "x": 730,
+      "y": 320,
+      "style": "edge"
     }
   ],
-  "connections": [
+  "motion": [
     {
-      "id": "client-router",
-      "from": "client",
-      "to": "router",
-      "fromSide": "bottom",
-      "toSide": "top",
-      "label": "HTTP",
-      "variant": "emphasis"
+      "edge": "entry/config",
+      "start": 0.0
     },
     {
-      "id": "router-public",
-      "from": "router",
-      "to": "public",
-      "fromSide": "left",
-      "toSide": "right"
+      "edge": "entry/server",
+      "start": 0.5
     },
     {
-      "id": "router-auth",
-      "from": "router",
-      "to": "auth",
-      "fromSide": "right",
-      "toSide": "left",
-      "label": "/api/v1",
-      "variant": "emphasis"
+      "edge": "entry/graph",
+      "start": 1.0
     },
     {
-      "id": "auth-plan",
-      "from": "auth",
-      "to": "plan",
-      "fromSide": "bottom",
-      "toSide": "top",
-      "label": "POST",
-      "variant": "emphasis"
+      "edge": "entry/llm",
+      "start": 1.5
     },
     {
-      "id": "auth-cognitive",
-      "from": "auth",
-      "to": "cognitive",
-      "fromSide": "bottom",
-      "toSide": "top"
+      "edge": "server/api",
+      "start": 2.0
     },
     {
-      "id": "plan-reasoning",
-      "from": "plan",
-      "to": "reasoning",
-      "fromSide": "bottom",
-      "toSide": "top",
-      "label": "GeneratePlan",
-      "variant": "emphasis"
+      "edge": "server/metrics",
+      "start": 2.5
     },
     {
-      "id": "reasoning-breaker",
-      "from": "reasoning",
-      "to": "breaker",
-      "fromSide": "right",
-      "toSide": "left",
-      "label": "fan-out",
-      "variant": "emphasis"
+      "edge": "server/service",
+      "start": 3.0
     },
     {
-      "id": "breaker-adapter",
-      "from": "breaker",
-      "to": "adapter",
-      "fromSide": "bottom",
-      "toSide": "top",
-      "label": "GenerateTopic",
-      "variant": "emphasis"
+      "edge": "llm/service",
+      "start": 3.5
     },
     {
-      "id": "adapter-runtime",
-      "from": "adapter",
-      "to": "runtime",
-      "fromSide": "left",
-      "toSide": "right",
-      "variant": "emphasis"
+      "edge": "llm/baml",
+      "start": 4.0
     },
     {
-      "id": "runtime-bedrock",
-      "from": "runtime",
-      "to": "bedrock",
-      "fromSide": "left",
-      "toSide": "right",
-      "label": "Converse",
-      "variant": "emphasis"
+      "edge": "api/service",
+      "start": 4.5
     },
     {
-      "id": "reasoning-assembly",
-      "from": "reasoning",
-      "to": "assembly",
-      "fromSide": "bottom",
-      "toSide": "top",
-      "label": "merge"
+      "edge": "api/graph",
+      "start": 5.0
     },
     {
-      "id": "reasoning-queries",
-      "from": "reasoning",
-      "to": "queries",
-      "fromSide": "left",
-      "toSide": "right"
+      "edge": "baml/provider",
+      "start": 5.5
     },
     {
-      "id": "cognitive-queries",
-      "from": "cognitive",
-      "to": "queries",
-      "fromSide": "bottom",
-      "toSide": "top",
-      "label": "shadow"
+      "edge": "service/graph",
+      "start": 6.0
     },
     {
-      "id": "assembly-queries",
-      "from": "assembly",
-      "to": "queries",
-      "fromSide": "left",
-      "toSide": "bottom",
-      "label": "graph check"
-    },
-    {
-      "id": "queries-store",
-      "from": "queries",
-      "to": "store",
-      "fromSide": "left",
-      "toSide": "right",
-      "label": "read"
+      "edge": "service/metrics",
+      "start": 6.5
     }
-  ]
+  ],
+  "groups": []
 }

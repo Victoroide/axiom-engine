@@ -5,9 +5,11 @@
 AxiomEngine organizes responsibilities into distinct Go packages under `cmd/` and `internal/`, wired together at startup in `cmd/server/main.go`.
 
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="assets/diagrams/system-components-dark.webp">
-  <img src="assets/diagrams/system-components-light.webp" width="100%" alt="System components grouped by package. internal/server holds the router and middleware, the public routes, and token authentication with the rate limiter. internal/api holds the adaptive plan and cognitive graph handlers. internal/service holds ReasoningService, the circuit breaker and plan assembly. internal/graph holds the graph queries and the in-memory graph. internal/llm and baml_client hold the BAML adapter and runtime, which call Amazon Bedrock.">
+  <source media="(prefers-color-scheme: dark)" srcset="assets/diagrams/system-components-dark.svg">
+  <img src="assets/diagrams/system-components-light.svg" width="100%" alt="Architectural dependencies flow from cmd/server to internal/config, internal/server, internal/graph and internal/llm. internal/server depends on internal/api, internal/metrics and internal/service. internal/api uses internal/service and internal/graph; internal/service uses internal/graph and internal/metrics. internal/llm implements the service Planner interface and calls baml_client, which calls Amazon Bedrock (Nova Micro). internal/domain provides shared request, response and graph types.">
 </picture>
+
+The diagram illustrates the layered architectural dependencies across packages, labels the `internal/llm` → `internal/service` link as “implements”, and presents `internal/domain` as an unconnected band for shared request, response, and graph types. Amazon Bedrock running Nova Micro acts as the external model provider.
 
 ### Package Layout
 

@@ -18,7 +18,7 @@ RELEASE_VERSION ?= dev
 RELEASE_DIR ?= $(BIN_DIR)/release
 SOURCE_DATE_EPOCH ?= $(shell git log -1 --format=%ct)
 
-.PHONY: help generate swagger build run test cover test-e2e fuzz lint vuln fmt tidy-check generate-check toolchain-check docker-build container-smoke container-smoke-test clean tools-baml baml-check native-baml
+.PHONY: diagrams diagrams-check help generate swagger build run test cover test-e2e fuzz lint vuln fmt tidy-check generate-check toolchain-check docker-build container-smoke container-smoke-test clean tools-baml baml-check native-baml
 .PHONY: release-archive release-archive-smoke release-archive-test
 
 help: ## List available targets
@@ -65,6 +65,12 @@ generate: native-baml $(BAML_CLI) ## Regenerate and format the BAML client
 	gofmt -w baml_client
 	go tool -modfile=tools/go.mod goimports -w baml_client
 
+diagrams: ## Regenerate the vector documentation diagrams
+	cd tools && go run ./diagrams -root ..
+
+diagrams-check: ## Check diagram geometry, sources and generated SVGs
+	cd tools && go test -count=1 ./diagrams/...
+
 swagger: ## Regenerate the Swagger specification and embedded docs
 	go tool -modfile=tools/go.mod swag init -g cmd/server/main.go -o docs --parseInternal
 	gofmt -w docs/docs.go
@@ -109,7 +115,9 @@ lint: ## Vet build variants and check Go code and workflow files
 	./scripts/test-release-provenance.sh
 	go vet ./...
 	go vet -tags e2e ./...
+	go -C tools vet ./...
 	go run github.com/golangci/golangci-lint/v2/cmd/golangci-lint@$(GOLANGCI_LINT_VERSION) run ./...
+	go -C tools run github.com/golangci/golangci-lint/v2/cmd/golangci-lint@$(GOLANGCI_LINT_VERSION) run --config ../.golangci.yml ./...
 	go tool -modfile=tools/go.mod actionlint
 
 vuln: ## Check reachable Go vulnerabilities

@@ -61,6 +61,33 @@ func TestGeometryBoundaries(t *testing.T) {
 	}
 }
 
+func TestCommittedOutputMatchesGenerator(t *testing.T) {
+	root := filepath.Join("..", "..")
+	for _, name := range []string{"request-path", "system-components", "seed-graph"} {
+		d, err := loadDiagram(root, name)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if err := validate(d); err != nil {
+			t.Fatalf("%s: %v", name, err)
+		}
+		for _, theme := range []string{"light", "dark"} {
+			data, err := render(d, theme)
+			if err != nil {
+				t.Fatal(err)
+			}
+			path := filepath.Join(root, "docs", "assets", "diagrams", name+"-"+theme+".svg")
+			stored, err := readFile(path)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if string(data) != string(stored) {
+				t.Errorf("%s is stale; run make diagrams", path)
+			}
+		}
+	}
+}
+
 func TestGeometryRejectsMissingMotionTargets(t *testing.T) {
 	d := &diagram{Width: 200, Height: 200, Motion: []cue{{Node: "missing", Start: 0}}}
 	if err := validate(d); err == nil || !strings.Contains(err.Error(), "unknown highlight") {
@@ -101,6 +128,29 @@ func TestGeometryRejectsTangledEdges(t *testing.T) {
 				t.Fatalf("want %s rejection, got %v", tc.want, err)
 			}
 		})
+	}
+}
+
+func TestCanvasBudgets(t *testing.T) {
+	for _, name := range []string{"request-path", "system-components", "seed-graph"} {
+		d, err := loadDiagram(filepath.Join("..", ".."), name)
+		if err != nil {
+			t.Fatal(err)
+		}
+		height := 640.0
+		if name == "seed-graph" {
+			height = 1000
+		}
+		if d.Width > 960 || d.Height > height {
+			t.Errorf("%s viewBox %gx%g exceeds 960x%g", name, d.Width, d.Height, height)
+		}
+		if name == "request-path" {
+			for _, e := range d.Edges {
+				if len(e.Points) > 3 {
+					t.Errorf("%s has more than one bend", e.ID)
+				}
+			}
+		}
 	}
 }
 
@@ -150,6 +200,92 @@ func TestSeparateLinksOnDeclaredGridLine(t *testing.T) {
 	}
 	if err := validate(&d); err != nil {
 		t.Fatal(err)
+	}
+}
+
+func TestSeedRowsHaveAlignedCenters(t *testing.T) {
+	d, err := loadDiagram(filepath.Join("..", ".."), "seed-graph")
+	if err != nil {
+		t.Fatal(err)
+	}
+	nodes := map[string]node{}
+	for _, n := range d.Nodes {
+		nodes[n.ID] = n
+	}
+	for _, row := range [][]string{{"Variables", "Objects", "Classes", "Inheritance", "Polymorphism", "Generics"}, {"Abstract Classes", "Interfaces", "Design Patterns"}, {"Functions", "Recursion", "Merge Sort", "Pointers", "Linked Lists", "Graphs"}, {"Binary Search", "Dynamic Programming", "Trees", "Graph Traversal"}, {"Binary Search Trees", "AVL Trees"}, {"Arrays", "Hash Tables"}} {
+		y := nodes[row[0]].Y + nodes[row[0]].R
+		for _, id := range row {
+			n := nodes[id]
+			if n.Y+n.R != y {
+				t.Errorf("%s has center y=%g, want %g", id, n.Y+n.R, y)
+			}
+		}
+	}
+}
+
+func TestRequestRowsHaveUniformHeightsAndGaps(t *testing.T) {
+	d, err := loadDiagram(filepath.Join("..", ".."), "request-path")
+	if err != nil {
+		t.Fatal(err)
+	}
+	nodes := map[string]node{}
+	for _, n := range d.Nodes {
+		nodes[n.ID] = n
+	}
+	for _, row := range [][]string{{"client", "router", "auth", "limiter"}, {"baml", "breaker", "pipeline", "plan"}, {"bedrock", "knowledge", "cognitive"}} {
+		tallest := 0.0
+		for _, id := range row {
+			tallest = max(tallest, nodes[id].H)
+		}
+		top := nodes[row[0]].Y
+		gap := nodes[row[1]].X - nodes[row[0]].X - nodes[row[0]].W
+		for i, id := range row {
+			n := nodes[id]
+			if n.Y != top || n.H != tallest {
+				t.Errorf("%s row geometry y=%g h=%g, want y=%g h=%g", id, n.Y, n.H, top, tallest)
+			}
+			if i > 0 {
+				prev := nodes[row[i-1]]
+				if n.X-prev.X-prev.W != gap {
+					t.Errorf("unequal gap before %s", id)
+				}
+			}
+		}
+	}
+}
+
+func TestLayoutGridDeclarations(t *testing.T) {
+	for _, name := range []string{"request-path", "system-components", "seed-graph"} {
+		d, err := loadDiagram(filepath.Join("..", ".."), name)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if err := validateAlignment(d); err != nil {
+			t.Fatal(err)
+		}
+		nodes := map[string]node{}
+		for _, n := range d.Nodes {
+			nodes[n.ID] = n
+			if n.Row == "" {
+				t.Errorf("%s: %s has no row", name, n.ID)
+			}
+			if name == "seed-graph" && n.Column == "" {
+				t.Errorf("%s has no column", n.ID)
+			}
+		}
+		if name != "seed-graph" {
+			continue
+		}
+		for _, e := range d.Edges {
+			from, to := nodes[e.From], nodes[e.To]
+			a, b := e.Points[0], e.Points[len(e.Points)-1]
+			if from.Row == to.Row && a.Y != b.Y {
+				t.Errorf("%s is not horizontal", e.ID)
+			}
+			if from.Column == to.Column && a.X != b.X {
+				t.Errorf("%s is not vertical", e.ID)
+			}
+		}
 	}
 }
 
