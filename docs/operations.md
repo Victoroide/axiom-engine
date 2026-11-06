@@ -134,7 +134,7 @@ Invocations to Amazon Bedrock incur operational costs based on input and output 
 
 ### Operational Cost Factors
 
-- **Non-Idempotent Inferences**: Study plan generation (`POST /api/v1/adaptive-plan`) is non-deterministic and not idempotent. Retried client requests trigger fresh model inferences and generate additional token consumption. Upstream client applications should implement exponential backoff and rate-limit client retries.
+- **Non-Idempotent Inferences**: Requests omitting `Idempotency-Key` or retried after failure trigger fresh model inferences and generate additional token consumption. Callers should supply an `Idempotency-Key` on retryable requests to replay cached responses without incurring model token costs.
 - **Client Disconnects**: Inbound HTTP processing does not terminate downstream Bedrock generation if the client drops the TCP connection before receiving a response; the task runs until `REQUEST_TIMEOUT` expires. Client timeouts should be configured conservatively to avoid terminating connections while work is completing.
 - **Concurrency Caps**: Configure `LLM_MAX_CONCURRENCY` to control maximum parallel model invocations and prevent traffic spikes from generating unbounded token usage.
 - **Aborted Calls**: Calls cut off by `LLM_TIMEOUT` or `REQUEST_TIMEOUT` close the connection, but AWS documents no billing rule for aborted Converse calls. Assume their tokens may be billed.

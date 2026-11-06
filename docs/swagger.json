@@ -29,6 +29,12 @@
                 "operationId": "generateAdaptivePlan",
                 "parameters": [
                     {
+                        "type": "string",
+                        "description": "1 to 255 visible ASCII characters; successful responses retained for 24h by default",
+                        "name": "Idempotency-Key",
+                        "in": "header"
+                    },
+                    {
                         "description": "Student profile and failed concepts",
                         "name": "body",
                         "in": "body",
@@ -45,6 +51,10 @@
                             "$ref": "#/definitions/domain.PlanResponse"
                         },
                         "headers": {
+                            "Idempotent-Replayed": {
+                                "type": "boolean",
+                                "description": "True when replaying a stored response"
+                            },
                             "X-RateLimit-Limit": {
                                 "type": "integer",
                                 "description": "Maximum requests per rate-limit window"
@@ -105,6 +115,34 @@
                             "$ref": "#/definitions/domain.ErrorResponse"
                         },
                         "headers": {
+                            "X-Request-ID": {
+                                "type": "string",
+                                "description": "Resolved request correlation identifier"
+                            }
+                        }
+                    },
+                    "409": {
+                        "description": "idempotency_key_in_progress",
+                        "schema": {
+                            "$ref": "#/definitions/domain.ErrorResponse"
+                        },
+                        "headers": {
+                            "Retry-After": {
+                                "type": "integer",
+                                "description": "Seconds to wait before retrying"
+                            },
+                            "X-RateLimit-Limit": {
+                                "type": "integer",
+                                "description": "Maximum requests per rate-limit window"
+                            },
+                            "X-RateLimit-Remaining": {
+                                "type": "integer",
+                                "description": "Requests remaining in the rate-limit window"
+                            },
+                            "X-RateLimit-Reset": {
+                                "type": "integer",
+                                "description": "Seconds until the rate-limit window resets"
+                            },
                             "X-Request-ID": {
                                 "type": "string",
                                 "description": "Resolved request correlation identifier"

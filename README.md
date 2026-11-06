@@ -124,11 +124,12 @@ Response:
 
 ### Adaptive Study Plan
 
-Generate a personalized study plan for failed concepts.
+Generate a personalized study plan for failed concepts. Supplying an `Idempotency-Key` header allows safe retries; subsequent requests with the same key and payload replay the cached response (`Idempotent-Replayed: true`) without repeating model inference.
 
 ```sh
 curl -i -X POST http://localhost:8080/api/v1/adaptive-plan \
   -H "X-Internal-Token: $AXIOM_INTERNAL_TOKEN" \
+  -H "Idempotency-Key: plan-2026-11-06-001" \
   -H "Content-Type: application/json" \
   -d '{
     "student_id": "student-42",
@@ -198,7 +199,6 @@ Response:
 - **In-Memory Rate Limiting**: Rate limiting operates per replica in memory, keyed by client IP (masked to `/64` for IPv6). Distributed deployments requiring global rate limits should enforce quotas at an API gateway or reverse proxy.
 - **Client Disconnects**: Client HTTP disconnects do not cancel in-flight Bedrock reasoning. Work continues until `REQUEST_TIMEOUT` expires.
 - **Single Shared Secret**: Authentication relies on a single shared secret without caller identity or per-tenant authorization. Fine-grained authorization and multi-tenant isolation belong at the platform or gateway tier.
-- **Non-Idempotent Inferences**: Study plans are non-deterministic and not idempotent. Retried POST requests trigger new Bedrock model inferences and incur token costs.
 - **Native Library Initialization**: The BAML CFFI dynamic library is loaded during package initialization before `main` executes; missing or mismatched libraries panic directly to `stderr` in plain text prior to structured JSON logger initialization.
 - **Region Resolution and Caching**: Bedrock regions resolved dynamically from IMDS cannot be confirmed at startup, and the first resolved region is cached for the process lifetime.
 - **Resource Link Reachability**: Recommended resource URLs are not checked for network reachability by default. Setting `RESOURCE_LINK_CHECK=true` enables outbound HTTP reachability checks that verify URLs and drop non-resolving or refused resources before returning plans.

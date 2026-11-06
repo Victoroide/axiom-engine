@@ -57,6 +57,8 @@ Health (`/health`), liveness (`/livez`), readiness (`/readyz`), Swagger document
 
 - `X-Request-ID`: Client-provided correlation identifier. The server accepts and echoes client-supplied values matching `^[A-Za-z0-9._:-]{1,128}$`. Missing or invalid values—including identifiers exceeding 128 characters, containing whitespace, punctuation outside that character set, or non-ASCII characters—are replaced by a generated 43-character URL-safe random token when request-ID middleware runs. Responses produced by the application, including 400, 404, 405, 413, 431 and 501 errors, echo the resolved `X-Request-ID`, and access and error logs use the same value. Requests whose method the router does not implement (for example `PROPFIND`) return HTTP 501 with `Content-Type: application/json; charset=utf-8`, the body `{"error":"not_implemented","details":"Not Implemented"}`, `X-Request-ID`, and the same security headers as other responses (such as `X-Content-Type-Options: nosniff` and `X-Frame-Options: SAMEORIGIN`); valid client IDs are echoed, otherwise a fallback UUID is generated.
 - `Content-Type`: Required for requests with a payload. Endpoints expecting JSON require a media type of `application/json` parsed via MIME media type rules; optional parameters such as `charset=utf-8` are accepted. Missing, malformed, or non-JSON media types return HTTP 415 `unsupported_media_type` with details `Content-Type must be application/json`. All API responses return `application/json; charset=utf-8`.
+- `Idempotency-Key`: Optional client request header on `POST /api/v1/adaptive-plan` containing 1 to 255 visible ASCII characters (`0x21`–`0x7E`) enabling idempotent execution and response replay.
+- `Idempotent-Replayed`: Response header with value `true` present when an adaptive plan response is served from the idempotency cache rather than newly generated.
 
 ---
 
@@ -78,15 +80,18 @@ The `details` field provides context when available and is omitted when empty. U
 | HTTP Status | Error Code (`error`) | Description | Trigger |
 |---|---|---|---|
 | `400 Bad Request` | `invalid_request_body` | Request body fails JSON parsing or strict schema decoding | Malformed JSON, non-object body, trailing tokens, unknown or duplicate fields, case mismatches, or null array elements |
+| `400 Bad Request` | `invalid_idempotency_key` | Invalid `Idempotency-Key` header | Key contains non-visible characters, whitespace, or is outside 1–255 characters |
 | `400 Bad Request` | `validation_error` | Request payload fails schema validation | Missing required fields, invalid VARK profile, too many topics, or contradictory topic history |
 | `400 Bad Request` | `bad_request` | Generic client error | Malformed HTTP request, query parameters, or path encoding |
 | `401 Unauthorized` | `unauthorized` | Token authentication failure | Missing or incorrect `X-Internal-Token` or `Authorization: Bearer` |
 | `404 Not Found` | `not_found` | Resource does not exist | Unmatched route path |
 | `405 Method Not Allowed` | `method_not_allowed` | HTTP method not supported | Unsupported HTTP verb on an existing path |
 | `408 Request Timeout` | `request_timeout` | Request read deadline exceeded | Request not read within the 10 s read timeout |
+| `409 Conflict` | `idempotency_key_in_progress` | Concurrent request with same idempotency key | A request with this `Idempotency-Key` is currently in progress (`Retry-After: 1`) |
 | `413 Payload Too Large` | `payload_too_large` | Request body exceeds limit | Inbound payload exceeds the 64 KiB (65,536 bytes) limit |
 | `415 Unsupported Media Type` | `unsupported_media_type` | Media type not supported | Missing, malformed, unsupported charset, or non-JSON `Content-Type` header on `POST /api/v1/adaptive-plan` requests |
 | `422 Unprocessable Entity` | `validation_error` | Concept not found in knowledge graph | One or more topics in `failed_topics`, `mastered_topics`, `topics`, `mastered`, or `target_topic` do not exist, or unresolvable topic in `GET /api/v1/topics/{topic}/path` |
+| `422 Unprocessable Entity` | `idempotency_key_mismatch` | Idempotency key reused with different payload | The same `Idempotency-Key` was submitted with a different request body fingerprint |
 | `429 Too Many Requests` | `rate_limit_exceeded` | Client rate limit exceeded | Inbound requests exceed `RATE_LIMIT_MAX` within `RATE_LIMIT_WINDOW` |
 | `431 Request Header Fields Too Large` | `request_header_fields_too_large` | Request header fields exceed limit | Inbound request headers exceed the server header limit |
 | `500 Internal Server Error` | `internal_error` | Unhandled server error | Unexpected internal failure or recovered panic |
@@ -232,8 +237,10 @@ Generates a personalized, prerequisite-ordered study plan for a student based on
 - **Headers**:
   - `Content-Type: application/json` (optional parameters such as `charset=utf-8` allowed)
   - `X-Internal-Token: <token>` (if authentication is enabled)
+  - `Idempotency-Key: <key>`: Optional. 1 to 255 visible ASCII characters (`0x21`–`0x7E`). When supplied, successful responses (HTTP 200) are cached for `IDEMPOTENCY_TTL` (default `24h`) and scoped to the presented credential digest (or a single anonymous scope when authentication is disabled; either `X-Internal-Token` or `Authorization: Bearer` shares the same scope for the same credential). Repeat requests with the same key and identical request body replay the cached status, body, and `Content-Type` with header `Idempotent-Replayed: true` without invoking the reasoning model, receiving fresh `X-Request-ID` and rate-limit headers. Reusing the key with a different request body returns HTTP 422 `idempotency_key_mismatch`. Submitting a duplicate key while the first request is still running returns HTTP 409 `idempotency_key_in_progress` with `Retry-After: 1`. Invalid keys return HTTP 400 `invalid_idempotency_key`. Non-200 responses are not cached, allowing failed requests to be retried. When CORS is enabled, `Idempotency-Key` is allowed and `Idempotent-Replayed` is exposed. Response TTL starts on successful completion and does not expire running reservations.
 - **Validation Rules**:
   - Strict JSON: Request body must be a single JSON object matching the schema. Missing or invalid JSON syntax (`request body must be valid JSON`), non-object bodies (`request body must be a JSON object`), trailing data (`request body must contain exactly one JSON value`), schema type mismatches and out-of-range numbers (`request body must match the JSON schema`), unknown fields (`unknown field "KEY"`), duplicate keys at any depth (`duplicate field "KEY"`), and case mismatches return HTTP 400 `invalid_request_body`. Field names in error details are bounded to 64 runes plus an ellipsis. If a `charset` parameter is present on `Content-Type`, only case-insensitive `utf-8` is accepted; other or empty charsets return HTTP 415.
+  - `Idempotency-Key`: Optional. When provided, must contain between 1 and 255 visible ASCII characters (`0x21`–`0x7E`) without surrounding or embedded whitespace. Invalid keys return HTTP 400 `invalid_idempotency_key` with details `Idempotency-Key must contain 1 to 255 visible ASCII characters`.
   - `student_id`: Optional. If provided, must match regex `^[A-Za-z0-9._:-]{1,128}$`.
   - `course_id`: Optional. If provided, must match regex `^[A-Za-z0-9._:-]{1,128}$`.
   - `failed_topics`: Required. Array of strings. Must contain at least 1 and at most `MAX_FAILED_TOPICS` (default 10) unique items. Elements must not be null (`failed_topics must not contain null elements`). Topics resolve canonically across case, whitespace, and Unicode composition differences (see [Node Naming](knowledge-graph.md#node-naming)). Inbound topics are deduplicated by canonical form while preserving request order before validating the `MAX_FAILED_TOPICS` limit. Responses return authoritative stored node names. Upstream model recommendations are also matched canonically, deduplicated, and mapped to authoritative stored graph node names. Topics that do not resolve to a graph node return HTTP 422 `validation_error`.
@@ -244,12 +251,13 @@ Generates a personalized, prerequisite-ordered study plan for a student based on
 #### Responses
 
 - **200 OK**: Successfully generated adaptive plan. Every requested canonical topic is guaranteed to retain a study item. Response metadata (`_meta`) reports execution statistics: `items_after_validation` counts study items retained within the requested topics and their prerequisite closure, while `items_dropped` counts distinct items outside this closure, absent from the graph, or matching mastered topics removed during validation (also emitted in `stage.validation` warning logs). `items_skipped_mastered` counts distinct mastered prerequisites across the requested topics' prerequisite closures omitted from study; it is omitted when zero. Duplicate items removed during merging are not counted.
-- **400 Bad Request**: Malformed body, missing required fields, contradictory topic history, or identifier syntax error.
+- **400 Bad Request**: Malformed body, missing required fields, contradictory topic history, identifier syntax error, or invalid `Idempotency-Key` header (`invalid_idempotency_key`).
 - **401 Unauthorized**: Missing or invalid authentication token.
 - **408 Request Timeout**: Request not read within the 10 s read timeout.
+- **409 Conflict**: A request with this `Idempotency-Key` is currently in progress (`idempotency_key_in_progress`, `Retry-After: 1`).
 - **413 Payload Too Large**: Payload exceeds 64 KiB.
 - **415 Unsupported Media Type**: Request `Content-Type` is missing, malformed, or not `application/json`.
-- **422 Unprocessable Entity**: One or more topics are not found in the knowledge graph.
+- **422 Unprocessable Entity**: One or more topics are not found in the knowledge graph (`validation_error`), or `Idempotency-Key` was used with a different request body (`idempotency_key_mismatch`).
 - **429 Too Many Requests**: Rate limit exceeded.
 - **431 Request Header Fields Too Large**: Inbound request headers exceed the server limit.
 - **500 Internal Server Error**: Unexpected internal failure or recovered panic.

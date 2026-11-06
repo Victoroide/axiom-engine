@@ -42,6 +42,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Attach native release archives for Linux and macOS, signed checksums, and SLSA build provenance to published releases, with build and smoke verification coverage in dry-run mode.
 - Accept optional learner history on adaptive plan (`mastered_topics`) and cognitive graph (`mastered`) requests to omit mastered prerequisites from study recommendations and distinguish unassessed concepts, bounded by `MAX_MASTERED_TOPICS` (default 100).
 - Optional outbound resource link checking controlled by `RESOURCE_LINK_CHECK` (default `false`) and `RESOURCE_LINK_TIMEOUT` (default `3s`), removing unreachable or non-2xx links with HEAD/GET fallback, enforcing socket-level SSRF dial protections, reporting `_meta.resources_unreachable`, and tracking results via `axiom_resource_links_checked_total` metrics.
+- Replay successful adaptive study plan responses for repeated requests with an optional `Idempotency-Key` header, scoped by credential and backed by a bounded in-memory store configured by `IDEMPOTENCY_TTL` (default `24h`) and `IDEMPOTENCY_MAX_ENTRIES` (default `10000`), returning HTTP 409 `idempotency_key_in_progress` for concurrent requests and HTTP 422 `idempotency_key_mismatch` on payload differences.
 
 ### Changed
 

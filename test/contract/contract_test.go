@@ -141,7 +141,7 @@ func loadContract(t *testing.T) (*openapi3.T, routers.Router) {
 func checkHeaders(header http.Header, response *openapi3.Response) error {
 	var missing []error
 	for name := range header {
-		if !strings.EqualFold(name, "X-Request-ID") && !strings.EqualFold(name, "Retry-After") && !strings.HasPrefix(strings.ToLower(name), "x-ratelimit-") {
+		if !strings.EqualFold(name, "X-Request-ID") && !strings.EqualFold(name, "Retry-After") && !strings.EqualFold(name, "Idempotent-Replayed") && !strings.HasPrefix(strings.ToLower(name), "x-ratelimit-") {
 			continue
 		}
 		declared := false
@@ -454,4 +454,38 @@ func TestSwaggerRecoveredPanic(t *testing.T) {
 			validateResponse(t, router, request(tc.method, tc.path, validBody), resp)
 		})
 	}
+}
+
+func TestIdempotencyContract(t *testing.T) {
+	_, router := loadContract(t)
+	app := newApp(t, nil, nil)
+	keyed := func(body string) *http.Request {
+		req := request("POST", planPath, body)
+		req.Header.Set("Idempotency-Key", "contract-retry")
+		return req
+	}
+	req := keyed(validBody)
+	call(t, app, req, 200, "")
+	req = keyed(validBody)
+	replay := call(t, app, req, 200, "")
+	if replay.Header.Get("Idempotent-Replayed") != "true" {
+		t.Fatal("missing replay header")
+	}
+	validateResponse(t, router, req, replay)
+	req = keyed(strings.Replace(validBody, "student-42", "student-43", 1))
+	validateResponse(t, router, req, call(t, app, req, 422, "idempotency_key_mismatch"))
+	started, release := make(chan struct{}, 1), make(chan struct{})
+	app = newApp(t, nil, func(ctx context.Context, r service.TopicRequest) ([]domain.PlanItem, error) {
+		started <- struct{}{}
+		<-release
+		return successfulPlan(ctx, r)
+	})
+	done := make(chan struct{})
+	go func() { defer close(done); call(t, app, keyed(validBody), 200, "") }()
+	<-started
+	req = keyed(validBody)
+	conflict := call(t, app, req, 409, "idempotency_key_in_progress")
+	close(release)
+	<-done
+	validateResponse(t, router, req, conflict)
 }

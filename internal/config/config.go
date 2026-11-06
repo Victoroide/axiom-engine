@@ -15,6 +15,7 @@ import (
 type Config struct {
 	ResourceLinks         ResourceLinks
 	Mastery               Mastery
+	Idempotency           Idempotency
 	Port                  string
 	AuthDisabled          bool
 	InternalToken         string
@@ -218,6 +219,9 @@ func Load(getenv func(string) string) (Config, error) {
 		return Config{}, err
 	}
 	if err := loadResourceLinks(getenv, &c); err != nil {
+		return Config{}, err
+	}
+	if err := loadIdempotency(getenv, &c); err != nil {
 		return Config{}, err
 	}
 	return c, nil
