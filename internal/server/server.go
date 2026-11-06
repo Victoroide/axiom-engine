@@ -26,6 +26,7 @@ import (
 	"github.com/gofiber/fiber/v3/middleware/limiter"
 	"github.com/gofiber/fiber/v3/middleware/recover"
 	"github.com/gofiber/fiber/v3/middleware/requestid"
+	redisstorage "github.com/gofiber/storage/redis/v3"
 	"github.com/google/uuid"
 	"github.com/valyala/fasthttp"
 
@@ -66,7 +67,21 @@ type Dependencies struct {
 }
 
 // New constructs an application without opening a listener.
+// It panics on storage initialization failure; NewWithError returns that error.
 func New(cfg config.Config, deps Dependencies) *fiber.App {
+	app, err := NewWithError(cfg, deps)
+	if err != nil {
+		panic(err)
+	}
+	return app
+}
+
+// NewWithError constructs an application after checking optional shared storage.
+func NewWithError(cfg config.Config, deps Dependencies) (*fiber.App, error) {
+	shared, err := openRedis(cfg.Redis)
+	if err != nil {
+		return nil, err
+	}
 	logger := deps.Logger
 	if logger == nil {
 		logger = slog.Default()
@@ -83,9 +98,12 @@ func New(cfg config.Config, deps Dependencies) *fiber.App {
 	if recorder != nil {
 		app.Get("/metrics", adaptor.HTTPHandler(recorder.Handler()))
 	}
-	registerAPI(app, cfg, deps, logger, recorder)
+	registerAPI(app, cfg, deps, logger, recorder, shared)
 	wrapUnknownMethods(app, logger, errorHandler, recorder)
-	return app
+	if shared != nil {
+		app.Hooks().OnPostShutdown(func(_ error) error { _ = shared.Close(); return shared.Conn().Close() })
+	}
+	return app, nil
 }
 
 func wrapUnknownMethods(app *fiber.App, logger *slog.Logger, errorHandler fiber.ErrorHandler, recorder *metrics.Metrics) {
@@ -242,15 +260,20 @@ func registerPublicRoutes(app *fiber.App, cfg config.Config) {
 	app.Get("/swagger/*", swaggo.New(swaggo.Config{Title: "AxiomEngine API", ValidatorUrl: "none"}))
 }
 
-func registerAPI(app *fiber.App, cfg config.Config, deps Dependencies, logger *slog.Logger, recorder *metrics.Metrics) {
+func registerAPI(app *fiber.App, cfg config.Config, deps Dependencies, logger *slog.Logger, recorder *metrics.Metrics, shared *redisstorage.Storage) {
 	if !cfg.AuthDisabled {
 		app.Use("/api/v1", internalTokenMiddleware(tokenDigests(cfg.InternalToken, cfg.InternalTokenPrevious), logger, recorder))
 	} else {
 		logger.Warn("auth.disabled")
 	}
-	app.Use("/api/v1", limiter.New(limiter.Config{Max: cfg.RateLimitMax, Expiration: cfg.RateLimitWindow, LimiterMiddleware: limiter.SlidingWindow{}, KeyGenerator: rateLimitKey, LimitReached: func(c fiber.Ctx) error {
+	limitConfig := limiter.Config{Max: cfg.RateLimitMax, Expiration: cfg.RateLimitWindow, LimiterMiddleware: limiter.SlidingWindow{}, KeyGenerator: rateLimitKey, LimitReached: func(c fiber.Ctx) error {
 		return c.Status(fiber.StatusTooManyRequests).JSON(domain.ErrorResponse{Error: "rate_limit_exceeded", Details: "too many requests"})
-	}}))
+	}}
+	if shared != nil {
+		limitConfig.Storage = shared
+		limitConfig.LimiterMiddleware = redisWindow{storage: shared, logger: logger}
+	}
+	app.Use("/api/v1", limiter.New(limitConfig))
 	var resourceLinks *service.ResourceLinkChecker
 	if cfg.ResourceLinks.Enabled {
 		resourceLinks = service.NewResourceLinkChecker(cfg.ResourceLinks.Timeout, nil, recorder)
@@ -258,7 +281,10 @@ func registerAPI(app *fiber.App, cfg config.Config, deps Dependencies, logger *s
 	reasoning := service.NewReasoningService(deps.Graph, deps.Planner, service.Options{ResourceLinks: resourceLinks, LLMTimeout: cfg.LLMTimeout, MaxFailedTopics: cfg.MaxFailedTopics, MaxMasteredTopics: cfg.Mastery.MaxTopics, MaxConcurrency: cfg.LLMMaxConcurrency, QueueTimeout: cfg.LLMQueueTimeout, Logger: logger, Metrics: recorder})
 	var planMiddleware []fiber.Handler
 	if cfg.Idempotency.TTL > 0 {
-		store := idempotency.NewMemory(cfg.Idempotency.TTL, cfg.Idempotency.MaxEntries)
+		var store idempotency.Store = idempotency.NewMemory(cfg.Idempotency.TTL, cfg.Idempotency.MaxEntries)
+		if shared != nil {
+			store = idempotency.NewRedis(shared.Conn(), cfg.Idempotency.TTL, cfg.RequestTimeout+3*time.Second)
+		}
 		planMiddleware = append(planMiddleware, api.Idempotency(store, func(c fiber.Ctx) string {
 			if cfg.AuthDisabled {
 				return "anonymous"

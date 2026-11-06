@@ -527,7 +527,7 @@ paths:
           schema:
             $ref: '#/definitions/domain.ErrorResponse'
         "503":
-          description: Temporary unavailability, upstream throttling or server shutdown
+          description: Shared storage unavailable
           headers:
             Retry-After:
               description: Seconds to wait before retrying
@@ -656,6 +656,17 @@ paths:
               type: string
           schema:
             $ref: '#/definitions/domain.ErrorResponse'
+        "503":
+          description: Shared storage unavailable
+          headers:
+            Retry-After:
+              description: Seconds to wait before retrying
+              type: integer
+            X-Request-ID:
+              description: Resolved request correlation identifier
+              type: string
+          schema:
+            $ref: '#/definitions/domain.ErrorResponse'
       security:
       - InternalToken: []
       summary: List curriculum topics
@@ -762,6 +773,17 @@ paths:
         "500":
           description: Internal Server Error
           headers:
+            X-Request-ID:
+              description: Resolved request correlation identifier
+              type: string
+          schema:
+            $ref: '#/definitions/domain.ErrorResponse'
+        "503":
+          description: Shared storage unavailable
+          headers:
+            Retry-After:
+              description: Seconds to wait before retrying
+              type: integer
             X-Request-ID:
               description: Resolved request correlation identifier
               type: string
@@ -911,6 +933,17 @@ paths:
         "500":
           description: Internal Server Error
           headers:
+            X-Request-ID:
+              description: Resolved request correlation identifier
+              type: string
+          schema:
+            $ref: '#/definitions/domain.ErrorResponse'
+        "503":
+          description: Shared storage unavailable
+          headers:
+            Retry-After:
+              description: Seconds to wait before retrying
+              type: integer
             X-Request-ID:
               description: Resolved request correlation identifier
               type: string

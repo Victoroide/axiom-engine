@@ -66,7 +66,10 @@ func run(args []string, stdout io.Writer) (err error) {
 		return err
 	}
 	logStartup(logger, cfg, g, os.Getenv, os.ReadFile)
-	app := server.New(cfg, server.Dependencies{Graph: g, Planner: llm.New(), Logger: logger})
+	app, err := server.NewWithError(cfg, server.Dependencies{Graph: g, Planner: llm.New(), Logger: logger})
+	if err != nil {
+		return err
+	}
 	app.Hooks().OnListen(func(data fiber.ListenData) error {
 		logger.Info("server.listening", "address", net.JoinHostPort(strings.Trim(data.Host, "[]"), data.Port))
 		return nil

@@ -76,6 +76,8 @@ func (h *Handler) RegisterRoutes(app *fiber.App, planMiddleware ...fiber.Handler
 // @Failure 504 {object} domain.ErrorResponse
 // @Failure 431 {object} domain.ErrorResponse "Request headers exceed the server limit"
 // @Failure 500 {object} domain.ErrorResponse
+// @Failure 503 {object} domain.ErrorResponse "Shared storage unavailable"
+// @Header 503 {integer} Retry-After "Seconds to wait before retrying"
 // @Header all {string} X-Request-ID "Resolved request correlation identifier"
 // @Header 200,400,409,413,415,422,502,503,504 {integer} X-RateLimit-Limit "Maximum requests per rate-limit window"
 // @Header 200,400,409,413,415,422,502,503,504 {integer} X-RateLimit-Remaining "Requests remaining in the rate-limit window"
@@ -180,6 +182,8 @@ func validationResponse(c fiber.Ctx, err *service.ValidationError) error {
 // @Failure 429 {object} domain.ErrorResponse
 // @Failure 431 {object} domain.ErrorResponse "Request headers exceed the server limit"
 // @Failure 500 {object} domain.ErrorResponse
+// @Failure 503 {object} domain.ErrorResponse "Shared storage unavailable"
+// @Header 503 {integer} Retry-After "Seconds to wait before retrying"
 // @Header all {string} X-Request-ID "Resolved request correlation identifier"
 // @Header 200,400,413,422 {integer} X-RateLimit-Limit "Maximum requests per rate-limit window"
 // @Header 200,400,413,422 {integer} X-RateLimit-Remaining "Requests remaining in the rate-limit window"
