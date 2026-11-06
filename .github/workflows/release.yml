@@ -33,6 +33,8 @@ jobs:
       publish: ${{ steps.release.outputs.publish }}
       version: ${{ steps.release.outputs.version }}
       created: ${{ steps.release.outputs.created }}
+      archive-version: ${{ steps.release.outputs.archive-version }}
+      source-date-epoch: ${{ steps.release.outputs.source-date-epoch }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -60,10 +62,16 @@ jobs:
           fi
           version=$(sed -n 's/^[[:space:]]*version[[:space:]]*"\([^"]*\)".*/\1/p' baml_src/generators.baml)
           test -n "$version"
+          archive_version="dev-${GITHUB_SHA:0:12}"
+          if [[ "$RELEASE_REF" == refs/tags/v* ]]; then
+            archive_version=${RELEASE_REF#refs/tags/v}
+          fi
           {
             echo "publish=$publish"
             echo "version=$version"
             echo "created=$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+            echo "archive-version=$archive_version"
+            echo "source-date-epoch=$(git log -1 --format=%ct)"
           } >> "$GITHUB_OUTPUT"
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
@@ -71,7 +79,90 @@ jobs:
           cache-dependency-path: |
             go.sum
             tools/go.sum
-      - run: make lint test docker-build container-smoke IMAGE=axiom-release:verify
+      - run: make lint test docker-build container-smoke
+
+  archives:
+    name: Build and verify archive (${{ matrix.os }}/${{ matrix.arch }})
+    needs: verify
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: ubuntu-24.04
+            os: linux
+            arch: amd64
+          - runner: ubuntu-24.04-arm
+            os: linux
+            arch: arm64
+          - runner: macos-15
+            os: darwin
+            arch: arm64
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: go.mod
+          cache-dependency-path: |
+            go.sum
+            tools/go.sum
+      - name: Verify native platform
+        env:
+          RELEASE_OS: ${{ matrix.os }}
+          RELEASE_ARCH: ${{ matrix.arch }}
+        run: |
+          test "$(go env GOHOSTOS)" = "$RELEASE_OS"
+          test "$(go env GOHOSTARCH)" = "$RELEASE_ARCH"
+      - name: Install GNU tar
+        if: runner.os == 'macOS'
+        run: brew install gnu-tar
+      - name: Package and exercise native archive
+        env:
+          RELEASE_VERSION: ${{ needs.verify.outputs.archive-version }}
+          SOURCE_DATE_EPOCH: ${{ needs.verify.outputs.source-date-epoch }}
+        run: |
+          make release-archive-test release-archive release-archive-smoke \
+            RELEASE_VERSION="$RELEASE_VERSION" RELEASE_DIR="$RUNNER_TEMP/archives" \
+            SOURCE_DATE_EPOCH="$SOURCE_DATE_EPOCH"
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: release-archive-${{ matrix.os }}-${{ matrix.arch }}
+          path: ${{ runner.temp }}/archives/*.tar.gz
+          if-no-files-found: error
+          retention-days: 1
+
+  checksums:
+    name: Collect archive checksums
+    needs: archives
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    outputs:
+      subjects: ${{ steps.checksums.outputs.subjects }}
+    steps:
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          path: ${{ runner.temp }}/archives
+          pattern: release-archive-*
+          merge-multiple: true
+      - name: Hash every archive
+        id: checksums
+        working-directory: ${{ runner.temp }}/archives
+        shell: bash
+        run: |
+          archives=(*.tar.gz)
+          test "${#archives[@]}" -eq 3
+          sha256sum "${archives[@]}" | LC_ALL=C sort -k2 > checksums.txt
+          sha256sum --check checksums.txt
+          echo "subjects=$(base64 -w0 checksums.txt)" >> "$GITHUB_OUTPUT"
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: release-checksums
+          path: ${{ runner.temp }}/archives/checksums.txt
+          if-no-files-found: error
+          retention-days: 1
 
   dry-run:
     name: Dry-run runtime image (${{ matrix.arch }})
@@ -119,7 +210,7 @@ jobs:
           platforms: linux/${{ matrix.arch }}
           push: false
           load: true
-          tags: axiom-release:${{ matrix.arch }}
+          tags: axiom-engine:local
           outputs: type=oci,dest=${{ runner.temp }}/runtime-${{ matrix.arch }}.tar
           build-args: |
             BAML_VERSION=${{ needs.verify.outputs.version }}
@@ -129,7 +220,7 @@ jobs:
           provenance: mode=max
           sbom: true
       - name: Exercise native runtime image
-        run: make container-smoke IMAGE=axiom-release:${{ matrix.arch }}
+        run: make container-smoke
 
   build:
     name: Publish runtime image (${{ matrix.arch }})
@@ -329,7 +420,7 @@ jobs:
 
   release:
     name: Create GitHub release
-    needs: [verify, sign]
+    needs: [verify, sign, checksums]
     if: needs.verify.outputs.publish == 'true'
     runs-on: ubuntu-latest
     environment: release
@@ -343,3 +434,53 @@ jobs:
           GH_REPO: ${{ github.repository }}
           RELEASE_TAG: ${{ github.ref_name }}
         run: gh release create "$RELEASE_TAG" --verify-tag --generate-notes
+
+  publish-archives:
+    name: Sign checksums and attach archives
+    needs: [verify, release, checksums]
+    if: needs.verify.outputs.publish == 'true'
+    runs-on: ubuntu-24.04
+    environment: release
+    timeout-minutes: 10
+    permissions:
+      contents: write
+      id-token: write
+    steps:
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          path: ${{ runner.temp }}/archives
+          pattern: release-archive-*
+          merge-multiple: true
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: release-checksums
+          path: ${{ runner.temp }}/archives
+      - uses: sigstore/cosign-installer@6f9f17788090df1f26f669e9d70d6ae9567deba6 # v4.1.2
+      - name: Sign archive checksums
+        working-directory: ${{ runner.temp }}/archives
+        run: |
+          sha256sum --check checksums.txt
+          cosign sign-blob --yes --bundle checksums.txt.sigstore.json checksums.txt
+      - name: Attach verified archives and signature
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+          RELEASE_TAG: ${{ github.ref_name }}
+        run: |
+          gh release upload "$RELEASE_TAG" "$RUNNER_TEMP"/archives/*.tar.gz \
+            "$RUNNER_TEMP/archives/checksums.txt" "$RUNNER_TEMP/archives/checksums.txt.sigstore.json"
+
+  provenance:
+    name: Attach archive provenance
+    needs: [verify, checksums, publish-archives]
+    if: needs.verify.outputs.publish == 'true'
+    permissions:
+      actions: read
+      id-token: write
+      contents: write
+    uses: slsa-framework/slsa-github-generator/.github/workflows/generator_generic_slsa3.yml@v2.1.0 # v2.1.0
+    with:
+      base64-subjects: ${{ needs.checksums.outputs.subjects }}
+      upload-assets: true
+      upload-tag-name: ${{ github.ref_name }}
+      provenance-name: axiom-engine_${{ needs.verify.outputs.archive-version }}.intoto.jsonl

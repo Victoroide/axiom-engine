@@ -9,6 +9,7 @@ For contribution workflow, commit conventions, and review procedures, see [CONTR
 - **Docker**: Engine 24+ for building runtime images and executing container health checks.
 - **Chrome or Chromium**: Required for browser end-to-end tests. The test runner detects local system installations or uses the path specified in `ROD_BROWSER_BIN`.
 - **ShellCheck**: required by `make lint`; actionlint uses it to check workflow `run:` steps, as the CI runners do.
+- **GNU tar**: required by `make release-archive` for deterministic archive packaging (`brew install gnu-tar` on macOS).
 
 <a id="pinned-tool-versions"></a>
 ## Tooling
@@ -63,6 +64,9 @@ Run `make help` to inspect available Makefile targets:
 | `generate` | Regenerate and format the BAML client. |
 | `swagger` | Regenerate the Swagger specification and embedded docs. |
 | `build` | Build the stripped service binary with CGO. |
+| `release-archive` | Package the binary and verified native library for this host. |
+| `release-archive-smoke` | Check an extracted archive's liveness and clean shutdown. |
+| `release-archive-test` | Check archive contents, repeatability and runtime behavior. |
 | `run` | Run the service using the current environment. |
 | `test` | Run unit tests with race detection. |
 | `cover` | Run race tests and print total statement coverage. |
@@ -346,6 +350,27 @@ All temporary files, fixture processes, and test containers are cleaned up on co
 
 Every failed check stops the script with `container smoke: <reason>`. `make container-smoke-test IMAGE=<image>` builds two derived images, one running as root and one killed on stop, and checks that the smoke test rejects them with `container smoke: configured user is 0:0` and `container smoke: stop exit code is 137`. The derived images are removed afterwards. Both scripts need Go, Docker with `host-gateway` support, curl and Python 3.
 
+### Release archives
+
+Release archive targets build, package, and test standalone distribution archives containing `axiom-server`, the pinned native BAML CFFI library, `LICENSE`, and `README.md`.
+
+- `make release-archive`: builds the service binary and verified native library, then packages them into a deterministic `.tar.gz` archive. GNU tar is required (`brew install gnu-tar` on macOS).
+- `make release-archive-smoke`: clears inherited internal tokens, checks an extracted archive's liveness via `./axiom-server healthcheck` against `/livez` within 30 seconds, and verifies exit status 0 on `SIGTERM`.
+- `make release-archive-test`: validates archive contents, checks repeatable packaging of the same built inputs rather than byte-for-byte reproducibility across independent builds, runs smoke tests, and verifies rejection of invalid versions, non-numeric timestamps, and missing native libraries.
+
+Packaging settings:
+- `RELEASE_VERSION`: archive version string (default: `dev`).
+- `RELEASE_DIR`: destination directory for archives (default: `$(BIN_DIR)/release`).
+- `SOURCE_DATE_EPOCH`: archive entry timestamp (defaults to HEAD commit timestamp via `git log -1 --format=%ct`).
+
+These variables control packaging only and introduce no new service runtime configuration.
+
+Optional test settings:
+- `RELEASE_TEST_DIR`: scratch directory for archive tests (defaults to `TMPDIR` or `/tmp`).
+- `RELEASE_SMOKE_PORT`: local port for smoke probe (default: `8080`).
+
+In CI, manual dispatch (`workflow_dispatch`) can execute a dry run against any non-tag ref. Dry runs name archives as `dev-<12-character commit>`, build and smoke-test all three platforms, and produce checksums without signing or publishing release assets. Workflow artifacts are retained for one day.
+
 ### Fuzz and property tests
 
 Go native fuzz targets in `internal/graph`, `internal/config`, `internal/api`, and `internal/service` test parser robustness, canonicalization, and output policy constraints against random and mutated inputs without requiring the native BAML library.
@@ -458,10 +483,14 @@ This workflow uses `pull_request_target`, so GitHub reads its definition from ma
 ### `release.yml`
 
 Runs on a pushed `v*` tag and on manual dispatch (`workflow_dispatch`, input `dry_run`, default `true`):
-- **`verify`**: runs `make lint test docker-build container-smoke IMAGE=axiom-release:verify`; publishing runs also require a `v*` tag whose commit is on `main`.
-- **`dry-run`** (when not publishing): explicitly installs Docker CE `v29.9.2`, builds the runtime image natively on `ubuntu-latest` (amd64) and `ubuntu-24.04-arm` (arm64) into a containerd image store, runs `make container-smoke` against it, and exports an OCI archive with SBOM and provenance. Nothing is pushed.
+- **`verify`**: runs `make lint test docker-build container-smoke`; publishing runs also require a `v*` tag whose commit is on `main`.
+- **`archives`**: builds and smoke-tests native release archives on `ubuntu-24.04` (`linux/amd64`), `ubuntu-24.04-arm` (`linux/arm64`), and `macos-15` (`darwin/arm64`) using `make release-archive-test release-archive release-archive-smoke`.
+- **`checksums`**: verifies and hashes all three archives into `checksums.txt` and validates SHA-256 digests.
+- **`dry-run`** (when not publishing): explicitly installs Docker CE `v29.9.2`, builds the runtime image natively on `ubuntu-latest` (amd64) and `ubuntu-24.04-arm` (arm64) into a containerd image store, runs `make container-smoke` against it, and exports an OCI archive with SBOM and provenance. Archive artifacts and checksums are retained for one day. Nothing is pushed or signed.
 - **`build`** (publishing): explicitly installs Docker CE `v29.9.2`, builds and loads each native image, runs `make container-smoke`, logs in, pushes it as `ghcr.io/victoroide/axiom-engine:<commit SHA>-<arch>`, checks that the pushed digest equals the built one, and uploads the digest as an artifact.
 - **`merge`**, **`attest`**, **`sign`**, **`release`**: combine both digests into one index tagged `<tag>`, `<version>`, `<major>.<minor>` and `latest`, attest and keylessly sign that index digest, then create the GitHub release. Publishing jobs run in the `release` environment.
+- **`publish-archives`** (publishing): signs `checksums.txt` keylessly with Cosign (`checksums.txt.sigstore.json`) and uploads archives, checksums, and signature bundle to the release.
+- **`provenance`** (publishing): generates SLSA Level 3 build provenance for the archives using `slsa-framework/slsa-github-generator` and attaches `axiom-engine_<version>.intoto.jsonl`.
 
 ### `scorecard.yml`
 
