@@ -27,7 +27,7 @@ cleanup() {
     docker logs "$name" >&2 || true
     cat "$smoke_dir/backend-errors" >&2 || true
   fi
-  docker rm -f "$prefix-ok" "$prefix-throttle" >/dev/null 2>&1 || true
+  docker rm -f "$prefix-ok" "$prefix-throttle" "$prefix-example" >/dev/null 2>&1 || true
   stop_backend
   rm -rf "$smoke_dir"
   exit "$result"
@@ -62,6 +62,7 @@ start_image() {
     -e AWS_REGION=us-east-1 -e AWS_ACCESS_KEY_ID=dummy -e AWS_SECRET_ACCESS_KEY=dummy \
     -e AWS_EC2_METADATA_DISABLED=true -e AWS_MAX_ATTEMPTS=1 -e AWS_RETRY_MODE=standard \
     -e "AWS_ENDPOINT_URL=http://host.docker.internal:$backend_port" \
+    -e "GRAPH_FILE=${2:-}" \
     -e "AXIOM_INTERNAL_TOKEN=$token" "$image" >/dev/null
   for _ in {1..30}; do
     health=$(docker inspect --format '{{.State.Health.Status}}' "$name")
@@ -144,3 +145,19 @@ assert json.load(open(sys.argv[2]))['error'] == 'service_unavailable'
 PY
 stop_image
 printf 'Throttling returns 503 with Retry-After: 5; private JSON logs and clean stop verified\n'
+
+start_backend ok
+start_image example /usr/share/axiom-engine/graphs/computer-science.json
+curl --fail --silent --show-error --max-time 5 --header "X-Internal-Token: $token" \
+  "$base/api/v1/topics" > "$smoke_dir/topics.json"
+python3 - "$smoke_dir/topics.json" <<'PYTHON'
+import json
+import sys
+topics = json.load(open(sys.argv[1]))['topics']
+assert len(topics) == 130, len(topics)
+assert 'SQL' in {topic['name'] for topic in topics}, topics
+assert 'TCP' in {topic['name'] for topic in topics}, topics
+PYTHON
+request_plan 200
+stop_image
+printf 'Bundled computer science curriculum starts and serves topics and plans\n'

@@ -77,6 +77,12 @@ All querying methods return newly allocated defensive copies of topic and relati
 
 When `GRAPH_FILE` is unset, AxiomEngine loads an embedded seed graph containing 20 triples across 23 computer science concepts defined in [internal/graph/seed.json](../internal/graph/seed.json).
 
+The embedded seed curriculum structural summary:
+- **Concepts**: 23 unique concept nodes.
+- **Relations**: 20 total relations (17 `depends_on`, 3 `is_a`).
+- **Roots**: `Arrays`, `Functions`, `Pointers`, `Variables`.
+- **Longest Chain**: 6 concepts in topological study order: `Variables` → `Objects` → `Classes` → `Abstract Classes` → `Interfaces` → `Design Patterns`.
+
 ### Seed Graph Topology
 
 Each arrow points from a topic to its prerequisite. Solid arrows are `depends_on`; dashed arrows are `is_a`.
@@ -128,6 +134,50 @@ The graph loader (`Decode` in `internal/graph/loader.go`) enforces the following
 8. **Acyclic Prerequisite Structure**: Both `depends_on` and `is_a` edges must form a directed acyclic graph (DAG). Cyclic prerequisite dependencies are rejected at startup with `graph contains a prerequisite cycle: <path>` (for example, `graph contains a prerequisite cycle: B -> C -> B`). Traversal evaluates starting nodes in sorted order and rotates the cycle to its smallest node to report the path deterministically. Diagnostics show at most 16 nodes and truncate node names exceeding 64 runes with an ellipsis, reporting total node count when nodes are omitted.
 9. **Canonical Node Name Uniqueness**: Distinct node names may not share the same canonical form. Canonical collisions are rejected at startup (see [Node Naming](#node-naming)).
 10. **Addressable Node Names**: After outer whitespace is trimmed, subject and object node names must be at most 128 Unicode runes and must not contain commas, Unicode control characters (`unicode.Cc`), format characters (`unicode.Cf`), or the replacement character U+FFFD (including invalid UTF-8 sequences). Violations fail startup validation reporting the tuple index, field (`subject` or `object`), a quoted prefix of at most 64 runes, and the violated rule (`tuple %d subject %.64q contains a comma`, `contains a control character`, `contains a format character`, `contains a replacement character`, or `exceeds 128 runes`).
+
+### Validating a Curriculum
+
+The CLI provides a `validate-graph` subcommand to verify curriculum files without starting the HTTP or MCP server:
+
+```sh
+axiom-server validate-graph <file>
+```
+
+- **Execution**: Runs the startup loader (`graph.Load`) before configuration parsing. Requires no `AXIOM_INTERNAL_TOKEN`, AWS credentials, or model provider configuration.
+- **Output**: On successful validation, writes a JSON summary object to standard output (`stdout`) and exits 0:
+  - `concepts`: Total count of unique concept nodes.
+  - `relations`: Object mapping each relation type (`depends_on`, `is_a`) to its occurrence count. Both `depends_on` and `is_a` edges count as prerequisite dependencies.
+  - `roots`: Alphabetically sorted array of concept names that have no prerequisites (nodes with zero outgoing prerequisite edges).
+  - `longest_chain`: Array of concept names representing one longest prerequisite chain in topological study order, ending with the concept that requires them. Ties between equal-length chains are resolved deterministically by sorted concept names.
+- **Failure**: On validation failure, prints the loader error message to standard error (`stderr`) and exits with code 1.
+
+Example output for the embedded seed:
+
+```json
+{"concepts":23,"relations":{"depends_on":17,"is_a":3},"roots":["Arrays","Functions","Pointers","Variables"],"longest_chain":["Variables","Objects","Classes","Abstract Classes","Interfaces","Design Patterns"]}
+```
+
+---
+
+## Example Computer Science Curriculum
+
+The repository ships an optional larger curriculum in [examples/graphs/computer-science.json](../examples/graphs/computer-science.json). It is also bundled into the runtime container image at `/usr/share/axiom-engine/graphs/computer-science.json`.
+
+This curriculum covers six core subject areas:
+- Programming fundamentals (variables, control structures, functions)
+- Object-oriented programming (encapsulation, inheritance, polymorphism, design patterns)
+- Data structures and algorithms (arrays, trees, graphs, sorting, dynamic programming)
+- Databases (relational algebra, SQL, indexing, transactions, ACID properties)
+- Operating systems (processes, threads, synchronization, memory management)
+- Computer networking (OSI model, sockets, TCP, UDP, HTTP, HTTPS)
+
+Curriculum summary:
+- **Concepts**: 130 unique concept nodes.
+- **Relations**: 173 total relations (154 `depends_on`, 19 `is_a`).
+- **Roots**: `Number Systems`, `Sets`, `Variables`.
+- **Longest Chain**: 12 concepts in topological study order: `Variables` → `Pointers` → `Memory Allocation` → `Operating Systems` → `Processes` → `Threads` → `Synchronization` → `Interprocess Communication` → `Sockets` → `TCP` → `HTTP` → `HTTPS`.
+
+The embedded seed curriculum remains unchanged.
 
 ---
 

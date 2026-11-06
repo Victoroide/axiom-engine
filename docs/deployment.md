@@ -199,6 +199,28 @@ Sending `SIGTERM` requests a clean process shutdown with exit status 0.
 
 ## Operating notes
 
+### Choosing a curriculum
+
+By default, the server loads an embedded seed curriculum of 23 concepts. The container image bundles a larger computer science curriculum (130 concepts) located at `/usr/share/axiom-engine/graphs/computer-science.json`, owned by `root:root` and readable by the non-root runtime user.
+
+To run the container with the bundled curriculum:
+
+```sh
+docker run --rm -p 8080:8080 \
+  -e AXIOM_AUTH_DISABLED=true \
+  -e AWS_REGION=us-east-1 \
+  -e GRAPH_FILE=/usr/share/axiom-engine/graphs/computer-science.json \
+  axiom-engine:local
+```
+
+Include AWS provider credentials (`AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`) when generating plans.
+
+To validate the bundled curriculum file directly using the container binary:
+
+```sh
+docker run --rm axiom-engine:local validate-graph /usr/share/axiom-engine/graphs/computer-science.json
+```
+
 ### Log format
 
 The service writes structured JSON logs to standard output using the Go standard library `log/slog` package. Log level is configured through `LOG_LEVEL` (`debug`, `info`, `warn`, `error`; default is `info`).
