@@ -153,6 +153,9 @@ type PipelineMeta struct {
 	// ItemsSkippedMastered counts distinct mastered prerequisites excluded from study.
 	ItemsSkippedMastered int `json:"items_skipped_mastered,omitempty" example:"2"`
 
+	// ResourcesUnreachable counts sanitized resources removed by HTTP link checks.
+	ResourcesUnreachable int `json:"resources_unreachable,omitempty" example:"1"`
+
 	// LLMLatencyMs is the wall-clock time (milliseconds) spent waiting
 	// for all parallel LLM calls to complete.
 	LLMLatencyMs int64 `json:"llm_latency_ms" example:"3240"`

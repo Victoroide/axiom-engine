@@ -1187,6 +1187,11 @@ const docTemplate = `{
                     "type": "integer",
                     "example": 3240
                 },
+                "resources_unreachable": {
+                    "description": "ResourcesUnreachable counts sanitized resources removed by HTTP link checks.",
+                    "type": "integer",
+                    "example": 1
+                },
                 "subgraph_tuples": {
                     "description": "SubgraphTuples is the number of knowledge-graph triples extracted\nby the BFS subgraph traversal for the given failed topics.",
                     "type": "integer",

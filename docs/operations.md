@@ -150,3 +150,4 @@ With `METRICS_ENABLED=true`, `/metrics` exposes the series listed in [Observabil
 - `axiom_llm_inflight` against `LLM_MAX_CONCURRENCY`, with `axiom_llm_queue_wait_seconds` and `axiom_llm_queue_timeouts_total`: queue pressure.
 - `http_server_requests_total{route="/api/v1/adaptive-plan",status="503"}`: unavailable responses seen by clients.
 - `axiom_auth_previous_token_total`: callers still using the previous token during a rotation.
+- `axiom_resource_links_checked_total{result="ok|status|timeout|refused|invalid"}`: tracks outbound resource validation when enabled via `RESOURCE_LINK_CHECK=true` (optionally configured with `RESOURCE_LINK_TIMEOUT`, default `3s`). Links are not fetched while disabled. Enabling checks can increase response latency within `REQUEST_TIMEOUT`. A failed link drops the unreachable resource rather than failing its topic or request; exhausting the request deadline returns HTTP 504 `gateway_timeout`.

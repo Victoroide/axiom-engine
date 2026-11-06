@@ -41,6 +41,7 @@ type Planner interface {
 
 // Options configures the bounded reasoning pipeline.
 type Options struct {
+	ResourceLinks     *ResourceLinkChecker
 	LLMTimeout        time.Duration
 	MaxFailedTopics   int
 	MaxMasteredTopics int
@@ -52,6 +53,7 @@ type Options struct {
 
 // ReasoningService coordinates validated, concurrent topic generation.
 type ReasoningService struct {
+	resourceLinks     *ResourceLinkChecker
 	metrics           *metrics.Metrics
 	logger            *slog.Logger
 	graph             *graph.InMemoryGraph
@@ -81,7 +83,7 @@ func NewReasoningService(g *graph.InMemoryGraph, planner Planner, opts Options) 
 	}
 	cb := gobreaker.NewCircuitBreaker[[]domain.PlanItem](breakerSettings(logger))
 	opts.Metrics.SetBreakerStateSource(func() int { return int(cb.State()) })
-	return &ReasoningService{metrics: opts.Metrics, logger: logger, graph: g, planner: planner, llmTimeout: opts.LLMTimeout, maxFailedTopics: opts.MaxFailedTopics, maxMasteredTopics: opts.MaxMasteredTopics, breaker: cb, queueTimeout: opts.QueueTimeout, slots: semaphore.NewWeighted(int64(opts.MaxConcurrency))}
+	return &ReasoningService{resourceLinks: opts.ResourceLinks, metrics: opts.Metrics, logger: logger, graph: g, planner: planner, llmTimeout: opts.LLMTimeout, maxFailedTopics: opts.MaxFailedTopics, maxMasteredTopics: opts.MaxMasteredTopics, breaker: cb, queueTimeout: opts.QueueTimeout, slots: semaphore.NewWeighted(int64(opts.MaxConcurrency))}
 }
 
 func breakerSettings(logger *slog.Logger) gobreaker.Settings {
@@ -190,6 +192,13 @@ func (s *ReasoningService) GeneratePlan(ctx context.Context, req domain.Adaptive
 	if resourcesDropped > 0 {
 		s.logger.WarnContext(ctx, "stage.output", "request_id", requestIDFromContext(ctx), "resources_dropped", resourcesDropped)
 	}
+	unreachable := 0
+	if s.resourceLinks != nil {
+		merged, unreachable = s.resourceLinks.filterResources(ctx, merged)
+		if err := ctx.Err(); err != nil {
+			return domain.PlanResponse{}, err
+		}
+	}
 	validated, dropped := validateAgainstGraph(merged, s.graph, req.FailedTopics, req.MasteredTopics)
 	s.metrics.ObserveDroppedItems(duplicates, dropped)
 	if dropped > 0 {
@@ -200,7 +209,7 @@ func (s *ReasoningService) GeneratePlan(ctx context.Context, req domain.Adaptive
 		s.logger.WarnContext(ctx, "stage.validation", "request_id", requestIDFromContext(ctx), "topic", missing)
 		return domain.PlanResponse{}, &TopicError{Topic: missing, cause: ErrInvalidOutput}
 	}
-	return domain.PlanResponse{StudentID: req.StudentID, CourseID: req.CourseID, Items: validated, Meta: domain.PipelineMeta{SubgraphTuples: len(subgraph), TopicsProcessed: len(req.FailedTopics), ItemsGenerated: countTotalItems(plans), ItemsValidated: len(validated), ItemsDropped: dropped, ItemsSkippedMastered: len(skipped), LLMLatencyMs: llmLatency.Milliseconds(), TotalLatencyMs: time.Since(start).Milliseconds()}}, nil
+	return domain.PlanResponse{StudentID: req.StudentID, CourseID: req.CourseID, Items: validated, Meta: domain.PipelineMeta{SubgraphTuples: len(subgraph), TopicsProcessed: len(req.FailedTopics), ItemsGenerated: countTotalItems(plans), ItemsValidated: len(validated), ItemsDropped: dropped, ItemsSkippedMastered: len(skipped), ResourcesUnreachable: unreachable, LLMLatencyMs: llmLatency.Milliseconds(), TotalLatencyMs: time.Since(start).Milliseconds()}}, nil
 }
 
 func (s *ReasoningService) generateTopic(ctx context.Context, req TopicRequest) ([]domain.PlanItem, error) {

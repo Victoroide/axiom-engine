@@ -108,6 +108,11 @@ definitions:
           for all parallel LLM calls to complete.
         example: 3240
         type: integer
+      resources_unreachable:
+        description: ResourcesUnreachable counts sanitized resources removed by HTTP
+          link checks.
+        example: 1
+        type: integer
       subgraph_tuples:
         description: |-
           SubgraphTuples is the number of knowledge-graph triples extracted
