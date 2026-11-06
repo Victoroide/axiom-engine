@@ -218,7 +218,13 @@ func useMiddleware(app *fiber.App, cfg config.Config, logger *slog.Logger, error
 				return handleErr
 			}
 		}
-		observeHTTP(c, logger, recorder, start)
+
+		if done := api.StreamCompletion(c); done != nil {
+			observation := captureHTTP(c)
+			go func() { observation.observe(logger, recorder, start, <-done) }()
+		} else {
+			observeHTTP(c, logger, recorder, start)
+		}
 		return nil
 	})
 	app.Use(recover.New(recover.Config{EnableStackTrace: true, StackTraceHandler: func(c fiber.Ctx, e any) {
@@ -230,16 +236,40 @@ func useMiddleware(app *fiber.App, cfg config.Config, logger *slog.Logger, error
 	}
 }
 
-func observeHTTP(c fiber.Ctx, logger *slog.Logger, recorder *metrics.Metrics, start time.Time) {
+type httpObservation struct {
+	ctx         context.Context
+	route       string
+	routeMethod string
+	method      string
+	path        string
+	ip          string
+	requestID   string
+	status      int
+}
+
+func captureHTTP(c fiber.Ctx) httpObservation {
+	observation := httpObservation{ctx: c.Context(), route: "unmatched", routeMethod: "unmatched", method: strings.Clone(c.Method()), path: strings.Clone(c.Path()), ip: strings.Clone(c.IP()), requestID: strings.Clone(c.GetRespHeader("X-Request-ID")), status: c.Response().StatusCode()}
+	if endpoint := c.Endpoint(); endpoint != nil {
+		observation.route = endpoint.Path
+		observation.routeMethod = endpoint.Method
+	}
+	return observation
+}
+
+func (o httpObservation) observe(logger *slog.Logger, recorder *metrics.Metrics, start time.Time, disconnected bool) {
 	elapsed := time.Since(start)
 	if recorder != nil {
-		route, method := "unmatched", "unmatched"
-		if endpoint := c.Endpoint(); endpoint != nil {
-			route, method = endpoint.Path, endpoint.Method
-		}
-		recorder.ObserveHTTP(route, method, c.Response().StatusCode(), elapsed)
+		recorder.ObserveHTTP(o.route, o.routeMethod, o.status, elapsed)
 	}
-	logger.InfoContext(c.Context(), "http.access", "request_id", c.GetRespHeader("X-Request-ID"), "method", c.Method(), "path", c.Path(), "status", c.Response().StatusCode(), "duration_ms", float64(elapsed.Microseconds())/1000, "ip", c.IP())
+	attrs := []any{"request_id", o.requestID, "method", o.method, "path", o.path, "status", o.status, "duration_ms", float64(elapsed.Microseconds()) / 1000, "ip", o.ip}
+	if disconnected {
+		attrs = append(attrs, "client_disconnected", true)
+	}
+	logger.InfoContext(o.ctx, "http.access", attrs...)
+}
+
+func observeHTTP(c fiber.Ctx, logger *slog.Logger, recorder *metrics.Metrics, start time.Time) {
+	captureHTTP(c).observe(logger, recorder, start, false)
 }
 
 func registerPublicRoutes(app *fiber.App, cfg config.Config) {

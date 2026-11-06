@@ -44,6 +44,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Optional outbound resource link checking controlled by `RESOURCE_LINK_CHECK` (default `false`) and `RESOURCE_LINK_TIMEOUT` (default `3s`), removing unreachable or non-2xx links with HEAD/GET fallback, enforcing socket-level SSRF dial protections, reporting `_meta.resources_unreachable`, and tracking results via `axiom_resource_links_checked_total` metrics.
 - Replay successful adaptive study plan responses for repeated requests with an optional `Idempotency-Key` header, scoped by credential and backed by a bounded in-memory store configured by `IDEMPOTENCY_TTL` (default `24h`) and `IDEMPOTENCY_MAX_ENTRIES` (default `10000`), returning HTTP 409 `idempotency_key_in_progress` for concurrent requests and HTTP 422 `idempotency_key_mismatch` on payload differences.
 - Share IP sliding-window rate limit budgets and adaptive plan idempotency records across replicas when `REDIS_URL` is configured, failing closed with HTTP 503 `service_unavailable` and `Retry-After: 1` on storage failures.
+- Stream adaptive study plan progress and final plan or error payloads via Server-Sent Events on `POST /api/v1/adaptive-plan/stream`, detecting client disconnects with 2-second keepalive pings to cancel downstream topic reasoning and observe disconnects in access logs.
 
 ### Changed
 

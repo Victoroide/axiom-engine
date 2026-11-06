@@ -568,6 +568,190 @@ paths:
       summary: Generate adaptive study plan
       tags:
       - Adaptive Plan
+  /api/v1/adaptive-plan/stream:
+    post:
+      consumes:
+      - application/json
+      description: 'Emit topic events with topic, zero-based index of its first occurrence
+        in failed_topics, and items_generated; plan carries the same validated response
+        as the JSON route; error carries error, details and the equivalent HTTP status.
+        Failed topic calls report zero items. Flush each event and a : keepalive comment
+        every 2 seconds; cancel work after a failed client write. REQUEST_TIMEOUT
+        bounds generation. Invalid input returns JSON before streaming starts. Optional
+        mastered_topics uses the same validation and prerequisite exclusions as the
+        JSON route.'
+      operationId: streamAdaptivePlan
+      parameters:
+      - description: Student profile and failed concepts
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/domain.AdaptivePlanRequest'
+      produces:
+      - application/json
+      - text/event-stream
+      responses:
+        "200":
+          description: 'Server-sent events: topic, then plan or error'
+          headers:
+            X-RateLimit-Limit:
+              description: Maximum requests per rate-limit window
+              type: integer
+            X-RateLimit-Remaining:
+              description: Requests remaining in the rate-limit window
+              type: integer
+            X-RateLimit-Reset:
+              description: Seconds until the rate-limit window resets
+              type: integer
+            X-Request-ID:
+              description: Resolved request correlation identifier
+              type: string
+          schema:
+            type: string
+        "400":
+          description: Bad Request
+          headers:
+            X-RateLimit-Limit:
+              description: Maximum requests per rate-limit window
+              type: integer
+            X-RateLimit-Remaining:
+              description: Requests remaining in the rate-limit window
+              type: integer
+            X-RateLimit-Reset:
+              description: Seconds until the rate-limit window resets
+              type: integer
+            X-Request-ID:
+              description: Resolved request correlation identifier
+              type: string
+          schema:
+            $ref: '#/definitions/domain.ErrorResponse'
+        "401":
+          description: Unauthorized
+          headers:
+            X-Request-ID:
+              description: Resolved request correlation identifier
+              type: string
+          schema:
+            $ref: '#/definitions/domain.ErrorResponse'
+        "408":
+          description: Request Timeout
+          headers:
+            X-Request-ID:
+              description: Resolved request correlation identifier
+              type: string
+          schema:
+            $ref: '#/definitions/domain.ErrorResponse'
+        "413":
+          description: Request Entity Too Large
+          headers:
+            X-RateLimit-Limit:
+              description: Maximum requests per rate-limit window
+              type: integer
+            X-RateLimit-Remaining:
+              description: Requests remaining in the rate-limit window
+              type: integer
+            X-RateLimit-Reset:
+              description: Seconds until the rate-limit window resets
+              type: integer
+            X-Request-ID:
+              description: Resolved request correlation identifier
+              type: string
+          schema:
+            $ref: '#/definitions/domain.ErrorResponse'
+        "415":
+          description: Unsupported Media Type
+          headers:
+            X-RateLimit-Limit:
+              description: Maximum requests per rate-limit window
+              type: integer
+            X-RateLimit-Remaining:
+              description: Requests remaining in the rate-limit window
+              type: integer
+            X-RateLimit-Reset:
+              description: Seconds until the rate-limit window resets
+              type: integer
+            X-Request-ID:
+              description: Resolved request correlation identifier
+              type: string
+          schema:
+            $ref: '#/definitions/domain.ErrorResponse'
+        "422":
+          description: Unprocessable Entity
+          headers:
+            X-RateLimit-Limit:
+              description: Maximum requests per rate-limit window
+              type: integer
+            X-RateLimit-Remaining:
+              description: Requests remaining in the rate-limit window
+              type: integer
+            X-RateLimit-Reset:
+              description: Seconds until the rate-limit window resets
+              type: integer
+            X-Request-ID:
+              description: Resolved request correlation identifier
+              type: string
+          schema:
+            $ref: '#/definitions/domain.ErrorResponse'
+        "429":
+          description: Too Many Requests
+          headers:
+            Retry-After:
+              description: Seconds to wait before retrying
+              type: integer
+            X-Request-ID:
+              description: Resolved request correlation identifier
+              type: string
+          schema:
+            $ref: '#/definitions/domain.ErrorResponse'
+        "431":
+          description: Request Header Fields Too Large
+          headers:
+            X-Request-ID:
+              description: Resolved request correlation identifier
+              type: string
+          schema:
+            $ref: '#/definitions/domain.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          headers:
+            X-Request-ID:
+              description: Resolved request correlation identifier
+              type: string
+          schema:
+            $ref: '#/definitions/domain.ErrorResponse'
+        "503":
+          description: Shared storage unavailable or server shutdown
+          headers:
+            Retry-After:
+              description: Seconds to wait before retrying
+              type: integer
+            X-Request-ID:
+              description: Resolved request correlation identifier
+              type: string
+          schema:
+            $ref: '#/definitions/domain.ErrorResponse'
+      security:
+      - InternalToken: []
+      summary: Stream adaptive study plan progress
+      tags:
+      - Adaptive Plan
+      x-events:
+        error:
+          description: Usual error envelope plus equivalent HTTP status
+          payload:
+            details: upstream reasoning failed
+            error: bad_gateway
+            status: 502
+        plan:
+          schema:
+            $ref: '#/definitions/domain.PlanResponse'
+        topic:
+          description: Completed topic call
+          payload:
+            index: 0
+            items_generated: 1
+            topic: Recursion
   /api/v1/topics:
     get:
       operationId: listTopics

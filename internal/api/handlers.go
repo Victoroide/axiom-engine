@@ -46,6 +46,7 @@ func (h *Handler) RegisterRoutes(app *fiber.App, planMiddleware ...fiber.Handler
 	v1.Post("/adaptive-plan", handlers[0], handlers[1:]...)
 	v1.Get("/topics", h.handleTopics)
 	v1.Get("/topics/:topic/path", h.handleTopicPath)
+	v1.Post("/adaptive-plan/stream", h.handlePlanStream)
 	v1.Get("/tutor/student/:student_id/cognitive-graph", h.handleCognitiveGraph)
 }
 
@@ -85,14 +86,9 @@ func (h *Handler) RegisterRoutes(app *fiber.App, planMiddleware ...fiber.Handler
 // @Header 429 {integer} Retry-After "Seconds to wait before retrying"
 // @Router /api/v1/adaptive-plan [post]
 func (h *Handler) handleAdaptivePlan(c fiber.Ctx) error {
-	mediaType, params, err := mime.ParseMediaType(c.Get("Content-Type"))
-	charset, hasCharset := params["charset"]
-	if err != nil || mediaType != "application/json" || (hasCharset && !strings.EqualFold(charset, "utf-8")) {
-		return c.Status(fiber.StatusUnsupportedMediaType).JSON(domain.ErrorResponse{Error: "unsupported_media_type", Details: "Content-Type must be application/json"})
-	}
-	var req domain.AdaptivePlanRequest
-	if err := decodeStrictJSON(c.Body(), &req); err != nil {
-		return c.Status(fiber.StatusBadRequest).JSON(domain.ErrorResponse{Error: "invalid_request_body", Details: err.Error()})
+	req, accepted, err := readPlanRequest(c)
+	if !accepted {
+		return err
 	}
 	ctx, cancel := context.WithTimeout(service.WithRequestID(c.Context(), requestid.FromContext(c)), h.timeout)
 	defer cancel()
@@ -103,13 +99,31 @@ func (h *Handler) handleAdaptivePlan(c fiber.Ctx) error {
 	return c.JSON(plan)
 }
 
+type pipelineFailure struct {
+	status       int
+	envelope     domain.ErrorResponse
+	retrySeconds int64
+}
+
 func (h *Handler) writePipelineError(c fiber.Ctx, ctx context.Context, err error) error {
+	failure := h.classifyPipelineError(ctx, requestid.FromContext(c), err, errors.Is(c.Context().Err(), context.Canceled))
+	if failure.retrySeconds > 0 {
+		c.Set("Retry-After", strconv.FormatInt(failure.retrySeconds, 10))
+	}
+	return c.Status(failure.status).JSON(failure.envelope)
+}
+
+func (h *Handler) classifyPipelineError(ctx context.Context, requestID string, err error, parentCanceled bool) pipelineFailure {
 	var validation *service.ValidationError
 	if errors.As(err, &validation) {
-		return validationResponse(c, validation)
+		status := fiber.StatusBadRequest
+		if len(validation.UnknownTopics) > 0 {
+			status = fiber.StatusUnprocessableEntity
+		}
+		return pipelineFailure{status: status, envelope: domain.ErrorResponse{Error: "validation_error", Details: validation.Details}}
 	}
+	shuttingDown := errors.Is(err, context.Canceled) && parentCanceled
 	var unavailable *service.UnavailableError
-	shuttingDown := errors.Is(err, context.Canceled) && errors.Is(c.Context().Err(), context.Canceled)
 	status, code, message := fiber.StatusInternalServerError, "internal_error", "reasoning failed"
 	switch {
 	case errors.Is(err, context.DeadlineExceeded):
@@ -128,6 +142,7 @@ func (h *Handler) writePipelineError(c fiber.Ctx, ctx context.Context, err error
 		status, code, message = fiber.StatusBadGateway, "bad_gateway", "upstream reasoning failed"
 	}
 
+	retrySeconds := int64(0)
 	if status == fiber.StatusServiceUnavailable {
 		retryAfter := 15 * time.Second
 		if errors.Is(err, service.ErrThrottled) {
@@ -143,15 +158,15 @@ func (h *Handler) writePipelineError(c fiber.Ctx, ctx context.Context, err error
 		if retryAfter%time.Second != 0 {
 			seconds++
 		}
-		c.Set("Retry-After", strconv.FormatInt(int64(seconds), 10))
+		retrySeconds = int64(seconds)
 	}
-	attrs := []slog.Attr{slog.String("request_id", requestid.FromContext(c)), slog.String("error_class", code)}
+	attrs := []slog.Attr{slog.String("request_id", requestID), slog.String("error_class", code)}
 	var topicErr *service.TopicError
 	if errors.As(err, &topicErr) {
 		attrs = append(attrs, slog.String("topic", fmt.Sprintf("%.128s", topicErr.Topic)))
 	}
 	h.logger.LogAttrs(ctx, slog.LevelError, "request.failed", attrs...)
-	return c.Status(status).JSON(domain.ErrorResponse{Error: code, Details: message})
+	return pipelineFailure{status: status, envelope: domain.ErrorResponse{Error: code, Details: message}, retrySeconds: retrySeconds}
 }
 
 func validationResponse(c fiber.Ctx, err *service.ValidationError) error {
@@ -238,4 +253,17 @@ func (h *Handler) handleCognitiveGraph(c fiber.Ctx) error {
 		return c.JSON(h.graph.GenerateCognitiveShadow(topics, target, mastered))
 	}
 	return c.JSON(h.graph.GenerateCognitiveShadow(topics, target))
+}
+
+func readPlanRequest(c fiber.Ctx) (domain.AdaptivePlanRequest, bool, error) {
+	mediaType, params, err := mime.ParseMediaType(c.Get("Content-Type"))
+	charset, hasCharset := params["charset"]
+	if err != nil || mediaType != "application/json" || (hasCharset && !strings.EqualFold(charset, "utf-8")) {
+		return domain.AdaptivePlanRequest{}, false, c.Status(fiber.StatusUnsupportedMediaType).JSON(domain.ErrorResponse{Error: "unsupported_media_type", Details: "Content-Type must be application/json"})
+	}
+	var req domain.AdaptivePlanRequest
+	if err := decodeStrictJSON(c.Body(), &req); err != nil {
+		return domain.AdaptivePlanRequest{}, false, c.Status(fiber.StatusBadRequest).JSON(domain.ErrorResponse{Error: "invalid_request_body", Details: err.Error()})
+	}
+	return req, true, nil
 }

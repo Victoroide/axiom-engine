@@ -58,7 +58,7 @@ Health (`/health`), liveness (`/livez`), readiness (`/readyz`), Swagger document
 ## Common Headers
 
 - `X-Request-ID`: Client-provided correlation identifier. The server accepts and echoes client-supplied values matching `^[A-Za-z0-9._:-]{1,128}$`. Missing or invalid values—including identifiers exceeding 128 characters, containing whitespace, punctuation outside that character set, or non-ASCII characters—are replaced by a generated 43-character URL-safe random token when request-ID middleware runs. Responses produced by the application, including 400, 404, 405, 413, 431 and 501 errors, echo the resolved `X-Request-ID`, and access and error logs use the same value. Requests whose method the router does not implement (for example `PROPFIND`) return HTTP 501 with `Content-Type: application/json; charset=utf-8`, the body `{"error":"not_implemented","details":"Not Implemented"}`, `X-Request-ID`, and the same security headers as other responses (such as `X-Content-Type-Options: nosniff` and `X-Frame-Options: SAMEORIGIN`); valid client IDs are echoed, otherwise a fallback UUID is generated.
-- `Content-Type`: Required for requests with a payload. Endpoints expecting JSON require a media type of `application/json` parsed via MIME media type rules; optional parameters such as `charset=utf-8` are accepted. Missing, malformed, or non-JSON media types return HTTP 415 `unsupported_media_type` with details `Content-Type must be application/json`. All API responses return `application/json; charset=utf-8`.
+- `Content-Type`: Required for requests with a payload. Endpoints expecting JSON require a media type of `application/json` parsed via MIME media type rules; optional parameters such as `charset=utf-8` are accepted. Missing, malformed, or non-JSON media types return HTTP 415 `unsupported_media_type` with details `Content-Type must be application/json`. Standard API responses return `application/json; charset=utf-8`; accepted streaming requests (`POST /api/v1/adaptive-plan/stream`) return `text/event-stream`, while errors occurring before streaming begins return standard `application/json; charset=utf-8` error envelopes.
 - `Idempotency-Key`: Optional client request header on `POST /api/v1/adaptive-plan` containing 1 to 255 visible ASCII characters (`0x21`–`0x7E`) enabling idempotent execution and response replay.
 - `Idempotent-Replayed`: Response header with value `true` present when an adaptive plan response is served from the idempotency cache rather than newly generated.
 
@@ -359,6 +359,109 @@ X-RateLimit-Reset: 60
     "total_latency_ms": 1135
   }
 }
+```
+
+---
+
+### POST /api/v1/adaptive-plan/stream
+
+Streams real-time adaptive study plan generation progress using Server-Sent Events (SSE). Emits topic completion events as individual concept plans finish, followed by a final validated study plan or error event.
+
+- **Method**: `POST`
+- **Path**: `/api/v1/adaptive-plan/stream`
+- **Headers**:
+  - `Content-Type: application/json` (optional parameters such as `charset=utf-8` allowed)
+  - `X-Internal-Token: <token>` (if authentication is enabled)
+- **Validation Rules**:
+  - Accepts the identical JSON payload and schema as `POST /api/v1/adaptive-plan`.
+  - All request body syntax, schema, media type, token authentication, and graph topic validation run before streaming begins. Any validation failure immediately returns the standard JSON error envelope with the corresponding status code (`400`, `401`, `413`, `415`, `422`, `429`, `503`) before headers or stream frames are sent.
+  - The endpoint operates under the same client IP rate limit budget as other `/api/v1` routes.
+  - This endpoint does not support `Idempotency-Key` response replay.
+
+#### Connection Lifetime and Keepalive
+
+- **Headers**: Accepted requests return HTTP 200 with:
+  - `Content-Type: text/event-stream`
+  - `Cache-Control: no-cache`
+  - `X-Accel-Buffering: no`
+  - `X-Request-ID` and rate-limit headers (`X-RateLimit-Limit`, `X-RateLimit-Remaining`, `X-RateLimit-Reset`)
+- **Keepalive Comments**: An initial `: keepalive` SSE comment is sent immediately upon connection open, and periodic keepalive comments are sent every 2 seconds thereafter while awaiting reasoning events. Each comment and event frame is flushed immediately.
+- **Cancellation on Disconnect**: Closing the response stream (for example, when the client drops the TCP connection, closes the reader, or fails a write/flush) cancels the reasoning pipeline immediately. In-flight per-topic model calls are aborted and their concurrency slots are released as soon as the downstream planner returns. Disconnection is detected in approximately 2 seconds on TCP reset and approximately 4 seconds on normal connection closure via 2-second keepalive cycles. The access log records `client_disconnected: true`.
+- **Timeout**: The pipeline execution is bounded by `REQUEST_TIMEOUT` (default `20s`), matching the JSON route.
+
+#### Event Format
+
+Every event frame terminates with an empty line (`\n\n`) and flushes immediately. Once streaming starts, the HTTP status code remains 200; terminal outcomes are communicated via SSE event types:
+
+1. `event: topic`: Emitted as each topic completes downstream generation. Completion order reflects asynchronous execution and may differ from request order.
+   - Payload (`data`): JSON object containing:
+     - `topic`: Canonical topic name string.
+     - `index`: Zero-based index of the topic's first occurrence in the original request `failed_topics` array after canonical comparison. Duplicate topics in the request produce a single topic call and event.
+     - `items_generated`: Integer count of study items generated for this topic (0 if topic generation failed).
+   - Example frame:
+     ```text
+     event: topic
+     data: {"topic":"Recursion","index":0,"items_generated":1}
+
+     ```
+
+2. `event: plan`: Emitted on successful pipeline completion after all topics are processed, merged, sanitized, and validated against the knowledge graph.
+   - Payload (`data`): Full validated `PlanResponse` JSON object, identical to the payload returned by `POST /api/v1/adaptive-plan` (including `student_id`, `course_id`, `items`, and `_meta`).
+   - Example frame:
+     ```text
+     event: plan
+     data: {"student_id":"student-42","course_id":"cs101","items":[{"topic":"Functions","priority":1,"prerequisite_chain":[],"explanation":"Understanding functions is fundamental.","resources":[]}],"_meta":{"subgraph_tuples":8,"topics_processed":1,"items_generated":1,"items_after_validation":1,"items_dropped":0,"llm_latency_ms":900,"total_latency_ms":920}}
+
+     ```
+
+3. `event: error`: Emitted if the reasoning pipeline fails after streaming has begun (e.g. upstream failure, invalid model output, throttling, circuit breaker trip, or deadline expiration).
+   - Payload (`data`): JSON object containing the standard error envelope plus the equivalent numeric HTTP status:
+     - `error`: Error code string (such as `bad_gateway`, `service_unavailable`, or `gateway_timeout`).
+     - `details`: Human-readable error description string.
+     - `status`: Integer status code equivalent to the non-streaming HTTP status (such as `502`, `503`, or `504`).
+   - Example frame:
+     ```text
+     event: error
+     data: {"error":"bad_gateway","details":"upstream reasoning failed","status":502}
+
+     ```
+
+#### Example
+
+```sh
+curl -N -i -X POST http://localhost:8080/api/v1/adaptive-plan/stream \
+  -H "X-Internal-Token: $AXIOM_INTERNAL_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "student_id": "student-42",
+    "course_id": "cs101",
+    "failed_topics": [
+      "Recursion"
+    ],
+    "vark_profile": "visual"
+  }'
+```
+
+Response stream:
+
+```http
+HTTP/1.1 200 OK
+Content-Type: text/event-stream
+Cache-Control: no-cache
+X-Accel-Buffering: no
+X-Request-ID: s8H21kNm3_Qwe874KLvOpq123
+X-RateLimit-Limit: 50
+X-RateLimit-Remaining: 49
+X-RateLimit-Reset: 60
+
+: keepalive
+
+event: topic
+data: {"topic":"Recursion","index":0,"items_generated":1}
+
+event: plan
+data: {"student_id":"student-42","course_id":"cs101","items":[{"topic":"Functions","priority":1,"prerequisite_chain":[],"explanation":"Reviewing pure functions and call stacks precedes recursion.","resources":[{"title":"Functions Visualized","url":"https://example.com/functions","resource_type":"diagram"}]},{"topic":"Recursion","priority":2,"prerequisite_chain":["Functions"],"explanation":"Mastering base cases and recurrence relations.","resources":[{"title":"Recursive Tracing","url":"https://example.com/recursion","resource_type":"video"}]}],"_meta":{"subgraph_tuples":4,"topics_processed":1,"items_generated":2,"items_after_validation":2,"items_dropped":0,"llm_latency_ms":840,"total_latency_ms":855}}
+
 ```
 
 ---
