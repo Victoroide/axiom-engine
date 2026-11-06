@@ -35,7 +35,20 @@ func main() {
 	}
 }
 
-func run(args []string, stdout io.Writer) (err error) {
+func run(args []string, stdout io.Writer) error {
+	if len(args) > 0 {
+		switch args[0] {
+		case "mcp":
+			return runMCP(args[1:])
+		case "healthcheck":
+			return runHTTP(args, stdout)
+		}
+	}
+
+	return runHTTP(args, stdout)
+}
+
+func runHTTP(args []string, stdout io.Writer) (err error) {
 	var level slog.LevelVar
 	logger := slog.New(slog.NewJSONHandler(stdout, &slog.HandlerOptions{Level: &level}))
 	slog.SetDefault(logger)
