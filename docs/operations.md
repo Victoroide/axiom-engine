@@ -122,6 +122,71 @@ For procedures to rotate internal service tokens (`AXIOM_INTERNAL_TOKEN`) withou
 
 ---
 
+## Distributed Tracing
+
+AxiomEngine exports distributed traces using OpenTelemetry and OTLP/HTTP protobuf when `TRACING_ENABLED=true` (see [configuration](configuration.md#tracing)).
+
+### Exporter Setup
+
+1. Deploy an OpenTelemetry collector or receiver accepting OTLP/HTTP traffic on `/v1/traces`.
+2. Configure AxiomEngine:
+
+```sh
+export TRACING_ENABLED=true
+export OTEL_EXPORTER_OTLP_ENDPOINT="http://otel-collector:4318"
+export OTEL_SERVICE_NAME="axiom-engine"
+```
+
+W3C `traceparent` and `tracestate` headers are extracted and injected only when the OTLP exporter (`TRACING_ENABLED=true`) is configured. When tracing is disabled, caller headers are not extracted or echoed, and access logs omit caller trace and span IDs. When an exporter is configured, an incoming remote span becomes the parent of the server request span, and outgoing responses include matching `traceparent` and `tracestate` headers to preserve distributed context.
+
+### Trace Structure and Spans
+
+The reasoning pipeline produces the following span hierarchy for `POST /api/v1/adaptive-plan`:
+
+- **Server span**: Named after the HTTP method and parameterized route template (for example, `POST /api/v1/adaptive-plan` or `GET /api/v1/tutor/student/:student_id/cognitive-graph`). Tagged with `http.request.method`, `http.route`, `http.response.status_code`, and `request_id`. Unknown HTTP methods are normalized to `http.request.method="_OTHER"`, their span is named `HTTP`, and the raw method is preserved in `http.request.method_original`. HTTP 5xx responses mark the span with status `Error` and error classification.
+- **`plan.validate`**: Measures incoming payload validation and topic graph membership checks. Failures record `error.type="validation_error"`.
+- **`plan.subgraph`**: Measures local bidirectional subgraph extraction around failed topics.
+- **`plan.topic`**: Spawned for each requested topic during concurrent fan-out. Tagged with:
+  - `axiom.topic`: Name of the evaluated topic.
+  - `axiom.topic.index`: Original index of the topic in the request.
+  - `axiom.queue_wait_ms`: Duration in milliseconds spent waiting in the concurrency semaphore queue.
+- **`chat <model>`**: Child of `plan.topic` representing downstream model execution. Conforms to OpenTelemetry GenAI semantic conventions:
+  - `gen_ai.operation.name`: `"chat"`
+  - `gen_ai.provider.name` & `gen_ai.system`: standardized provider name (`aws.bedrock`, `gcp.gemini`, `openai`, `anthropic`; `ollama` and `openai-generic` remain documented custom values). These convention values differ deliberately from the configuration spellings for Bedrock (`aws-bedrock`) and Google AI (`google-ai`).
+  - `gen_ai.request.model`: configured model identifier.
+  - `gen_ai.request.max_tokens`: `2048`
+  - `gen_ai.request.temperature`: `0.1`
+  - `gen_ai.usage.input_tokens`: prompt tokens counted by the BAML collector.
+  - `gen_ai.usage.output_tokens`: completion tokens counted by the BAML collector.
+- **`plan.merge`**: Measures deduplication and merging of parallel topic recommendations.
+- **`plan.validate_output`**: Measures graph prerequisite closure filtering and coverage validation. Failures set `error.type="invalid_output"`.
+
+For streaming plan requests, the server span remains open through generation and response streaming.
+
+### Trace-Correlated Logs
+
+When at least one exporter is configured, the structured JSON logger wraps every log record emitted in a traced context with `trace_id` and `span_id`:
+
+```json
+{"time":"2026-11-06T18:03:00.123456-04:00","level":"INFO","msg":"http.access","request_id":"req-abc123","method":"POST","path":"/api/v1/adaptive-plan","status":200,"duration_ms":342,"ip":"127.0.0.1","trace_id":"4bf92f3577b34da6a3ce929d0e0e4736","span_id":"00f067aa0ba902b7"}
+```
+
+### Exporter Error Handling and Shutdown Flushing
+
+During runtime, exporter failures invoke an internal error handler that emits a fixed `WARN` log record with `error_class="trace_export_failed"` at most once per minute, omitting collector response bodies and upstream messages:
+
+```json
+{"level":"WARN","msg":"tracing.export_failed","error_class":"trace_export_failed"}
+```
+
+On process termination, the trace provider is shut down within the remaining graceful shutdown budget (signal time + `SHUTDOWN_DRAIN_DELAY` + `SHUTDOWN_TIMEOUT`). Pending spans are flushed to the OTLP receiver after the listener closes and Fiber drains connections. If flushing fails before the deadline, the process logs an error:
+
+```json
+{"level":"ERROR","msg":"tracing.flush_failed","error_class":"trace_export_failed"}
+```
+
+---
+
 ## Image Verification
 
 For procedures to verify multi-architecture release container images, cryptographic Cosign signatures, and SLSA provenance attestations, refer to [Deployment: Verifying images](deployment.md#verifying-images).

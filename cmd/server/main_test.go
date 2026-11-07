@@ -10,9 +10,11 @@ import (
 	"log/slog"
 	"net"
 	"net/http"
+	"net/http/httptest"
 	"os"
 	"os/exec"
 	"strings"
+	"sync/atomic"
 	"syscall"
 	"testing"
 	"time"
@@ -446,5 +448,101 @@ func TestOtherProvidersIgnoreAWSSettings(t *testing.T) {
 	logStartup(slog.New(slog.NewJSONHandler(&output, nil)), cfg, graph.NewInMemoryGraph(), os.Getenv, os.ReadFile)
 	if strings.Contains(output.String(), "region.unresolved") || !strings.Contains(output.String(), `"llm_provider":"ollama"`) || !strings.Contains(output.String(), `"llm_model":"local-planner"`) {
 		t.Fatalf("startup=%s", output.String())
+	}
+}
+
+func TestTracingFlushAfterDrain(t *testing.T) {
+	if os.Getenv("AXIOM_TRACE_DRAIN_CHILD") == "1" {
+		if err := run(nil, os.Stdout); err != nil {
+			os.Exit(1)
+		}
+		return
+	}
+	var exports atomic.Int64
+	receiver := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		_, _ = io.Copy(io.Discard, r.Body)
+		exports.Add(1)
+		w.Header().Set("Content-Type", "application/x-protobuf")
+	}))
+	defer receiver.Close()
+	listener, err := (&net.ListenConfig{}).Listen(t.Context(), "tcp", "127.0.0.1:0")
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, port, err := net.SplitHostPort(listener.Addr().String())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := listener.Close(); err != nil {
+		t.Fatal(err)
+	}
+	cmd := exec.CommandContext(t.Context(), os.Args[0], "-test.run=^TestTracingFlushAfterDrain$") //nolint:gosec // Reexecute this test binary to exercise shutdown.
+	cmd.Env = append(os.Environ(), "AXIOM_TRACE_DRAIN_CHILD=1", "AXIOM_AUTH_DISABLED=true", "AXIOM_INTERNAL_TOKEN=", "PORT="+port, "SHUTDOWN_TIMEOUT=11s", "SHUTDOWN_DRAIN_DELAY=12s", "GRAPH_FILE=", "BAML_LOG=off", "AWS_MAX_ATTEMPTS=3", "AWS_RETRY_MODE=standard", "TRACING_ENABLED=true", "LANGSMITH_TRACING=false", "OTEL_EXPORTER_OTLP_ENDPOINT="+receiver.URL, "OTEL_EXPORTER_OTLP_TRACES_ENDPOINT=", "OTEL_BSP_SCHEDULE_DELAY=60000")
+	output, err := cmd.StdoutPipe()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := cmd.Start(); err != nil {
+		t.Fatal(err)
+	}
+	ready := make(chan struct{}, 1)
+	type result struct {
+		err  error
+		logs string
+	}
+	done := make(chan result, 1)
+	go func() {
+		var logs strings.Builder
+		scanner := bufio.NewScanner(output)
+		for scanner.Scan() {
+			line := scanner.Text()
+			logs.WriteString(line)
+			logs.WriteByte('\n')
+			if strings.Contains(line, `"msg":"server.listening"`) {
+				select {
+				case ready <- struct{}{}:
+				default:
+				}
+			}
+		}
+		done <- result{errors.Join(cmd.Wait(), scanner.Err()), logs.String()}
+	}()
+	waited := false
+	defer func() {
+		if !waited {
+			_ = cmd.Process.Kill()
+			<-done
+		}
+	}()
+	select {
+	case <-ready:
+	case got := <-done:
+		waited = true
+		t.Fatalf("startup=%v %s", got.err, got.logs)
+	case <-time.After(10 * time.Second):
+		t.Fatal("startup timeout")
+	}
+	req, err := http.NewRequestWithContext(t.Context(), http.MethodGet, "http://127.0.0.1:"+port+"/livez", nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	resp, err := (&http.Client{Timeout: time.Second}).Do(req)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := resp.Body.Close(); err != nil {
+		t.Fatal(err)
+	}
+	if err := cmd.Process.Signal(syscall.SIGTERM); err != nil {
+		t.Fatal(err)
+	}
+	select {
+	case got := <-done:
+		waited = true
+		if got.err != nil || exports.Load() == 0 || strings.Contains(got.logs, "tracing.flush_failed") {
+			t.Fatalf("shutdown=%v exports=%d logs=%s", got.err, exports.Load(), got.logs)
+		}
+	case <-time.After(25 * time.Second):
+		t.Fatal("shutdown timeout")
 	}
 }

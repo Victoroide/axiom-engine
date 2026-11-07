@@ -61,6 +61,12 @@ For the default `aws-bedrock` provider, credentials resolve through the standard
 
 MCP uses the same startup `LLM_PROVIDER`, `LLM_MODEL`, `LLM_BASE_URL` and provider API key settings as HTTP. A single configured client registry serves all plan tool calls. Provider validation runs before the transport starts; AWS retry validation and region inspection apply only to `aws-bedrock`. Startup logs on stderr include `llm_provider` and `llm_model`.
 
+## Tool Tracing
+
+`TRACING_ENABLED=true` enables the same OTLP exporter and standard `OTEL_*` settings as HTTP. Each admitted `tools/call` has a server span named `tools/call <registered tool name>`; unknown tool names use `unmatched`. Plan calls contain validation, graph, topic, model-call and output spans. Tool logs (`mcp.tool`) include request, trace and span IDs. Protocol control messages do not create tool spans. Stdout remains dedicated to JSON-RPC.
+
+The tracing provider is flushed on stdin EOF and signal shutdown. On a signal, tool draining, transport closure and trace flushing share the remaining `SHUTDOWN_TIMEOUT`; HTTP-only `SHUTDOWN_DRAIN_DELAY` is ignored.
+
 ---
 
 ## Available Tools

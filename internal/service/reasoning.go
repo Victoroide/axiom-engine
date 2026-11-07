@@ -10,12 +10,14 @@ import (
 	"time"
 
 	"github.com/sony/gobreaker/v2"
+	"go.opentelemetry.io/otel/attribute"
 	"golang.org/x/sync/errgroup"
 	"golang.org/x/sync/semaphore"
 
 	"github.com/Victoroide/axiom-engine/internal/domain"
 	"github.com/Victoroide/axiom-engine/internal/graph"
 	"github.com/Victoroide/axiom-engine/internal/metrics"
+	"github.com/Victoroide/axiom-engine/internal/telemetry"
 )
 
 const circuitOpenTimeout = 15 * time.Second
@@ -107,7 +109,12 @@ func (s *ReasoningService) GeneratePlan(ctx context.Context, req domain.Adaptive
 		option(&opts)
 	}
 	requested := req.FailedTopics
+	_, validationSpan := telemetry.Start(ctx, "plan.validate")
 	req, err := s.ValidateRequest(req)
+	if err != nil {
+		telemetry.Fail(validationSpan, "validation_error")
+	}
+	validationSpan.End()
 	if err != nil {
 		return domain.PlanResponse{}, err
 	}
@@ -127,7 +134,9 @@ func (s *ReasoningService) GeneratePlan(ctx context.Context, req domain.Adaptive
 			}
 		}
 	}
+	_, subgraphSpan := telemetry.Start(ctx, "plan.subgraph")
 	subgraph := s.graph.GetLocalSubgraph(req.FailedTopics, 2)
+	subgraphSpan.End()
 	llmStart := time.Now()
 	eg, egCtx := errgroup.WithContext(ctx)
 	plans := make([][]domain.PlanItem, len(req.FailedTopics))
@@ -139,11 +148,19 @@ func (s *ReasoningService) GeneratePlan(ctx context.Context, req domain.Adaptive
 				break
 			}
 		}
-		eg.Go(func() error {
+		eg.Go(func() (topicErr error) {
+			topicCtx, topicSpan := telemetry.Start(egCtx, "plan.topic", attribute.String("axiom.topic", topic), attribute.Int("axiom.topic.index", requestIndex))
+			defer func() {
+				if topicErr != nil {
+					telemetry.Fail(topicSpan, LLMOutcome(topicErr))
+				}
+				topicSpan.End()
+			}()
 			queueStart := time.Now()
-			queueCtx, queueCancel := context.WithTimeout(egCtx, s.queueTimeout)
+			queueCtx, queueCancel := context.WithTimeout(topicCtx, s.queueTimeout)
 			err := s.slots.Acquire(queueCtx, 1)
 			queueCancel()
+			topicSpan.SetAttributes(attribute.Float64("axiom.queue_wait_ms", float64(time.Since(queueStart).Microseconds())/1000))
 			s.metrics.ObserveQueueWait(time.Since(queueStart), errors.Is(err, context.DeadlineExceeded) && egCtx.Err() == nil)
 			if err != nil {
 				if egCtx.Err() != nil {
@@ -157,11 +174,11 @@ func (s *ReasoningService) GeneratePlan(ctx context.Context, req domain.Adaptive
 					s.slots.Release(1)
 				}
 			}()
-			llmCtx, cancel := context.WithTimeout(egCtx, s.llmTimeout)
+			llmCtx, cancel := context.WithTimeout(topicCtx, s.llmTimeout)
 			defer cancel()
 			items, err := s.breaker.Execute(func() (items []domain.PlanItem, callErr error) {
 				callStart := time.Now()
-				defer func() { s.metrics.ObserveLLM(llmOutcome(callErr), time.Since(callStart)) }()
+				defer func() { s.metrics.ObserveLLM(LLMOutcome(callErr), time.Since(callStart)) }()
 				started = true
 				items, callErr = s.generateTopic(llmCtx, TopicRequest{GraphContext: subgraph, Topic: topic, PrerequisiteOrder: orders[i], VARKProfile: req.VARKProfile})
 				if callErr != nil {
@@ -200,7 +217,11 @@ func (s *ReasoningService) GeneratePlan(ctx context.Context, req domain.Adaptive
 		return domain.PlanResponse{}, err
 	}
 	llmLatency := time.Since(llmStart)
+	_, mergeSpan := telemetry.Start(ctx, "plan.merge")
 	merged := mergeAndDeduplicate(plans)
+	mergeSpan.End()
+	_, outputSpan := telemetry.Start(ctx, "plan.validate_output")
+	defer outputSpan.End()
 	duplicates := countTotalItems(plans) - len(merged)
 	merged, resourcesDropped := sanitizeOutput(merged, req.VARKProfile)
 	s.metrics.ObserveDroppedResources(resourcesDropped)
@@ -222,6 +243,7 @@ func (s *ReasoningService) GeneratePlan(ctx context.Context, req domain.Adaptive
 	// Guard the coverage invariant if deduplication or graph filtering changes.
 	if missing := missingTopic(validated, req.FailedTopics); missing != "" {
 		s.logger.WarnContext(ctx, "stage.validation", "request_id", requestIDFromContext(ctx), "topic", missing)
+		telemetry.Fail(outputSpan, "invalid_output")
 		return domain.PlanResponse{}, &TopicError{Topic: missing, cause: ErrInvalidOutput}
 	}
 	return domain.PlanResponse{StudentID: req.StudentID, CourseID: req.CourseID, Items: validated, Meta: domain.PipelineMeta{SubgraphTuples: len(subgraph), TopicsProcessed: len(req.FailedTopics), ItemsGenerated: countTotalItems(plans), ItemsValidated: len(validated), ItemsDropped: dropped, ItemsSkippedMastered: len(skipped), ResourcesUnreachable: unreachable, LLMLatencyMs: llmLatency.Milliseconds(), TotalLatencyMs: time.Since(start).Milliseconds()}}, nil
@@ -270,7 +292,8 @@ func countTotalItems(plans [][]domain.PlanItem) int {
 	return n
 }
 
-func llmOutcome(err error) string {
+// LLMOutcome returns the stable outcome shared by metrics and tracing.
+func LLMOutcome(err error) string {
 	switch {
 	case err == nil:
 		return "ok"

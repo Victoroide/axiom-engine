@@ -20,6 +20,7 @@ import (
 	"runtime/debug"
 	"strings"
 	"syscall"
+	"time"
 
 	"github.com/gofiber/fiber/v3"
 
@@ -27,6 +28,7 @@ import (
 	"github.com/Victoroide/axiom-engine/internal/graph"
 	"github.com/Victoroide/axiom-engine/internal/llm"
 	"github.com/Victoroide/axiom-engine/internal/server"
+	"github.com/Victoroide/axiom-engine/internal/telemetry"
 )
 
 func main() {
@@ -52,7 +54,7 @@ func run(args []string, stdout io.Writer) error {
 
 func runHTTP(args []string, stdout io.Writer) (err error) {
 	var level slog.LevelVar
-	logger := slog.New(slog.NewJSONHandler(stdout, &slog.HandlerOptions{Level: &level}))
+	logger := slog.New(telemetry.LogHandler(slog.NewJSONHandler(stdout, &slog.HandlerOptions{Level: &level})))
 	slog.SetDefault(logger)
 	defer func() {
 		if err != nil {
@@ -78,6 +80,11 @@ func runHTTP(args []string, stdout io.Writer) (err error) {
 		}
 		return fmt.Errorf("usage: axiom-server [healthcheck]")
 	}
+	traces, err := prepareTracing(cfg, logger)
+	if err != nil {
+		return err
+	}
+	defer traces.flush()
 	g, err := graph.Load(cfg.GraphFile)
 	if err != nil {
 		return err
@@ -109,6 +116,7 @@ func runHTTP(args []string, stdout io.Writer) (err error) {
 				}
 			default:
 			}
+			traces.setDeadline(time.Now().Add(cfg.ShutdownDrainDelay).Add(cfg.ShutdownTimeout))
 			logger.Info("server.shutdown_started", "signal", sig.String(), "timeout", cfg.ShutdownTimeout.String())
 			cancel()
 		case <-ctx.Done():

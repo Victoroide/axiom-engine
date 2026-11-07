@@ -222,6 +222,16 @@ The following Prometheus metrics are exposed:
 - `axiom_resource_links_checked_total{result}`: Counter recording outbound resource reachability checks by bounded result when `RESOURCE_LINK_CHECK=true`. Counts one observation per checked resource link (not per HTTP attempt). Fixed `result` labels are `ok` (successful 2xx response), `status` (non-2xx response status or excess redirects), `timeout` (deadline expiration or request cancellation), `refused` (blocked non-public destinations or connection failures), and `invalid` (URL, scheme, port, or credential refusal). Raw URLs never appear as labels.
 - Go runtime (`go_*`) and process (`process_*`) series: Standard Go runtime collectors and process collectors from the private registry, the latter only where supported by the operating system platform.
 
+### Distributed Tracing (OpenTelemetry)
+
+AxiomEngine provides distributed tracing instrumentation using OpenTelemetry (`internal/telemetry/telemetry.go`):
+
+- **Tracer lifecycle**: When `TRACING_ENABLED=false` (default), no OpenTelemetry SDK tracer provider is registered, and trace invocations incur zero memory or export overhead via the standard no-op tracer. When `TRACING_ENABLED=true`, a process-wide `sdktrace.TracerProvider` is configured with an OTLP/HTTP protobuf exporter.
+- **Context propagation**: Fiber middleware (`internal/server/tracing.go`) extracts incoming W3C `traceparent` and `tracestate` headers into the request context. Server spans use `SpanKindServer` and are named after the parameterized route template (e.g. `POST /api/v1/adaptive-plan`), ensuring consistent cardinality. Outgoing responses inject updated W3C headers.
+- **Concurrent propagation**: Request context flows across goroutines during parallel topic fan-out (`internal/service/reasoning.go`), nesting per-topic spans (`plan.topic`) under the server span and linking model execution spans (`chat <model>`) directly to their respective topics.
+- **Per-call collector lifecycle**: Each model invocation allocates a temporary BAML collector to record exact token counts (`gen_ai.usage.input_tokens`, `gen_ai.usage.output_tokens`). The collector is cleared and released immediately after recording usage, avoiding memory retention across requests.
+- **Bounded shutdown**: Exporter shutdown runs during graceful termination within the remaining post-drain shutdown window (budgeted at signal time + `SHUTDOWN_DRAIN_DELAY` + `SHUTDOWN_TIMEOUT`). The shutdown sequence executes the readiness drain delay, listener close and Fiber connection shutdown, and then flushes in-flight spans before process exit.
+
 ---
 
 ## Design Decisions
