@@ -92,7 +92,7 @@ func NewWithError(cfg config.Config, deps Dependencies) (*fiber.App, error) {
 	}
 	errorHandler := newErrorHandler(logger)
 	app := newApp(cfg, errorHandler)
-	app.State().Set(traceSettingsKey, traceSettings{capture: false, langsmith: cfg.LangSmith.Enabled})
+	app.State().Set(traceSettingsKey, traceSettings{capture: cfg.Tracing.CaptureContent, langsmith: cfg.LangSmith.Enabled})
 	app.State().Set(drainStateKey, &drainState{delay: cfg.ShutdownDrainDelay})
 	useMiddleware(app, cfg, logger, errorHandler, recorder)
 	registerPublicRoutes(app, cfg)

@@ -13,6 +13,7 @@ import (
 	"github.com/Victoroide/axiom-engine/internal/domain"
 	"github.com/Victoroide/axiom-engine/internal/graph"
 	"github.com/Victoroide/axiom-engine/internal/service"
+	"github.com/Victoroide/axiom-engine/internal/telemetry"
 )
 
 // PlanInput describes a study plan request.
@@ -52,7 +53,14 @@ func New(cfg config.Config, g *graph.InMemoryGraph, planner service.Planner, log
 	mcp.AddTool(s, &mcp.Tool{Name: "generate_study_plan", Description: "Generate a study plan for failed curriculum topics"}, func(ctx context.Context, _ *mcp.CallToolRequest, in PlanInput) (*mcp.CallToolResult, domain.PlanResponse, error) {
 		ctx, cancel := context.WithTimeout(ctx, cfg.RequestTimeout)
 		defer cancel()
+		telemetry.CaptureJSON(ctx, "input.value", struct {
+			FailedTopics []string `json:"failed_topics"`
+			VARKProfile  string   `json:"vark_profile"`
+		}{in.FailedTopics, in.VARKProfile})
 		out, err := reasoning.GeneratePlan(ctx, domain.AdaptivePlanRequest{FailedTopics: in.FailedTopics, MasteredTopics: in.MasteredTopics, VARKProfile: in.VARKProfile, StudentID: in.StudentID, CourseID: in.CourseID})
+		if err == nil {
+			telemetry.CaptureJSON(ctx, "output.value", out.Items)
+		}
 		return nil, out, toolError(err)
 	})
 	mcp.AddTool(s, &mcp.Tool{Name: "get_cognitive_graph", Description: "Explore failed concepts and their prerequisite neighborhood"}, func(_ context.Context, _ *mcp.CallToolRequest, in CognitiveGraphInput) (*mcp.CallToolResult, domain.CognitiveGraphResponse, error) {

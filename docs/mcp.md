@@ -71,6 +71,10 @@ The tracing provider is flushed on stdin EOF and signal shutdown. On a signal, t
 
 `LANGSMITH_TRACING=true` enables LangSmith independently of the generic exporter. Tool roots are annotated as `chain` and model calls as `llm`, with request-ID metadata. Only traces containing a model call are exported to LangSmith; graph-only tools and protocol control messages do not consume its export queue.
 
+### Captured Content
+
+`TRACING_CAPTURE_CONTENT` uses the same default and opt-out as HTTP: true when LangSmith is enabled, false otherwise. Plan tool input captures only `failed_topics` and `vark_profile`, and output captures only validated items. Rendered prompts and raw completions come from the per-call collector. Learner identifiers are excluded, and every captured value is limited to 32 KiB on a UTF-8 boundary. Set `TRACING_CAPTURE_CONTENT=false` to retain structure, latency, usage and error classes without content.
+
 ---
 
 ## Available Tools

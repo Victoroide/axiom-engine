@@ -41,6 +41,7 @@ This document is the authoritative reference for all environment variables suppo
 | `LANGSMITH_API_KEY` | String | `""` (unset) | Non-empty string | API key for LangSmith authentication sent in header `x-api-key`. Required when `LANGSMITH_TRACING=true`. Never logged. Configured in `internal/config/langsmith.go`. |
 | `LANGSMITH_ENDPOINT` | String | `https://api.smith.langchain.com` | Absolute HTTPS URL (or HTTP loopback) | Base URL for LangSmith trace export. Trailing slashes are stripped and `/otel/v1/traces` is appended. Must be an absolute HTTPS URL without credentials, query, or fragment (HTTP permitted only for `localhost` or loopback IPs). Configured in `internal/config/langsmith.go`. |
 | `LANGSMITH_PROJECT` | String | `""` (unset) | String | Optional LangSmith project name sent in header `Langsmith-Project`. When unset or empty, the header is omitted. Configured in `internal/config/langsmith.go`. |
+| `TRACING_CAPTURE_CONTENT` | Boolean | `true` if `LANGSMITH_TRACING=true`, else `false` | `true` or `false` | Controls whether rendered model prompts, raw completions, and plan request input/output are captured on trace spans. Defaults to `true` when LangSmith is enabled and `false` otherwise; explicit values override this default. Values are capped at 32 KiB on UTF-8 boundaries. Configured in `internal/config/langsmith.go`. |
 | `METRICS_ENABLED` | Boolean | `false` | `true` or `false` | When `true`, serves Prometheus metrics at `GET /metrics` without requiring authentication or consuming rate limit tokens. When `false` (default), `GET /metrics` returns HTTP 404 and collectors are not allocated. Accepts exactly `true` or `false`; empty or unset defaults to `false`, and invalid values fail startup. Restrict access at the network or proxy level. Configured in `internal/config/config.go`. |
 | `GRAPH_FILE` | String | `""` (unset) | Path to readable JSON file | Custom curriculum knowledge graph file. When unset or empty, the service loads the embedded seed graph from `internal/graph/seed.json`. An optional larger computer science curriculum is available at `examples/graphs/computer-science.json` in source and bundled at `/usr/share/axiom-engine/graphs/computer-science.json` in the runtime container image. Configured in `internal/graph/loader.go`. |
 | `LOG_LEVEL` | String | `info` | `debug`, `info`, `warn`, `error` (case-insensitive) | Minimum log level for structured JSON logging emitted to standard output via `log/slog`. Configured in `internal/config/config.go`. |
@@ -96,6 +97,14 @@ The generic OTLP exporter and LangSmith exporter operate with strict isolation:
 - Generic `OTEL_EXPORTER_OTLP_*` variables do not affect LangSmith's endpoint, headers, timeout (fixed 10s), or compression (disabled).
 - `LANGSMITH_API_KEY` is sent exclusively to `LANGSMITH_ENDPOINT` and is never attached to generic OTLP headers or emitted to logs.
 - When both `TRACING_ENABLED=true` and `LANGSMITH_TRACING=true` are configured, both exporters run concurrently under the shared OpenTelemetry SDK.
+
+### Content Capture
+
+Span content recording is controlled by `TRACING_CAPTURE_CONTENT`:
+- When unset, it defaults to `true` if `LANGSMITH_TRACING=true`, and `false` otherwise.
+- Explicitly setting `TRACING_CAPTURE_CONTENT=true` or `false` overrides the default.
+- When enabled, spans capture rendered prompts (`gen_ai.prompt.N`), completions (`gen_ai.completion.0`), and privacy-filtered request inputs (`input.value`) and outputs (`output.value`), each capped at 32 KiB on UTF-8 boundaries.
+- When disabled, trace trees record only structural spans, timing, error types, and token counts.
 
 ---
 
@@ -164,7 +173,6 @@ In MCP mode, runtime settings are loaded via `internal/config/mcp.go`:
 - **Shutdown timeout**: `SHUTDOWN_TIMEOUT` also bounds MCP shutdown, defaulting to `max(REQUEST_TIMEOUT + 5s, 11s)` (`25s`). Admitted tool calls drain within this timeout before remaining work is canceled and the transport is closed. If explicitly configured, it must be a positive Go duration; unlike HTTP mode, the `11s` HTTP minimum is not enforced because there is no HTTP listener or connection draining.
 - **Ignored HTTP settings**: The following HTTP-only variables are ignored and will not cause startup validation failures even if unset, empty, or configured with values that would be invalid for the HTTP server: `REDIS_URL`, `IDEMPOTENCY_TTL`, `IDEMPOTENCY_MAX_ENTRIES`, `PORT`, `AXIOM_AUTH_DISABLED`, `AXIOM_INTERNAL_TOKEN`, `AXIOM_INTERNAL_TOKEN_PREVIOUS`, `CORS_ALLOWED_ORIGINS`, `TRUSTED_PROXIES`, `RATE_LIMIT_MAX`, `RATE_LIMIT_WINDOW`, `METRICS_ENABLED`, `SWAGGER_ENABLED`, and `SHUTDOWN_DRAIN_DELAY`.
 - **Provider selection**: `LLM_PROVIDER`, `LLM_MODEL`, `LLM_BASE_URL` and provider API keys have the same validation and defaults as HTTP; the selected client registry is shared by all plan tools. Startup records on stderr include `llm_provider` and `llm_model`.
-- **Provider selection**: `LLM_PROVIDER`, `LLM_MODEL`, `LLM_BASE_URL` and provider API keys have the same validation and defaults as HTTP; the selected client registry is shared by all plan tools. Startup records on stderr include `llm_provider` and `llm_model`.
 - **Validation**: AWS retry mode (`AWS_RETRY_MODE`, `AWS_MAX_ATTEMPTS`) is validated only for `aws-bedrock`; BAML logging (`BAML_LOG`) is always validated.
 - **Tracing**: `TRACING_ENABLED` and standard `OTEL_*` settings apply to MCP tool-call spans. EOF and signal shutdown flush the provider; signal shutdown uses the remaining `SHUTDOWN_TIMEOUT` after tool draining and transport closure.
-- **LangSmith**: `LANGSMITH_TRACING`, endpoint, project and key settings apply to MCP just as HTTP. Model-bearing tool traces receive run attributes. No MCP-specific environment variables are introduced.
+- **LangSmith and content**: `LANGSMITH_TRACING`, endpoint, project, key and `TRACING_CAPTURE_CONTENT` settings apply to MCP just as HTTP. Model-bearing tool traces receive run attributes; captured plan input/output omits learner identifiers. No MCP-specific environment variables are introduced.

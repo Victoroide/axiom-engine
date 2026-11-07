@@ -32,7 +32,7 @@ func traceTools(cfg config.Config, logger *slog.Logger) mcp.Middleware {
 			}
 			id := uuid.NewString()
 			ctx = service.WithRequestID(ctx, id)
-			ctx = telemetry.WithSettings(ctx, false, cfg.LangSmith.Enabled)
+			ctx = telemetry.WithSettings(ctx, cfg.Tracing.CaptureContent, cfg.LangSmith.Enabled)
 			ctx, span := otel.Tracer("github.com/Victoroide/axiom-engine").Start(ctx, "tools/call "+name, trace.WithSpanKind(trace.SpanKindServer), trace.WithAttributes(attribute.String("rpc.system.name", "mcp"), attribute.String("rpc.method", "tools/call"), attribute.String("mcp.tool.name", name), attribute.String("request_id", id)))
 			telemetry.Annotate(ctx, span, "chain", "tools/call "+name)
 			defer span.End()

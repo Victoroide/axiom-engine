@@ -4,7 +4,8 @@ import "fmt"
 
 // Tracing controls the OTLP trace exporter.
 type Tracing struct {
-	Enabled bool
+	Enabled        bool
+	CaptureContent bool
 }
 
 func loadTracing(getenv func(string) string, c *Config) error {
