@@ -67,6 +67,10 @@ MCP uses the same startup `LLM_PROVIDER`, `LLM_MODEL`, `LLM_BASE_URL` and provid
 
 The tracing provider is flushed on stdin EOF and signal shutdown. On a signal, tool draining, transport closure and trace flushing share the remaining `SHUTDOWN_TIMEOUT`; HTTP-only `SHUTDOWN_DRAIN_DELAY` is ignored.
 
+### LangSmith
+
+`LANGSMITH_TRACING=true` enables LangSmith independently of the generic exporter. Tool roots are annotated as `chain` and model calls as `llm`, with request-ID metadata. Only traces containing a model call are exported to LangSmith; graph-only tools and protocol control messages do not consume its export queue.
+
 ---
 
 ## Available Tools

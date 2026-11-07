@@ -137,7 +137,7 @@ export OTEL_EXPORTER_OTLP_ENDPOINT="http://otel-collector:4318"
 export OTEL_SERVICE_NAME="axiom-engine"
 ```
 
-W3C `traceparent` and `tracestate` headers are extracted and injected only when the OTLP exporter (`TRACING_ENABLED=true`) is configured. When tracing is disabled, caller headers are not extracted or echoed, and access logs omit caller trace and span IDs. When an exporter is configured, an incoming remote span becomes the parent of the server request span, and outgoing responses include matching `traceparent` and `tracestate` headers to preserve distributed context.
+W3C `traceparent` and `tracestate` headers are extracted and injected only when at least one exporter (`TRACING_ENABLED=true` or `LANGSMITH_TRACING=true`) is configured. When both are disabled, caller headers are not extracted or echoed, and access logs omit caller trace and span IDs. When an exporter is configured, an incoming remote span becomes the parent of the server request span, and outgoing responses include matching `traceparent` and `tracestate` headers to preserve distributed context.
 
 ### Trace Structure and Spans
 
@@ -170,6 +170,40 @@ When at least one exporter is configured, the structured JSON logger wraps every
 ```json
 {"time":"2026-11-06T18:03:00.123456-04:00","level":"INFO","msg":"http.access","request_id":"req-abc123","method":"POST","path":"/api/v1/adaptive-plan","status":200,"duration_ms":342,"ip":"127.0.0.1","trace_id":"4bf92f3577b34da6a3ce929d0e0e4736","span_id":"00f067aa0ba902b7"}
 ```
+
+### LangSmith Integration
+
+AxiomEngine can export model reasoning traces directly to LangSmith without running an intermediate OpenTelemetry collector.
+
+#### Setup
+
+Configure LangSmith environment variables:
+
+```sh
+export LANGSMITH_TRACING=true
+export LANGSMITH_API_KEY="lsv2_pt_..."
+# Optional project name (defaults to LangSmith default project):
+export LANGSMITH_PROJECT="axiom-reasoning"
+```
+
+To target an EU-region project or a self-hosted instance, set `LANGSMITH_ENDPOINT`:
+- EU region: `LANGSMITH_ENDPOINT="https://eu.api.smith.langchain.com"` (exports to `https://eu.api.smith.langchain.com/otel/v1/traces`)
+- Self-hosted instance: `LANGSMITH_ENDPOINT="https://traces.example.com/api/v1"` (exports to `https://traces.example.com/api/v1/otel/v1/traces`)
+
+#### Trace Buffering, Filtering and Run Hierarchy
+
+LangSmith requires child spans to share their export with their parent to assemble trace trees accurately. AxiomEngine uses an in-memory trace processor (`traceProcessor`) that buffers spans for each local request until every parent and child span finishes:
+
+- **Model trace filtering**: Only completed traces containing a downstream model call (`langsmith.span.kind=llm`) are forwarded to the LangSmith export queue. Health checks (`/livez`, `/readyz`, `/health`), authorization failures, and unauthenticated or malformed requests that do not invoke the planner model are discarded from LangSmith export and do not consume queue capacity (they remain available to the generic OTLP exporter).
+- **Remote parent re-rooting**: When an incoming request includes W3C trace context from an external caller, LangSmith re-roots the local request tree by omitting the remote parent span ID from the export payload, ensuring LangSmith receives self-contained trace hierarchies. The generic OTLP exporter retains the caller's remote parent.
+- **Independent local roots**: Spans are grouped by local root rather than trace ID alone. Overlapping or concurrent requests sharing a trace ID are tracked in separate groups and exported independently as each request finishes.
+- **Bounded buffering**: Total buffered spans across active, finished, queued, and in-flight exports are capped process-wide at 2048 spans. Individual local request groups are capped at 256 spans, and the finished export queue holds at most 128 groups. When limits are exceeded, entire groups are dropped rather than exporting incomplete hierarchies.
+- **Drop metrics**: When `METRICS_ENABLED=true`, dropped spans are counted process-wide by `axiom_langsmith_dropped_spans_total{reason}` with fixed labels `buffer_full`, `group_full`, `missing_parent`, `queue_full`, and `shutdown`. Queue overflow does not emit per-drop log records.
+
+Exported spans include LangSmith-specific run annotations:
+- `langsmith.span.kind`: set to `chain` for HTTP request and per-topic reasoning spans, and `llm` for downstream model invocation spans (`chat <model>`).
+- `langsmith.trace.name`: identifies the operation name for the root run.
+- `langsmith.metadata.request_id`: records the request ID for trace correlation.
 
 ### Exporter Error Handling and Shutdown Flushing
 

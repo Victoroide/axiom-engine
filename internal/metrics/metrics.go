@@ -10,6 +10,8 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/collectors"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
+
+	"github.com/Victoroide/axiom-engine/internal/telemetry"
 )
 
 // Metrics owns the collectors for one application.
@@ -65,7 +67,7 @@ func New() *Metrics {
 		}
 		return float64(source())
 	})
-	m.registry.MustRegister(m.httpDuration, m.httpRequests, m.previousToken, m.llmCalls, m.llmDuration, m.inflight, m.queueWait, m.queueTimeouts, m.itemsDropped, m.resourcesDropped, m.resourceLinks, state, collectors.NewGoCollector(), collectors.NewProcessCollector(collectors.ProcessCollectorOpts{}))
+	m.registry.MustRegister(telemetry.LangSmithDroppedSpansCollector(), m.httpDuration, m.httpRequests, m.previousToken, m.llmCalls, m.llmDuration, m.inflight, m.queueWait, m.queueTimeouts, m.itemsDropped, m.resourcesDropped, m.resourceLinks, state, collectors.NewGoCollector(), collectors.NewProcessCollector(collectors.ProcessCollectorOpts{}))
 	return m
 }
 

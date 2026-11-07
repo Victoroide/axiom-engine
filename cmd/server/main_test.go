@@ -451,6 +451,22 @@ func TestOtherProvidersIgnoreAWSSettings(t *testing.T) {
 	}
 }
 
+func TestLangSmithStartupDoesNotLogKey(t *testing.T) {
+	t.Setenv("AXIOM_AUTH_DISABLED", "true")
+	t.Setenv("AXIOM_INTERNAL_TOKEN", "")
+	t.Setenv("LANGSMITH_TRACING", "true")
+	t.Setenv("LANGSMITH_API_KEY", "private-observability-key")
+	t.Setenv("LANGSMITH_ENDPOINT", "http://remote.example.com")
+	var output bytes.Buffer
+	err := run([]string{"unexpected"}, &output)
+	if err == nil || !strings.Contains(err.Error(), "LANGSMITH_ENDPOINT") {
+		t.Fatalf("error=%v", err)
+	}
+	if strings.Contains(output.String(), "private-observability-key") {
+		t.Fatal("key appeared in startup log")
+	}
+}
+
 func TestTracingFlushAfterDrain(t *testing.T) {
 	if os.Getenv("AXIOM_TRACE_DRAIN_CHILD") == "1" {
 		if err := run(nil, os.Stdout); err != nil {

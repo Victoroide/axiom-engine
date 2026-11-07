@@ -32,6 +32,7 @@ func New(settings ...config.LLM) *BAML {
 	return &BAML{generate: func(ctx context.Context, g []types.GraphTuple, t string, p []string, v string) (types.AdaptiveStudyPlan, error) {
 		ctx, span := telemetry.Start(ctx, "chat "+cfg.Model,
 			attribute.String("gen_ai.operation.name", "chat"), attribute.String("gen_ai.provider.name", providerConvention(cfg.Provider)), attribute.String("gen_ai.system", providerConvention(cfg.Provider)), attribute.String("gen_ai.request.model", cfg.Model), attribute.Int("gen_ai.request.max_tokens", 2048), attribute.Float64("gen_ai.request.temperature", 0.1))
+		telemetry.Annotate(ctx, span, "llm", "chat "+cfg.Model)
 		defer span.End()
 		opts := []baml.CallOptionFunc{baml.WithClientRegistry(registry)}
 		if span.IsRecording() {
