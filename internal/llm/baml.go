@@ -44,6 +44,7 @@ func New(settings ...config.LLM) *BAML {
 			defer func() { _, _ = collector.Clear() }()
 			opts = append(opts, baml.WithCollector(collector))
 			defer func() {
+				captureCollector(ctx, span, collector, cfg.Provider)
 				usage, err := collector.Usage()
 				if err != nil || usage == nil {
 					return

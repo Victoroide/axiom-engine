@@ -17,6 +17,7 @@ import (
 	"github.com/Victoroide/axiom-engine/internal/domain"
 	"github.com/Victoroide/axiom-engine/internal/graph"
 	"github.com/Victoroide/axiom-engine/internal/service"
+	"github.com/Victoroide/axiom-engine/internal/telemetry"
 )
 
 // Handler contains the dependencies of the versioned HTTP API.
@@ -91,10 +92,15 @@ func (h *Handler) handleAdaptivePlan(c fiber.Ctx) error {
 	}
 	ctx, cancel := context.WithTimeout(service.WithRequestID(c.Context(), requestid.FromContext(c)), h.timeout)
 	defer cancel()
+	telemetry.CaptureJSON(ctx, "input.value", struct {
+		FailedTopics []string `json:"failed_topics"`
+		VARKProfile  string   `json:"vark_profile"`
+	}{req.FailedTopics, req.VARKProfile})
 	plan, err := h.reasoning.GeneratePlan(ctx, req)
 	if err != nil {
 		return h.writePipelineError(c, ctx, err)
 	}
+	telemetry.CaptureJSON(ctx, "output.value", plan.Items)
 	return c.JSON(plan)
 }
 

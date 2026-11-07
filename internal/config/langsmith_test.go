@@ -26,7 +26,7 @@ func TestLangSmithConfiguration(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			if !c.LangSmith.Enabled || c.Tracing.Enabled || c.LangSmith.Project != "test-project" || c.LangSmith.APIKey != "test-key" {
+			if !c.LangSmith.Enabled || !c.Tracing.CaptureContent || c.Tracing.Enabled || c.LangSmith.Project != "test-project" || c.LangSmith.APIKey != "test-key" {
 				t.Fatalf("configuration=%+v", c)
 			}
 			want := strings.TrimRight(endpoint, "/")
@@ -38,11 +38,25 @@ func TestLangSmithConfiguration(t *testing.T) {
 			}
 		})
 	}
+	for _, capture := range []string{"true", "false"} {
+		c, err := Load(func(k string) string {
+			switch k {
+			case "AXIOM_AUTH_DISABLED":
+				return "true"
+			case "TRACING_CAPTURE_CONTENT":
+				return capture
+			}
+			return ""
+		})
+		if err != nil || c.Tracing.CaptureContent != (capture == "true") {
+			t.Fatalf("capture=%s configuration=%+v err=%v", capture, c.Tracing, err)
+		}
+	}
 }
 
 func TestLangSmithRejectsInvalidConfiguration(t *testing.T) {
 	for _, env := range []map[string]string{
-		{"LANGSMITH_TRACING": "yes"},
+		{"LANGSMITH_TRACING": "yes"}, {"TRACING_CAPTURE_CONTENT": "yes"},
 		{"LANGSMITH_ENDPOINT": "relative/path"}, {"LANGSMITH_ENDPOINT": "/"}, {"LANGSMITH_ENDPOINT": "ftp://example.com"},
 		{"LANGSMITH_ENDPOINT": "http://example.com"}, {"LANGSMITH_ENDPOINT": "https://user@example.com"},
 		{"LANGSMITH_ENDPOINT": "https://example.com?key=value"}, {"LANGSMITH_ENDPOINT": "https://example.com#fragment"},
@@ -59,7 +73,7 @@ func TestLangSmithRejectsInvalidConfiguration(t *testing.T) {
 		}
 		return ""
 	})
-	if err != nil || c.LangSmith.Enabled {
+	if err != nil || c.LangSmith.Enabled || c.Tracing.CaptureContent {
 		t.Fatalf("defaults=%+v error=%v", c, err)
 	}
 }

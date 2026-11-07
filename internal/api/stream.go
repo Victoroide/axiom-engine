@@ -15,6 +15,7 @@ import (
 
 	"github.com/Victoroide/axiom-engine/internal/domain"
 	"github.com/Victoroide/axiom-engine/internal/service"
+	"github.com/Victoroide/axiom-engine/internal/telemetry"
 )
 
 type streamDoneKey struct{}
@@ -76,6 +77,10 @@ func (h *Handler) handlePlanStream(c fiber.Ctx) error {
 	parent := c.Context()
 	requestID := strings.Clone(requestid.FromContext(c))
 	ctx, cancel := context.WithTimeout(service.WithRequestID(parent, requestID), h.timeout)
+	telemetry.CaptureJSON(ctx, "input.value", struct {
+		FailedTopics []string `json:"failed_topics"`
+		VARKProfile  string   `json:"vark_profile"`
+	}{req.FailedTopics, req.VARKProfile})
 	done := make(chan bool, 1)
 	finished := make(chan struct{})
 	c.Locals(streamFinishedKey{}, (<-chan struct{})(finished))
@@ -99,6 +104,9 @@ func (h *Handler) handlePlanStream(c fiber.Ctx) error {
 				case <-ctx.Done():
 				}
 			}))
+			if err == nil {
+				telemetry.CaptureJSON(ctx, "output.value", plan.Items)
+			}
 			event := planEvent{name: "plan", payload: plan}
 			if err != nil {
 				failure := h.classifyPipelineError(ctx, requestID, err, parent.Err() != nil)

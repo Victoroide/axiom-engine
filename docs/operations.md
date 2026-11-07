@@ -205,6 +205,28 @@ Exported spans include LangSmith-specific run annotations:
 - `langsmith.trace.name`: identifies the operation name for the root run.
 - `langsmith.metadata.request_id`: records the request ID for trace correlation.
 
+### Content Capture and Privacy
+
+By default, enabling LangSmith (`LANGSMITH_TRACING=true`) turns on content capture (`TRACING_CAPTURE_CONTENT=true`).
+
+#### Captured Attributes
+
+When content capture is active, spans include:
+- **Downstream model calls (`chat <model>`)**:
+  - `gen_ai.prompt.N.role` and `gen_ai.prompt.N.content`: Rendered prompt messages parsed from the underlying model request body across all supported providers (Bedrock, OpenAI, Anthropic, Google AI, Ollama, generic).
+  - `gen_ai.completion.0.role` (`assistant`) and `gen_ai.completion.0.content`: Raw model completion payload from the Boundary ML collector.
+- **Plan request spans (`POST /api/v1/adaptive-plan`)**:
+  - `input.value`: JSON payload containing `failed_topics` and `vark_profile`.
+  - `output.value`: JSON payload containing the validated study `items`.
+
+#### Privacy Controls
+
+- **Learner identification exclusion**: Student identifiers (`student_id`) and course identifiers (`course_id`) are strictly excluded from span attributes, `input.value`, and `output.value`.
+- **Sensitive header isolation**: HTTP authorization headers, internal tokens, and provider API keys are never captured in span attributes or logged.
+- **Attribute truncation**: Each captured prompt, completion, input, or output string is truncated to a maximum of 32 KiB on a valid UTF-8 character boundary.
+- **Disabling content capture**: Set `TRACING_CAPTURE_CONTENT=false` to export span hierarchy, latency, error types, and token usage counts to LangSmith and OTLP receivers without capturing prompt, completion, or input/output text.
+- **Dual-exporter privacy**: Captured content is attached to span attributes in memory; if both the generic OTLP exporter (`TRACING_ENABLED=true`) and LangSmith (`LANGSMITH_TRACING=true`) are active, captured content is delivered to both destinations. Verify collector destination policies when running both exporters.
+
 ### Exporter Error Handling and Shutdown Flushing
 
 During runtime, exporter failures invoke an internal error handler that emits a fixed `WARN` log record with `error_class="trace_export_failed"` at most once per minute, omitting collector response bodies and upstream messages:

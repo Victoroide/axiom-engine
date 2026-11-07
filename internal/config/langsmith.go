@@ -36,5 +36,15 @@ func loadLangSmith(getenv func(string) string, c *Config) error {
 	if c.LangSmith.Enabled && strings.TrimSpace(c.LangSmith.APIKey) == "" {
 		return fmt.Errorf("LANGSMITH_API_KEY is required when LANGSMITH_TRACING=true")
 	}
+	c.Tracing.CaptureContent = c.LangSmith.Enabled
+	switch getenv("TRACING_CAPTURE_CONTENT") {
+	case "":
+	case "true":
+		c.Tracing.CaptureContent = true
+	case "false":
+		c.Tracing.CaptureContent = false
+	default:
+		return fmt.Errorf("TRACING_CAPTURE_CONTENT must be true or false")
+	}
 	return nil
 }
