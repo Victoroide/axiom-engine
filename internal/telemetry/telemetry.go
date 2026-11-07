@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"log/slog"
 	"os"
+	"time"
 
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
@@ -23,7 +24,7 @@ import (
 
 // Setup installs the enabled exporter and returns its bounded shutdown hook.
 func Setup(ctx context.Context, cfg config.Config) (func(context.Context) error, error) {
-	if !cfg.Tracing.Enabled {
+	if !cfg.Tracing.Enabled && !cfg.LangSmith.Enabled {
 		return func(context.Context) error { return nil }, nil
 	}
 	otel.SetErrorHandler(&exportErrorHandler{logger: slog.Default()})
@@ -31,15 +32,42 @@ func Setup(ctx context.Context, cfg config.Config) (func(context.Context) error,
 	if err != nil {
 		return nil, fmt.Errorf("configure trace resource: %w", err)
 	}
-	var options []otlptracehttp.Option
-	if os.Getenv("OTEL_EXPORTER_OTLP_ENDPOINT") == "" && os.Getenv("OTEL_EXPORTER_OTLP_TRACES_ENDPOINT") == "" {
-		options = append(options, otlptracehttp.WithInsecure())
+	processors := make([]sdktrace.SpanProcessor, 0, 2)
+	installed := false
+	defer func() {
+		if installed {
+			return
+		}
+		cleanupCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), time.Second)
+		defer cancel()
+		for _, processor := range processors {
+			_ = processor.Shutdown(cleanupCtx)
+		}
+	}()
+	opts := []sdktrace.TracerProviderOption{sdktrace.WithResource(res)}
+	if cfg.Tracing.Enabled {
+		var options []otlptracehttp.Option
+		if os.Getenv("OTEL_EXPORTER_OTLP_ENDPOINT") == "" && os.Getenv("OTEL_EXPORTER_OTLP_TRACES_ENDPOINT") == "" {
+			options = append(options, otlptracehttp.WithInsecure())
+		}
+		exporter, err := otlptracehttp.New(ctx, options...)
+		if err != nil {
+			return nil, fmt.Errorf("configure OTLP exporter: %w", err)
+		}
+		processors = append(processors, sdktrace.NewBatchSpanProcessor(exporter))
 	}
-	exporter, err := otlptracehttp.New(ctx, options...)
-	if err != nil {
-		return nil, fmt.Errorf("configure OTLP exporter: %w", err)
+	if cfg.LangSmith.Enabled {
+		processor, err := newLangSmithProcessor(ctx, cfg.LangSmith)
+		if err != nil {
+			return nil, err
+		}
+		processors = append(processors, processor)
 	}
-	provider := sdktrace.NewTracerProvider(sdktrace.WithResource(res), sdktrace.WithBatcher(exporter))
+	for _, processor := range processors {
+		opts = append(opts, sdktrace.WithSpanProcessor(processor))
+	}
+	provider := sdktrace.NewTracerProvider(opts...)
+	installed = true
 	otel.SetTracerProvider(provider)
 	otel.SetTextMapPropagator(propagation.NewCompositeTextMapPropagator(propagation.TraceContext{}, propagation.Baggage{}))
 	return provider.Shutdown, nil
@@ -60,7 +88,9 @@ func Start(ctx context.Context, name string, attrs ...attribute.KeyValue) (conte
 	if id := RequestID(ctx); id != "" {
 		attrs = append(attrs, attribute.String("request_id", id))
 	}
-	return otel.Tracer("github.com/Victoroide/axiom-engine").Start(ctx, name, trace.WithAttributes(attrs...))
+	ctx, span := otel.Tracer("github.com/Victoroide/axiom-engine").Start(ctx, name, trace.WithAttributes(attrs...))
+	Annotate(ctx, span, "chain", name)
+	return ctx, span
 }
 
 // Fail records only a stable error class, keeping upstream details private.

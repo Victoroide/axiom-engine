@@ -11,12 +11,13 @@ import (
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/trace"
 
+	"github.com/Victoroide/axiom-engine/internal/config"
 	"github.com/Victoroide/axiom-engine/internal/domain"
 	"github.com/Victoroide/axiom-engine/internal/service"
 	"github.com/Victoroide/axiom-engine/internal/telemetry"
 )
 
-func traceTools(logger *slog.Logger) mcp.Middleware {
+func traceTools(cfg config.Config, logger *slog.Logger) mcp.Middleware {
 	return func(next mcp.MethodHandler) mcp.MethodHandler {
 		return func(ctx context.Context, method string, req mcp.Request) (mcp.Result, error) {
 			if method != "tools/call" {
@@ -31,7 +32,9 @@ func traceTools(logger *slog.Logger) mcp.Middleware {
 			}
 			id := uuid.NewString()
 			ctx = service.WithRequestID(ctx, id)
+			ctx = telemetry.WithSettings(ctx, false, cfg.LangSmith.Enabled)
 			ctx, span := otel.Tracer("github.com/Victoroide/axiom-engine").Start(ctx, "tools/call "+name, trace.WithSpanKind(trace.SpanKindServer), trace.WithAttributes(attribute.String("rpc.system.name", "mcp"), attribute.String("rpc.method", "tools/call"), attribute.String("mcp.tool.name", name), attribute.String("request_id", id)))
+			telemetry.Annotate(ctx, span, "chain", "tools/call "+name)
 			defer span.End()
 			start := time.Now()
 			result, err := next(ctx, method, req)

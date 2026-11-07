@@ -92,6 +92,7 @@ func NewWithError(cfg config.Config, deps Dependencies) (*fiber.App, error) {
 	}
 	errorHandler := newErrorHandler(logger)
 	app := newApp(cfg, errorHandler)
+	app.State().Set(traceSettingsKey, traceSettings{capture: false, langsmith: cfg.LangSmith.Enabled})
 	app.State().Set(drainStateKey, &drainState{delay: cfg.ShutdownDrainDelay})
 	useMiddleware(app, cfg, logger, errorHandler, recorder)
 	registerPublicRoutes(app, cfg)
@@ -99,7 +100,7 @@ func NewWithError(cfg config.Config, deps Dependencies) (*fiber.App, error) {
 		app.Get("/metrics", adaptor.HTTPHandler(recorder.Handler()))
 	}
 	registerAPI(app, cfg, deps, logger, recorder, shared)
-	wrapUnknownMethods(app, logger, errorHandler, recorder, cfg.Tracing.Enabled)
+	wrapUnknownMethods(app, logger, errorHandler, recorder, cfg.Tracing.Enabled || cfg.LangSmith.Enabled)
 	if shared != nil {
 		app.Hooks().OnPostShutdown(func(_ error) error { _ = shared.Close(); return shared.Conn().Close() })
 	}
@@ -215,7 +216,7 @@ func useMiddleware(app *fiber.App, cfg config.Config, logger *slog.Logger, error
 		return c.Next()
 	})
 	app.Use(requestid.New())
-	if cfg.Tracing.Enabled {
+	if cfg.Tracing.Enabled || cfg.LangSmith.Enabled {
 		app.Use(traceRequest)
 	}
 	app.Use(func(c fiber.Ctx) error {

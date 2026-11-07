@@ -13,6 +13,7 @@ import (
 
 // Config contains startup configuration for the service.
 type Config struct {
+	LangSmith             LangSmith
 	Tracing               Tracing
 	LLM                   LLM
 	ResourceLinks         ResourceLinks
@@ -234,6 +235,9 @@ func Load(getenv func(string) string) (Config, error) {
 		return Config{}, err
 	}
 	if err := loadTracing(getenv, &c); err != nil {
+		return Config{}, err
+	}
+	if err := loadLangSmith(getenv, &c); err != nil {
 		return Config{}, err
 	}
 	return c, nil
