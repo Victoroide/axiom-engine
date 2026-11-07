@@ -7,8 +7,8 @@ require (
 	github.com/boundaryml/baml v0.226.3
 	github.com/getkin/kin-openapi v0.152.0
 	github.com/go-rod/rod v0.116.2
-	github.com/goccy/go-json v0.11.2
-	github.com/gofiber/contrib/v3/swaggo v1.0.14
+	github.com/goccy/go-json v0.12.0
+	github.com/gofiber/contrib/v3/swaggo v1.0.15
 	github.com/gofiber/fiber/v3 v3.6.1
 	github.com/gofiber/storage/redis/v3 v3.6.3
 	github.com/google/uuid v1.6.0
@@ -39,8 +39,8 @@ require (
 	github.com/go-openapi/swag/stringutils v0.29.2 // indirect
 	github.com/go-openapi/swag/typeutils v0.29.2 // indirect
 	github.com/go-openapi/swag/yamlutils v0.29.2 // indirect
-	github.com/gofiber/schema v1.9.0 // indirect
-	github.com/gofiber/utils/v2 v2.6.2 // indirect
+	github.com/gofiber/schema v1.9.1 // indirect
+	github.com/gofiber/utils/v2 v2.6.3 // indirect
 	github.com/google/jsonschema-go v0.4.3 // indirect
 	github.com/klauspost/compress v1.20.3 // indirect
 	github.com/mattn/go-colorable v0.1.16 // indirect
