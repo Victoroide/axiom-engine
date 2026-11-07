@@ -16,11 +16,12 @@ import (
 	"github.com/Victoroide/axiom-engine/internal/graph"
 	"github.com/Victoroide/axiom-engine/internal/llm"
 	"github.com/Victoroide/axiom-engine/internal/mcpserver"
+	"github.com/Victoroide/axiom-engine/internal/telemetry"
 )
 
 func runMCP(args []string) (err error) {
 	var level slog.LevelVar
-	logger := slog.New(slog.NewJSONHandler(os.Stderr, &slog.HandlerOptions{Level: &level}))
+	logger := slog.New(telemetry.LogHandler(slog.NewJSONHandler(os.Stderr, &slog.HandlerOptions{Level: &level})))
 	slog.SetDefault(logger)
 	defer func() {
 		if err != nil {
@@ -43,6 +44,11 @@ func runMCP(args []string) (err error) {
 		}
 	}
 	level.Set(cfg.LogLevel)
+	traces, err := prepareTracing(cfg, logger)
+	if err != nil {
+		return err
+	}
+	defer traces.flush()
 	g, err := graph.Load(cfg.GraphFile)
 	if err != nil {
 		return err
@@ -77,6 +83,7 @@ func runMCP(args []string) (err error) {
 		default:
 		}
 		deadline := time.Now().Add(cfg.ShutdownTimeout)
+		traces.setDeadline(deadline)
 		timer := time.NewTimer(time.Until(deadline))
 		defer timer.Stop()
 		drained := lifecycle.StopAccepting()

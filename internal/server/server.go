@@ -99,14 +99,14 @@ func NewWithError(cfg config.Config, deps Dependencies) (*fiber.App, error) {
 		app.Get("/metrics", adaptor.HTTPHandler(recorder.Handler()))
 	}
 	registerAPI(app, cfg, deps, logger, recorder, shared)
-	wrapUnknownMethods(app, logger, errorHandler, recorder)
+	wrapUnknownMethods(app, logger, errorHandler, recorder, cfg.Tracing.Enabled)
 	if shared != nil {
 		app.Hooks().OnPostShutdown(func(_ error) error { _ = shared.Close(); return shared.Conn().Close() })
 	}
 	return app, nil
 }
 
-func wrapUnknownMethods(app *fiber.App, logger *slog.Logger, errorHandler fiber.ErrorHandler, recorder *metrics.Metrics) {
+func wrapUnknownMethods(app *fiber.App, logger *slog.Logger, errorHandler fiber.ErrorHandler, recorder *metrics.Metrics, tracing bool) {
 	methods := make(map[string]struct{}, len(app.Config().RequestMethods))
 	for _, method := range app.Config().RequestMethods {
 		methods[method] = struct{}{}
@@ -128,6 +128,11 @@ func wrapUnknownMethods(app *fiber.App, logger *slog.Logger, errorHandler fiber.
 			id = uuid.NewString()
 		}
 		c.Set("X-Request-ID", id)
+		if tracing {
+			span := startRequestTrace(c)
+			defer span.End()
+			defer finishRequestTrace(c, span, nil)
+		}
 		setSecurityHeaders(c, securityHeaders)
 		if err := errorHandler(c, fiber.ErrNotImplemented); err != nil {
 			logger.ErrorContext(c.Context(), "request.failed", "request_id", id, "error_class", "internal_error")
@@ -210,6 +215,9 @@ func useMiddleware(app *fiber.App, cfg config.Config, logger *slog.Logger, error
 		return c.Next()
 	})
 	app.Use(requestid.New())
+	if cfg.Tracing.Enabled {
+		app.Use(traceRequest)
+	}
 	app.Use(func(c fiber.Ctx) error {
 		start := time.Now()
 		err := c.Next()

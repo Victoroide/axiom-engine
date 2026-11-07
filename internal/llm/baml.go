@@ -5,13 +5,14 @@ import (
 	"context"
 
 	runtime "github.com/boundaryml/baml/engine/language_client_go/pkg"
-
-	"github.com/Victoroide/axiom-engine/internal/config"
+	"go.opentelemetry.io/otel/attribute"
 
 	baml "github.com/Victoroide/axiom-engine/baml_client"
 	"github.com/Victoroide/axiom-engine/baml_client/types"
+	"github.com/Victoroide/axiom-engine/internal/config"
 	"github.com/Victoroide/axiom-engine/internal/domain"
 	"github.com/Victoroide/axiom-engine/internal/service"
+	"github.com/Victoroide/axiom-engine/internal/telemetry"
 )
 
 type generateFunc func(context.Context, []types.GraphTuple, string, []string, string) (types.AdaptiveStudyPlan, error)
@@ -29,7 +30,40 @@ func New(settings ...config.LLM) *BAML {
 	registry.AddLlmClient("Planner", cfg.Provider, clientOptions(cfg))
 	registry.SetPrimaryClient("Planner")
 	return &BAML{generate: func(ctx context.Context, g []types.GraphTuple, t string, p []string, v string) (types.AdaptiveStudyPlan, error) {
-		return baml.GenerateTopicPlan(ctx, g, t, p, v, baml.WithClientRegistry(registry))
+		ctx, span := telemetry.Start(ctx, "chat "+cfg.Model,
+			attribute.String("gen_ai.operation.name", "chat"), attribute.String("gen_ai.provider.name", providerConvention(cfg.Provider)), attribute.String("gen_ai.system", providerConvention(cfg.Provider)), attribute.String("gen_ai.request.model", cfg.Model), attribute.Int("gen_ai.request.max_tokens", 2048), attribute.Float64("gen_ai.request.temperature", 0.1))
+		defer span.End()
+		opts := []baml.CallOptionFunc{baml.WithClientRegistry(registry)}
+		if span.IsRecording() {
+			collector, err := baml.NewCollector("planner")
+			if err != nil {
+				telemetry.Fail(span, "error")
+				return types.AdaptiveStudyPlan{}, err
+			}
+			defer func() { _, _ = collector.Clear() }()
+			opts = append(opts, baml.WithCollector(collector))
+			defer func() {
+				usage, err := collector.Usage()
+				if err != nil || usage == nil {
+					return
+				}
+				if n, err := usage.InputTokens(); err == nil {
+					span.SetAttributes(attribute.Int64("gen_ai.usage.input_tokens", n))
+				}
+				if n, err := usage.OutputTokens(); err == nil {
+					span.SetAttributes(attribute.Int64("gen_ai.usage.output_tokens", n))
+				}
+			}()
+		}
+		plan, err := baml.GenerateTopicPlan(ctx, g, t, p, v, opts...)
+		if err != nil {
+			failure := classify(err)
+			if ctx.Err() != nil {
+				failure = ctx.Err()
+			}
+			telemetry.Fail(span, service.LLMOutcome(failure))
+		}
+		return plan, err
 	}}
 }
 
@@ -82,4 +116,15 @@ func (b *BAML) GenerateTopic(ctx context.Context, r service.TopicRequest) ([]dom
 		items[i] = domain.PlanItem{Topic: item.Topic, Priority: int(item.Priority), PrerequisiteChain: item.Prerequisite_chain, Explanation: item.Explanation, Resources: resources}
 	}
 	return items, nil
+}
+
+func providerConvention(provider string) string {
+	switch provider {
+	case "aws-bedrock":
+		return "aws.bedrock"
+	case "google-ai":
+		return "gcp.gemini"
+	default:
+		return provider
+	}
 }

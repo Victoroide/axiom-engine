@@ -18,6 +18,13 @@ import (
 )
 
 type streamDoneKey struct{}
+type streamFinishedKey struct{}
+
+// StreamFinished closes after generation and client writes have completed.
+func StreamFinished(c fiber.Ctx) <-chan struct{} {
+	done, _ := c.Locals(streamFinishedKey{}).(<-chan struct{})
+	return done
+}
 
 // StreamCompletion reports whether a stream ended after a failed client write.
 // The result is delivered once, after the stream releases its request context.
@@ -70,6 +77,8 @@ func (h *Handler) handlePlanStream(c fiber.Ctx) error {
 	requestID := strings.Clone(requestid.FromContext(c))
 	ctx, cancel := context.WithTimeout(service.WithRequestID(parent, requestID), h.timeout)
 	done := make(chan bool, 1)
+	finished := make(chan struct{})
+	c.Locals(streamFinishedKey{}, (<-chan struct{})(finished))
 	c.Locals(streamDoneKey{}, (<-chan bool)(done))
 	c.Set("Content-Type", "text/event-stream")
 	c.Set("Cache-Control", "no-cache")
@@ -77,7 +86,7 @@ func (h *Handler) handlePlanStream(c fiber.Ctx) error {
 	c.Response().ImmediateHeaderFlush = true
 	stream := fasthttp.NewStreamReader(func(w *bufio.Writer) {
 		disconnected := false
-		defer func() { cancel(); done <- disconnected; close(done) }()
+		defer func() { cancel(); done <- disconnected; close(done); close(finished) }()
 		if err := writeKeepalive(w); err != nil {
 			disconnected = true
 			return

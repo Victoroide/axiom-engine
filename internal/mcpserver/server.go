@@ -67,6 +67,9 @@ func New(cfg config.Config, g *graph.InMemoryGraph, planner service.Planner, log
 		return nil, out, toolError(err)
 	})
 	s.AddReceivingMiddleware(classifyToolErrors)
+	if cfg.Tracing.Enabled {
+		s.AddReceivingMiddleware(traceTools(logger))
+	}
 	return s
 }
 
