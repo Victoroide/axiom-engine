@@ -13,6 +13,7 @@ import (
 
 // Config contains startup configuration for the service.
 type Config struct {
+	LLM                   LLM
 	ResourceLinks         ResourceLinks
 	Mastery               Mastery
 	Redis                 Redis
@@ -226,6 +227,9 @@ func Load(getenv func(string) string) (Config, error) {
 		return Config{}, err
 	}
 	if err := loadRedis(getenv, &c); err != nil {
+		return Config{}, err
+	}
+	if err := loadLLM(getenv, &c); err != nil {
 		return Config{}, err
 	}
 	return c, nil
