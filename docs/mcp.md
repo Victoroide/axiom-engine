@@ -53,7 +53,13 @@ To configure AxiomEngine in an MCP client (for example a desktop assistant or an
 }
 ```
 
-Credentials resolve through the standard AWS credential chain (environment variables, profile configuration, or IAM roles).
+For the default `aws-bedrock` provider, credentials resolve through the standard AWS credential chain (environment variables, profile configuration, or IAM roles). Other providers use their configured API keys and endpoints.
+
+---
+
+## Planner Provider
+
+MCP uses the same startup `LLM_PROVIDER`, `LLM_MODEL`, `LLM_BASE_URL` and provider API key settings as HTTP. A single configured client registry serves all plan tool calls. Provider validation runs before the transport starts; AWS retry validation and region inspection apply only to `aws-bedrock`. Startup logs on stderr include `llm_provider` and `llm_model`.
 
 ---
 

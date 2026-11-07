@@ -36,7 +36,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Detect goroutine leaks in service, server and Bedrock adapter tests, and use fake time for service deadline and ordering tests.
 - Public OpenSSF Scorecard results, a README badge, and SARIF uploaded under category 'scorecard' by a weekly and main-push workflow.
 - Emit structured JSON records on standard output for startup configuration (`server.started`) and listener binding (`server.listening`) without secrets, and log configuration validation and startup failures as `server.failed` JSON records.
-- Report the static AWS region source (`aws_region_source`) in `server.started` and emit a `bedrock.region.unresolved` warning at startup when no static region is configured.
+- Report the static AWS region source (`aws_region_source`) in `server.started` and emit an `llm.region.unresolved` warning at startup when no static region is configured.
 - Operations runbook (`docs/operations.md`) covering circuit breaker trips, Bedrock throttling, queue saturation, credential and region resolution, native library failures, cost controls, and production metrics.
 - Authenticated curriculum topic listing (`GET /api/v1/topics`) and prerequisite path inspection (`GET /api/v1/topics/{topic}/path`) endpoints providing canonical substring filtering, direct prerequisite and dependent sets, and study-ordered prerequisite chains without model provider calls.
 - Attach native release archives for Linux and macOS, signed checksums, and SLSA build provenance to published releases, with build and smoke verification coverage in dry-run mode.
@@ -47,6 +47,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Stream adaptive study plan progress and final plan or error payloads via Server-Sent Events on `POST /api/v1/adaptive-plan/stream`, detecting client disconnects with 2-second keepalive pings to cancel downstream topic reasoning and observe disconnects in access logs.
 - Model Context Protocol (MCP) stdio server command (`axiom-server mcp`) exposing curriculum and study-plan tools (`generate_study_plan`, `get_cognitive_graph`, `list_topics`, `get_topic_path`) over JSON-RPC with structured tool responses, stderr logging, and caller trust boundary.
 - Curriculum validation subcommand (`axiom-server validate-graph <file>`) reporting concept counts, relation counts, roots, and longest prerequisite chains without credentials or server startup, alongside an optional 130-concept computer science curriculum (`examples/graphs/computer-science.json`).
+- Select the planner model provider (`LLM_PROVIDER`, defaulting to `aws-bedrock`) and model (`LLM_MODEL`) at startup with support for `aws-bedrock`, `openai`, `anthropic`, `google-ai`, `ollama`, and `openai-generic`, using a dynamic BAML client registry, provider API keys (`OPENAI_API_KEY`, `ANTHROPIC_API_KEY`, `GOOGLE_API_KEY`, `LLM_API_KEY`), and custom endpoints via `LLM_BASE_URL`; rename the circuit breaker to `llm`, log `llm_provider` and `llm_model` in `server.started`, and bypass AWS retry settings and region inspection for non-Bedrock providers.
 
 ### Changed
 

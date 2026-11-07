@@ -332,7 +332,7 @@ definitions:
     type: object
 info:
   contact: {}
-  description: Graph-guided adaptive study plans using Amazon Bedrock.
+  description: Graph-guided adaptive study plans using a configurable provider.
   title: AxiomEngine API
   version: "1.0"
 paths:

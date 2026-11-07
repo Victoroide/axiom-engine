@@ -19,7 +19,7 @@ AxiomEngine wraps calls to Amazon Bedrock with an in-memory circuit breaker (`go
 
 - **Metric**: `axiom_circuit_breaker_state` gauge transitions: `0` (Closed), `1` (Half-Open), `2` (Open).
 - **Metric**: `http_server_requests_total{route="/api/v1/adaptive-plan",status="503"}` increments rapidly.
-- **Log**: Structured warning record with message `circuit_breaker.state_change`, logging `name="bedrock-nova-micro"`, `from`, and `to`.
+- **Log**: Structured warning record with message `circuit_breaker.state_change`, logging `name="llm"`, `from`, and `to`.
 
 ### Diagnostic and Mitigation Steps
 
@@ -83,7 +83,7 @@ AxiomEngine executes Bedrock calls via BAML's native CFFI engine, which resolves
 
 ### Symptoms and Behavior
 
-- **Static Region Warning**: At startup, the server inspects static environment configuration (`AWS_REGION`, `AWS_DEFAULT_REGION`, or the configuration profile). If no static region is found, it logs warning `bedrock.region.unresolved`.
+- **Static Region Warning**: At startup, when `LLM_PROVIDER=aws-bedrock`, the server inspects static environment configuration (`AWS_REGION`, `AWS_DEFAULT_REGION`, or the configuration profile). If no static region is found, it logs warning `llm.region.unresolved`. Non-Bedrock providers bypass static region inspection.
 - **First Region Caching**: BAML initializes its AWS client upon the first call and caches the resolved AWS region for the lifetime of the process. If a region is resolved dynamically from IMDS, that region remains locked until process restart.
 - **IMDS Latency**: If the service runs in an environment where the EC2 Instance Metadata Service (IMDS) is unreachable (such as off-cloud development or non-AWS containers) and static region environment variables are missing, SDK credential and region resolution will attempt to query IMDSv2 and IMDSv1, incurring a network timeout of approximately 2 seconds before falling back.
 - **Credential Errors**: Missing or expired credentials cause upstream Bedrock calls to fail with native engine errors (for example, `Unspecified error code: 2` or `NoCredentialsError`), returned to the client as HTTP 502 `bad_gateway`. After three consecutive failures the breaker opens and clients get 503 with `Retry-After: 15`.

@@ -1802,7 +1802,7 @@ var SwaggerInfo = &swag.Spec{
 	BasePath:         "/",
 	Schemes:          []string{},
 	Title:            "AxiomEngine API",
-	Description:      "Graph-guided adaptive study plans using Amazon Bedrock.",
+	Description:      "Graph-guided adaptive study plans using a configurable provider.",
 	InfoInstanceName: "swagger",
 	SwaggerTemplate:  docTemplate,
 	LeftDelim:        "{{",
