@@ -1,7 +1,7 @@
 {
     "swagger": "2.0",
     "info": {
-        "description": "Graph-guided adaptive study plans using Amazon Bedrock.",
+        "description": "Graph-guided adaptive study plans using a configurable provider.",
         "title": "AxiomEngine API",
         "contact": {},
         "version": "1.0"

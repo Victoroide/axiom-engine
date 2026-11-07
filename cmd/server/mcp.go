@@ -30,9 +30,6 @@ func runMCP(args []string) (err error) {
 	if len(args) != 0 {
 		return fmt.Errorf("usage: axiom-server mcp")
 	}
-	if err := config.ValidateAWSRetry(os.LookupEnv); err != nil {
-		return err
-	}
 	if err := config.ValidateBAMLLog(os.LookupEnv); err != nil {
 		return err
 	}
@@ -40,16 +37,22 @@ func runMCP(args []string) (err error) {
 	if err != nil {
 		return err
 	}
+	if cfg.LLM.Provider == "aws-bedrock" {
+		if err := config.ValidateAWSRetry(os.LookupEnv); err != nil {
+			return err
+		}
+	}
 	level.Set(cfg.LogLevel)
 	g, err := graph.Load(cfg.GraphFile)
 	if err != nil {
 		return err
 	}
+	logStartup(logger, cfg, g, os.Getenv, os.ReadFile)
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	lifecycle := mcpserver.NewLifecycle(ctx)
 	defer lifecycle.Cancel()
-	s := mcpserver.New(cfg, g, llm.New(), logger, buildVersion())
+	s := mcpserver.New(cfg, g, llm.New(cfg.LLM), logger, buildVersion())
 	s.AddReceivingMiddleware(lifecycle.Middleware)
 	signals := make(chan os.Signal, 2)
 	signal.Notify(signals, syscall.SIGINT, syscall.SIGTERM)

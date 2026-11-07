@@ -306,6 +306,7 @@ func TestStartupRecordOmitsSecrets(t *testing.T) {
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			cfg := config.Config{
+				LLM:  config.LLM{Provider: "aws-bedrock", Model: "amazon.nova-micro-v1:0"},
 				Port: "8081", AuthDisabled: tc.disabled,
 				InternalToken:  "current-secret-0123456789abcdef-0123456789",
 				SwaggerEnabled: true, MetricsEnabled: true,
@@ -369,7 +370,7 @@ func TestStartupWarnsWithoutRegion(t *testing.T) {
 	for _, metadata := range []string{"", "true", "false"} {
 		t.Run("metadata="+metadata, func(t *testing.T) {
 			var output bytes.Buffer
-			logStartup(slog.New(slog.NewJSONHandler(&output, nil)), config.Config{}, graph.NewInMemoryGraph(), func(key string) string {
+			logStartup(slog.New(slog.NewJSONHandler(&output, nil)), config.Config{LLM: config.LLM{Provider: "aws-bedrock", Model: "amazon.nova-micro-v1:0"}}, graph.NewInMemoryGraph(), func(key string) string {
 				if key == "AWS_EC2_METADATA_DISABLED" {
 					return metadata
 				}
@@ -390,7 +391,7 @@ func TestStartupWarnsWithoutRegion(t *testing.T) {
 			if metadata == "true" {
 				wantMetadata = "disabled"
 			}
-			if warning["msg"] != "bedrock.region.unresolved" || warning["level"] != "WARN" || warning["instance_metadata"] != wantMetadata {
+			if warning["msg"] != "llm.region.unresolved" || warning["level"] != "WARN" || warning["instance_metadata"] != wantMetadata {
 				t.Errorf("unexpected warning: %v", warning)
 			}
 			if !strings.Contains(fmt.Sprint(warning["detail"]), "instance metadata may still supply a region") {
@@ -425,5 +426,25 @@ func TestRunRejectsInvalidBAMLLog(t *testing.T) {
 				t.Fatalf("unexpected failure record: %v", record)
 			}
 		})
+	}
+}
+
+func TestOtherProvidersIgnoreAWSSettings(t *testing.T) {
+	t.Setenv("AXIOM_AUTH_DISABLED", "true")
+	t.Setenv("AXIOM_INTERNAL_TOKEN", "")
+	t.Setenv("LLM_PROVIDER", "ollama")
+	t.Setenv("LLM_MODEL", "local-planner")
+	t.Setenv("AWS_MAX_ATTEMPTS", "invalid")
+	if err := run([]string{"unexpected"}, io.Discard); err == nil || err.Error() != "usage: axiom-server [healthcheck]" {
+		t.Fatalf("startup error=%v", err)
+	}
+	cfg, err := config.Load(os.Getenv)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var output bytes.Buffer
+	logStartup(slog.New(slog.NewJSONHandler(&output, nil)), cfg, graph.NewInMemoryGraph(), os.Getenv, os.ReadFile)
+	if strings.Contains(output.String(), "region.unresolved") || !strings.Contains(output.String(), `"llm_provider":"ollama"`) || !strings.Contains(output.String(), `"llm_model":"local-planner"`) {
+		t.Fatalf("startup=%s", output.String())
 	}
 }

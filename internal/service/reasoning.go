@@ -88,7 +88,7 @@ func NewReasoningService(g *graph.InMemoryGraph, planner Planner, opts Options) 
 
 func breakerSettings(logger *slog.Logger) gobreaker.Settings {
 	return gobreaker.Settings{
-		Name: "bedrock-nova-micro", MaxRequests: 2, Interval: 30 * time.Second, Timeout: circuitOpenTimeout,
+		Name: "llm", MaxRequests: 2, Interval: 30 * time.Second, Timeout: circuitOpenTimeout,
 		ReadyToTrip: func(c gobreaker.Counts) bool { return c.ConsecutiveFailures >= 3 },
 		IsExcluded: func(err error) bool {
 			return errors.Is(err, context.Canceled) || errors.Is(err, ErrInvalidOutput) || errors.Is(err, ErrUpstreamRejected) || errors.Is(err, ErrPlannerPanic)

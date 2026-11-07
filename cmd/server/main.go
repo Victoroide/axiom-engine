@@ -1,6 +1,6 @@
 // @title AxiomEngine API
 // @version 1.0
-// @description Graph-guided adaptive study plans using Amazon Bedrock.
+// @description Graph-guided adaptive study plans using a configurable provider.
 // @BasePath /
 // @securityDefinitions.apikey InternalToken
 // @in header
@@ -59,15 +59,17 @@ func runHTTP(args []string, stdout io.Writer) (err error) {
 			logger.Error("server.failed", "error", err)
 		}
 	}()
-	if err := config.ValidateAWSRetry(os.LookupEnv); err != nil {
-		return err
-	}
 	if err := config.ValidateBAMLLog(os.LookupEnv); err != nil {
 		return err
 	}
 	cfg, err := config.Load(os.Getenv)
 	if err != nil {
 		return err
+	}
+	if cfg.LLM.Provider == "aws-bedrock" {
+		if err := config.ValidateAWSRetry(os.LookupEnv); err != nil {
+			return err
+		}
 	}
 	level.Set(cfg.LogLevel)
 	if len(args) > 0 {
@@ -81,7 +83,7 @@ func runHTTP(args []string, stdout io.Writer) (err error) {
 		return err
 	}
 	logStartup(logger, cfg, g, os.Getenv, os.ReadFile)
-	app, err := server.NewWithError(cfg, server.Dependencies{Graph: g, Planner: llm.New(), Logger: logger})
+	app, err := server.NewWithError(cfg, server.Dependencies{Graph: g, Planner: llm.New(cfg.LLM), Logger: logger})
 	if err != nil {
 		return err
 	}
@@ -135,9 +137,13 @@ func logStartup(logger *slog.Logger, cfg config.Config, g *graph.InMemoryGraph, 
 			}
 		}
 	}
-	regionSource := config.AWSRegionSource(getenv, readFile)
+	regionSource := ""
+	if cfg.LLM.Provider == "aws-bedrock" {
+		regionSource = config.AWSRegionSource(getenv, readFile)
+	}
 	logger.Info("server.started",
 		"port", cfg.Port, "auth", auth,
+		"llm_provider", cfg.LLM.Provider, "llm_model", cfg.LLM.Model,
 		"swagger_enabled", cfg.SwaggerEnabled, "metrics_enabled", cfg.MetricsEnabled,
 		"rate_limit_max", cfg.RateLimitMax, "rate_limit_window", cfg.RateLimitWindow.String(),
 		"request_timeout", cfg.RequestTimeout.String(), "llm_timeout", cfg.LLMTimeout.String(),
@@ -147,12 +153,12 @@ func logStartup(logger *slog.Logger, cfg config.Config, g *graph.InMemoryGraph, 
 		"cors_origins_count", len(cfg.CORSAllowedOrigins), "trusted_proxies_count", len(cfg.TrustedProxies),
 		"graph_source", source, "graph_tuples", len(g.All()), "baml_version", version,
 		"aws_region_source", regionSource)
-	if regionSource == "" {
+	if cfg.LLM.Provider == "aws-bedrock" && regionSource == "" {
 		metadata := "enabled"
 		if getenv("AWS_EC2_METADATA_DISABLED") == "true" {
 			metadata = "disabled"
 		}
-		logger.Warn("bedrock.region.unresolved", "instance_metadata", metadata,
+		logger.Warn("llm.region.unresolved", "instance_metadata", metadata,
 			"detail", "instance metadata may still supply a region")
 	}
 }

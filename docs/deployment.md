@@ -58,6 +58,44 @@ docker compose up -d
 
 Compose requires a valid `AXIOM_INTERNAL_TOKEN` in `.env` unless authentication is explicitly disabled (see [configuration](configuration.md)). The service port binds exclusively to loopback (`127.0.0.1:8080:8080`), making it unreachable from other network hosts without modifying `ports` (see [Quick Start](../README.md#quick-start)). Compose reads configuration from an optional `.env` file in the repository root.
 
+## Local and OpenAI-compatible providers
+
+AxiomEngine can execute planning without AWS credentials by pointing to a local or hosted OpenAI-compatible model server (such as Ollama, vLLM, or LM Studio).
+
+### Ollama
+
+1. Start Ollama and pull your desired model:
+
+```sh
+ollama pull mistral
+```
+
+2. Run AxiomEngine pointing to Ollama:
+
+```sh
+export LLM_PROVIDER=ollama
+export LLM_MODEL=mistral
+# LLM_BASE_URL defaults to http://localhost:11434/v1
+export AXIOM_INTERNAL_TOKEN="$(openssl rand -hex 32)"
+make run
+```
+
+### Generic OpenAI-compatible endpoints
+
+For vLLM, LM Studio, or self-hosted model gateways:
+
+```sh
+export LLM_PROVIDER=openai-generic
+export LLM_MODEL=meta-llama/Llama-3.1-8B-Instruct
+export LLM_BASE_URL="http://localhost:8000/v1"
+# Set LLM_API_KEY if the endpoint requires bearer authorization:
+export LLM_API_KEY="secret-key"
+export AXIOM_INTERNAL_TOKEN="$(openssl rand -hex 32)"
+make run
+```
+
+When using non-Bedrock providers, AWS credentials, regions, and SDK retry options are not required and are ignored at startup.
+
 ## Release images
 
 Tagging a commit with `v*` or manually dispatching `.github/workflows/release.yml` initiates the release pipeline.
@@ -237,6 +275,8 @@ When the service starts successfully, it emits two `INFO` records in sequence be
 1. `server.started`: reports operational settings and graph metadata while omitting sensitive tokens and secret material. Fields include:
    - `port`: HTTP listener port string.
    - `auth`: authentication configuration (`token`, `token+previous`, or `disabled`).
+   - `llm_provider`: configured reasoning model provider (`aws-bedrock`, `openai`, `anthropic`, `google-ai`, `ollama`, or `openai-generic`).
+   - `llm_model`: configured model identifier string.
    - `swagger_enabled`: boolean indicating whether Swagger documentation routes are active.
    - `metrics_enabled`: boolean indicating whether Prometheus metrics exposition is active.
    - `rate_limit_max`: sliding-window request limit.
@@ -253,16 +293,16 @@ When the service starts successfully, it emits two `INFO` records in sequence be
    - `graph_source`: curriculum graph origin (`embedded` or `file`).
    - `graph_tuples`: count of loaded curriculum graph tuples.
    - `baml_version`: build dependency version string for BAML, or `"unknown"`.
-   - `aws_region_source`: resolved static AWS region source (`AWS_REGION`, `AWS_DEFAULT_REGION`, `profile:<name>`, or `""`).
+   - `aws_region_source`: resolved static AWS region source when `LLM_PROVIDER=aws-bedrock` (`AWS_REGION`, `AWS_DEFAULT_REGION`, `profile:<name>`, or `""`). Empty for other providers.
 
 ```json
-{"level":"INFO","msg":"server.started","port":"8080","auth":"token","swagger_enabled":true,"metrics_enabled":false,"rate_limit_max":50,"rate_limit_window":"1m0s","request_timeout":"20s","llm_timeout":"15s","llm_queue_timeout":"2s","shutdown_timeout":"25s","shutdown_drain_delay":"0s","llm_max_concurrency":16,"max_failed_topics":10,"cors_origins_count":0,"trusted_proxies_count":0,"graph_source":"embedded","graph_tuples":20,"baml_version":"v0.226.3","aws_region_source":"AWS_REGION"}
+{"level":"INFO","msg":"server.started","port":"8080","auth":"token","llm_provider":"aws-bedrock","llm_model":"amazon.nova-micro-v1:0","swagger_enabled":true,"metrics_enabled":false,"rate_limit_max":50,"rate_limit_window":"1m0s","request_timeout":"20s","llm_timeout":"15s","llm_queue_timeout":"2s","shutdown_timeout":"25s","shutdown_drain_delay":"0s","llm_max_concurrency":16,"max_failed_topics":10,"cors_origins_count":0,"trusted_proxies_count":0,"graph_source":"embedded","graph_tuples":20,"baml_version":"v0.226.3","aws_region_source":"AWS_REGION"}
 ```
 
-When no static AWS region source is resolved (`aws_region_source` is `""`), the server emits a `WARN` record `bedrock.region.unresolved` (subject to `LOG_LEVEL`):
+When `LLM_PROVIDER=aws-bedrock` and no static AWS region source is resolved (`aws_region_source` is `""`), the server emits a `WARN` record `llm.region.unresolved` (subject to `LOG_LEVEL`):
 
 ```json
-{"level":"WARN","msg":"bedrock.region.unresolved","instance_metadata":"enabled","detail":"instance metadata may still supply a region"}
+{"level":"WARN","msg":"llm.region.unresolved","instance_metadata":"enabled","detail":"instance metadata may still supply a region"}
 ```
 
 The `instance_metadata` field reports `disabled` when `AWS_EC2_METADATA_DISABLED=true`, or `enabled` otherwise.
