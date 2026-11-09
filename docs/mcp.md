@@ -87,7 +87,7 @@ Generates a personalized, prerequisite-ordered study plan for a student based on
 
 - **Parameters**:
   - `mastered_topics` (array of strings, optional): Known concepts, canonically resolved and deduplicated within `MAX_MASTERED_TOPICS`; must not overlap failed topics. Known prerequisites are excluded from generated study items while prerequisite chains remain complete.
-- `failed_topics` (array of strings, required): Concepts requiring remediation. Matched canonically against the knowledge graph and bounded by `MAX_FAILED_TOPICS`.
+  - `failed_topics` (array of strings, required): Concepts requiring remediation. Matched canonically against the knowledge graph and bounded by `MAX_FAILED_TOPICS`.
   - `vark_profile` (string, required): Learning modality (`visual`, `auditory`, `read_write`, or `kinesthetic`).
   - `student_id` (string, optional): Learner identifier.
   - `course_id` (string, optional): Course identifier.
@@ -99,7 +99,7 @@ Computes a depth-1 concept neighborhood around failed topics, classifying concep
 
 - **Parameters**:
   - `mastered` (array of strings, optional): Known concepts, with the same canonical matching, limit and overlap validation as the HTTP route. Omit it for legacy graph states; an explicit empty list marks unevidenced nodes as `unassessed`.
-- `topics` (array of strings, required): List of concept names to assess.
+  - `topics` (array of strings, required): List of concept names to assess.
   - `target_topic` (string, optional): Focus concept within `topics` to center the depth-1 subgraph around.
 - **Output**: Structured JSON object containing `nodes` (each with `id`, `label`, and `cognitive_state`) and `edges` (`source`, `target`, and `relation`).
 
