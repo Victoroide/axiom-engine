@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.0] - 2026-11-09
+
 ### Added
 
 - Accept an optional previous internal token (`AXIOM_INTERNAL_TOKEN_PREVIOUS`) on `/api/v1` routes during rotation; requests that use it are logged as `auth.previous_token_used` (WARN, at most once per minute per process) and counted in `axiom_auth_previous_token_total` when metrics are enabled.
@@ -120,3 +122,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Send the standard security headers (`X-Content-Type-Options`, `X-Frame-Options`, `Referrer-Policy` and the cross-origin policies) on HTTP 501 responses for unimplemented methods, matching every other response.
 - Require `golang.org/x/crypto v0.58.1-0.20261009181718-2f1f834330b2`, removing the module-version finding for GO-2026-5932; the affected OpenPGP package is not imported by the service.
 - Pin the distroless runtime base to a digest that ships zlib1g 1:1.3.dfsg+really1.3.1-1+deb13u1, fixing CVE-2026-76844, CVE-2026-85091 and CVE-2026-27171.
+
+[Unreleased]: https://github.com/Victoroide/axiom-engine/compare/v0.1.0...HEAD
+[0.1.0]: https://github.com/Victoroide/axiom-engine/releases/tag/v0.1.0
