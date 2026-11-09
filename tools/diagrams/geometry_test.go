@@ -22,6 +22,60 @@ func TestGeometryRejectsCollisions(t *testing.T) {
 	}
 }
 
+func TestGeometryRejectsClippedArrowhead(t *testing.T) {
+	var d diagram
+	if err := readJSON("testdata/clipped-arrowhead.json", &d); err != nil {
+		t.Fatal(err)
+	}
+	for _, tc := range []struct {
+		name string
+		y    float64
+		want string
+	}{
+		{"inside target", 190, "arrowhead"},
+		{"on target border", 180, "arrowhead"},
+		{"outside target", 179, ""},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			d.Edges[0].Points[1].Y = tc.y
+			err := validate(&d)
+			if tc.want == "" {
+				if err != nil {
+					t.Fatal(err)
+				}
+			} else if err == nil || !strings.Contains(err.Error(), tc.want) {
+				t.Fatalf("want %s rejection, got %v", tc.want, err)
+			}
+		})
+	}
+}
+
+func TestLayoutArrowheadsClearTargets(t *testing.T) {
+	for _, tc := range []struct{ name, edge string }{
+		{"request-path", "mcp/pipeline"},
+		{"request-path", "router/knowledge"},
+		{"system-components", "server/service"},
+	} {
+		t.Run(tc.edge, func(t *testing.T) {
+			d, err := loadDiagram(filepath.Join("..", ".."), tc.name)
+			if err != nil {
+				t.Fatal(err)
+			}
+			for _, e := range d.Edges {
+				if e.ID == tc.edge {
+					d.Edges = []edge{e}
+					d.Motion = nil
+					if err := validate(d); err != nil {
+						t.Fatal(err)
+					}
+					return
+				}
+			}
+			t.Fatal("missing edge")
+		})
+	}
+}
+
 func TestGeometryBoundaries(t *testing.T) {
 	base := func() *diagram {
 		return &diagram{Width: 400, Height: 240, Nodes: []node{{ID: "a", X: 20, Y: 80, W: 80, H: 80}, {ID: "b", X: 280, Y: 80, W: 80, H: 80}}, Edges: []edge{{From: "a", To: "b", Points: []point{{100, 120}, {280, 120}}}}}
@@ -232,7 +286,7 @@ func TestRequestRowsHaveUniformHeightsAndGaps(t *testing.T) {
 	for _, n := range d.Nodes {
 		nodes[n.ID] = n
 	}
-	for _, row := range [][]string{{"client", "router", "auth", "limiter"}, {"baml", "breaker", "pipeline", "plan"}, {"bedrock", "knowledge", "cognitive"}} {
+	for _, row := range [][]string{{"client", "router", "public"}, {"mcp", "plan", "knowledge"}, {"baml", "pipeline"}} {
 		tallest := 0.0
 		for _, id := range row {
 			tallest = max(tallest, nodes[id].H)

@@ -1,190 +1,169 @@
 {
   "title": "Request path",
-  "description": "Public routes branch before token authentication. Protected requests pass the sliding-window rate limiter. Adaptive plans read the in-memory knowledge graph and call Amazon Bedrock through the reasoning pipeline, concurrency limit, circuit breaker and BAML client. Cognitive graph requests read the knowledge graph directly.",
+  "description": "HTTP clients enter the Fiber boundary with request correlation, logging, security headers and CORS. Public routes branch before token authentication and the per-IP limiter, which uses local memory or optional shared Redis. Protected plan routes reach the reasoning service; only the JSON route supports Idempotency-Key replay, while the stream route returns SSE. Topic, prerequisite path and cognitive graph routes read the in-memory graph. MCP over stdio enters the same service directly without HTTP middleware. The service validates and fans out work, reads the graph, and applies concurrency and circuit breaking before the BAML provider registry calls Amazon Bedrock by default, OpenAI, Anthropic, Google, Ollama or an OpenAI-compatible server. HTTP, MCP and reasoning spans can be exported through optional OTLP and LangSmith exporters.",
   "width": 960,
-  "height": 620,
+  "height": 640,
   "nodes": [
     {
       "id": "client",
-      "x": 10,
-      "y": 25,
-      "w": 120,
-      "h": 100,
+      "x": 20,
+      "y": 40,
+      "w": 190,
+      "h": 140,
       "title": [
-        "Client"
+        "HTTP client"
       ],
       "subtitle": [],
       "row": "ingress"
     },
     {
       "id": "router",
-      "x": 170,
-      "y": 25,
-      "w": 210,
-      "h": 100,
+      "x": 250,
+      "y": 40,
+      "w": 260,
+      "h": 140,
       "title": [
-        "Fiber router"
+        "HTTP boundary"
       ],
       "subtitle": [
-        "request ID, access log, recover",
-        "security headers, CORS"
+        "Fiber \u00b7 request ID \u00b7 logs \u00b7 recover",
+        "security headers \u00b7 CORS",
+        "API only: token \u00b7 per-IP limit",
+        "API limit: local or shared Redis"
       ],
-      "row": "ingress"
-    },
-    {
-      "id": "auth",
-      "x": 420,
-      "y": 25,
-      "w": 155,
-      "h": 100,
-      "title": [
-        "Token auth"
-      ],
-      "subtitle": [
-        "X-Internal-Token",
-        "or Bearer"
-      ],
-      "row": "ingress"
-    },
-    {
-      "id": "limiter",
-      "x": 615,
-      "y": 25,
-      "w": 180,
-      "h": 100,
-      "title": [
-        "Rate limiter"
-      ],
-      "subtitle": [
-        "sliding window",
-        "per client IP"
-      ],
-      "row": "ingress"
-    },
-    {
-      "id": "plan",
-      "x": 660,
-      "y": 250,
-      "w": 220,
-      "h": 130,
-      "title": [
-        "Adaptive plan"
-      ],
-      "subtitle": [
-        "POST /api/v1/adaptive-plan"
-      ],
-      "routes": [
-        "/api/v1/adaptive-plan"
-      ],
-      "row": "planning"
-    },
-    {
-      "id": "pipeline",
-      "x": 370,
-      "y": 250,
-      "w": 250,
-      "h": 130,
-      "title": [
-        "Reasoning pipeline"
-      ],
-      "subtitle": [
-        "validate, subgraph",
-        "per-topic fan-out",
-        "merge, validate"
-      ],
-      "row": "planning"
-    },
-    {
-      "id": "breaker",
-      "x": 150,
-      "y": 250,
-      "w": 180,
-      "h": 130,
-      "title": [
-        "Concurrency limit",
-        "and circuit breaker"
-      ],
-      "subtitle": [],
-      "row": "planning"
-    },
-    {
-      "id": "baml",
-      "x": 10,
-      "y": 250,
-      "w": 100,
-      "h": 130,
-      "title": [
-        "BAML client"
-      ],
-      "subtitle": [],
-      "row": "planning"
-    },
-    {
-      "id": "bedrock",
-      "x": 10,
-      "y": 480,
-      "w": 180,
-      "h": 110,
-      "title": [
-        "Amazon Bedrock"
-      ],
-      "subtitle": [
-        "Nova Micro"
-      ],
-      "row": "graph"
+      "row": "ingress",
+      "column": "reasoning"
     },
     {
       "id": "public",
-      "x": 170,
-      "y": 155,
-      "w": 350,
-      "h": 70,
+      "x": 550,
+      "y": 40,
+      "w": 390,
+      "h": 140,
       "title": [
         "Public routes"
       ],
       "subtitle": [
         "/health   /livez   /readyz",
-        "/swagger   /metrics"
+        "optional: /swagger   /metrics"
       ],
+      "row": "ingress",
       "routes": [
         "/health",
         "/livez",
         "/readyz",
         "/swagger",
         "/metrics"
-      ],
-      "row": "public"
+      ]
     },
     {
-      "id": "cognitive",
-      "x": 470,
-      "y": 480,
-      "w": 470,
-      "h": 110,
+      "id": "mcp",
+      "x": 20,
+      "y": 230,
+      "w": 190,
+      "h": 130,
       "title": [
-        "Cognitive graph"
+        "MCP over stdio"
       ],
       "subtitle": [
-        "GET /api/v1/tutor/student/:student_id/cognitive-graph"
+        "axiom-server mcp",
+        "Direct service access"
       ],
+      "row": "boundary"
+    },
+    {
+      "id": "plan",
+      "x": 250,
+      "y": 230,
+      "w": 260,
+      "h": 130,
+      "title": [
+        "Adaptive plan"
+      ],
+      "subtitle": [
+        "POST /api/v1/adaptive-plan",
+        "POST /api/v1/adaptive-plan/stream",
+        "Idempotency-Key: JSON replay",
+        "stream: SSE, no replay"
+      ],
+      "row": "boundary",
+      "column": "reasoning",
       "routes": [
-        "/api/v1/tutor/student/:student_id/cognitive-graph"
-      ],
-      "row": "graph"
+        "/api/v1/adaptive-plan",
+        "/api/v1/adaptive-plan/stream"
+      ]
     },
     {
       "id": "knowledge",
-      "x": 225,
-      "y": 480,
-      "w": 210,
-      "h": 110,
+      "x": 550,
+      "y": 230,
+      "w": 390,
+      "h": 130,
       "title": [
-        "Knowledge graph"
+        "Knowledge graph \u00b7 in memory"
       ],
       "subtitle": [
-        "in memory"
+        "GET /api/v1/topics",
+        "GET /api/v1/topics/:topic/path",
+        "GET /api/v1/tutor/student/:student_id/cognitive-graph"
       ],
-      "row": "graph"
+      "row": "boundary",
+      "routes": [
+        "/api/v1/topics",
+        "/api/v1/topics/:topic/path",
+        "/api/v1/tutor/student/:student_id/cognitive-graph"
+      ]
+    },
+    {
+      "id": "baml",
+      "x": 20,
+      "y": 440,
+      "w": 190,
+      "h": 180,
+      "title": [
+        "BAML client"
+      ],
+      "subtitle": [
+        "Provider registry",
+        "Amazon Bedrock (default)",
+        "OpenAI \u00b7 Anthropic",
+        "Google \u00b7 Ollama",
+        "OpenAI-compatible server"
+      ],
+      "row": "reasoning"
+    },
+    {
+      "id": "pipeline",
+      "x": 250,
+      "y": 440,
+      "w": 260,
+      "h": 180,
+      "title": [
+        "Reasoning service"
+      ],
+      "subtitle": [
+        "validate, subgraph, fan-out",
+        "merge, validate",
+        "concurrency limit",
+        "circuit breaker"
+      ],
+      "row": "reasoning",
+      "column": "reasoning"
+    },
+    {
+      "id": "traces",
+      "x": 550,
+      "y": 500,
+      "w": 390,
+      "h": 120,
+      "title": [
+        "Trace export"
+      ],
+      "subtitle": [
+        "OTLP exporter (optional)",
+        "LangSmith (optional)"
+      ],
+      "row": "export"
     }
   ],
   "edges": [
@@ -194,117 +173,12 @@
       "to": "router",
       "points": [
         {
-          "x": 130,
-          "y": 75
+          "x": 210,
+          "y": 110
         },
         {
-          "x": 170,
-          "y": 75
-        }
-      ]
-    },
-    {
-      "id": "router/auth",
-      "from": "router",
-      "to": "auth",
-      "points": [
-        {
-          "x": 380,
-          "y": 75
-        },
-        {
-          "x": 420,
-          "y": 75
-        }
-      ]
-    },
-    {
-      "id": "auth/limiter",
-      "from": "auth",
-      "to": "limiter",
-      "points": [
-        {
-          "x": 575,
-          "y": 75
-        },
-        {
-          "x": 615,
-          "y": 75
-        }
-      ]
-    },
-    {
-      "id": "limiter/plan",
-      "from": "limiter",
-      "to": "plan",
-      "points": [
-        {
-          "x": 750,
-          "y": 125
-        },
-        {
-          "x": 750,
-          "y": 250
-        }
-      ]
-    },
-    {
-      "id": "plan/pipeline",
-      "from": "plan",
-      "to": "pipeline",
-      "points": [
-        {
-          "x": 660,
-          "y": 315
-        },
-        {
-          "x": 620,
-          "y": 315
-        }
-      ]
-    },
-    {
-      "id": "pipeline/breaker",
-      "from": "pipeline",
-      "to": "breaker",
-      "points": [
-        {
-          "x": 370,
-          "y": 315
-        },
-        {
-          "x": 330,
-          "y": 315
-        }
-      ]
-    },
-    {
-      "id": "breaker/baml",
-      "from": "breaker",
-      "to": "baml",
-      "points": [
-        {
-          "x": 150,
-          "y": 315
-        },
-        {
-          "x": 110,
-          "y": 315
-        }
-      ]
-    },
-    {
-      "id": "baml/bedrock",
-      "from": "baml",
-      "to": "bedrock",
-      "points": [
-        {
-          "x": 60,
-          "y": 380
-        },
-        {
-          "x": 60,
-          "y": 480
+          "x": 250,
+          "y": 110
         }
       ]
     },
@@ -314,46 +188,87 @@
       "to": "public",
       "points": [
         {
-          "x": 275,
-          "y": 125
+          "x": 510,
+          "y": 110
         },
         {
-          "x": 275,
-          "y": 155
+          "x": 550,
+          "y": 110
         }
       ]
     },
     {
-      "id": "limiter/cognitive",
-      "from": "limiter",
-      "to": "cognitive",
+      "id": "router/plan",
+      "from": "router",
+      "to": "plan",
       "points": [
         {
-          "x": 795,
-          "y": 110
+          "x": 380,
+          "y": 180
         },
         {
-          "x": 910,
-          "y": 110
-        },
-        {
-          "x": 910,
-          "y": 480
+          "x": 380,
+          "y": 230
         }
       ]
     },
     {
-      "id": "cognitive/knowledge",
-      "from": "cognitive",
+      "id": "router/knowledge",
+      "from": "router",
       "to": "knowledge",
       "points": [
         {
-          "x": 470,
-          "y": 535
+          "x": 490,
+          "y": 180
         },
         {
-          "x": 435,
-          "y": 535
+          "x": 570,
+          "y": 230
+        }
+      ]
+    },
+    {
+      "id": "plan/pipeline",
+      "from": "plan",
+      "to": "pipeline",
+      "points": [
+        {
+          "x": 380,
+          "y": 360
+        },
+        {
+          "x": 380,
+          "y": 440
+        }
+      ]
+    },
+    {
+      "id": "mcp/pipeline",
+      "from": "mcp",
+      "to": "pipeline",
+      "points": [
+        {
+          "x": 210,
+          "y": 340
+        },
+        {
+          "x": 270,
+          "y": 440
+        }
+      ]
+    },
+    {
+      "id": "pipeline/baml",
+      "from": "pipeline",
+      "to": "baml",
+      "points": [
+        {
+          "x": 250,
+          "y": 530
+        },
+        {
+          "x": 210,
+          "y": 530
         }
       ]
     },
@@ -363,12 +278,27 @@
       "to": "knowledge",
       "points": [
         {
-          "x": 400,
-          "y": 380
+          "x": 510,
+          "y": 465
         },
         {
-          "x": 400,
-          "y": 480
+          "x": 600,
+          "y": 360
+        }
+      ]
+    },
+    {
+      "id": "pipeline/traces",
+      "from": "pipeline",
+      "to": "traces",
+      "points": [
+        {
+          "x": 510,
+          "y": 560
+        },
+        {
+          "x": 550,
+          "y": 560
         }
       ]
     }
@@ -376,103 +306,55 @@
   "labels": [
     {
       "text": "REQUEST PATH",
-      "x": 10,
-      "y": 15,
+      "x": 20,
+      "y": 20,
       "style": "group"
     }
   ],
   "motion": [
     {
       "edge": "client/router",
-      "start": 0.0
+      "start": 0
     },
     {
-      "edge": "router/auth",
-      "start": 0.5
-    },
-    {
-      "edge": "auth/limiter",
-      "start": 1.0
-    },
-    {
-      "edge": "limiter/plan",
-      "start": 1.5
+      "edge": "router/plan",
+      "start": 0.6
     },
     {
       "edge": "plan/pipeline",
-      "start": 2.0
+      "start": 1.2
     },
     {
-      "edge": "pipeline/breaker",
-      "start": 2.5
+      "edge": "pipeline/baml",
+      "start": 1.8
     },
     {
-      "edge": "breaker/baml",
-      "start": 3.0
+      "edge": "pipeline/traces",
+      "start": 2.4
     },
     {
-      "edge": "baml/bedrock",
-      "start": 3.5
+      "edge": "router/knowledge",
+      "start": 3.1
     },
     {
-      "edge": "baml/bedrock",
-      "start": 4.3,
-      "reverse": true
+      "edge": "mcp/pipeline",
+      "start": 3.8
     },
     {
-      "edge": "breaker/baml",
-      "start": 4.48,
-      "reverse": true
+      "edge": "pipeline/knowledge",
+      "start": 4.8
     },
     {
-      "edge": "pipeline/breaker",
-      "start": 4.66,
-      "reverse": true
+      "edge": "pipeline/baml",
+      "start": 5.5
     },
     {
-      "edge": "plan/pipeline",
-      "start": 4.84,
-      "reverse": true
+      "edge": "pipeline/traces",
+      "start": 6.2
     },
     {
-      "edge": "limiter/plan",
-      "start": 5.02,
-      "reverse": true
-    },
-    {
-      "edge": "auth/limiter",
-      "start": 5.2,
-      "reverse": true
-    },
-    {
-      "edge": "router/auth",
-      "start": 5.38,
-      "reverse": true
-    },
-    {
-      "edge": "client/router",
-      "start": 5.56,
-      "reverse": true
-    },
-    {
-      "edge": "client/router",
-      "start": 6.25
-    },
-    {
-      "edge": "router/auth",
-      "start": 6.4
-    },
-    {
-      "edge": "auth/limiter",
-      "start": 6.55
-    },
-    {
-      "edge": "limiter/cognitive",
-      "start": 6.75
-    },
-    {
-      "edge": "cognitive/knowledge",
-      "start": 7.15
+      "edge": "router/public",
+      "start": 6.9
     }
   ]
 }
