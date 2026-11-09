@@ -7,6 +7,11 @@ import (
 
 type box struct{ x, y, w, h float64 }
 
+const (
+	arrowLength    = 8.0
+	arrowHalfWidth = 3.5
+)
+
 func hypot(x, y float64) float64 { return math.Hypot(x, y) }
 
 func (b box) contains(p point) bool {
@@ -29,6 +34,22 @@ func borderDistance(n node, p point) float64 {
 	qx := math.Abs(p.X-n.X-n.W/2) - (n.W/2 - r)
 	qy := math.Abs(p.Y-n.Y-n.H/2) - (n.H/2 - r)
 	return hypot(math.Max(qx, 0), math.Max(qy, 0)) + math.Min(math.Max(qx, qy), 0) - r
+}
+
+func arrowheadClearsTarget(n node, a, tip point) bool {
+	center := point{n.X + n.R, n.Y + n.R}
+	if n.R == 0 {
+		center = point{math.Max(n.X+10, math.Min(tip.X, n.X+n.W-10)), math.Max(n.Y+10, math.Min(tip.Y, n.Y+n.H-10))}
+	}
+	nx, ny := tip.X-center.X, tip.Y-center.Y
+	dx, dy := tip.X-a.X, tip.Y-a.Y
+	// A convex target lies behind its outward supporting normal. Requiring
+	// both base corners strictly outside that tangent keeps the triangle,
+	// except its border-attached tip, clear even at rounded corners or circles.
+	// This is equivalent to an incidence angle above the marker half-angle.
+	projection := -arrowLength * (dx*nx + dy*ny)
+	spread := arrowHalfWidth * math.Abs(dx*ny-dy*nx)
+	return projection-spread > 1e-7
 }
 
 func segmentDistance(p, a, b point) float64 {
@@ -122,6 +143,9 @@ func validate(d *diagram) error {
 		}
 		if math.Abs(borderDistance(from, e.Points[0])) > .1 || math.Abs(borderDistance(to, e.Points[len(e.Points)-1])) > .1 {
 			return fmt.Errorf("edge %s misses node border", e.ID)
+		}
+		if !arrowheadClearsTarget(to, e.Points[len(e.Points)-2], e.Points[len(e.Points)-1]) {
+			return fmt.Errorf("edge %s arrowhead touches or enters target %s", e.ID, to.ID)
 		}
 		edgeIDs[e.ID] = true
 		for i, p := range e.Points {

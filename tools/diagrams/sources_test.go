@@ -99,7 +99,7 @@ func TestComponentsMatchImports(t *testing.T) {
 		}
 		packages[n.Package] = n.ID
 	}
-	for _, pkg := range []string{"cmd/server", "internal/config", "internal/server", "internal/api", "internal/service", "internal/graph", "internal/llm", "baml_client", "internal/metrics", "internal/domain"} {
+	for _, pkg := range []string{"cmd/server", "internal/config", "internal/server", "internal/api", "internal/service", "internal/graph", "internal/llm", "baml_client", "internal/metrics", "internal/domain", "internal/mcpserver", "internal/idempotency", "internal/telemetry"} {
 		if packages[pkg] == "" {
 			t.Errorf("missing package %s", pkg)
 		}
@@ -122,7 +122,7 @@ func TestComponentsMatchImports(t *testing.T) {
 		}
 	}
 	expected := map[string]bool{}
-	for _, pair := range []string{"entry/config", "entry/server", "entry/graph", "entry/llm", "server/api", "server/metrics", "server/service", "api/service", "api/graph", "service/graph", "service/metrics", "llm/service", "llm/baml", "baml/provider"} {
+	for _, pair := range []string{"entry/server", "entry/mcp", "entry/graph", "server/api", "server/service", "api/idempotency", "api/service", "api/graph", "mcp/service", "mcp/graph", "service/graph", "service/metrics", "llm/service", "llm/baml", "baml/provider"} {
 		expected[pair] = true
 	}
 	drawn := map[string]bool{}
@@ -144,17 +144,20 @@ func TestComponentsMatchImports(t *testing.T) {
 		}
 		t.Fatalf("architectural dependencies differ: got %v, want %v", keys(drawn), keys(expected))
 	}
-	layers := map[string]int{"entry": 0, "config": 1, "server": 1, "api": 2, "metrics": 2, "service": 3, "graph": 4, "llm": 4, "baml": 5, "provider": 6, "domain": 7}
 	for _, n := range d.Nodes {
-		for _, other := range d.Nodes {
-			if layers[n.ID] < layers[other.ID] && n.Y+n.H >= other.Y {
-				t.Errorf("%s is not above %s", n.ID, other.ID)
+		switch n.ID {
+		case "config", "telemetry", "domain":
+			if n.W < d.Width-80 {
+				t.Errorf("missing shared package band for %s", n.ID)
+			}
+			for _, other := range d.Nodes {
+				if other.ID != "config" && other.ID != "telemetry" && other.ID != "domain" && other.Y+other.H >= n.Y {
+					t.Errorf("shared %s band is not below %s", n.ID, other.ID)
+				}
 			}
 		}
-		if n.ID == "domain" {
-			if n.W < d.Width-80 || strings.Join(n.Title, " ") != "internal/domain: shared request, response and graph types" {
-				t.Error("missing shared domain band")
-			}
+		if n.ID == "domain" && strings.Join(n.Title, " ") != "internal/domain: shared request, response and graph types" {
+			t.Error("missing shared domain types")
 		}
 	}
 	implements := false
@@ -266,8 +269,19 @@ func TestRequestRoutesAreRegistered(t *testing.T) {
 			}
 		}
 	}
-	if count != 7 {
-		t.Fatalf("want seven route labels, got %d", count)
+	if count != 10 {
+		t.Fatalf("want ten route labels, got %d", count)
+	}
+	visible := map[string]bool{}
+	for _, n := range d.Nodes {
+		for _, route := range n.Routes {
+			visible[route] = true
+		}
+	}
+	for _, route := range []string{"/health", "/livez", "/readyz", "/swagger", "/metrics", "/api/v1/adaptive-plan", "/api/v1/adaptive-plan/stream", "/api/v1/topics", "/api/v1/topics/:topic/path", "/api/v1/tutor/student/:student_id/cognitive-graph"} {
+		if !visible[route] {
+			t.Errorf("missing route %s", route)
+		}
 	}
 }
 

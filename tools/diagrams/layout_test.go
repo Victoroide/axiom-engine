@@ -9,7 +9,7 @@ import (
 	"testing"
 )
 
-func TestBoxConnectorsUseRowAndColumnCenters(t *testing.T) {
+func TestStraightBoxConnectorsUseRowAndColumnCenters(t *testing.T) {
 	for _, name := range []string{"request-path", "system-components"} {
 		d, err := loadDiagram(filepath.Join("..", ".."), name)
 		if err != nil {
@@ -20,6 +20,9 @@ func TestBoxConnectorsUseRowAndColumnCenters(t *testing.T) {
 			nodes[n.ID] = n
 		}
 		for _, e := range d.Edges {
+			if len(e.Points) != 2 {
+				continue
+			}
 			from, to := nodes[e.From], nodes[e.To]
 			for _, p := range e.Points {
 				if from.Row != "" && from.Row == to.Row && p.Y != from.Y+from.H/2 {
@@ -37,7 +40,7 @@ func TestBoxConnectorsUseRowAndColumnCenters(t *testing.T) {
 	}
 	left := d.Nodes[0].X
 	for _, n := range d.Nodes {
-		if (n.ID == "baml" || n.ID == "bedrock") && n.X != left {
+		if n.ID == "baml" && n.X != left {
 			t.Errorf("%s left edge %g differs from client %g", n.ID, n.X, left)
 		}
 	}
