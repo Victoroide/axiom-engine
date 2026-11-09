@@ -1,0 +1,19 @@
+cff-version: 1.2.0
+message: "If you use this software, please cite it using these metadata."
+title: AxiomEngine
+type: software
+authors:
+  - family-names: Cuellar
+    given-names: Victor
+repository-code: "https://github.com/Victoroide/axiom-engine"
+license: MIT
+abstract: "Adaptive learning reasoning service generating personalized, prerequisite-ordered study plans from assessment deficits."
+keywords:
+  - adaptive-learning
+  - knowledge-graph
+  - reasoning
+  - model-context-protocol
+  - baml
+  - education
+  - microservice
+  - go

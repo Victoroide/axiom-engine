@@ -1,0 +1,19 @@
+name: Question
+description: Ask a question about using or configuring AxiomEngine.
+title: "question: "
+labels: [question]
+body:
+  - type: textarea
+    id: question
+    attributes:
+      label: Question
+      description: Describe what you are trying to do or what you need clarification on.
+    validations:
+      required: true
+  - type: textarea
+    id: context
+    attributes:
+      label: Context
+      description: Include any relevant configuration, code snippets, logs, or documentation references.
+    validations:
+      required: false
