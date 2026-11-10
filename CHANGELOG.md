@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- Redraw the request path, package and seed graph diagrams on a compact grid with right-angle connectors, opaque light and dark backgrounds and paced motion that is static under reduced motion. The package diagram shows a layered view without redundant arrows, the seed graph uses evenly spaced circles grouped by connected component, and the pages show the images at their natural width.
+- Make `make diagrams-check` stricter: placement files reject unknown fields, geometry, text fit and contrast are checked, stale output fails, and the diagrams must match the registered routes, package imports and seed curriculum in both directions. Application behavior is unchanged.
+
 ## [0.1.0] - 2026-11-09
 
 ### Added
