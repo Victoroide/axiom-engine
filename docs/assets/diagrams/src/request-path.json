@@ -1,360 +1,249 @@
 {
-  "title": "Request path",
-  "description": "HTTP clients enter the Fiber boundary with request correlation, logging, security headers and CORS. Public routes branch before token authentication and the per-IP limiter, which uses local memory or optional shared Redis. Protected plan routes reach the reasoning service; only the JSON route supports Idempotency-Key replay, while the stream route returns SSE. Topic, prerequisite path and cognitive graph routes read the in-memory graph. MCP over stdio enters the same service directly without HTTP middleware. The service validates and fans out work, reads the graph, and applies concurrency and circuit breaking before the BAML provider registry calls Amazon Bedrock by default, OpenAI, Anthropic, Google, Ollama or an OpenAI-compatible server. HTTP, MCP and reasoning spans can be exported through optional OTLP and LangSmith exporters.",
-  "width": 960,
-  "height": 640,
-  "nodes": [
-    {
-      "id": "client",
-      "x": 20,
-      "y": 40,
-      "w": 190,
-      "h": 140,
-      "title": [
-        "HTTP client"
-      ],
-      "subtitle": [],
-      "row": "ingress"
+  "Width": 840,
+  "Height": 640,
+  "Nodes": {
+    "client": {
+      "X": 16,
+      "Y": 98,
+      "W": 184,
+      "H": 56
     },
-    {
-      "id": "router",
-      "x": 250,
-      "y": 40,
-      "w": 260,
-      "h": 140,
-      "title": [
-        "HTTP boundary"
-      ],
-      "subtitle": [
-        "Fiber \u00b7 request ID \u00b7 logs \u00b7 recover",
-        "security headers \u00b7 CORS",
-        "API only: token \u00b7 per-IP limit",
-        "API limit: local or shared Redis"
-      ],
-      "row": "ingress",
-      "column": "reasoning"
+    "router": {
+      "X": 224,
+      "Y": 88,
+      "W": 184,
+      "H": 76
     },
-    {
-      "id": "public",
-      "x": 550,
-      "y": 40,
-      "w": 390,
-      "h": 140,
-      "title": [
-        "Public routes"
-      ],
-      "subtitle": [
-        "/health   /livez   /readyz",
-        "optional: /swagger   /metrics"
-      ],
-      "row": "ingress",
-      "routes": [
-        "/health",
-        "/livez",
-        "/readyz",
-        "/swagger",
-        "/metrics"
-      ]
+    "probes": {
+      "X": 432,
+      "Y": 88,
+      "W": 184,
+      "H": 76
     },
-    {
-      "id": "mcp",
-      "x": 20,
-      "y": 230,
-      "w": 190,
-      "h": 130,
-      "title": [
-        "MCP over stdio"
-      ],
-      "subtitle": [
-        "axiom-server mcp",
-        "Direct service access"
-      ],
-      "row": "boundary"
+    "topics": {
+      "X": 16,
+      "Y": 208,
+      "W": 184,
+      "H": 136
     },
-    {
-      "id": "plan",
-      "x": 250,
-      "y": 230,
-      "w": 260,
-      "h": 130,
-      "title": [
-        "Adaptive plan"
-      ],
-      "subtitle": [
-        "POST /api/v1/adaptive-plan",
-        "POST /api/v1/adaptive-plan/stream",
-        "Idempotency-Key: JSON replay",
-        "stream: SSE, no replay"
-      ],
-      "row": "boundary",
-      "column": "reasoning",
-      "routes": [
-        "/api/v1/adaptive-plan",
-        "/api/v1/adaptive-plan/stream"
-      ]
+    "api": {
+      "X": 224,
+      "Y": 208,
+      "W": 184,
+      "H": 76
     },
-    {
-      "id": "knowledge",
-      "x": 550,
-      "y": 230,
-      "w": 390,
-      "h": 130,
-      "title": [
-        "Knowledge graph \u00b7 in memory"
-      ],
-      "subtitle": [
-        "GET /api/v1/topics",
-        "GET /api/v1/topics/:topic/path",
-        "GET /api/v1/tutor/student/:student_id/cognitive-graph"
-      ],
-      "row": "boundary",
-      "routes": [
-        "/api/v1/topics",
-        "/api/v1/topics/:topic/path",
-        "/api/v1/tutor/student/:student_id/cognitive-graph"
-      ]
+    "handlers": {
+      "X": 432,
+      "Y": 208,
+      "W": 184,
+      "H": 116
     },
-    {
-      "id": "baml",
-      "x": 20,
-      "y": 440,
-      "w": 190,
-      "h": 180,
-      "title": [
-        "BAML client"
-      ],
-      "subtitle": [
-        "Provider registry",
-        "Amazon Bedrock (default)",
-        "OpenAI \u00b7 Anthropic",
-        "Google \u00b7 Ollama",
-        "OpenAI-compatible server"
-      ],
-      "row": "reasoning"
+    "replay": {
+      "X": 640,
+      "Y": 208,
+      "W": 184,
+      "H": 76
     },
-    {
-      "id": "pipeline",
-      "x": 250,
-      "y": 440,
-      "w": 260,
-      "h": 180,
-      "title": [
-        "Reasoning service"
-      ],
-      "subtitle": [
-        "validate, subgraph, fan-out",
-        "merge, validate",
-        "concurrency limit",
-        "circuit breaker"
-      ],
-      "row": "reasoning",
-      "column": "reasoning"
+    "graph": {
+      "X": 16,
+      "Y": 396,
+      "W": 184,
+      "H": 76
     },
-    {
-      "id": "traces",
-      "x": 550,
-      "y": 500,
-      "w": 390,
-      "h": 120,
-      "title": [
-        "Trace export"
-      ],
-      "subtitle": [
-        "OTLP exporter (optional)",
-        "LangSmith (optional)"
-      ],
-      "row": "export"
+    "reasoning": {
+      "X": 224,
+      "Y": 396,
+      "W": 184,
+      "H": 76
+    },
+    "guard": {
+      "X": 432,
+      "Y": 396,
+      "W": 184,
+      "H": 76
+    },
+    "baml": {
+      "X": 640,
+      "Y": 396,
+      "W": 184,
+      "H": 76
+    },
+    "traces": {
+      "X": 16,
+      "Y": 528,
+      "W": 184,
+      "H": 76
+    },
+    "mcp": {
+      "X": 224,
+      "Y": 528,
+      "W": 184,
+      "H": 76
+    },
+    "provider": {
+      "X": 640,
+      "Y": 528,
+      "W": 184,
+      "H": 96
     }
-  ],
-  "edges": [
-    {
-      "id": "client/router",
-      "from": "client",
-      "to": "router",
-      "points": [
-        {
-          "x": 210,
-          "y": 110
-        },
-        {
-          "x": 250,
-          "y": 110
-        }
+  },
+  "Edges": {
+    "client/router": [
+      [
+        200,
+        126
+      ],
+      [
+        224,
+        126
       ]
-    },
-    {
-      "id": "router/public",
-      "from": "router",
-      "to": "public",
-      "points": [
-        {
-          "x": 510,
-          "y": 110
-        },
-        {
-          "x": 550,
-          "y": 110
-        }
+    ],
+    "router/probes": [
+      [
+        408,
+        126
+      ],
+      [
+        432,
+        126
       ]
-    },
-    {
-      "id": "router/plan",
-      "from": "router",
-      "to": "plan",
-      "points": [
-        {
-          "x": 380,
-          "y": 180
-        },
-        {
-          "x": 380,
-          "y": 230
-        }
+    ],
+    "router/api": [
+      [
+        316,
+        164
+      ],
+      [
+        316,
+        208
       ]
-    },
-    {
-      "id": "router/knowledge",
-      "from": "router",
-      "to": "knowledge",
-      "points": [
-        {
-          "x": 490,
-          "y": 180
-        },
-        {
-          "x": 570,
-          "y": 230
-        }
+    ],
+    "api/handlers": [
+      [
+        408,
+        246
+      ],
+      [
+        432,
+        246
       ]
-    },
-    {
-      "id": "plan/pipeline",
-      "from": "plan",
-      "to": "pipeline",
-      "points": [
-        {
-          "x": 380,
-          "y": 360
-        },
-        {
-          "x": 380,
-          "y": 440
-        }
+    ],
+    "api/topics": [
+      [
+        224,
+        246
+      ],
+      [
+        200,
+        246
       ]
-    },
-    {
-      "id": "mcp/pipeline",
-      "from": "mcp",
-      "to": "pipeline",
-      "points": [
-        {
-          "x": 210,
-          "y": 340
-        },
-        {
-          "x": 270,
-          "y": 440
-        }
+    ],
+    "handlers/replay": [
+      [
+        616,
+        246
+      ],
+      [
+        640,
+        246
       ]
-    },
-    {
-      "id": "pipeline/baml",
-      "from": "pipeline",
-      "to": "baml",
-      "points": [
-        {
-          "x": 250,
-          "y": 530
-        },
-        {
-          "x": 210,
-          "y": 530
-        }
+    ],
+    "handlers/reasoning": [
+      [
+        524,
+        324
+      ],
+      [
+        524,
+        364
+      ],
+      [
+        368,
+        364
+      ],
+      [
+        368,
+        396
       ]
-    },
-    {
-      "id": "pipeline/knowledge",
-      "from": "pipeline",
-      "to": "knowledge",
-      "points": [
-        {
-          "x": 510,
-          "y": 465
-        },
-        {
-          "x": 600,
-          "y": 360
-        }
+    ],
+    "topics/graph": [
+      [
+        108,
+        344
+      ],
+      [
+        108,
+        396
       ]
-    },
-    {
-      "id": "pipeline/traces",
-      "from": "pipeline",
-      "to": "traces",
-      "points": [
-        {
-          "x": 510,
-          "y": 560
-        },
-        {
-          "x": 550,
-          "y": 560
-        }
+    ],
+    "mcp/reasoning": [
+      [
+        340,
+        528
+      ],
+      [
+        340,
+        472
       ]
-    }
-  ],
-  "labels": [
-    {
-      "text": "REQUEST PATH",
-      "x": 20,
-      "y": 20,
-      "style": "group"
-    }
-  ],
-  "motion": [
-    {
-      "edge": "client/router",
-      "start": 0
-    },
-    {
-      "edge": "router/plan",
-      "start": 0.6
-    },
-    {
-      "edge": "plan/pipeline",
-      "start": 1.2
-    },
-    {
-      "edge": "pipeline/baml",
-      "start": 1.8
-    },
-    {
-      "edge": "pipeline/traces",
-      "start": 2.4
-    },
-    {
-      "edge": "router/knowledge",
-      "start": 3.1
-    },
-    {
-      "edge": "mcp/pipeline",
-      "start": 3.8
-    },
-    {
-      "edge": "pipeline/knowledge",
-      "start": 4.8
-    },
-    {
-      "edge": "pipeline/baml",
-      "start": 5.5
-    },
-    {
-      "edge": "pipeline/traces",
-      "start": 6.2
-    },
-    {
-      "edge": "router/public",
-      "start": 6.9
-    }
-  ]
+    ],
+    "reasoning/graph": [
+      [
+        224,
+        434
+      ],
+      [
+        200,
+        434
+      ]
+    ],
+    "reasoning/guard": [
+      [
+        408,
+        434
+      ],
+      [
+        432,
+        434
+      ]
+    ],
+    "guard/baml": [
+      [
+        616,
+        434
+      ],
+      [
+        640,
+        434
+      ]
+    ],
+    "baml/provider": [
+      [
+        732,
+        472
+      ],
+      [
+        732,
+        528
+      ]
+    ],
+    "reasoning/traces": [
+      [
+        280,
+        472
+      ],
+      [
+        280,
+        500
+      ],
+      [
+        108,
+        500
+      ],
+      [
+        108,
+        528
+      ]
+    ]
+  },
+  "Groups": {}
 }

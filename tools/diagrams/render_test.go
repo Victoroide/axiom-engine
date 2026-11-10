@@ -1,128 +1,278 @@
 package main
 
 import (
-	"bytes"
 	"encoding/xml"
 	"errors"
+	"fmt"
 	"io"
-	"path/filepath"
+	"math"
+	"regexp"
+	"slices"
+	"strconv"
 	"strings"
 	"testing"
 )
 
-func TestSeedLegendShowsCategoriesAndRelations(t *testing.T) {
-	d, err := loadDiagram(filepath.Join("..", ".."), "seed-graph")
+func TestPulseHasOneDash(t *testing.T) {
+	f, err := loadFonts()
 	if err != nil {
 		t.Fatal(err)
 	}
-	data, err := render(d, "light")
-	if err != nil {
-		t.Fatal(err)
-	}
-	dec := xml.NewDecoder(bytes.NewReader(data))
-	count := 0
-	for {
-		tok, err := dec.Token()
-		if errors.Is(err, io.EOF) {
-			break
-		}
+	for _, length := range []float64{24, 220, 450} {
+		d := diagram{W: 840, H: 760, Duration: 16, Edges: []edge{{ID: "flow", Points: []point{{16, 100}, {16 + length, 100}}, Times: []float64{.1}}}}
+		raw, err := render(d, "light", f)
 		if err != nil {
 			t.Fatal(err)
 		}
-		el, ok := tok.(xml.StartElement)
-		if !ok {
-			continue
+		m := regexp.MustCompile(`class="pulse"[^>]*stroke-dasharray="([.0-9]+) ([.0-9]+)"`).FindStringSubmatch(string(raw))
+		if len(m) != 3 {
+			t.Fatal("pulse needs its own fixed dash and gap")
 		}
-		for _, a := range el.Attr {
-			if a.Name.Local == "class" && a.Value == "legend-sample" {
-				count++
-			}
-		}
-	}
-	if count != 6 {
-		t.Fatalf("want six visual legend samples, got %d", count)
-	}
-}
-
-func TestRenderIsDeterministic(t *testing.T) {
-	d, err := loadDiagram(filepath.Join("..", ".."), "request-path")
-	if err != nil {
-		t.Fatal(err)
-	}
-	first, err := render(d, "light")
-	if err != nil {
-		t.Fatal(err)
-	}
-	for range 5 {
-		next, err := render(d, "light")
-		if err != nil {
-			t.Fatal(err)
-		}
-		if !bytes.Equal(first, next) {
-			t.Fatal("nondeterministic output")
-		}
-	}
-	if _, err := render(d, "invalid"); err == nil {
-		t.Fatal("accepted unknown theme")
-	}
-	for _, property := range []string{"animation:pulse 8s cubic-bezier(0.4,0,0.2,1) infinite", "7.5%,100%{stroke-dashoffset", "2.5%,5%{opacity:1}"} {
-		if !strings.Contains(string(first), property) {
-			t.Errorf("missing animation contract %s", property)
+		dash, _ := strconv.ParseFloat(m[1], 64)
+		gap, _ := strconv.ParseFloat(m[2], 64)
+		if dash != 12 || gap <= 2*length+2*dash {
+			t.Fatalf("dash %g gap %g length %g", dash, gap, length)
 		}
 	}
 }
 
-func TestStudyHighlightsDoNotOverlap(t *testing.T) {
-	d, err := loadDiagram(filepath.Join("..", ".."), "seed-graph")
+func TestStaticPresentationAttributes(t *testing.T) {
+	f, err := loadFonts()
 	if err != nil {
 		t.Fatal(err)
 	}
-	end := 0.0
-	for _, c := range d.Motion {
-		if c.Node == "" {
-			continue
-		}
-		if c.Start < end {
-			t.Fatalf("highlight %s begins at %.2f before the prior highlight ends at %.2f", c.Node, c.Start, end)
-		}
-		end = c.Start + .6
-	}
-}
-
-func TestSeedCirclesHaveUniformMeasuredClearance(t *testing.T) {
-	d, err := loadDiagram(filepath.Join("..", ".."), "seed-graph")
+	ds, err := buildDiagrams("../..", testFonts(t))
 	if err != nil {
 		t.Fatal(err)
 	}
-	radius := d.Nodes[0].R
-	closest := 1000.0
-	for _, n := range d.Nodes {
-		if n.R != radius {
-			t.Errorf("unequal circle radius for %s", n.ID)
-		}
-		for _, l := range allLabels(&diagram{Nodes: []node{n}}) {
-			b, err := labelBox(l)
+	for _, d := range ds {
+		for _, theme := range []string{"light", "dark"} {
+			raw, err := render(d, theme, f)
 			if err != nil {
 				t.Fatal(err)
 			}
-			for _, p := range []point{{b.x, b.y}, {b.x + b.w, b.y}, {b.x, b.y + b.h}, {b.x + b.w, b.y + b.h}} {
-				clearance := radius - 1 - hypot(p.X-n.X-radius, p.Y-n.Y-radius)
-				closest = min(closest, clearance)
-				if clearance < 8 {
-					t.Errorf("%s has %.2f px ring clearance", n.ID, clearance)
+			dec := xml.NewDecoder(strings.NewReader(string(raw)))
+			for {
+				tok, err := dec.Token()
+				if errors.Is(err, io.EOF) {
+					break
+				}
+				if err != nil {
+					t.Fatal(err)
+				}
+				el, ok := tok.(xml.StartElement)
+				if !ok {
+					continue
+				}
+				attrs := map[string]string{}
+				for _, a := range el.Attr {
+					attrs[a.Name.Local] = a.Value
+				}
+				for _, class := range strings.Fields(attrs["class"]) {
+					if class == "pulse" || class == "hit" || class == "ink" {
+						if attrs["opacity"] != "0" {
+							t.Errorf("%s %s lacks static opacity", d.Name, class)
+						}
+					}
+				}
+				if el.Name.Local == "style" {
+					var css string
+					if err := dec.DecodeElement(&css, &el); err != nil {
+						t.Fatal(err)
+					}
+					css = regexp.MustCompile(`@keyframes [^{]+\{(?:[^{}]*\{[^{}]*\})+\}`).ReplaceAllString(css, "")
+					want := `@media(prefers-reduced-motion:reduce){.pulse,.hit,.ink{animation:none!important;opacity:0!important}}`
+					if css != want {
+						t.Errorf("unexpected stylesheet rules: %s", css)
+					}
 				}
 			}
 		}
 	}
-	if closest >= 9 {
-		t.Errorf("radius %g can be reduced; closest clearance %.2f", radius, closest)
+}
+
+func TestHighlightInkUsesMatchingTiming(t *testing.T) {
+	f, err := loadFonts()
+	if err != nil {
+		t.Fatal(err)
 	}
-	for i, n := range d.Nodes {
-		for _, other := range d.Nodes[:i] {
-			gap := hypot(n.X+n.R-other.X-other.R, n.Y+n.R-other.Y-other.R) - n.R - other.R - 2
-			if gap < 24 {
-				t.Errorf("%s and %s have %.2f px gap", n.ID, other.ID, gap)
+	ds, err := buildDiagrams("../..", testFonts(t))
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, d := range ds {
+		raw, err := render(d, "dark", f)
+		if err != nil {
+			t.Fatal(err)
+		}
+		for i, n := range d.Nodes {
+			if len(n.Times) == 0 {
+				continue
+			}
+			expected := fmt.Sprintf(`class="ink" opacity="0" fill=%q style="animation:n%d %ss %s infinite"`, palettes["dark"].Text, i, number(d.Duration), easing)
+			if !strings.Contains(string(raw), expected) {
+				t.Errorf("%s missing primary text fade for %s", d.Name, n.ID)
 			}
 		}
+	}
+}
+
+func TestPulseReturnsToIdleOffset(t *testing.T) {
+	css := animation("pulse", []float64{0.1, 8.1}, 16, true, 25)
+	// The final hidden keyframe must restore the initial dash offset, so no
+	// interpolation continues throughout the idle interval before the loop ends.
+	frames := regexp.MustCompile(`([0-9.]+)%\{opacity:0;stroke-dashoffset:([^}]+)\}`).FindAllStringSubmatch(css, -1)
+	if len(frames) < 2 || frames[len(frames)-1][2] != frames[0][2] {
+		t.Fatal("invisible pulse keeps interpolating while idle")
+	}
+}
+
+func TestHighlightWindowsAreOrderedAndContinuous(t *testing.T) {
+	f, err := loadFonts()
+	if err != nil {
+		t.Fatal(err)
+	}
+	// Overlapping visits stay lit between their peaks, even when supplied out of order.
+	times := []float64{.44, .1, .78}
+	css := animation("visits", times, 16, false, 1)
+	frames := regexp.MustCompile(`([0-9.]+)%\{opacity:([01])`).FindAllStringSubmatch(css, -1)
+	previous := -1.0
+	for _, m := range frames {
+		at, _ := strconv.ParseFloat(m[1], 64)
+		if at <= previous {
+			t.Errorf("offset %g follows %g", at, previous)
+		}
+		previous = at
+		if m[2] == "0" && at > 100*.5/16 && at < 100*1.18/16 {
+			t.Error("overlapping visits blink")
+		}
+	}
+	ds, err := buildDiagrams("../..", testFonts(t))
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, d := range ds {
+		for i, n := range d.Nodes {
+			times := append([]float64(nil), n.Times...)
+			slices.Sort(times)
+			css := animation(fmt.Sprintf("n%d", i), times, d.Duration, false, 1)
+			for j := 1; j < len(times); j++ {
+				if times[j]-times[j-1] > highlightSpan {
+					continue
+				}
+				for _, frame := range regexp.MustCompile(`([0-9.]+)%\{opacity:0`).FindAllStringSubmatch(css, -1) {
+					at, _ := strconv.ParseFloat(frame[1], 64)
+					at = at * d.Duration / 100
+					if at > times[j-1]+highlightFade && at < times[j]+highlightFade {
+						t.Errorf("%s %s blinks between overlapping visits", d.Name, n.ID)
+					}
+				}
+			}
+		}
+		raw, err := render(d, "light", f)
+		if err != nil {
+			t.Fatal(err)
+		}
+		for _, block := range regexp.MustCompile(`@keyframes [^{]+\{(?:[^{}]*\{[^{}]*\})+\}`).FindAllString(string(raw), -1) {
+			previous = -1
+			for _, m := range regexp.MustCompile(`([0-9.]+)%`).FindAllStringSubmatch(block, -1) {
+				at, _ := strconv.ParseFloat(m[1], 64)
+				if at <= previous {
+					t.Errorf("%s unordered keyframe: %s", d.Name, block)
+				}
+				previous = at
+			}
+		}
+	}
+}
+
+func TestHighlightHoldsBeforeFading(t *testing.T) {
+	css := animation("visit", []float64{.1}, 16, false, 1)
+	frames := regexp.MustCompile(`([0-9.]+)%\{opacity:([01])\}`).FindAllStringSubmatch(css, -1)
+	got := make([]string, 0, len(frames))
+	for _, m := range frames {
+		at, _ := strconv.ParseFloat(m[1], 64)
+		got = append(got, fmt.Sprintf("%s@%.2f", m[2], at*16/100))
+	}
+	// Fade in over .4 s, stay lit for .8 s, then fade out over .4 s.
+	want := []string{"0@0.00", "0@0.10", "1@0.50", "1@1.30", "0@1.70", "0@16.00"}
+	if !slices.Equal(got, want) {
+		t.Fatalf("visit frames %v, want %v", got, want)
+	}
+}
+
+func TestVariantHasOpaqueRoundedBackground(t *testing.T) {
+	f, err := loadFonts()
+	if err != nil {
+		t.Fatal(err)
+	}
+	for theme, color := range map[string]string{"light": "#ffffff", "dark": "#0d1117"} {
+		raw, err := render(diagram{W: 840, H: 760}, theme, f)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if !strings.Contains(string(raw), `class="background" x="0" y="0" width="840" height="760" rx="14" fill="`+color+`"`) {
+			t.Errorf("%s background missing", theme)
+		}
+	}
+}
+
+func TestPulseDurationAndTargetHighlightOffset(t *testing.T) {
+	for _, length := range []float64{24, 360, 450, 720} {
+		css := animation("travel", []float64{.1}, 16, true, length)
+		frames := regexp.MustCompile(`([0-9.]+)%\{opacity:1;stroke-dashoffset:([-+.0-9]+)`).FindAllStringSubmatch(css, -1)
+		if len(frames) != 2 {
+			t.Fatalf("unexpected travel frames %s", css)
+		}
+		end, _ := strconv.ParseFloat(frames[1][1], 64)
+		want := math.Max(.8, (length+14.5)/280)
+		if math.Abs(end*16/100+.001-.1-want) > .0001 {
+			t.Errorf("length %g duration is not distance/speed with minimum", length)
+		}
+	}
+	ds, err := buildDiagrams("../..", testFonts(t))
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, d := range ds {
+		for _, e := range d.Edges {
+			for _, at := range e.Times {
+				want := at + math.Max(.8, (edgeLength(e)+14.5)/280) + .1
+				found := false
+				for _, n := range d.Nodes {
+					if n.ID == e.To {
+						for _, hit := range n.Times {
+							if math.Abs(hit-want) < .00001 {
+								found = true
+							}
+						}
+					}
+				}
+				if !found {
+					t.Errorf("%s target highlight must start .1 s after arrival", e.ID)
+				}
+			}
+		}
+	}
+}
+
+func TestArrowTipsClearTargetBorders(t *testing.T) {
+	for _, points := range [][]point{{{40, 100}, {100, 100}}, {{160, 100}, {100, 100}}, {{100, 40}, {100, 100}}, {{100, 160}, {100, 100}}} {
+		e := edge{To: "target", Points: points}
+		drawn := drawingPoints(e)
+		tip, port := drawn[len(drawn)-1], points[len(points)-1]
+		if math.Hypot(tip[0]-port[0], tip[1]-port[1]) != 5 {
+			t.Fatal("arrow tip touches target border")
+		}
+		if e.Points[len(points)-1] != port {
+			t.Fatal("drawing changed declared attachment")
+		}
+	}
+}
+
+func TestRoundedOrthogonalCorners(t *testing.T) {
+	got := roundedPath([]point{{40, 100}, {100, 100}, {100, 160}})
+	if got != "M40 100L94 100Q100 100 100 106L100 160" {
+		t.Fatalf("corner geometry: %s", got)
 	}
 }

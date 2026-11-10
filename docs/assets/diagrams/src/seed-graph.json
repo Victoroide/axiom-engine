@@ -1,344 +1,372 @@
 {
-  "title": "Seed knowledge graph",
-  "description": "Arrows point from a prerequisite to its dependent, or from a general topic to its subtype. Solid arrows mean required before; dashed arrows mean has subtype. Category rings match the object-oriented, algorithms, linear and hashing, and graphs and trees sections. Motion follows Variables to Polymorphism, then Functions to Merge Sort.",
-  "width": 960,
-  "height": 1000,
-  "nodes": [
-    {
-      "id": "Variables",
-      "x": 90,
-      "y": 120,
-      "category": "object-oriented",
-      "row": "foundations",
-      "column": "column-0"
+  "Width": 840,
+  "Height": 916,
+  "Nodes": {
+    "Variables": {
+      "X": 32,
+      "Y": 100,
+      "W": 92,
+      "H": 92
     },
-    {
-      "id": "Objects",
-      "x": 245,
-      "y": 120,
-      "category": "object-oriented",
-      "row": "foundations",
-      "column": "column-1"
+    "Objects": {
+      "X": 168,
+      "Y": 100,
+      "W": 92,
+      "H": 92
     },
-    {
-      "id": "Classes",
-      "x": 400,
-      "y": 120,
-      "category": "object-oriented",
-      "row": "foundations",
-      "column": "column-2"
+    "Classes": {
+      "X": 304,
+      "Y": 100,
+      "W": 92,
+      "H": 92
     },
-    {
-      "id": "Inheritance",
-      "x": 555,
-      "y": 120,
-      "category": "object-oriented",
-      "row": "foundations",
-      "column": "column-3"
+    "Inheritance": {
+      "X": 440,
+      "Y": 100,
+      "W": 92,
+      "H": 92
     },
-    {
-      "id": "Polymorphism",
-      "x": 710,
-      "y": 120,
-      "category": "object-oriented",
-      "row": "foundations",
-      "column": "column-4"
+    "Polymorphism": {
+      "X": 576,
+      "Y": 100,
+      "W": 92,
+      "H": 92
     },
-    {
-      "id": "Generics",
-      "x": 865,
-      "y": 120,
-      "category": "object-oriented",
-      "row": "foundations",
-      "column": "column-5"
+    "Generics": {
+      "X": 712,
+      "Y": 100,
+      "W": 92,
+      "H": 92
     },
-    {
-      "id": "Abstract Classes",
-      "x": 400,
-      "y": 285,
-      "category": "object-oriented",
-      "row": "abstractions",
-      "column": "column-2"
+    "Abstract Classes": {
+      "X": 304,
+      "Y": 236,
+      "W": 92,
+      "H": 92
     },
-    {
-      "id": "Interfaces",
-      "x": 555,
-      "y": 285,
-      "category": "object-oriented",
-      "row": "abstractions",
-      "column": "column-3"
+    "Interfaces": {
+      "X": 440,
+      "Y": 236,
+      "W": 92,
+      "H": 92
     },
-    {
-      "id": "Design Patterns",
-      "x": 710,
-      "y": 285,
-      "category": "object-oriented",
-      "row": "abstractions",
-      "column": "column-4"
+    "Design Patterns": {
+      "X": 576,
+      "Y": 236,
+      "W": 92,
+      "H": 92
     },
-    {
-      "id": "Functions",
-      "x": 90,
-      "y": 470,
-      "category": "algorithms",
-      "row": "topics",
-      "column": "column-0"
+    "Pointers": {
+      "X": 32,
+      "Y": 378,
+      "W": 92,
+      "H": 92
     },
-    {
-      "id": "Recursion",
-      "x": 245,
-      "y": 470,
-      "category": "algorithms",
-      "row": "topics",
-      "column": "column-1"
+    "Linked Lists": {
+      "X": 168,
+      "Y": 378,
+      "W": 92,
+      "H": 92
     },
-    {
-      "id": "Merge Sort",
-      "x": 400,
-      "y": 470,
-      "category": "algorithms",
-      "row": "topics",
-      "column": "column-2"
+    "Graphs": {
+      "X": 304,
+      "Y": 378,
+      "W": 92,
+      "H": 92
     },
-    {
-      "id": "Dynamic Programming",
-      "x": 400,
-      "y": 635,
-      "category": "algorithms",
-      "row": "applications",
-      "column": "column-2"
+    "Graph Traversal": {
+      "X": 440,
+      "Y": 378,
+      "W": 92,
+      "H": 92
     },
-    {
-      "id": "Binary Search",
-      "x": 245,
-      "y": 635,
-      "category": "algorithms",
-      "row": "applications",
-      "column": "column-1"
+    "Trees": {
+      "X": 168,
+      "Y": 514,
+      "W": 92,
+      "H": 92
     },
-    {
-      "id": "Arrays",
-      "x": 245,
-      "y": 820,
-      "category": "linear and hashing",
-      "row": "bottom",
-      "column": "column-1"
+    "Binary Search Trees": {
+      "X": 304,
+      "Y": 514,
+      "W": 92,
+      "H": 92
     },
-    {
-      "id": "Hash Tables",
-      "x": 400,
-      "y": 820,
-      "category": "linear and hashing",
-      "row": "bottom",
-      "column": "column-2"
+    "AVL Trees": {
+      "X": 440,
+      "Y": 514,
+      "W": 92,
+      "H": 92
     },
-    {
-      "id": "Pointers",
-      "x": 555,
-      "y": 470,
-      "category": "graphs and trees",
-      "row": "topics",
-      "column": "column-3"
+    "Functions": {
+      "X": 32,
+      "Y": 656,
+      "W": 92,
+      "H": 92
     },
-    {
-      "id": "Linked Lists",
-      "x": 710,
-      "y": 470,
-      "category": "graphs and trees",
-      "row": "topics",
-      "column": "column-4"
+    "Recursion": {
+      "X": 168,
+      "Y": 656,
+      "W": 92,
+      "H": 92
     },
-    {
-      "id": "Graphs",
-      "x": 865,
-      "y": 470,
-      "category": "graphs and trees",
-      "row": "topics",
-      "column": "column-5"
+    "Merge Sort": {
+      "X": 304,
+      "Y": 656,
+      "W": 92,
+      "H": 92
     },
-    {
-      "id": "Graph Traversal",
-      "x": 865,
-      "y": 635,
-      "category": "graphs and trees",
-      "row": "applications",
-      "column": "column-5"
+    "Dynamic Programming": {
+      "X": 168,
+      "Y": 792,
+      "W": 92,
+      "H": 92
     },
-    {
-      "id": "Trees",
-      "x": 710,
-      "y": 635,
-      "category": "graphs and trees",
-      "row": "applications",
-      "column": "column-4"
+    "Arrays": {
+      "X": 576,
+      "Y": 656,
+      "W": 92,
+      "H": 92
     },
-    {
-      "id": "Binary Search Trees",
-      "x": 710,
-      "y": 820,
-      "category": "graphs and trees",
-      "row": "bottom",
-      "column": "column-4"
+    "Binary Search": {
+      "X": 712,
+      "Y": 656,
+      "W": 92,
+      "H": 92
     },
-    {
-      "id": "AVL Trees",
-      "x": 865,
-      "y": 820,
-      "category": "graphs and trees",
-      "row": "bottom",
-      "column": "column-5"
+    "Hash Tables": {
+      "X": 576,
+      "Y": 792,
+      "W": 92,
+      "H": 92
     }
-  ],
-  "labels": [
-    {
-      "text": "OBJECT-ORIENTED",
-      "x": 30,
-      "y": 25,
-      "style": "group"
+  },
+  "Edges": {
+    "Variables/Objects": [
+      [
+        124,
+        146
+      ],
+      [
+        168,
+        146
+      ]
+    ],
+    "Objects/Classes": [
+      [
+        260,
+        146
+      ],
+      [
+        304,
+        146
+      ]
+    ],
+    "Classes/Inheritance": [
+      [
+        396,
+        146
+      ],
+      [
+        440,
+        146
+      ]
+    ],
+    "Inheritance/Polymorphism": [
+      [
+        532,
+        146
+      ],
+      [
+        576,
+        146
+      ]
+    ],
+    "Polymorphism/Generics": [
+      [
+        668,
+        146
+      ],
+      [
+        712,
+        146
+      ]
+    ],
+    "Abstract Classes/Interfaces": [
+      [
+        396,
+        282
+      ],
+      [
+        440,
+        282
+      ]
+    ],
+    "Interfaces/Design Patterns": [
+      [
+        532,
+        282
+      ],
+      [
+        576,
+        282
+      ]
+    ],
+    "Arrays/Binary Search": [
+      [
+        668,
+        702
+      ],
+      [
+        712,
+        702
+      ]
+    ],
+    "Arrays/Hash Tables": [
+      [
+        622,
+        748
+      ],
+      [
+        622,
+        792
+      ]
+    ],
+    "Functions/Recursion": [
+      [
+        124,
+        702
+      ],
+      [
+        168,
+        702
+      ]
+    ],
+    "Recursion/Merge Sort": [
+      [
+        260,
+        702
+      ],
+      [
+        304,
+        702
+      ]
+    ],
+    "Recursion/Dynamic Programming": [
+      [
+        214,
+        748
+      ],
+      [
+        214,
+        792
+      ]
+    ],
+    "Pointers/Linked Lists": [
+      [
+        124,
+        424
+      ],
+      [
+        168,
+        424
+      ]
+    ],
+    "Linked Lists/Graphs": [
+      [
+        260,
+        424
+      ],
+      [
+        304,
+        424
+      ]
+    ],
+    "Graphs/Graph Traversal": [
+      [
+        396,
+        424
+      ],
+      [
+        440,
+        424
+      ]
+    ],
+    "Linked Lists/Trees": [
+      [
+        214,
+        470
+      ],
+      [
+        214,
+        514
+      ]
+    ],
+    "Classes/Abstract Classes": [
+      [
+        350,
+        192
+      ],
+      [
+        350,
+        236
+      ]
+    ],
+    "Trees/Binary Search Trees": [
+      [
+        260,
+        560
+      ],
+      [
+        304,
+        560
+      ]
+    ],
+    "Binary Search Trees/AVL Trees": [
+      [
+        396,
+        560
+      ],
+      [
+        440,
+        560
+      ]
+    ],
+    "Polymorphism/Design Patterns": [
+      [
+        622,
+        192
+      ],
+      [
+        622,
+        236
+      ]
+    ]
+  },
+  "Groups": {
+    "objects": {
+      "X": 16,
+      "Y": 72,
+      "W": 804,
+      "H": 272
     },
-    {
-      "text": "ALGORITHMS",
-      "x": 30,
-      "y": 385,
-      "style": "group"
+    "graphs": {
+      "X": 16,
+      "Y": 350,
+      "W": 532,
+      "H": 272
     },
-    {
-      "text": "LINEAR AND HASHING",
-      "x": 30,
-      "y": 735,
-      "style": "group"
+    "algorithms": {
+      "X": 16,
+      "Y": 628,
+      "W": 396,
+      "H": 272
     },
-    {
-      "text": "GRAPHS AND TREES",
-      "x": 490,
-      "y": 385,
-      "style": "group"
+    "arrays": {
+      "X": 560,
+      "Y": 628,
+      "W": 260,
+      "H": 272
     }
-  ],
-  "motion": [
-    {
-      "node": "Variables",
-      "start": 0
-    },
-    {
-      "edge": "Variables/Objects",
-      "start": 0.45
-    },
-    {
-      "node": "Objects",
-      "start": 0.9
-    },
-    {
-      "edge": "Objects/Classes",
-      "start": 1.35
-    },
-    {
-      "node": "Classes",
-      "start": 1.8
-    },
-    {
-      "edge": "Classes/Inheritance",
-      "start": 2.25
-    },
-    {
-      "node": "Inheritance",
-      "start": 2.7
-    },
-    {
-      "edge": "Inheritance/Polymorphism",
-      "start": 3.15
-    },
-    {
-      "node": "Polymorphism",
-      "start": 3.6
-    },
-    {
-      "node": "Functions",
-      "start": 4.3
-    },
-    {
-      "edge": "Functions/Recursion",
-      "start": 4.75
-    },
-    {
-      "node": "Recursion",
-      "start": 5.2
-    },
-    {
-      "edge": "Recursion/Merge Sort",
-      "start": 5.65
-    },
-    {
-      "node": "Merge Sort",
-      "start": 6.1
-    }
-  ],
-  "legend": [
-    {
-      "kind": "object-oriented",
-      "text": "Object-oriented",
-      "x": 25,
-      "y": 935
-    },
-    {
-      "kind": "algorithms",
-      "text": "Algorithms",
-      "x": 255,
-      "y": 935
-    },
-    {
-      "kind": "linear and hashing",
-      "text": "Linear and hashing",
-      "x": 485,
-      "y": 935
-    },
-    {
-      "kind": "graphs and trees",
-      "text": "Graphs and trees",
-      "x": 715,
-      "y": 935
-    },
-    {
-      "kind": "depends_on",
-      "text": "required before",
-      "x": 25,
-      "y": 970
-    },
-    {
-      "kind": "is_a",
-      "text": "has subtype",
-      "x": 255,
-      "y": 970
-    }
-  ],
-  "groups": [
-    {
-      "x": 20,
-      "y": 35,
-      "w": 920,
-      "h": 325,
-      "category": "object-oriented"
-    },
-    {
-      "x": 20,
-      "y": 395,
-      "w": 450,
-      "h": 315,
-      "category": "algorithms"
-    },
-    {
-      "x": 20,
-      "y": 745,
-      "w": 450,
-      "h": 155,
-      "category": "linear and hashing"
-    },
-    {
-      "x": 480,
-      "y": 395,
-      "w": 460,
-      "h": 505,
-      "category": "graphs and trees"
-    }
-  ]
+  }
 }
