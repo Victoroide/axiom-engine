@@ -1,552 +1,229 @@
 {
-  "title": "System components",
-  "description": "Principal package dependencies. cmd/server wires configuration, graph, provider and telemetry, then selects the HTTP server or MCP stdio boundary. internal/server registers internal/api and creates the shared reasoning service; its rate limiter uses memory or Redis. HTTP handlers use the idempotency package for JSON replay, call internal/service and read internal/graph through the dependency routed around the lower row. MCP calls the same service and reads internal/graph. The reasoning service reads the graph and records metrics. internal/llm implements the Planner interface, configures the provider registry and calls the generated BAML client, which calls the configured provider with Amazon Bedrock as the default. The direct internal/server to internal/metrics and cmd/server to internal/llm imports are omitted to keep dependency arrows from crossing. Shared configuration, telemetry and domain types appear as bands instead of repeated import arrows; telemetry optionally exports OTLP and LangSmith traces.",
-  "width": 960,
-  "height": 640,
-  "nodes": [
-    {
-      "id": "entry",
-      "x": 350,
-      "y": 30,
-      "w": 260,
-      "h": 50,
-      "title": [
-        "cmd/server"
-      ],
-      "subtitle": [
-        "config \u00b7 graph \u00b7 llm \u00b7 telemetry"
-      ],
-      "package": "cmd/server",
-      "row": "entry"
+  "Width": 840,
+  "Height": 592,
+  "Nodes": {
+    "entry": {
+      "X": 224,
+      "Y": 88,
+      "W": 184,
+      "H": 56
     },
-    {
-      "id": "server",
-      "x": 240,
-      "y": 140,
-      "w": 220,
-      "h": 70,
-      "title": [
-        "internal/server"
-      ],
-      "subtitle": [
-        "HTTP startup and middleware",
-        "local or Redis rate limiting"
-      ],
-      "package": "internal/server",
-      "row": "transport"
+    "server": {
+      "X": 16,
+      "Y": 184,
+      "W": 184,
+      "H": 56
     },
-    {
-      "id": "mcp",
-      "x": 500,
-      "y": 140,
-      "w": 220,
-      "h": 70,
-      "title": [
-        "internal/mcpserver"
-      ],
-      "subtitle": [
-        "stdio tools and resources"
-      ],
-      "package": "internal/mcpserver",
-      "row": "transport",
-      "column": "reasoning"
+    "mcp": {
+      "X": 224,
+      "Y": 184,
+      "W": 184,
+      "H": 56
     },
-    {
-      "id": "idempotency",
-      "x": 20,
-      "y": 270,
-      "w": 180,
-      "h": 60,
-      "title": [
-        "internal/idempotency"
-      ],
-      "subtitle": [
-        "Memory or Redis replay"
-      ],
-      "package": "internal/idempotency",
-      "row": "boundary"
+    "llm": {
+      "X": 432,
+      "Y": 184,
+      "W": 184,
+      "H": 56
     },
-    {
-      "id": "api",
-      "x": 240,
-      "y": 270,
-      "w": 220,
-      "h": 60,
-      "title": [
-        "internal/api"
-      ],
-      "subtitle": [
-        "HTTP handlers"
-      ],
-      "package": "internal/api",
-      "row": "boundary"
+    "baml": {
+      "X": 640,
+      "Y": 184,
+      "W": 184,
+      "H": 56
     },
-    {
-      "id": "service",
-      "x": 500,
-      "y": 270,
-      "w": 220,
-      "h": 60,
-      "title": [
-        "internal/service"
-      ],
-      "subtitle": [
-        "Reasoning \u00b7 Planner interface"
-      ],
-      "package": "internal/service",
-      "row": "boundary",
-      "column": "reasoning"
+    "api": {
+      "X": 16,
+      "Y": 280,
+      "W": 184,
+      "H": 56
     },
-    {
-      "id": "graph",
-      "x": 760,
-      "y": 270,
-      "w": 180,
-      "h": 60,
-      "title": [
-        "internal/graph"
-      ],
-      "subtitle": [
-        "Embedded or JSON file"
-      ],
-      "package": "internal/graph",
-      "row": "boundary"
+    "service": {
+      "X": 224,
+      "Y": 280,
+      "W": 184,
+      "H": 56
     },
-    {
-      "id": "provider",
-      "x": 20,
-      "y": 390,
-      "w": 180,
-      "h": 60,
-      "title": [
-        "Configured provider"
-      ],
-      "subtitle": [
-        "Amazon Bedrock by default"
-      ],
-      "row": "dependencies"
+    "idempotency": {
+      "X": 16,
+      "Y": 376,
+      "W": 184,
+      "H": 56
     },
-    {
-      "id": "baml",
-      "x": 240,
-      "y": 390,
-      "w": 220,
-      "h": 60,
-      "title": [
-        "baml_client"
-      ],
-      "subtitle": [
-        "Generated client"
-      ],
-      "package": "baml_client",
-      "row": "dependencies"
+    "graph": {
+      "X": 224,
+      "Y": 376,
+      "W": 184,
+      "H": 56
     },
-    {
-      "id": "llm",
-      "x": 500,
-      "y": 390,
-      "w": 220,
-      "h": 60,
-      "title": [
-        "internal/llm"
-      ],
-      "subtitle": [
-        "Provider registry"
-      ],
-      "package": "internal/llm",
-      "row": "dependencies",
-      "column": "reasoning"
+    "metrics": {
+      "X": 432,
+      "Y": 376,
+      "W": 184,
+      "H": 56
     },
-    {
-      "id": "metrics",
-      "x": 760,
-      "y": 390,
-      "w": 180,
-      "h": 60,
-      "title": [
-        "internal/metrics"
-      ],
-      "subtitle": [
-        "Prometheus collectors"
-      ],
-      "package": "internal/metrics",
-      "row": "dependencies"
+    "config": {
+      "X": 16,
+      "Y": 472,
+      "W": 184,
+      "H": 56
     },
-    {
-      "id": "config",
-      "x": 30,
-      "y": 480,
-      "w": 900,
-      "h": 40,
-      "title": [
-        "internal/config: shared startup settings"
-      ],
-      "subtitle": [],
-      "package": "internal/config",
-      "row": "config"
+    "telemetry": {
+      "X": 224,
+      "Y": 472,
+      "W": 184,
+      "H": 56
     },
-    {
-      "id": "telemetry",
-      "x": 30,
-      "y": 533,
-      "w": 900,
-      "h": 44,
-      "title": [
-        "internal/telemetry: shared HTTP, MCP, reasoning and provider spans"
-      ],
-      "subtitle": [
-        "Optional OTLP and LangSmith export"
-      ],
-      "package": "internal/telemetry",
-      "row": "telemetry"
-    },
-    {
-      "id": "domain",
-      "x": 30,
-      "y": 590,
-      "w": 900,
-      "h": 36,
-      "title": [
-        "internal/domain: shared request, response and graph types"
-      ],
-      "subtitle": [],
-      "package": "internal/domain",
-      "row": "domain"
+    "domain": {
+      "X": 432,
+      "Y": 472,
+      "W": 184,
+      "H": 56
     }
-  ],
-  "edges": [
-    {
-      "id": "entry/server",
-      "from": "entry",
-      "to": "server",
-      "points": [
-        {
-          "x": 420,
-          "y": 80
-        },
-        {
-          "x": 350,
-          "y": 140
-        }
+  },
+  "Edges": {
+    "entry/server": [
+      [
+        260,
+        144
+      ],
+      [
+        260,
+        164
+      ],
+      [
+        108,
+        164
+      ],
+      [
+        108,
+        184
       ]
-    },
-    {
-      "id": "entry/mcp",
-      "from": "entry",
-      "to": "mcp",
-      "points": [
-        {
-          "x": 540,
-          "y": 80
-        },
-        {
-          "x": 610,
-          "y": 140
-        }
+    ],
+    "entry/mcp": [
+      [
+        316,
+        144
+      ],
+      [
+        316,
+        184
       ]
-    },
-    {
-      "id": "entry/graph",
-      "from": "entry",
-      "to": "graph",
-      "points": [
-        {
-          "x": 610,
-          "y": 55
-        },
-        {
-          "x": 925,
-          "y": 55
-        },
-        {
-          "x": 925,
-          "y": 270
-        }
+    ],
+    "entry/llm": [
+      [
+        372,
+        144
+      ],
+      [
+        372,
+        164
+      ],
+      [
+        524,
+        164
+      ],
+      [
+        524,
+        184
       ]
-    },
-    {
-      "id": "server/api",
-      "from": "server",
-      "to": "api",
-      "points": [
-        {
-          "x": 350,
-          "y": 210
-        },
-        {
-          "x": 350,
-          "y": 270
-        }
+    ],
+    "server/api": [
+      [
+        108,
+        240
+      ],
+      [
+        108,
+        280
       ]
-    },
-    {
-      "id": "server/service",
-      "from": "server",
-      "to": "service",
-      "points": [
-        {
-          "x": 440,
-          "y": 210
-        },
-        {
-          "x": 440,
-          "y": 240
-        },
-        {
-          "x": 530,
-          "y": 240
-        },
-        {
-          "x": 530,
-          "y": 270
-        }
+    ],
+    "api/service": [
+      [
+        200,
+        308
+      ],
+      [
+        224,
+        308
       ]
-    },
-    {
-      "id": "api/idempotency",
-      "from": "api",
-      "to": "idempotency",
-      "points": [
-        {
-          "x": 240,
-          "y": 300
-        },
-        {
-          "x": 200,
-          "y": 300
-        }
+    ],
+    "api/idempotency": [
+      [
+        108,
+        336
+      ],
+      [
+        108,
+        376
       ]
-    },
-    {
-      "id": "api/service",
-      "from": "api",
-      "to": "service",
-      "points": [
-        {
-          "x": 460,
-          "y": 300
-        },
-        {
-          "x": 500,
-          "y": 300
-        }
+    ],
+    "mcp/service": [
+      [
+        316,
+        240
+      ],
+      [
+        316,
+        280
       ]
-    },
-    {
-      "id": "mcp/service",
-      "from": "mcp",
-      "to": "service",
-      "points": [
-        {
-          "x": 610,
-          "y": 210
-        },
-        {
-          "x": 610,
-          "y": 270
-        }
+    ],
+    "llm/service": [
+      [
+        524,
+        240
+      ],
+      [
+        524,
+        260
+      ],
+      [
+        368,
+        260
+      ],
+      [
+        368,
+        280
       ]
-    },
-    {
-      "id": "mcp/graph",
-      "from": "mcp",
-      "to": "graph",
-      "points": [
-        {
-          "x": 720,
-          "y": 190
-        },
-        {
-          "x": 850,
-          "y": 270
-        }
+    ],
+    "llm/baml": [
+      [
+        616,
+        212
+      ],
+      [
+        640,
+        212
       ]
-    },
-    {
-      "id": "service/graph",
-      "from": "service",
-      "to": "graph",
-      "points": [
-        {
-          "x": 720,
-          "y": 300
-        },
-        {
-          "x": 760,
-          "y": 300
-        }
+    ],
+    "service/graph": [
+      [
+        316,
+        336
+      ],
+      [
+        316,
+        376
       ]
-    },
-    {
-      "id": "service/metrics",
-      "from": "service",
-      "to": "metrics",
-      "points": [
-        {
-          "x": 690,
-          "y": 330
-        },
-        {
-          "x": 760,
-          "y": 420
-        }
+    ],
+    "service/metrics": [
+      [
+        372,
+        336
+      ],
+      [
+        372,
+        356
+      ],
+      [
+        524,
+        356
+      ],
+      [
+        524,
+        376
       ]
-    },
-    {
-      "id": "llm/service",
-      "from": "llm",
-      "to": "service",
-      "points": [
-        {
-          "x": 610,
-          "y": 390
-        },
-        {
-          "x": 610,
-          "y": 330
-        }
-      ]
-    },
-    {
-      "id": "llm/baml",
-      "from": "llm",
-      "to": "baml",
-      "points": [
-        {
-          "x": 500,
-          "y": 420
-        },
-        {
-          "x": 460,
-          "y": 420
-        }
-      ]
-    },
-    {
-      "id": "baml/provider",
-      "from": "baml",
-      "to": "provider",
-      "points": [
-        {
-          "x": 240,
-          "y": 420
-        },
-        {
-          "x": 200,
-          "y": 420
-        }
-      ]
-    },
-    {
-      "id": "api/graph",
-      "from": "api",
-      "to": "graph",
-      "points": [
-        {
-          "x": 420,
-          "y": 330
-        },
-        {
-          "x": 420,
-          "y": 360
-        },
-        {
-          "x": 10,
-          "y": 360
-        },
-        {
-          "x": 10,
-          "y": 465
-        },
-        {
-          "x": 950,
-          "y": 465
-        },
-        {
-          "x": 950,
-          "y": 315
-        },
-        {
-          "x": 940,
-          "y": 315
-        }
-      ]
-    }
-  ],
-  "labels": [
-    {
-      "text": "SYSTEM COMPONENTS",
-      "x": 20,
-      "y": 20,
-      "style": "group"
-    },
-    {
-      "text": "implements",
-      "x": 635,
-      "y": 365,
-      "style": "edge"
-    }
-  ],
-  "motion": [
-    {
-      "edge": "entry/server",
-      "start": 0.0
-    },
-    {
-      "edge": "entry/mcp",
-      "start": 0.5
-    },
-    {
-      "edge": "entry/graph",
-      "start": 1.0
-    },
-    {
-      "edge": "llm/service",
-      "start": 1.5
-    },
-    {
-      "edge": "llm/baml",
-      "start": 2.0
-    },
-    {
-      "edge": "server/api",
-      "start": 2.5
-    },
-    {
-      "edge": "server/service",
-      "start": 3.0
-    },
-    {
-      "edge": "mcp/service",
-      "start": 3.5
-    },
-    {
-      "edge": "mcp/graph",
-      "start": 4.0
-    },
-    {
-      "edge": "baml/provider",
-      "start": 4.5
-    },
-    {
-      "edge": "api/idempotency",
-      "start": 5.0
-    },
-    {
-      "edge": "api/service",
-      "start": 5.5
-    },
-    {
-      "edge": "api/graph",
-      "start": 6.0
-    },
-    {
-      "edge": "service/graph",
-      "start": 6.5
-    },
-    {
-      "edge": "service/metrics",
-      "start": 7.0
-    }
-  ]
+    ]
+  },
+  "Groups": {}
 }
