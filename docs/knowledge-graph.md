@@ -87,7 +87,7 @@ The embedded seed curriculum structural summary:
 
 In the visual legend, solid arrows mean “required before” and point from a prerequisite to the topic that needs it. Dashed arrows mean “has subtype” and point from a general topic to its subtype. Both relations are drawn in study order, pointing from the foundational concept to the dependent concept. This maps to the stored curriculum triples `(subject, relation, object)` where `subject` depends on or is a subtype of `object`: a stored `(A, depends_on, B)` tuple means B is required before A (drawn B → A), while a stored `(A, is_a, B)` tuple means B has subtype A (drawn B --▸ A).
 
-The diagram organizes topics into four category sections identified by node ring colors: Object-Oriented (purple), Algorithms (orange), Linear and Hashing (teal), and Graphs and Trees (green), with Binary Search grouped under Algorithms. Motion highlights study progression through Variables → Objects → Classes → Inheritance → Polymorphism, followed by Functions → Recursion → Merge Sort.
+The diagram groups the topics by connected component: Object-oriented, Graphs and trees, Algorithms, and Arrays and hashing, which holds Binary Search with Arrays and Hash Tables, its only prerequisite. Within a group, topics read left to right and downward in prerequisite order, and no arrow crosses a group border. Motion follows Variables → Objects → Classes → Abstract Classes → Interfaces → Design Patterns, then Pointers → Linked Lists → Trees → Binary Search Trees → AVL Trees, and pauses before repeating; with reduced motion the image is static.
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="assets/diagrams/seed-graph-dark.svg">
