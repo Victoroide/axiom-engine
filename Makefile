@@ -68,8 +68,9 @@ generate: native-baml $(BAML_CLI) ## Regenerate and format the BAML client
 diagrams: ## Regenerate the vector documentation diagrams
 	cd tools && go run ./diagrams -root ..
 
-diagrams-check: ## Check diagram geometry and sources
+diagrams-check: ## Check diagram geometry, sources and generated SVGs
 	cd tools && go test -count=1 ./diagrams/...
+	cd tools && go run ./diagrams -root .. -check
 
 swagger: ## Regenerate the Swagger specification and embedded docs
 	go tool -modfile=tools/go.mod swag init -g cmd/server/main.go -o docs --parseInternal

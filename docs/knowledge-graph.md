@@ -91,7 +91,7 @@ The diagram organizes topics into four category sections identified by node ring
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="assets/diagrams/seed-graph-dark.svg">
-  <img src="assets/diagrams/seed-graph-light.svg" width="100%" alt="Seed graph of 23 topics. Solid arrows point from prerequisites to dependents: Variables to Objects to Classes to Inheritance to Polymorphism, which leads to Generics and Design Patterns; Abstract Classes leads to Interfaces, which also leads to Design Patterns. In Algorithms, Functions leads to Recursion, then Merge Sort and Dynamic Programming; Arrays leads to Binary Search. In Linear and hashing, Arrays leads to Hash Tables. In Graphs and trees, Pointers leads to Linked Lists, then Graphs and Trees; Graphs leads to Graph Traversal. Dashed arrows shown as ‘has subtype’ in the legend connect Classes to Abstract Classes, Trees to Binary Search Trees, and Binary Search Trees to AVL Trees.">
+  <img src="assets/diagrams/seed-graph-light.svg" alt="Seed knowledge graph with 23 topics and 20 relations, grouped by connected component: Object-oriented, Graphs and trees, Algorithms, and Arrays and hashing. Circles advance right or down by prerequisite depth. Solid arrows mean required before; dashed arrows mean has subtype. Motion follows Variables to Objects to Classes to Abstract Classes to Interfaces to Design Patterns, then Pointers to Linked Lists to Trees to Binary Search Trees to AVL Trees.">
 </picture>
 
 ---
