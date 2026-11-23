@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="840" height="592" viewBox="0 0 840 592" role="img" fill="#e6edf3">
 <title>AxiomEngine packages</title>
-<desc>Go package imports reduced to direct arrows that are not implied by a longer chain. From cmd/server, HTTP packages lead through internal/server and internal/api to the reasoning service; MCP and the LLM adapter also import that service. The adapter imports baml_client. The API imports idempotency storage, and the service imports the graph and metrics. The transitive closure of these arrows equals the non-shared imports among the packages shown. The docs and test packages are excluded, along with generated baml_client support packages whose imports are represented by baml_client. The edge-less band contains config, telemetry and domain, which are imported throughout. Motion follows cmd/server to internal/server, internal/api, internal/service and internal/graph.</desc>
+<desc>Go package imports reduced to direct arrows that are not implied by a longer chain. From cmd/server, HTTP packages lead through internal/server and internal/api to the reasoning service; MCP and the LLM adapter also import that service. The adapter imports baml_client. The API imports idempotency storage, and the service imports the graph and metrics. The standalone internal/auth package verifies access tokens. The transitive closure of these arrows equals the non-shared imports among the packages shown. The docs and test packages are excluded, along with generated baml_client support packages whose imports are represented by baml_client. The edge-less band contains config, telemetry and domain, which are imported throughout. Motion follows cmd/server to internal/server, internal/api, internal/service and internal/graph.</desc>
 <style>@keyframes n0{0%{opacity:0}1.111%{opacity:0}5.556%{opacity:1}14.444%{opacity:1}18.889%{opacity:0}100%{opacity:0}}@keyframes n1{0%{opacity:0}11.111%{opacity:0}15.556%{opacity:1}28.889%{opacity:1}33.333%{opacity:0}100%{opacity:0}}@keyframes n2{0%{opacity:0}25.556%{opacity:0}30%{opacity:1}43.333%{opacity:1}47.778%{opacity:0}100%{opacity:0}}@keyframes n4{0%{opacity:0}40%{opacity:0}44.444%{opacity:1}57.778%{opacity:1}62.222%{opacity:0}100%{opacity:0}}@keyframes n5{0%{opacity:0}54.444%{opacity:0}58.889%{opacity:1}67.778%{opacity:1}72.222%{opacity:0}100%{opacity:0}}@keyframes e0{0%{opacity:0;stroke-dashoffset:13.25}1.111%{opacity:0;stroke-dashoffset:13.25}1.122%{opacity:1;stroke-dashoffset:13.25}9.989%{opacity:1;stroke-dashoffset:-193.25}10%{opacity:0;stroke-dashoffset:-193.25}10.011%{opacity:0;stroke-dashoffset:13.25}100%{opacity:0;stroke-dashoffset:13.25}}@keyframes e3{0%{opacity:0;stroke-dashoffset:13.25}15.556%{opacity:0;stroke-dashoffset:13.25}15.567%{opacity:1;stroke-dashoffset:13.25}24.433%{opacity:1;stroke-dashoffset:-41.25}24.444%{opacity:0;stroke-dashoffset:-41.25}24.456%{opacity:0;stroke-dashoffset:13.25}100%{opacity:0;stroke-dashoffset:13.25}}@keyframes e4{0%{opacity:0;stroke-dashoffset:13.25}30%{opacity:0;stroke-dashoffset:13.25}30.011%{opacity:1;stroke-dashoffset:13.25}38.878%{opacity:1;stroke-dashoffset:-25.25}38.889%{opacity:0;stroke-dashoffset:-25.25}38.9%{opacity:0;stroke-dashoffset:13.25}100%{opacity:0;stroke-dashoffset:13.25}}@keyframes e9{0%{opacity:0;stroke-dashoffset:13.25}44.444%{opacity:0;stroke-dashoffset:13.25}44.456%{opacity:1;stroke-dashoffset:13.25}53.322%{opacity:1;stroke-dashoffset:-41.25}53.333%{opacity:0;stroke-dashoffset:-41.25}53.344%{opacity:0;stroke-dashoffset:13.25}100%{opacity:0;stroke-dashoffset:13.25}}@media(prefers-reduced-motion:reduce){.pulse,.hit,.ink{animation:none!important;opacity:0!important}}</style>
 <defs>
 <path id="r2c" d="M63 175L105 -102L206 -102L130 175L63 175"/>
@@ -30,6 +30,7 @@
 <path id="r67" d="M298 216Q208 216 153 183Q99 149 74 105L145 59Q157 74 174 93Q191 112 221 125Q250 139 298 139Q364 139 406 108Q448 77 448 9L448 -100L440 -100Q431 -84 414 -63Q397 -42 365 -25Q334 -9 281 -9Q216 -9 164 -40Q111 -71 81 -130Q51 -190 51 -275Q51 -360 81 -422Q110 -484 163 -519Q215 -553 283 -553Q336 -553 367 -535Q399 -518 416 -496Q433 -473 442 -459L451 -459L451 -546L536 -546L536 14Q536 84 504 129Q473 174 418 195Q365 216 298 216M296 -87Q370 -87 410 -137Q449 -188 449 -277Q449 -364 410 -419Q372 -474 296 -474Q244 -474 209 -447Q175 -421 157 -376Q140 -332 140 -277Q140 -193 180 -140Q219 -87 296 -87"/>
 <path id="r68" d="M165 -327L165 0L77 0L77 -728L165 -728L165 -451Q192 -506 233 -529Q275 -553 329 -553Q412 -553 463 -501Q514 -450 514 -347L514 0L426 0L426 -339Q426 -402 393 -438Q360 -474 303 -474Q244 -474 204 -435Q165 -397 165 -327"/>
 <path id="r69" d="M77 0L77 -546L165 -546L165 0L77 0M122 -635Q97 -635 79 -652Q61 -669 61 -693Q61 -718 79 -734Q97 -751 122 -751Q147 -751 165 -734Q183 -718 183 -693Q183 -669 165 -652Q147 -635 122 -635"/>
+<path id="r6b" d="M77 0L77 -728L165 -728L165 -305L176 -305L409 -546L518 -546L290 -312L535 0L422 0L223 -255L165 -201L165 0L77 0"/>
 <path id="r6c" d="M165 -728L165 0L77 0L77 -728L165 -728"/>
 <path id="r6d" d="M77 0L77 -546L163 -546L163 -446Q183 -501 225 -528Q268 -556 316 -556Q370 -556 405 -525Q440 -495 455 -444Q475 -496 521 -526Q568 -556 627 -556Q674 -556 713 -535Q752 -515 775 -473Q799 -432 799 -368L799 0L711 0L711 -366Q711 -425 678 -450Q645 -476 601 -476Q545 -476 514 -442Q482 -408 482 -356L482 0L394 0L394 -375Q394 -420 364 -448Q334 -476 287 -476Q239 -476 202 -442Q165 -409 165 -344L165 0L77 0"/>
 <path id="r6e" d="M165 -327L165 0L77 0L77 -546L162 -546L162 -445Q188 -503 231 -528Q274 -553 329 -553Q412 -553 463 -501Q514 -450 514 -347L514 0L426 0L426 -339Q426 -402 393 -438Q360 -474 303 -474Q244 -474 204 -435Q165 -397 165 -327"/>
@@ -77,6 +78,7 @@
 <path id="s72" d="M67 0L67 -546L190 -546L190 -455L196 -455Q211 -502 248 -527Q284 -553 331 -553Q355 -553 377 -550L377 -433Q370 -435 352 -437Q334 -439 317 -439Q264 -439 229 -406Q194 -374 194 -321L194 0L67 0"/>
 <path id="s73" d="M274 11Q180 11 118 -29Q57 -69 43 -144L162 -166Q183 -86 276 -86Q323 -86 351 -105Q378 -124 378 -151Q378 -198 305 -214L211 -234Q58 -267 58 -387Q58 -438 86 -475Q114 -512 163 -532Q213 -553 278 -553Q371 -553 425 -514Q479 -476 496 -412L382 -390Q373 -418 348 -438Q324 -458 280 -458Q240 -458 212 -440Q185 -422 185 -395Q185 -371 203 -355Q221 -340 263 -331L355 -311Q508 -278 508 -164Q508 -112 479 -72Q449 -33 396 -11Q343 11 274 11"/>
 <path id="s74" d="M320 -546L320 -446L214 -446L214 -154Q214 -124 227 -110Q239 -96 269 -96Q277 -96 292 -98Q306 -101 315 -103L335 -4Q314 2 292 4Q270 7 250 7Q171 7 129 -32Q87 -71 87 -143L87 -446L10 -446L10 -546L87 -546L87 -676L214 -676L214 -546L320 -546"/>
+<path id="s75" d="M254 7Q170 7 119 -47Q67 -101 67 -199L67 -546L194 -546L194 -218Q194 -164 223 -132Q251 -101 301 -101Q352 -101 385 -134Q417 -167 417 -226L417 -546L545 -546L545 0L424 0L423 -109Q375 7 254 7"/>
 <path id="s76" d="M222 0L19 -546L155 -546L254 -249Q267 -213 276 -176Q286 -140 295 -103Q304 -140 313 -176Q322 -213 334 -249L434 -546L568 -546L364 0L222 0"/>
 <path id="s78" d="M24 0L205 -280L35 -546L175 -546L230 -453Q247 -425 260 -398Q273 -372 286 -347Q299 -372 312 -399Q325 -426 342 -453L399 -546L536 -546L363 -277L544 0L406 0L338 -109Q322 -136 309 -162Q295 -188 283 -213Q271 -188 258 -162Q245 -136 229 -109L162 0L24 0"/>
 <path id="s79" d="M62 195L92 96L107 100Q150 111 179 97Q208 84 217 37L225 2L19 -546L155 -546L254 -249Q266 -213 275 -178Q284 -143 292 -107Q301 -143 310 -178Q320 -214 332 -249L435 -546L569 -546L335 70Q310 136 266 172Q221 208 147 208Q120 208 97 204Q75 200 62 195"/>
@@ -150,6 +152,9 @@
 </g>
 <g fill="#161b22" stroke="#30363d" stroke-width="1.25">
 <rect class="node" x="432" y="376" width="184" height="56" rx="10"/>
+</g>
+<g fill="#161b22" stroke="#30363d" stroke-width="1.25">
+<rect class="node" x="640" y="376" width="184" height="56" rx="10"/>
 </g>
 <g fill="#161b22" stroke="#30363d" stroke-width="1.25">
 <rect class="node" x="16" y="472" width="184" height="56" rx="10"/>
@@ -675,6 +680,42 @@
 <use href="#r69" x="8138"/>
 <use href="#r63" x="8380"/>
 <use href="#r73" x="8952"/>
+</g>
+<g transform="translate(652 397) scale(0.014)">
+<use href="#s69"/>
+<use href="#s6e" x="262"/>
+<use href="#s74" x="874"/>
+<use href="#s65" x="1227"/>
+<use href="#s72" x="1818"/>
+<use href="#s6e" x="2215"/>
+<use href="#s61" x="2827"/>
+<use href="#s6c" x="3401"/>
+<use href="#s2f" x="3663"/>
+<use href="#s61" x="4042"/>
+<use href="#s75" x="4616"/>
+<use href="#s74" x="5228"/>
+<use href="#s68" x="5581"/>
+</g>
+<g fill="#9198a1" transform="translate(652 417) scale(0.012)">
+<use href="#r41"/>
+<use href="#r63" x="690"/>
+<use href="#r63" x="1261"/>
+<use href="#r65" x="1833"/>
+<use href="#r73" x="2416"/>
+<use href="#r73" x="2943"/>
+<use href="#r74" x="3752"/>
+<use href="#r6f" x="4080"/>
+<use href="#r6b" x="4679"/>
+<use href="#r65" x="5228"/>
+<use href="#r6e" x="5811"/>
+<use href="#r76" x="6683"/>
+<use href="#r65" x="7245"/>
+<use href="#r72" x="7828"/>
+<use href="#r69" x="8205"/>
+<use href="#r66" x="8447"/>
+<use href="#r69" x="8817"/>
+<use href="#r65" x="9059"/>
+<use href="#r72" x="9642"/>
 </g>
 <g transform="translate(28 493) scale(0.014)">
 <use href="#s69"/>
