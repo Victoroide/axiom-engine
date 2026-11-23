@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"slices"
 	"testing"
 
 	"pgregory.net/rapid"
@@ -29,6 +30,7 @@ func drawDAG(t *rapid.T) ([]string, []domain.GraphTuple, *InMemoryGraph) {
 	if len(tuples) == 0 {
 		tuples = append(tuples, domain.GraphTuple{Subject: names[1], Relation: "depends_on", Object: names[0]})
 	}
+	tuples = rapid.Permutation(tuples).Draw(t, "tuple order")
 	data, err := json.Marshal(tuples)
 	if err != nil {
 		t.Fatal(err)
@@ -60,8 +62,12 @@ func TestPrerequisiteOrderProperty(t *testing.T) {
 			}
 		}
 		for i, name := range names {
+			chain := g.GetPrerequisiteChain(name)
+			if want := prerequisiteOrder(names[i], tuples); !slices.Equal(chain, want) {
+				t.Fatalf("chain for %q = %v, want DFS order %v", name, chain, want)
+			}
 			positions := make(map[string]int)
-			for position, prerequisite := range g.GetPrerequisiteChain(name) {
+			for position, prerequisite := range chain {
 				j, known := index[prerequisite]
 				if _, duplicate := positions[prerequisite]; duplicate || !known || prerequisite == name || !reach[i][j] {
 					t.Fatalf("invalid prerequisite %q for %q", prerequisite, name)
@@ -83,6 +89,24 @@ func TestPrerequisiteOrderProperty(t *testing.T) {
 			}
 		}
 	})
+}
+
+// A recursive reference over small generated DAGs, independent of the graph indexes.
+func prerequisiteOrder(topic string, tuples []domain.GraphTuple) []string {
+	seen := map[string]bool{topic: true}
+	var order []string
+	var visit func(string)
+	visit = func(name string) {
+		for _, edge := range tuples {
+			if edge.Subject == name && !seen[edge.Object] {
+				seen[edge.Object] = true
+				visit(edge.Object)
+				order = append(order, edge.Object)
+			}
+		}
+	}
+	visit(topic)
+	return order
 }
 
 func TestLocalSubgraphDistanceProperty(t *testing.T) {
