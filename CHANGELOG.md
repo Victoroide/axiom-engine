@@ -15,6 +15,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Security
 
 - Build the service and development tools with Go 1.27.4 to resolve GO-2026-6859 in the standard library.
+- Update the Debian runtime image to ship libc6 2.41-12+deb13u5 on amd64 and arm64.
 
 ## [0.1.0] - 2026-11-09
 
