@@ -3,18 +3,22 @@ package server
 import (
 	"bytes"
 	"context"
+	"errors"
+	"fmt"
+	"io"
 	"net/http"
 	"strings"
 	"sync/atomic"
 	"testing"
+	"testing/synctest"
 	"time"
 
-	"github.com/Victoroide/axiom-engine/internal/domain"
-	"github.com/Victoroide/axiom-engine/internal/service"
-
 	"github.com/alicebob/miniredis/v2"
+	"github.com/gofiber/fiber/v3"
 
 	"github.com/Victoroide/axiom-engine/internal/config"
+	"github.com/Victoroide/axiom-engine/internal/domain"
+	"github.com/Victoroide/axiom-engine/internal/service"
 )
 
 func redisConfig(t *testing.T, url string) config.Config {
@@ -57,23 +61,24 @@ func TestRedisBudgetIsAtomicAcrossReplicas(t *testing.T) {
 	cfg.RateLimitMax = 5
 	first, second := newTestApp(t, cfg, nil, nil), newTestApp(t, cfg, nil, nil)
 	t.Cleanup(func() { _ = first.Shutdown(); _ = second.Shutdown() })
-	start := make(chan struct{})
-	statuses := make(chan int, 24)
-	for i := range 24 {
-		go func() {
-			<-start
-			app := first
-			if i%2 == 1 {
-				app = second
-			}
-			resp, _ := call(t, app, "GET", "/api/v1/tutor/student/s/cognitive-graph?topics=Recursion", "", nil)
-			statuses <- resp.StatusCode
-		}()
+
+	testDeadline, _ := t.Deadline()
+	ctx, cancel := context.WithDeadline(t.Context(), redisBudgetDeadline(time.Now(), testDeadline))
+	defer cancel()
+	statuses, err := collectRedisBudgetStatuses(ctx, 24, func(i int) (int, error) {
+		app := first
+		if i%2 == 1 {
+			app = second
+		}
+		resp, _, err := callWithError(app, http.MethodGet, "/api/v1/tutor/student/s/cognitive-graph?topics=Recursion", "", nil)
+		return resp.StatusCode, err
+	})
+	if err != nil {
+		t.Fatal(err)
 	}
-	close(start)
+
 	admitted := 0
-	for range 24 {
-		status := <-statuses
+	for _, status := range statuses {
 		if status == http.StatusOK {
 			admitted++
 		} else if status != http.StatusTooManyRequests {
@@ -88,6 +93,171 @@ func TestRedisBudgetIsAtomicAcrossReplicas(t *testing.T) {
 			t.Errorf("unprefixed key %q", key)
 		}
 	}
+}
+
+func redisBudgetDeadline(now, testDeadline time.Time) time.Time {
+	deadline := now.Add(5 * time.Second)
+	if testDeadline.IsZero() {
+		return deadline
+	}
+	// Leave cleanup time without spending the whole remaining budget.
+	reserve := min(time.Second, max(0, testDeadline.Sub(now))/2)
+	if reportBy := testDeadline.Add(-reserve); reportBy.Before(deadline) {
+		return reportBy
+	}
+	return deadline
+}
+
+type redisBudgetResult struct {
+	index  int
+	status int
+	err    error
+}
+
+func collectRedisBudgetStatuses(ctx context.Context, count int, request func(int) (int, error)) ([]int, error) {
+	start := make(chan struct{})
+	results := make(chan redisBudgetResult, count)
+	for i := range count {
+		go func() {
+			<-start
+			status, err := request(i)
+			results <- redisBudgetResult{index: i, status: status, err: err}
+		}()
+	}
+	close(start)
+	return waitRedisBudgetStatuses(ctx, count, results)
+}
+
+func waitRedisBudgetStatuses(ctx context.Context, count int, results <-chan redisBudgetResult) ([]int, error) {
+	statuses := make([]int, 0, count)
+	var errs []error
+	for received := range count {
+		var r redisBudgetResult
+		select {
+		case r = <-results:
+		case <-ctx.Done():
+			// Keep any ready result even when the deadline wins the select.
+			select {
+			case r = <-results:
+			default:
+				return statuses, errors.Join(append(errs, fmt.Errorf("received %d/%d results: %w", received, count, ctx.Err()))...)
+			}
+		}
+		if r.err != nil {
+			errs = append(errs, fmt.Errorf("request %d: %w", r.index+1, r.err))
+		} else {
+			statuses = append(statuses, r.status)
+		}
+	}
+	return statuses, errors.Join(errs...)
+}
+
+func TestRedisBudgetDeadline(t *testing.T) {
+	now := time.Now()
+	for _, tc := range []struct {
+		name         string
+		testDeadline time.Time
+		want         time.Time
+	}{
+		{"short budget", now.Add(500 * time.Millisecond), now.Add(250 * time.Millisecond)},
+		{"normal budget", now.Add(4 * time.Second), now.Add(3 * time.Second)},
+		{"long budget", now.Add(time.Minute), now.Add(5 * time.Second)},
+		{"no deadline", time.Time{}, now.Add(5 * time.Second)},
+		{"expired budget", now.Add(-time.Second), now.Add(-time.Second)},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			if got := redisBudgetDeadline(now, tc.testDeadline); !got.Equal(tc.want) {
+				t.Fatalf("collection budget = %s, want %s", got.Sub(now), tc.want.Sub(now))
+			}
+		})
+	}
+}
+
+func TestRedisBudgetDrainsReadyResultsAtDeadline(t *testing.T) {
+	requestErr := errors.New("request failed")
+	// Repeat each schedule because the result and deadline are both ready.
+	const trials = 64
+
+	t.Run("incomplete batch", func(t *testing.T) {
+		synctest.Test(t, func(t *testing.T) {
+			for range trials {
+				ctx, cancel := context.WithTimeout(t.Context(), time.Second)
+				results := make(chan redisBudgetResult, 2)
+				results <- redisBudgetResult{index: 0, err: requestErr}
+				results <- redisBudgetResult{index: 1, status: http.StatusOK}
+				<-ctx.Done()
+				statuses, err := waitRedisBudgetStatuses(ctx, 3, results)
+				cancel()
+				if !errors.Is(err, context.DeadlineExceeded) || !errors.Is(err, requestErr) || !strings.Contains(err.Error(), "received 2/3 results") {
+					t.Fatalf("collection error = %v, want request error and deadline after 2/3 results", err)
+				}
+				if len(statuses) != 1 || statuses[0] != http.StatusOK {
+					t.Fatalf("statuses = %v, want [200]", statuses)
+				}
+			}
+		})
+	})
+
+	t.Run("complete batch", func(t *testing.T) {
+		synctest.Test(t, func(t *testing.T) {
+			for range trials {
+				ctx, cancel := context.WithTimeout(t.Context(), time.Second)
+				results := make(chan redisBudgetResult, 1)
+				results <- redisBudgetResult{status: http.StatusOK}
+				<-ctx.Done()
+				statuses, err := waitRedisBudgetStatuses(ctx, 1, results)
+				cancel()
+				if err != nil || len(statuses) != 1 || statuses[0] != http.StatusOK {
+					t.Fatalf("statuses = %v, error = %v, want [200] and no error", statuses, err)
+				}
+			}
+		})
+	})
+}
+
+func TestRedisBudgetCollectsRequestErrors(t *testing.T) {
+	app := fiber.New()
+	app.Get("/ok", func(c fiber.Ctx) error { return c.SendStatus(http.StatusOK) })
+	app.Get("/drop", func(c fiber.Ctx) error { return c.Drop() })
+	app.Get("/truncated", func(c fiber.Ctx) error {
+		c.Response().SkipBody = true
+		c.Response().Header.SetContentLength(1)
+		return nil
+	})
+
+	ctx, cancel := context.WithTimeout(t.Context(), 2*time.Second)
+	defer cancel()
+	paths := [...]string{"/ok", "/drop", "/truncated"}
+	statuses, err := collectRedisBudgetStatuses(ctx, len(paths), func(i int) (int, error) {
+		resp, _, err := callWithError(app, http.MethodGet, paths[i], "", nil)
+		return resp.StatusCode, err
+	})
+	if !errors.Is(err, fiber.ErrTestGotEmptyResponse) || !errors.Is(err, io.ErrUnexpectedEOF) || errors.Is(err, context.DeadlineExceeded) {
+		t.Fatalf("request errors = %v, want dropped and truncated responses before the deadline", err)
+	}
+	if len(statuses) != 1 || statuses[0] != http.StatusOK {
+		t.Fatalf("statuses = %v, want [200]", statuses)
+	}
+}
+
+func TestRedisBudgetTimesOutOnMissingResult(t *testing.T) {
+	synctest.Test(t, func(t *testing.T) {
+		ctx, cancel := context.WithTimeout(t.Context(), time.Second)
+		defer cancel()
+		release := make(chan struct{})
+		defer close(release)
+		requestErr := errors.New("request failed")
+		_, err := collectRedisBudgetStatuses(ctx, 2, func(i int) (int, error) {
+			if i == 0 {
+				return 0, requestErr
+			}
+			<-release
+			return http.StatusOK, nil
+		})
+		if !errors.Is(err, context.DeadlineExceeded) || !errors.Is(err, requestErr) || !strings.Contains(err.Error(), "received 1/2 results") {
+			t.Fatalf("collection error = %v, want request error and deadline after 1/2 results", err)
+		}
+	})
 }
 
 func TestRedisSharesIdempotencyAndExpires(t *testing.T) {

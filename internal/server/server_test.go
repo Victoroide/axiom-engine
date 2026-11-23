@@ -69,6 +69,14 @@ type response struct {
 
 func call(t *testing.T, app *fiber.App, method, path, body string, headers map[string]string) (response, string) {
 	t.Helper()
+	resp, data, err := callWithError(app, method, path, body, headers)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return resp, data
+}
+
+func callWithError(app *fiber.App, method, path, body string, headers map[string]string) (response, string, error) {
 	req := httptest.NewRequestWithContext(context.Background(), method, path, strings.NewReader(body))
 	if body != "" {
 		req.Header.Set("Content-Type", "application/json")
@@ -78,14 +86,14 @@ func call(t *testing.T, app *fiber.App, method, path, body string, headers map[s
 	}
 	resp, err := app.Test(req)
 	if err != nil {
-		t.Fatal(err)
+		return response{}, "", fmt.Errorf("send test request: %w", err)
 	}
 	defer func() { _ = resp.Body.Close() }()
 	data, err := io.ReadAll(resp.Body)
 	if err != nil {
-		t.Fatal(err)
+		return response{}, "", fmt.Errorf("read test response: %w", err)
 	}
-	return response{StatusCode: resp.StatusCode, Header: resp.Header}, string(data)
+	return response{StatusCode: resp.StatusCode, Header: resp.Header}, string(data), nil
 }
 
 const validBody = `{"student_id":"student-42","course_id":"cs101","failed_topics":["Recursion","Polymorphism"],"vark_profile":"visual"}`

@@ -262,6 +262,12 @@ The resource link HTTP outcome test uses a longer deadline for ordinary loopback
 go test -race -count=200 -run '^TestResourceLinkHTTPOutcomes$' ./internal/service
 ```
 
+The shared Redis budget test sends 24 concurrent requests across two replicas and requires exactly five HTTP 200 responses. Every other response must be HTTP 429. The parent test reports request and response-body errors and waits at most five seconds for results. It reserves up to one second for reporting and cleanup, capped at half the time remaining before the package deadline. If the wait expires, the parent collects any buffered results before reporting an incomplete batch.
+
+```sh
+go test -race -count=50 -run '^TestRedisBudgetIsAtomicAcrossReplicas$' ./internal/server
+```
+
 #### Goroutine leak detection
 
 Unit test suites for `internal/service`, `internal/server`, and `internal/llm` enforce goroutine leak detection using `go.uber.org/goleak v1.3.0` inside `TestMain`, ensuring no unexpected background goroutines remain active after package test execution.
