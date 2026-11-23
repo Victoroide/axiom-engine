@@ -1,20 +1,29 @@
 package mcpserver
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"io"
 	"log/slog"
 	"reflect"
 	"slices"
+	"strings"
 	"testing"
+	"time"
 
 	"github.com/modelcontextprotocol/go-sdk/mcp"
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/codes"
+	sdktrace "go.opentelemetry.io/otel/sdk/trace"
+	"go.opentelemetry.io/otel/sdk/trace/tracetest"
 
 	"github.com/Victoroide/axiom-engine/internal/config"
 	"github.com/Victoroide/axiom-engine/internal/domain"
 	"github.com/Victoroide/axiom-engine/internal/graph"
 	"github.com/Victoroide/axiom-engine/internal/service"
+	"github.com/Victoroide/axiom-engine/internal/telemetry"
 )
 
 type plannerFunc func(context.Context, service.TopicRequest) ([]domain.PlanItem, error)
@@ -41,6 +50,11 @@ func sessionWithConfig(t *testing.T, cfg config.Config, planner plannerFunc, mid
 	t.Helper()
 	s := New(cfg, graph.NewInMemoryGraph(), planner, slog.New(slog.NewJSONHandler(io.Discard, nil)), "test-version")
 	s.AddReceivingMiddleware(middleware...)
+	return connectTestClient(t, s)
+}
+
+func connectTestClient(t *testing.T, s *mcp.Server) *mcp.ClientSession {
+	t.Helper()
 	st, ct := mcp.NewInMemoryTransports()
 	ss, err := s.Connect(t.Context(), st, nil)
 	if err != nil {
@@ -54,6 +68,92 @@ func sessionWithConfig(t *testing.T, cfg config.Config, planner plannerFunc, mid
 	}
 	t.Cleanup(func() { _ = cs.Close() })
 	return cs
+}
+
+func TestPlannerPanicPrivacyOverMCP(t *testing.T) {
+	const marker = "private-mcp-panic-value"
+	exporter := tracetest.NewInMemoryExporter()
+	tp := sdktrace.NewTracerProvider(sdktrace.WithSampler(sdktrace.AlwaysSample()), sdktrace.WithSyncer(exporter))
+	previous := otel.GetTracerProvider()
+	otel.SetTracerProvider(tp)
+	defer otel.SetTracerProvider(previous)
+	defer func() { _ = tp.Shutdown(t.Context()) }()
+	var logs bytes.Buffer
+	logger := slog.New(telemetry.LogHandler(slog.NewJSONHandler(&logs, nil)))
+	cfg := config.Config{RequestTimeout: time.Second, LLMTimeout: time.Second, MaxFailedTopics: 1}
+	cfg.Tracing.Enabled = true
+	cfg.Tracing.CaptureContent = true
+	planner := plannerFunc(func(context.Context, service.TopicRequest) ([]domain.PlanItem, error) { panic(errors.New(marker)) })
+	cs := connectTestClient(t, New(cfg, graph.NewInMemoryGraph(), planner, logger, "test-version"))
+	result, err := cs.CallTool(t.Context(), &mcp.CallToolParams{Name: "generate_study_plan", Arguments: PlanInput{FailedTopics: []string{"Recursion"}, VARKProfile: "visual"}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	data, err := json.Marshal(result)
+	if err != nil {
+		t.Fatal(err)
+	}
+	const envelope = `{"error":"internal_error","details":"reasoning failed"}`
+	structured, err := json.Marshal(result.StructuredContent)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var failure domain.ErrorResponse
+	if err := json.Unmarshal(structured, &failure); err != nil {
+		t.Fatal(err)
+	}
+	if !result.IsError || failure != (domain.ErrorResponse{Error: "internal_error", Details: "reasoning failed"}) || len(result.Content) != 1 {
+		t.Fatalf("unexpected MCP failure envelope: %s", data)
+	}
+	if content, ok := result.Content[0].(*mcp.TextContent); !ok || content.Text != envelope {
+		t.Fatalf("unexpected MCP error content: %s", data)
+	}
+	spans := exporter.GetSpans()
+	traceData, err := json.Marshal(spans)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if bytes.Contains(data, []byte(marker)) || strings.Contains(logs.String(), marker) || bytes.Contains(traceData, []byte(marker)) {
+		t.Error("recovered error appeared in MCP response, log or trace")
+	}
+	var id string
+	for _, span := range spans {
+		if span.Name == "tools/call generate_study_plan" && span.Status.Code == codes.Error && span.Status.Description == "internal_error" {
+			for _, attr := range span.Attributes {
+				if attr.Key == "request_id" {
+					id = attr.Value.AsString()
+				}
+			}
+		}
+	}
+	if id == "" {
+		t.Errorf("missing classified MCP span with request ID: %s", traceData)
+	}
+	count := 0
+	for line := range strings.Lines(logs.String()) {
+		var record struct {
+			Message    string `json:"msg"`
+			Level      string `json:"level"`
+			RequestID  string `json:"request_id"`
+			ErrorClass string `json:"error_class"`
+		}
+		if err := json.Unmarshal([]byte(line), &record); err != nil {
+			t.Fatal(err)
+		}
+		if record.Level != "ERROR" {
+			continue
+		}
+		count++
+		if record.Message != "planner.panic" || record.RequestID == "" || record.RequestID != id || record.ErrorClass != "internal_error" || len(line) > 1024 {
+			t.Errorf("unexpected MCP panic log fields or size (%d bytes, event %q)", len(line), record.Message)
+		}
+	}
+	if count != 1 {
+		t.Errorf("got %d error records, want one", count)
+	}
+	if next, err := cs.CallTool(t.Context(), &mcp.CallToolParams{Name: "list_topics", Arguments: ListTopicsInput{Q: "Recursion"}}); err != nil || next.IsError {
+		t.Fatalf("MCP session failed after planner panic: result=%v err=%v", next, err)
+	}
 }
 
 func successfulPlanner(_ context.Context, req service.TopicRequest) ([]domain.PlanItem, error) {

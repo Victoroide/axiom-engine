@@ -627,10 +627,11 @@ func TestIncompleteRequestedTopicsFail(t *testing.T) {
 }
 
 func TestPlannerPanicFailsOnlyTheRequest(t *testing.T) {
+	const marker = "private-planner-panic-value"
 	var logs bytes.Buffer
 	svc := NewReasoningService(graph.NewInMemoryGraph(), plannerFunc(func(_ context.Context, r TopicRequest) ([]domain.PlanItem, error) {
 		if r.Topic == "Recursion" {
-			panic("planner defect")
+			panic(errors.New(marker))
 		}
 		return []domain.PlanItem{{Topic: r.Topic}}, nil
 	}), Options{LLMTimeout: time.Second, MaxFailedTopics: 10, Logger: slog.New(slog.NewJSONHandler(&logs, nil))})
@@ -648,6 +649,9 @@ func TestPlannerPanicFailsOnlyTheRequest(t *testing.T) {
 	if _, err := svc.GeneratePlan(ctx, request("Polymorphism")); err != nil {
 		t.Fatalf("unrelated topic failed: %v", err)
 	}
+	if strings.Contains(logs.String(), marker) {
+		t.Error("recovered error appeared in planner logs")
+	}
 	panics := 0
 	decoder := json.NewDecoder(&logs)
 	for decoder.More() {
@@ -659,11 +663,91 @@ func TestPlannerPanicFailsOnlyTheRequest(t *testing.T) {
 			continue
 		}
 		panics++
-		if entry["level"] != "ERROR" || entry["request_id"] != "panic-42" || entry["topic"] != "Recursion" || entry["panic"] != "planner defect" || !strings.Contains(fmt.Sprint(entry["stack"]), "TestPlannerPanicFailsOnlyTheRequest") {
+		if entry["level"] != "ERROR" || entry["request_id"] != "panic-42" || entry["error_class"] != "internal_error" || len(entry) != 5 {
 			t.Fatalf("panic record=%v", entry)
 		}
 	}
 	if panics != 5 {
 		t.Fatalf("planner.panic records=%d, want one per panicking call", panics)
 	}
+}
+
+func TestConcurrentPlannerPanicsReleasePermits(t *testing.T) {
+	synctest.Test(t, func(t *testing.T) {
+		const limit = 5
+		const marker = "private-concurrent-panic-value"
+		started := make(chan struct{}, limit)
+		release := make(chan struct{})
+		unblock := sync.OnceFunc(func() { close(release) })
+		defer unblock()
+		var logs bytes.Buffer
+		svc := NewReasoningService(graph.NewInMemoryGraph(), plannerFunc(func(_ context.Context, req TopicRequest) ([]domain.PlanItem, error) {
+			if req.Topic == "Recursion" {
+				started <- struct{}{}
+				<-release
+				panic(errors.New(marker))
+			}
+			return []domain.PlanItem{{Topic: req.Topic}}, nil
+		}), Options{MaxConcurrency: limit, LLMTimeout: time.Second, MaxFailedTopics: 10, Logger: slog.New(slog.NewJSONHandler(&logs, nil))})
+		ctx, cancel := context.WithCancel(t.Context())
+		defer cancel()
+		canceled := make(chan error, 1)
+		go func() {
+			_, err := svc.GeneratePlan(ctx, request("Recursion"))
+			canceled <- err
+		}()
+		failed := make(chan error, limit-1)
+		for range limit - 1 {
+			go func() {
+				_, err := svc.GeneratePlan(t.Context(), request("Recursion"))
+				failed <- err
+			}()
+		}
+		synctest.Wait()
+		if len(started) != limit {
+			t.Fatalf("started %d planners, want %d", len(started), limit)
+		}
+		cancel()
+		if err := <-canceled; !errors.Is(err, context.Canceled) {
+			t.Fatalf("canceled request returned %v", err)
+		}
+		if svc.slots.TryAcquire(1) {
+			svc.slots.Release(1)
+			t.Fatal("canceled request released its permit while the planner was still running")
+		}
+		unrelated := make(chan error, 1)
+		go func() {
+			_, err := svc.GeneratePlan(t.Context(), request("Polymorphism"))
+			unrelated <- err
+		}()
+		synctest.Wait()
+		if len(unrelated) != 0 {
+			t.Fatal("unrelated request completed while every permit was held")
+		}
+		unblock()
+		for range limit - 1 {
+			if err := <-failed; !errors.Is(err, ErrPlannerPanic) || ClassifyError(err, false).Response.Error != "internal_error" {
+				t.Fatalf("panicking request returned %v", err)
+			}
+		}
+		if err := <-unrelated; err != nil {
+			t.Fatalf("queued unrelated request returned %v", err)
+		}
+		synctest.Wait()
+		if !svc.slots.TryAcquire(limit) {
+			t.Fatal("planner calls leaked permits")
+		}
+		defer svc.slots.Release(limit)
+		if svc.slots.TryAcquire(1) {
+			svc.slots.Release(1)
+			t.Fatal("more permits available than configured")
+		}
+		counts := svc.breaker.Counts()
+		if svc.breaker.State() != gobreaker.StateClosed || counts.TotalFailures != 0 || counts.TotalExclusions != limit {
+			t.Fatalf("breaker state=%v counts=%+v", svc.breaker.State(), counts)
+		}
+		if strings.Contains(logs.String(), marker) || strings.Count(logs.String(), `"msg":"planner.panic"`) != limit {
+			t.Error("expected one redacted record per planner panic, including the canceled call")
+		}
+	})
 }

@@ -100,6 +100,14 @@ func Fail(span trace.Span, class string) {
 	span.SetStatus(codes.Error, class)
 }
 
+// LogRequestPanic records a recovery event using only fixed fields and correlation.
+func LogRequestPanic(ctx context.Context, logger *slog.Logger, event, requestID string) {
+	// The 128-byte cap keeps the standard JSON line within 1024 bytes even
+	// when every request ID byte needs escaping and trace IDs are present.
+	requestID = requestID[:min(len(requestID), 128)]
+	logger.ErrorContext(ctx, event, "request_id", requestID, "error_class", "internal_error")
+}
+
 type logHandler struct{ slog.Handler }
 
 // LogHandler adds trace correlation to records with a valid span context.

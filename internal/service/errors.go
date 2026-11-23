@@ -22,6 +22,13 @@ var ErrInvalidOutput = fmt.Errorf("invalid upstream output: %w", ErrUpstream)
 // internal error; the panic does not stop the process or count against the circuit.
 var ErrPlannerPanic = errors.New("planner panicked")
 
+var errLoggedPlannerPanic = fmt.Errorf("recovered %w", ErrPlannerPanic)
+
+// PlannerPanicLogged reports whether the service recovered and logged the panic.
+func PlannerPanicLogged(err error) bool {
+	return errors.Is(err, errLoggedPlannerPanic)
+}
+
 // TopicError identifies a failed topic without formatting the upstream payload.
 type TopicError struct {
 	Topic string

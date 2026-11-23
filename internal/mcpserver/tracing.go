@@ -5,7 +5,6 @@ import (
 	"log/slog"
 	"time"
 
-	"github.com/google/uuid"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
@@ -13,7 +12,6 @@ import (
 
 	"github.com/Victoroide/axiom-engine/internal/config"
 	"github.com/Victoroide/axiom-engine/internal/domain"
-	"github.com/Victoroide/axiom-engine/internal/service"
 	"github.com/Victoroide/axiom-engine/internal/telemetry"
 )
 
@@ -30,8 +28,7 @@ func traceTools(cfg config.Config, logger *slog.Logger) mcp.Middleware {
 					name = params.Name
 				}
 			}
-			id := uuid.NewString()
-			ctx = service.WithRequestID(ctx, id)
+			id := telemetry.RequestID(ctx)
 			ctx = telemetry.WithSettings(ctx, cfg.Tracing.CaptureContent, cfg.LangSmith.Enabled)
 			ctx, span := otel.Tracer("github.com/Victoroide/axiom-engine").Start(ctx, "tools/call "+name, trace.WithSpanKind(trace.SpanKindServer), trace.WithAttributes(attribute.String("rpc.system.name", "mcp"), attribute.String("rpc.method", "tools/call"), attribute.String("mcp.tool.name", name), attribute.String("request_id", id)))
 			telemetry.Annotate(ctx, span, "chain", "tools/call "+name)

@@ -90,7 +90,8 @@ func (h *Handler) handleAdaptivePlan(c fiber.Ctx) error {
 	if !accepted {
 		return err
 	}
-	ctx, cancel := context.WithTimeout(service.WithRequestID(c.Context(), requestid.FromContext(c)), h.timeout)
+	requestID := strings.Clone(requestid.FromContext(c))
+	ctx, cancel := context.WithTimeout(service.WithRequestID(c.Context(), requestID), h.timeout)
 	defer cancel()
 	telemetry.CaptureJSON(ctx, "input.value", struct {
 		FailedTopics []string `json:"failed_topics"`
@@ -124,7 +125,7 @@ func (h *Handler) classifyPipelineError(ctx context.Context, requestID string, e
 	if failure.RetryAfter%time.Second != 0 {
 		retrySeconds++
 	}
-	if failure.Response.Error != "validation_error" {
+	if failure.Response.Error != "validation_error" && !service.PlannerPanicLogged(err) {
 		attrs := []slog.Attr{slog.String("request_id", requestID), slog.String("error_class", failure.Response.Error)}
 		var topicErr *service.TopicError
 		if errors.As(err, &topicErr) {
