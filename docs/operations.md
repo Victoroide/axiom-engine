@@ -258,7 +258,7 @@ During runtime, exporter failures invoke an internal error handler that emits a 
 {"level":"WARN","msg":"tracing.export_failed","error_class":"trace_export_failed"}
 ```
 
-On process termination, the trace provider is shut down within the remaining graceful shutdown budget (signal time + `SHUTDOWN_DRAIN_DELAY` + `SHUTDOWN_TIMEOUT`). Pending spans are flushed to the OTLP receiver after the listener closes and Fiber drains connections. If flushing fails before the deadline, the process logs an error:
+On process termination, the trace provider is shut down within the remaining graceful shutdown budget (signal time + `SHUTDOWN_DRAIN_DELAY` + `SHUTDOWN_TIMEOUT`). Pending spans are flushed after the listener closes and Fiber drains connections. Export workers may report final batch failures through `tracing.export_failed`. If the shutdown callback reports an error or panics, `tracing.flush_failed` carries the fixed classification. Panics in either diagnostic write are contained.
 
 ```json
 {"level":"ERROR","msg":"tracing.flush_failed","error_class":"trace_export_failed"}
