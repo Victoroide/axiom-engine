@@ -42,7 +42,7 @@ RUN --mount=type=cache,target=/root/.cache/go-build \
     test "$(go list -m -f '{{.Version}}' github.com/boundaryml/baml)" = "v$version"; \
     go build -trimpath -ldflags='-s -w' -o /out/axiom-server ./cmd/server
 
-FROM gcr.io/distroless/cc-debian13:nonroot@sha256:cc66d222f0a7ec996b78a99fe76a969bc80b539a5016ad866c14d1949bc6d0ab AS runtime
+FROM gcr.io/distroless/cc-debian13:nonroot@sha256:532c7a94f9e96ba9db75eb9388f4227751131c7cb0a411d1a8521af4096135de AS runtime
 
 ARG VERSION=dev
 ARG VCS_REF=unknown
