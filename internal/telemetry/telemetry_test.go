@@ -99,6 +99,40 @@ func TestDisabledTracingKeepsProvider(t *testing.T) {
 	}
 }
 
+func TestExportedSpansOmitRecoveredPanic(t *testing.T) {
+	const marker = "private-span-panic-value"
+	t.Setenv("OTEL_TRACES_SAMPLER", "always_on")
+	generic := newTraceReceiver(t)
+	langsmith := newTraceReceiver(t)
+	t.Setenv("OTEL_EXPORTER_OTLP_TRACES_ENDPOINT", generic.server.URL+"/v1/traces")
+	tp := configureTraceReceiver(t, langsmith, true)
+	func() {
+		defer func() {
+			if recover() == nil {
+				t.Error("expected the panic to reach the recovery boundary")
+			}
+		}()
+		ctx, span := Start(WithSettings(t.Context(), true, true), "chat planner")
+		Annotate(ctx, span, "llm", "chat planner")
+		defer span.End()
+		panic(errors.New(marker))
+	}()
+	if err := tp.ForceFlush(t.Context()); err != nil {
+		t.Fatal(err)
+	}
+	for name, receiver := range map[string]*traceReceiver{"OTLP": generic, "LangSmith": langsmith} {
+		batches := receiver.snapshot()
+		if len(batches) != 1 || len(batches[0]) != 1 || batches[0][0].Name != "chat planner" {
+			t.Errorf("%s did not export the planner span", name)
+			continue
+		}
+		span := batches[0][0]
+		if len(span.Events) != 0 || strings.Contains(span.String(), marker) {
+			t.Errorf("%s exported an automatic panic event or recovered value", name)
+		}
+	}
+}
+
 func TestLogCorrelation(t *testing.T) {
 	recorder := tracetest.NewSpanRecorder()
 	tp := sdktrace.NewTracerProvider(sdktrace.WithSpanProcessor(recorder))

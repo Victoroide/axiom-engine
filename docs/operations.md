@@ -247,6 +247,7 @@ When content capture is active, spans include:
 - **Learner identification exclusion**: Student identifiers (`student_id`) and course identifiers (`course_id`) are strictly excluded from span attributes, `input.value`, and `output.value`.
 - **Sensitive header isolation**: HTTP authorization headers, internal tokens, and provider API keys are never captured in span attributes or logged.
 - **Attribute truncation**: Each captured prompt, completion, input, or output string is truncated to a maximum of 32 KiB on a valid UTF-8 character boundary.
+- **Panic privacy**: HTTP JSON errors, errors before an SSE stream opens, and MCP tool errors carry their classification on the request span. When a recovered planner panic determines the error for an open, connected SSE stream, the HTTP request span reports HTTP 200 and the terminal `error` event carries `internal_error` with equivalent status `500`. Spans that end during panic unwinding omit automatic exception events and recovered values.
 - **Disabling content capture**: Set `TRACING_CAPTURE_CONTENT=false` to export span hierarchy, latency, error types, and token usage counts to LangSmith and OTLP receivers without capturing prompt, completion, or input/output text.
 - **Dual-exporter privacy**: Captured content is attached to span attributes in memory; if both the generic OTLP exporter (`TRACING_ENABLED=true`) and LangSmith (`LANGSMITH_TRACING=true`) are active, captured content is delivered to both destinations. Verify collector destination policies when running both exporters.
 

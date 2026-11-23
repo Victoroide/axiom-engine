@@ -15,7 +15,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Security
 
-- Omit recovered panic values and stack traces from planner and HTTP recovery logs. Keep the error classification and request correlation, and contain panics during trace shutdown.
+- Omit recovered panic values and stacks from recovery logs and exported traces. Keep request correlation for late HTTP planner panics and MCP tool calls with tracing disabled. Contain panics in trace shutdown and exporter diagnostics.
 - Build the service and development tools with Go 1.27.4 to resolve GO-2026-6859 in the standard library.
 - Update the Debian runtime image to ship libc6 2.41-12+deb13u5 on amd64 and arm64.
 
