@@ -242,6 +242,12 @@ go test -race -run TestPlannerPanicFailsOnlyTheRequest ./internal/service
 
 The test sends five plan requests whose planner panics. Each fails with `ErrPlannerPanic`, the breaker records five exclusions and zero failures, and an unrelated plan succeeds. `TestPlannerIgnoringContextStillTimesOut` exercises a different path. The caller gets a deadline error while the only permit is still occupied. The permit becomes available when the planner returns. Both cases are in [the reasoning service tests](../internal/service/reasoning_test.go).
 
+The resource link HTTP outcome test uses a longer deadline for ordinary loopback responses and a short deadline for `/slow`. The slow handler waits for cancellation and eventually returns a successful response if the checker leaves the request running. Run the focused race test from the repository root alongside `make test` to check stability under load.
+
+```sh
+go test -race -count=200 -run '^TestResourceLinkHTTPOutcomes$' ./internal/service
+```
+
 #### Goroutine leak detection
 
 Unit test suites for `internal/service`, `internal/server`, and `internal/llm` enforce goroutine leak detection using `go.uber.org/goleak v1.3.0` inside `TestMain`, ensuring no unexpected background goroutines remain active after package test execution.

@@ -66,7 +66,12 @@ func TestResourceLinkHTTPOutcomes(t *testing.T) {
 			fallback.Add(1)
 			w.WriteHeader(http.StatusPartialContent)
 		case "/slow":
-			<-r.Context().Done()
+			select {
+			case <-r.Context().Done():
+			case <-time.After(time.Second):
+				// Return success if the checker leaves the request running.
+				w.WriteHeader(http.StatusNoContent)
+			}
 		case "/r3":
 			http.Redirect(w, r, "/r2", http.StatusFound)
 		case "/r2":
@@ -77,14 +82,20 @@ func TestResourceLinkHTTPOutcomes(t *testing.T) {
 	}))
 	defer remote.Close()
 	recorder := metrics.New()
-	checker := NewResourceLinkChecker(50*time.Millisecond, loopbackLinkPolicy{}, recorder)
-	for _, tc := range []struct{ path, want string }{{"/ok", "ok"}, {"/missing", "status"}, {"/redirect", "ok"}, {"/fallback405", "ok"}, {"/fallback501", "ok"}, {"/slow", "timeout"}, {"/r3", "ok"}, {"/r4", "status"}} {
+	checker := NewResourceLinkChecker(5*time.Second, loopbackLinkPolicy{}, recorder)
+	for _, tc := range []struct{ path, want string }{{"/ok", "ok"}, {"/missing", "status"}, {"/redirect", "ok"}, {"/fallback405", "ok"}, {"/fallback501", "ok"}, {"/r3", "ok"}, {"/r4", "status"}} {
 		t.Run(tc.path, func(t *testing.T) {
 			if got := checker.Check(t.Context(), remote.URL+tc.path); got != tc.want {
 				t.Fatalf("result=%s want=%s", got, tc.want)
 			}
 		})
 	}
+	t.Run("/slow", func(t *testing.T) {
+		checker := NewResourceLinkChecker(50*time.Millisecond, loopbackLinkPolicy{}, recorder)
+		if got := checker.Check(t.Context(), remote.URL+"/slow"); got != "timeout" {
+			t.Fatalf("result=%s want=timeout", got)
+		}
+	})
 	if fallback.Load() != 2 {
 		t.Fatalf("fallback requests=%d", fallback.Load())
 	}
