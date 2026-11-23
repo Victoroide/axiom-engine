@@ -3,8 +3,11 @@ package graph
 import (
 	"bytes"
 	"encoding/json"
+	"io"
+	"slices"
 	"strings"
 	"testing"
+	"testing/iotest"
 	"unicode"
 	"unicode/utf8"
 
@@ -23,10 +26,49 @@ func FuzzDecode(f *testing.F) {
 	f.Add([]byte("[{\"subject\":\"Bad\xffName\",\"relation\":\"depends_on\",\"object\":\"Base\"}]"))
 	f.Add([]byte(`[{"subject":"A","relation":"depends_on","object":"B"},{"subject":"B","relation":"is_a","object":"A"}]`))
 	f.Add([]byte(`[{"subject":"Merge Sort","relation":"depends_on","object":"Base"},{"subject":"merge  sort","relation":"depends_on","object":"Base"}]`))
+	f.Add([]byte(`[{"subject":"A","relation":"is_a","object":"B","extra":true}]`))
+	f.Add([]byte(`[{"subject":"A","relation":"is_a","object":"B"},null]`))
+	f.Add([]byte(`[{"subject":"A","relation":"unknown","object":"B"}]`))
+	f.Add([]byte(strings.Repeat(" ", 30) + "桐"))
 	f.Fuzz(func(t *testing.T, data []byte) {
 		g, err := Decode(bytes.NewReader(data))
+		again, nextErr := Decode(iotest.HalfReader(bytes.NewReader(data)))
 		if err != nil {
+			if again != nil || nextErr == nil || err.Error() != nextErr.Error() {
+				t.Fatalf("diagnostic changed with read size: %v vs %v", err, nextErr)
+			}
 			return
+		}
+		if nextErr != nil || !slices.Equal(g.All(), again.All()) {
+			t.Fatalf("tuple order or acceptance changed with read size: %v", nextErr)
+		}
+
+		// Check the accepted tuple sequence against a whole-array decode.
+		dec := json.NewDecoder(bytes.NewReader(data))
+		dec.DisallowUnknownFields()
+		var input []domain.GraphTuple
+		if err := dec.Decode(&input); err != nil || len(input) == 0 {
+			t.Fatalf("accepted invalid tuple array: %v", err)
+		}
+		if err := dec.Decode(new(any)); err != io.EOF {
+			t.Fatalf("accepted trailing data: %v", err)
+		}
+		seenTuples := make(map[domain.GraphTuple]bool)
+		var unique []domain.GraphTuple
+		for _, tuple := range input {
+			tuple.Subject = strings.TrimSpace(tuple.Subject)
+			tuple.Object = strings.TrimSpace(tuple.Object)
+			tuple.Relation = strings.TrimSpace(tuple.Relation)
+			if tuple.Subject == "" || tuple.Object == "" || tuple.Subject == tuple.Object || (tuple.Relation != "depends_on" && tuple.Relation != "is_a") {
+				t.Fatalf("accepted invalid tuple: %+v", tuple)
+			}
+			if !seenTuples[tuple] {
+				seenTuples[tuple] = true
+				unique = append(unique, tuple)
+			}
+		}
+		if !slices.Equal(g.All(), unique) {
+			t.Fatalf("unexpected distinct tuple order: got %v, want %v", g.All(), unique)
 		}
 		keys := make(map[string]string)
 		for name := range g.nodes {

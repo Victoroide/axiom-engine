@@ -22,27 +22,25 @@ func (g *InMemoryGraph) Summary() Summary {
 	}
 	lengths := make(map[string]int, len(g.nodes))
 	previous := make(map[string]string, len(g.nodes))
-	var length func(string) int
-	length = func(name string) int {
-		if n, ok := lengths[name]; ok {
-			return n
-		}
+	walk := prerequisiteWalk{state: make(map[string]visitState, len(g.nodes))}
+	finish := func(name string) {
 		longest := 0
-		for _, prerequisite := range g.Prerequisites(name) {
-			if n := length(prerequisite); n > longest {
+		for _, edge := range g.forward[name] {
+			prerequisite := edge.Object
+			if n := lengths[prerequisite]; n > longest || (n == longest && prerequisite < previous[name]) {
 				longest = n
 				previous[name] = prerequisite
 			}
 		}
 		lengths[name] = longest + 1
-		return longest + 1
 	}
 	end := ""
 	for _, name := range slices.Sorted(maps.Keys(g.nodes)) {
 		if len(g.forward[name]) == 0 {
 			summary.Roots = append(summary.Roots, name)
 		}
-		if n := length(name); n > lengths[end] {
+		walk.visit(g, name, finish)
+		if lengths[name] > lengths[end] {
 			end = name
 		}
 	}

@@ -118,7 +118,9 @@ func TestNewInMemoryGraph_DefaultTuples(t *testing.T) {
 func TestAdd(t *testing.T) {
 	g := NewInMemoryGraph()
 	before := len(g.All())
-	g.add(domain.GraphTuple{Subject: "TestA", Relation: "rel", Object: "TestB"})
+	if err := g.add(domain.GraphTuple{Subject: "TestA", Relation: "rel", Object: "TestB"}); err != nil {
+		t.Fatal(err)
+	}
 	after := len(g.All())
 	if after != before+1 {
 		t.Errorf("expected %d tuples after Add, got %d", before+1, after)

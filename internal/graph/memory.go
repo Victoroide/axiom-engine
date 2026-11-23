@@ -10,6 +10,7 @@ package graph
 import (
 	"bytes"
 	"cmp"
+	"fmt"
 	"slices"
 
 	"github.com/Victoroide/axiom-engine/internal/domain"
@@ -46,14 +47,27 @@ func NewInMemoryGraph() *InMemoryGraph {
 	return g
 }
 
-func (g *InMemoryGraph) add(t domain.GraphTuple) {
+// add indexes a validated tuple during construction. The caller discards the
+// candidate graph if either node fails registration.
+func (g *InMemoryGraph) add(t domain.GraphTuple) error {
+	for _, name := range [...]string{t.Subject, t.Object} {
+		if g.nodes[name] {
+			continue
+		}
+		key := Canonical(name)
+		if previous, exists := g.canonical[key]; exists {
+			return fmt.Errorf("has canonical node name collision: %q and %q", previous, name)
+		}
+		if len(g.nodes) == maxGraphNodes {
+			return fmt.Errorf("would exceed the graph limit of %d distinct nodes", maxGraphNodes)
+		}
+		g.nodes[name] = true
+		g.canonical[key] = name
+	}
 	g.forward[t.Subject] = append(g.forward[t.Subject], t)
 	g.reverse[t.Object] = append(g.reverse[t.Object], t)
-	g.nodes[t.Subject] = true
-	g.nodes[t.Object] = true
-	g.canonical[Canonical(t.Subject)] = t.Subject
-	g.canonical[Canonical(t.Object)] = t.Object
 	g.all = append(g.all, t)
+	return nil
 }
 
 // All returns a defensive copy of every GraphTuple in the graph.
@@ -86,30 +100,13 @@ func (g *InMemoryGraph) Resolve(name string) (string, bool) {
 // If the topic does not exist in the graph or has no outgoing prerequisite
 // edges, an empty slice is returned. Cyclic graphs are rejected at load time.
 func (g *InMemoryGraph) GetPrerequisiteChain(topic string) []string {
-	visited := make(map[string]bool, 8)
-	var chain []string
-
-	var dfs func(node string)
-	dfs = func(node string) {
-		if visited[node] {
-			return
+	walk := prerequisiteWalk{state: make(map[string]visitState)}
+	chain := []string{}
+	walk.visit(g, topic, func(node string) {
+		if node != topic {
+			chain = append(chain, node)
 		}
-		visited[node] = true
-		for _, t := range g.forward[node] {
-			if t.Relation == "depends_on" || t.Relation == "is_a" {
-				dfs(t.Object)
-			}
-		}
-		// Post-order: append after visiting all dependencies
-		chain = append(chain, node)
-	}
-
-	dfs(topic)
-
-	// chain is in post-order (roots first, topic last). Remove the topic itself.
-	if len(chain) > 0 && chain[len(chain)-1] == topic {
-		chain = chain[:len(chain)-1]
-	}
+	})
 	return chain
 }
 

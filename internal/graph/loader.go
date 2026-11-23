@@ -1,8 +1,10 @@
 package graph
 
 import (
+	"bytes"
 	_ "embed"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"maps"
@@ -15,6 +17,15 @@ import (
 
 	"github.com/Victoroide/axiom-engine/internal/domain"
 )
+
+const (
+	maxGraphBytes  = 8 * 1024 * 1024
+	maxGraphTuples = 50_000
+	maxGraphNodes  = 20_000
+	jsonWhitespace = " \t\r\n"
+)
+
+var errGraphBytes = fmt.Errorf("graph exceeds %d bytes", maxGraphBytes)
 
 //go:embed seed.json
 var seed []byte
@@ -32,63 +43,165 @@ func Load(path string) (*InMemoryGraph, error) {
 	return Decode(f)
 }
 
-// Decode validates a JSON tuple array and constructs an immutable graph.
+// Decode validates a JSON tuple array within the curriculum limits and constructs an immutable graph.
 func Decode(r io.Reader) (*InMemoryGraph, error) {
-	dec := json.NewDecoder(r)
+	input := &graphReader{
+		LimitedReader:     io.LimitedReader{R: r, N: maxGraphBytes},
+		leadingWhitespace: true,
+	}
+	dec := json.NewDecoder(input)
 	dec.DisallowUnknownFields()
-	var tuples []domain.GraphTuple
-	if err := dec.Decode(&tuples); err != nil {
-		return nil, fmt.Errorf("decode graph: %w", err)
+	start, err := dec.Token()
+	if err != nil {
+		return nil, fmt.Errorf("decode graph: %w", stableJSONError(err))
 	}
-	if err := dec.Decode(new(any)); err != io.EOF {
+	if start != json.Delim('[') {
 		return nil, fmt.Errorf("graph must contain exactly one JSON array")
-	}
-	if len(tuples) == 0 {
-		return nil, fmt.Errorf("graph must contain at least one tuple")
 	}
 	g := &InMemoryGraph{
 		forward:   make(map[string][]domain.GraphTuple),
 		reverse:   make(map[string][]domain.GraphTuple),
 		nodes:     make(map[string]bool),
 		canonical: make(map[string]string),
-		all:       make([]domain.GraphTuple, 0, len(tuples)),
 	}
-	seen := make(map[domain.GraphTuple]bool, len(tuples))
-	for i, t := range tuples {
-		t.Subject = strings.TrimSpace(t.Subject)
-		t.Relation = strings.TrimSpace(t.Relation)
-		t.Object = strings.TrimSpace(t.Object)
-		if t.Subject == "" || t.Object == "" || t.Relation == "" {
-			return nil, fmt.Errorf("tuple %d has an empty field", i)
+	seen := make(map[domain.GraphTuple]bool)
+	var tuple domain.GraphTuple
+	for i := 0; dec.More(); i++ {
+		if i == maxGraphTuples {
+			return nil, fmt.Errorf("graph exceeds %d input tuples", maxGraphTuples)
 		}
-		if t.Relation != "depends_on" && t.Relation != "is_a" {
-			return nil, fmt.Errorf("tuple %d has unsupported relation %q", i, t.Relation)
+		tuple = domain.GraphTuple{}
+		if err := dec.Decode(&tuple); err != nil {
+			return nil, fmt.Errorf("decode graph tuple %d: %w", i, stableJSONError(err))
 		}
-		if err := validNodeName(t.Subject); err != nil {
-			return nil, fmt.Errorf("tuple %d subject %.64q %w", i, t.Subject, err)
+		tuple.Subject = strings.TrimSpace(tuple.Subject)
+		tuple.Relation = strings.TrimSpace(tuple.Relation)
+		tuple.Object = strings.TrimSpace(tuple.Object)
+		if seen[tuple] {
+			continue
 		}
-		if err := validNodeName(t.Object); err != nil {
-			return nil, fmt.Errorf("tuple %d object %.64q %w", i, t.Object, err)
+		if err := g.validateTuple(tuple); err != nil {
+			return nil, fmt.Errorf("tuple %d %w", i, err)
 		}
-		if t.Subject == t.Object {
-			return nil, fmt.Errorf("tuple %d is a self loop", i)
+		if err := g.add(tuple); err != nil {
+			return nil, fmt.Errorf("tuple %d %w", i, err)
 		}
-		for _, name := range []string{t.Subject, t.Object} {
-			key := Canonical(name)
-			if previous, exists := g.canonical[key]; exists && previous != name {
-				return nil, fmt.Errorf("tuple %d has canonical node name collision: %q and %q", i, previous, name)
-			}
-			g.canonical[key] = name
-		}
-		if !seen[t] {
-			g.add(t)
-			seen[t] = true
-		}
+		seen[tuple] = true
+	}
+	end, err := dec.Token()
+	if err != nil {
+		return nil, fmt.Errorf("decode graph: %w", stableJSONError(err))
+	}
+	if end != json.Delim(']') {
+		return nil, fmt.Errorf("graph must contain exactly one JSON array")
+	}
+	if err := checkGraphEnd(io.MultiReader(dec.Buffered(), input)); err != nil {
+		return nil, err
+	}
+	if len(g.all) == 0 {
+		return nil, fmt.Errorf("graph must contain at least one tuple")
 	}
 	if cycle := g.prerequisiteCycle(); len(cycle) > 0 {
 		return nil, fmt.Errorf("graph contains a prerequisite cycle: %s", cycleSummary(cycle))
 	}
 	return g, nil
+}
+
+type graphSyntaxError struct {
+	syntax *json.SyntaxError
+}
+
+func (e graphSyntaxError) Error() string {
+	return "invalid JSON syntax"
+}
+
+func (e graphSyntaxError) Unwrap() error { return e.syntax }
+
+func stableJSONError(err error) error {
+	var syntax *json.SyntaxError
+	if errors.As(err, &syntax) {
+		// The quoted character and offset can vary when a read ends inside an
+		// invalid rune. Keep the original error available to callers.
+		return graphSyntaxError{syntax: syntax}
+	}
+	return err
+}
+
+// graphReader exposes at most the byte limit and reads one extra byte to
+// distinguish exact-length input from overlong input. It retains terminal
+// errors because Decoder.More may read ahead without returning the read error.
+type graphReader struct {
+	io.LimitedReader
+	leadingWhitespace bool
+	err               error
+}
+
+func (r *graphReader) Read(p []byte) (int, error) {
+	if r.err != nil {
+		return 0, r.err
+	}
+	if r.N > 0 {
+		// Only the prefix before the first non-whitespace byte is a known gap.
+		// Later reads may continue a token where whitespace changes its validity.
+		n := 0
+		for n < len(p) && r.N > 0 && r.err == nil {
+			read, err := r.LimitedReader.Read(p[n:])
+			r.err = err
+			chunk := p[n : n+read]
+			n += read
+			if !r.leadingWhitespace || len(bytes.TrimLeft(chunk, jsonWhitespace)) != 0 {
+				r.leadingWhitespace = false
+				break
+			}
+		}
+		return n, r.err
+	}
+	var extra [1]byte
+	_, r.err = io.ReadFull(r.R, extra[:])
+	if r.err == nil {
+		r.err = errGraphBytes
+	}
+	return 0, r.err
+}
+
+// checkGraphEnd skips JSON whitespace without buffering or decoding any trailing value.
+func checkGraphEnd(r io.Reader) error {
+	var block [4096]byte
+	for {
+		n, err := r.Read(block[:])
+		if len(bytes.TrimLeft(block[:n], jsonWhitespace)) != 0 {
+			return fmt.Errorf("graph must contain exactly one JSON array")
+		}
+		if err == io.EOF {
+			return nil
+		}
+		if err != nil {
+			return fmt.Errorf("decode graph: %w", err)
+		}
+	}
+}
+
+func (g *InMemoryGraph) validateTuple(t domain.GraphTuple) error {
+	if t.Subject == "" || t.Object == "" || t.Relation == "" {
+		return fmt.Errorf("has an empty field")
+	}
+	if !prerequisiteRelation(t.Relation) {
+		return fmt.Errorf("has unsupported relation %q", t.Relation)
+	}
+	if !g.nodes[t.Subject] {
+		if err := validNodeName(t.Subject); err != nil {
+			return fmt.Errorf("subject %.64q %w", t.Subject, err)
+		}
+	}
+	if !g.nodes[t.Object] {
+		if err := validNodeName(t.Object); err != nil {
+			return fmt.Errorf("object %.64q %w", t.Object, err)
+		}
+	}
+	if t.Subject == t.Object {
+		return fmt.Errorf("is a self loop")
+	}
+	return nil
 }
 
 func validNodeName(name string) error {
@@ -111,35 +224,10 @@ func validNodeName(name string) error {
 }
 
 func (g *InMemoryGraph) prerequisiteCycle() []string {
-	colors := make(map[string]uint8, len(g.nodes))
-	var path []string
-	var visit func(string) []string
-	visit = func(node string) []string {
-		colors[node] = 1
-		path = append(path, node)
-		for _, edge := range g.forward[node] {
-			if colors[edge.Object] == 1 {
-				start := slices.Index(path, edge.Object)
-				cycle := slices.Clone(path[start:])
-				first := slices.Index(cycle, slices.Min(cycle))
-				cycle = append(cycle[first:], cycle[:first]...)
-				return append(cycle, cycle[0])
-			}
-			if colors[edge.Object] == 0 {
-				if cycle := visit(edge.Object); len(cycle) > 0 {
-					return cycle
-				}
-			}
-		}
-		path = path[:len(path)-1]
-		colors[node] = 2
-		return nil
-	}
+	walk := prerequisiteWalk{state: make(map[string]visitState, len(g.nodes))}
 	for _, node := range slices.Sorted(maps.Keys(g.nodes)) {
-		if colors[node] == 0 {
-			if cycle := visit(node); len(cycle) > 0 {
-				return cycle
-			}
+		if cycle := walk.visit(g, node, nil); cycle != nil {
+			return cycle
 		}
 	}
 	return nil
