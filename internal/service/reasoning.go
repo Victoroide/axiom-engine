@@ -156,7 +156,7 @@ func (s *ReasoningService) GeneratePlan(ctx context.Context, req domain.Adaptive
 			}()
 			queueStart := time.Now()
 			queueCtx, queueCancel := context.WithTimeout(topicCtx, s.queueTimeout)
-			err := s.slots.Acquire(queueCtx, 1)
+			err := s.acquirePlannerPermit(queueCtx)
 			queueCancel()
 			topicSpan.SetAttributes(attribute.Float64("axiom.queue_wait_ms", float64(time.Since(queueStart).Microseconds())/1000))
 			s.metrics.ObserveQueueWait(time.Since(queueStart), errors.Is(err, context.DeadlineExceeded) && egCtx.Err() == nil)
@@ -245,6 +245,22 @@ func (s *ReasoningService) GeneratePlan(ctx context.Context, req domain.Adaptive
 		return domain.PlanResponse{}, &TopicError{Topic: missing, cause: ErrInvalidOutput}
 	}
 	return domain.PlanResponse{StudentID: req.StudentID, CourseID: req.CourseID, Items: validated, Meta: domain.PipelineMeta{SubgraphTuples: len(subgraph), TopicsProcessed: len(req.FailedTopics), ItemsGenerated: countTotalItems(plans), ItemsValidated: len(validated), ItemsDropped: dropped, ItemsSkippedMastered: len(skipped), ResourcesUnreachable: unreachable, LLMLatencyMs: llmLatency.Milliseconds(), TotalLatencyMs: time.Since(start).Milliseconds()}}, nil
+}
+
+func (s *ReasoningService) acquirePlannerPermit(ctx context.Context) error {
+	if err := ctx.Err(); err != nil {
+		return err
+	}
+	if s.slots.TryAcquire(1) {
+		if err := ctx.Err(); err != nil {
+			s.slots.Release(1)
+			return err
+		}
+		return nil
+	}
+	ctx, span := telemetry.Start(ctx, "plan.queue.wait")
+	defer span.End()
+	return s.slots.Acquire(ctx, 1)
 }
 
 func (s *ReasoningService) generateTopic(ctx context.Context, req TopicRequest) ([]domain.PlanItem, error) {

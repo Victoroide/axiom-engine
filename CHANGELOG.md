@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - Add an in-process stateless MCP Streamable HTTP handler for the July 2026 protocol.
+- Add a `plan.queue.wait` trace span for topic requests that encounter an occupied reasoning permit.
 
 ### Changed
 

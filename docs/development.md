@@ -349,6 +349,18 @@ Transport execution:
 - Parser-level HTTP 400 (`bad_request`), 408 (`request_timeout`), 413 (`payload_too_large`), and 431 (`request_header_fields_too_large`) tests run against ephemeral TCP listeners because Fiber masks low-level request parsing errors in `app.Test`. Every operation is tested with an oversized body and headers and with the configured read timeout lowered to 200 ms. Slow-client cases send incomplete requests through a raw TCP connection and read the response with `http.ReadResponse`; malformed requests exercise all three probes. Listeners bind `127.0.0.1:0` and shut down explicitly, with no fixed ports or sleeps.
 - HTTP 500 contract cases exercise recovery in route handlers. The reasoning service recovers planner panics inside the goroutine that executes the call. `TestPlannerPanicReturnsInternalError` verifies the JSON route's HTTP 500 `internal_error` and a successful subsequent request. Panic recovery tests also check request correlation, redaction in logs, traces and process output, and planner permit release during concurrent failures and cancellation. A native library initialization failure aborts the process before `main`. See [Native Library Failures](operations.md#native-library-failures).
 
+### HTTP connection tests
+
+`make test` also runs the HTTP connection tests in `internal/server`. They use real loopback sockets and a local planner whose completion the tests control. The HTTP/1.1 fixtures run in joined subprocesses so the listener's background workers exit with each fixture. Startup waits for listener readiness, server exit, or cancellation. The subprocess deadline bounds the scenario. Run the tests with verbose output to see cancellation and permit reuse measured separately.
+
+```sh
+go test -race -count=1 -v ./internal/server -run '^TestWire'
+```
+
+The HTTP/1.1 tests check parser errors, request IDs, quota, replay on the same connection, stream flushing through a full-duplex reverse proxy, and graceful drain. Incomplete-header checks use a dedicated listener with a short read deadline. Authorization checks use the normal deadline and include an idle client before the request is sent. The proxy holds a stream data write until a second connection receives its response. The SSE checks accept keepalive frames between data events and require a single terminal error when a required topic returns no items. Successful plans are compared after validating and removing `_meta.llm_latency_ms` and `_meta.total_latency_ms`. The checks validate the format or range of the generated `X-Request-ID`, `Date`, and `X-RateLimit-Reset` values. Replayed response bodies must match the original bytes exactly.
+
+A closed JSON connection leaves the effective deadline in force. An in-flight topic can reach `LLM_TIMEOUT` before `REQUEST_TIMEOUT`. An SSE connection reset cancels the planner when a stream write fails. The tests keep the planner blocked after it observes cancellation and verify a second request receives HTTP 503. The target's observation of the recovery request encountering an occupied permit releases the fixture planner, even while the client pauses longer than the queue budget. The interval from planner return to recovery admission gives an upper bound on permit release. The HTTP/2 reset test uses a separate TLS listener with request-scoped cancellation and validates a successful JSON plan on a sibling stream on the same connection. The service listener uses HTTP/1.1.
+
 ### Browser end-to-end tests
 
 Browser tests verify the Swagger UI interface using a real headless browser instance:
