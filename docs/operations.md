@@ -173,6 +173,7 @@ The reasoning pipeline produces the following span hierarchy for `POST /api/v1/a
   - `axiom.topic`: Name of the evaluated topic.
   - `axiom.topic.index`: Original index of the topic in the request.
   - `axiom.queue_wait_ms`: Duration in milliseconds spent waiting in the concurrency semaphore queue.
+- **`plan.queue.wait`**: Child of `plan.topic` that starts when an immediate concurrency permit is unavailable and ends when admission succeeds, times out, or is canceled. Shares the topic's request ID.
 - **`chat <model>`**: Child of `plan.topic` representing downstream model execution. Conforms to OpenTelemetry GenAI semantic conventions:
   - `gen_ai.operation.name`: `"chat"`
   - `gen_ai.provider.name` & `gen_ai.system`: standardized provider name (`aws.bedrock`, `gcp.gemini`, `openai`, `anthropic`; `ollama` and `openai-generic` remain documented custom values). These convention values differ deliberately from the configuration spellings for Bedrock (`aws-bedrock`) and Google AI (`google-ai`).
