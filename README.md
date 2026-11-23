@@ -3,7 +3,7 @@
 [![CI](https://github.com/Victoroide/axiom-engine/actions/workflows/ci.yml/badge.svg)](https://github.com/Victoroide/axiom-engine/actions/workflows/ci.yml)
 [![CodeQL](https://github.com/Victoroide/axiom-engine/actions/workflows/codeql.yml/badge.svg)](https://github.com/Victoroide/axiom-engine/actions/workflows/codeql.yml)
 [![OpenSSF Scorecard](https://api.scorecard.dev/projects/github.com/Victoroide/axiom-engine/badge)](https://scorecard.dev/viewer/?uri=github.com/Victoroide/axiom-engine)
-[![Go Version](https://img.shields.io/badge/go-1.27.3-blue.svg)](https://golang.org)
+[![Go Version](https://img.shields.io/badge/go-1.27.4-blue.svg)](https://golang.org)
 [![Go Reference](https://pkg.go.dev/badge/github.com/Victoroide/axiom-engine.svg)](https://pkg.go.dev/github.com/Victoroide/axiom-engine)
 [![Latest Release](https://img.shields.io/github/v/release/Victoroide/axiom-engine)](https://github.com/Victoroide/axiom-engine/releases)
 [![License: MIT](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
@@ -141,7 +141,7 @@ For Cosign provenance verification instructions, see [docs/deployment.md](docs/d
 
 ### Building from Source
 
-Build requirements: Go 1.27.3, a C compiler toolchain (`gcc` or `clang`) with CGO enabled.
+Build requirements: Go 1.27.4, a C compiler toolchain (`gcc` or `clang`) with CGO enabled.
 
 1. Clone the repository and download Go dependencies:
 
@@ -193,7 +193,7 @@ The container runs as non-root UID/GID `65532:65532` and binds port 8080 to loop
 
 ### Local Development
 
-Prerequisites: Go 1.27.3, CGO toolchain, and provider credentials.
+Prerequisites: Go 1.27.4, CGO toolchain, and provider credentials.
 
 1. Set the required provider credentials and service token:
 

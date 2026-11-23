@@ -2,7 +2,7 @@
 
 ## Prerequisites
 
-- Go 1.27.3, matching `go.mod`.
+- Go 1.27.4, matching `go.mod`.
 - A C compiler toolchain (such as `gcc` or `clang`) with CGO enabled. CGO is required for BAML native CFFI bindings.
 - Docker for container builds and local verification.
 - Google Chrome or Chromium for browser end-to-end tests.

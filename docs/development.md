@@ -4,7 +4,7 @@ For contribution workflow, commit conventions, and review procedures, see [CONTR
 
 ## Prerequisites
 
-- **Go**: 1.27.3, matching `go.mod`.
+- **Go**: 1.27.4, matching `go.mod`.
 - **C compiler**: A standard C compiler toolchain (such as `gcc` or `clang`) with CGO enabled. CGO is required for BAML native CFFI bindings.
 - **Docker**: Engine 24+ for building runtime images and executing container health checks.
 - **Chrome or Chromium**: Required for browser end-to-end tests. The test runner detects local system installations or uses the path specified in `ROD_BROWSER_BIN`.
