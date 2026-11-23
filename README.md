@@ -446,7 +446,7 @@ For client configuration examples, tool schemas, and container execution details
 - **Bedrock Region Resolution and Caching**: When using `LLM_PROVIDER=aws-bedrock`, AWS regions resolved dynamically from IMDS cannot be confirmed at startup, and the first resolved region is cached by BAML for the lifetime of the process. Non-Bedrock providers do not perform region resolution.
 - **Resource Link Reachability**: Recommended resource URLs are not checked for network reachability by default. Setting `RESOURCE_LINK_CHECK=true` enables outbound HTTP reachability checks that verify URLs and drop non-resolving or refused resources before returning plans.
 - **In-Memory Knowledge Graph Immutability**: The curriculum knowledge graph is loaded into memory at startup from embedded data or `GRAPH_FILE` and cannot be modified dynamically at runtime without restarting the service process.
-- **MCP Transport Scope**: The Model Context Protocol server currently implements standard input and output (`stdio`) transport exclusively; remote transports such as HTTP Server-Sent Events (SSE) or WebSocket are not supported.
+- **MCP transport scope.** `axiom-server mcp` serves local clients over `stdio`. The stateless Streamable HTTP handler is available for in-process use. Network exposure awaits remote authorization and admission controls.
 - **Scorecard Governance**: Repository OpenSSF Scorecard branch protection scores reflect a single-maintainer project with zero required external approvals.
 
 For diagnostic procedures and operational troubleshooting, refer to the [Operations Runbook](docs/operations.md).
@@ -456,7 +456,7 @@ For diagnostic procedures and operational troubleshooting, refer to the [Operati
 - Cancellation propagation for non-streaming HTTP requests when clients disconnect.
 - Per-tenant authentication and caller identity verification.
 - Dynamic curriculum knowledge graph updates without service restarts.
-- Remote transport support for the Model Context Protocol server.
+- Authenticated remote access to the Model Context Protocol server over Streamable HTTP.
 - Fine-grained per-tenant rate limit quotas in shared storage.
 
 ## Documentation

@@ -26,11 +26,22 @@ func prerequisiteRelation(relation string) bool {
 
 // visit calls finish in post-order and returns the first cycle, if any.
 func (w *prerequisiteWalk) visit(g *InMemoryGraph, start string, finish func(string)) []string {
+	cycle, _ := w.visitWithCancel(g, start, finish, nil)
+	return cycle
+}
+
+// visitWithCancel checks for cancellation while processing the explicit stack.
+func (w *prerequisiteWalk) visitWithCancel(g *InMemoryGraph, start string, finish func(string), checkCanceled func() error) ([]string, error) {
 	if w.state[start] != unvisited {
-		return nil
+		return nil, nil
 	}
 	w.push(start)
 	for len(w.stack) > 0 {
+		if checkCanceled != nil {
+			if err := checkCanceled(); err != nil {
+				return nil, err
+			}
+		}
 		last := len(w.stack) - 1
 		frame := &w.stack[last]
 		edges := g.forward[frame.name]
@@ -51,10 +62,10 @@ func (w *prerequisiteWalk) visit(g *InMemoryGraph, start string, finish func(str
 		case unvisited:
 			w.push(edge.Object)
 		case visiting:
-			return w.cycle(edge.Object)
+			return w.cycle(edge.Object), nil
 		}
 	}
-	return nil
+	return nil, nil
 }
 
 func (w *prerequisiteWalk) push(name string) {

@@ -10,6 +10,7 @@ package graph
 import (
 	"bytes"
 	"cmp"
+	"context"
 	"fmt"
 	"slices"
 
@@ -100,14 +101,22 @@ func (g *InMemoryGraph) Resolve(name string) (string, bool) {
 // If the topic does not exist in the graph or has no outgoing prerequisite
 // edges, an empty slice is returned. Cyclic graphs are rejected at load time.
 func (g *InMemoryGraph) GetPrerequisiteChain(topic string) []string {
+	chain, _ := g.prerequisiteChain(topic, nil)
+	return chain
+}
+
+func (g *InMemoryGraph) prerequisiteChain(topic string, checkCanceled func() error) ([]string, error) {
 	walk := prerequisiteWalk{state: make(map[string]visitState)}
 	chain := []string{}
-	walk.visit(g, topic, func(node string) {
+	_, err := walk.visitWithCancel(g, topic, func(node string) {
 		if node != topic {
 			chain = append(chain, node)
 		}
-	})
-	return chain
+	}, checkCanceled)
+	if err != nil {
+		return nil, err
+	}
+	return chain, nil
 }
 
 // GetLocalSubgraph performs a depth-limited breadth-first traversal starting
@@ -122,8 +131,16 @@ func (g *InMemoryGraph) GetPrerequisiteChain(topic string) []string {
 //     to avoid O(n) memory copies on each dequeue operation.
 //   - Tuples are deduplicated by a [3]string composite key.
 func (g *InMemoryGraph) GetLocalSubgraph(failedTopics []string, depth int) []domain.GraphTuple {
+	tuples, _ := g.localSubgraph(failedTopics, depth, func() error { return nil })
+	return tuples
+}
+
+func (g *InMemoryGraph) localSubgraph(failedTopics []string, depth int, canceled func() error) ([]domain.GraphTuple, error) {
+	if err := canceled(); err != nil {
+		return nil, err
+	}
 	if depth < 0 {
-		return []domain.GraphTuple{}
+		return []domain.GraphTuple{}, nil
 	}
 	estimatedNodes := len(failedTopics) * (depth + 1) * 4
 	visited := make(map[string]bool, estimatedNodes)
@@ -132,17 +149,26 @@ func (g *InMemoryGraph) GetLocalSubgraph(failedTopics []string, depth int) []dom
 
 	queue := make([]bfsEntry, 0, estimatedNodes)
 	for _, topic := range failedTopics {
+		if err := canceled(); err != nil {
+			return nil, err
+		}
 		queue = append(queue, bfsEntry{node: topic, depth: 0})
 		visited[topic] = true
 	}
 
 	head := 0
 	for head < len(queue) {
+		if err := canceled(); err != nil {
+			return nil, err
+		}
 		cur := queue[head]
 		head++
 
 		// Collect tuples where cur.node is the subject
 		for _, t := range g.forward[cur.node] {
+			if err := canceled(); err != nil {
+				return nil, err
+			}
 			key := [3]string{t.Subject, t.Relation, t.Object}
 			if !seen[key] {
 				seen[key] = true
@@ -156,6 +182,9 @@ func (g *InMemoryGraph) GetLocalSubgraph(failedTopics []string, depth int) []dom
 
 		// Collect tuples where cur.node is the object (reverse edges)
 		for _, t := range g.reverse[cur.node] {
+			if err := canceled(); err != nil {
+				return nil, err
+			}
 			key := [3]string{t.Subject, t.Relation, t.Object}
 			if !seen[key] {
 				seen[key] = true
@@ -168,7 +197,7 @@ func (g *InMemoryGraph) GetLocalSubgraph(failedTopics []string, depth int) []dom
 		}
 	}
 
-	return result
+	return result, nil
 }
 
 // GenerateCognitiveShadow constructs a filtered Cognitive Shadow Graph for
@@ -189,21 +218,43 @@ func (g *InMemoryGraph) GetLocalSubgraph(failedTopics []string, depth int) []dom
 // seeds. The subgraph is limited to depth 1 (direct neighbors only).
 // Optional mastered topics override learning; other unevidenced nodes become unassessed.
 func (g *InMemoryGraph) GenerateCognitiveShadow(failedTopics []string, targetTopic string, masteredTopics ...[]string) domain.CognitiveGraphResponse {
+	graph, _ := g.GenerateCognitiveShadowContext(context.Background(), failedTopics, targetTopic, masteredTopics...)
+	return graph
+}
+
+// GenerateCognitiveShadowContext builds the visualization until canceled.
+func (g *InMemoryGraph) GenerateCognitiveShadowContext(ctx context.Context, failedTopics []string, targetTopic string, masteredTopics ...[]string) (domain.CognitiveGraphResponse, error) {
+	if err := ctx.Err(); err != nil {
+		return domain.CognitiveGraphResponse{}, err
+	}
 	masteredSet := make(map[string]bool)
 	for _, topics := range masteredTopics {
 		for _, topic := range topics {
+			if err := ctx.Err(); err != nil {
+				return domain.CognitiveGraphResponse{}, err
+			}
 			masteredSet[topic] = true
 		}
 	}
 	failedSet := make(map[string]bool, len(failedTopics))
 	for _, t := range failedTopics {
+		if err := ctx.Err(); err != nil {
+			return domain.CognitiveGraphResponse{}, err
+		}
 		failedSet[t] = true
 	}
 
 	// Collect all prerequisite nodes of failed topics → "learning"
 	learningSet := make(map[string]bool, len(failedTopics)*4)
 	for _, topic := range failedTopics {
-		for _, prereq := range g.GetPrerequisiteChain(topic) {
+		chain, err := g.prerequisiteChain(topic, ctx.Err)
+		if err != nil {
+			return domain.CognitiveGraphResponse{}, err
+		}
+		for _, prereq := range chain {
+			if err := ctx.Err(); err != nil {
+				return domain.CognitiveGraphResponse{}, err
+			}
 			if !failedSet[prereq] {
 				learningSet[prereq] = true
 			}
@@ -217,12 +268,18 @@ func (g *InMemoryGraph) GenerateCognitiveShadow(failedTopics []string, targetTop
 		seeds = []string{targetTopic}
 	}
 
-	subgraphTuples := g.GetLocalSubgraph(seeds, 1)
+	subgraphTuples, err := g.localSubgraph(seeds, 1, ctx.Err)
+	if err != nil {
+		return domain.CognitiveGraphResponse{}, err
+	}
 
 	// Build edges from the filtered subgraph tuples
 	edges := make([]domain.VisualEdge, 0, len(subgraphTuples))
 	connectedNodes := make(map[string]bool, len(subgraphTuples)*2)
 	for _, t := range subgraphTuples {
+		if err := ctx.Err(); err != nil {
+			return domain.CognitiveGraphResponse{}, err
+		}
 		edges = append(edges, domain.VisualEdge{
 			Source:   t.Subject,
 			Target:   t.Object,
@@ -235,6 +292,9 @@ func (g *InMemoryGraph) GenerateCognitiveShadow(failedTopics []string, targetTop
 	// Build nodes ONLY for nodes that appear in at least one edge
 	nodes := make([]domain.VisualNode, 0, len(connectedNodes))
 	for name := range connectedNodes {
+		if err := ctx.Err(); err != nil {
+			return domain.CognitiveGraphResponse{}, err
+		}
 		state := "mastered"
 		if len(masteredTopics) > 0 {
 			state = "unassessed"
@@ -255,6 +315,9 @@ func (g *InMemoryGraph) GenerateCognitiveShadow(failedTopics []string, targetTop
 	}
 
 	slices.SortFunc(nodes, func(a, b domain.VisualNode) int { return cmp.Compare(a.ID, b.ID) })
+	if err := ctx.Err(); err != nil {
+		return domain.CognitiveGraphResponse{}, err
+	}
 	slices.SortFunc(edges, func(a, b domain.VisualEdge) int {
 		if n := cmp.Compare(a.Source, b.Source); n != 0 {
 			return n
@@ -264,8 +327,11 @@ func (g *InMemoryGraph) GenerateCognitiveShadow(failedTopics []string, targetTop
 		}
 		return cmp.Compare(a.Relation, b.Relation)
 	})
+	if err := ctx.Err(); err != nil {
+		return domain.CognitiveGraphResponse{}, err
+	}
 	return domain.CognitiveGraphResponse{
 		Nodes: nodes,
 		Edges: edges,
-	}
+	}, nil
 }

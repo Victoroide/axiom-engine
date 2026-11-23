@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Add an in-process stateless MCP Streamable HTTP handler for the July 2026 protocol.
+
 ### Changed
 
 - Limit curriculum JSON at startup and in `validate-graph` to 8 MiB, 50,000 input tuples including duplicates, and 20,000 distinct concepts. Prerequisite traversal supports full chains within those limits using an explicit stack.
