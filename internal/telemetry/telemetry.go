@@ -44,7 +44,8 @@ func Setup(ctx context.Context, cfg config.Config) (func(context.Context) error,
 			_ = processor.Shutdown(cleanupCtx)
 		}
 	}()
-	opts := []sdktrace.TracerProviderOption{sdktrace.WithResource(res)}
+	// A span can end during unwinding before the recovery boundary classifies the failure.
+	opts := []sdktrace.TracerProviderOption{sdktrace.WithResource(res), sdktrace.WithoutPanicRecording()}
 	if cfg.Tracing.Enabled {
 		var options []otlptracehttp.Option
 		if os.Getenv("OTEL_EXPORTER_OTLP_ENDPOINT") == "" && os.Getenv("OTEL_EXPORTER_OTLP_TRACES_ENDPOINT") == "" {
