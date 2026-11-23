@@ -282,7 +282,7 @@ When the service starts successfully, it emits two `INFO` records in sequence be
    - `rate_limit_max`: sliding-window request limit.
    - `rate_limit_window`: rate limit sliding-window duration as a Go duration string.
    - `request_timeout`: request execution timeout duration string.
-   - `llm_timeout`: downstream per-topic LLM timeout duration string.
+   - `llm_timeout` gives the maximum wait for an individual planner result as a Go duration string.
    - `llm_queue_timeout`: queue acquisition timeout duration string.
    - `shutdown_timeout`: graceful shutdown drain timeout duration string.
    - `shutdown_drain_delay`: pre-shutdown listener drain delay duration string.
@@ -324,9 +324,9 @@ Every HTTP request produces an `http.access` log record containing:
 
 Panics recovered by middleware generate a `panic.recovered` record with `request_id`, `error`, and stack trace, then return HTTP 500 to the caller.
 
-A panic in the planner, which runs outside the HTTP middleware, generates an `ERROR` record `planner.panic` with `request_id`, `topic`, `panic`, and `stack`. The request fails with HTTP 500 `internal_error`, and the process keeps serving.
+A panic in the planner, which runs outside the HTTP middleware, generates an `ERROR` record `planner.panic` with `request_id`, `topic`, the formatted panic value (`panic`), and the goroutine stack (`stack`). If the JSON plan request fails with `ErrPlannerPanic`, it returns HTTP 500 `internal_error`. A deadline or cancellation that ends the wait first takes precedence. See [Planner Panics](operations.md#planner-panics).
 
-Pipeline and upstream failures generate a `request.failed` record with `request_id`, `error_class`, and (when known) `topic` capped at 128 characters. Upstream prompt content and error dumps are excluded from logs. When hallucinated topics returned by the planner are dropped, a `stage.validation` warning record is emitted with `request_id` and `items_dropped`.
+Pipeline and upstream failures generate a `request.failed` record with `request_id`, `error_class`, and (when known) `topic` capped at 128 characters. This record omits upstream prompt content and error dumps. When hallucinated topics returned by the planner are dropped, a `stage.validation` warning record is emitted with `request_id` and `items_dropped`.
 
 When a termination signal initiates graceful shutdown, the server emits an `INFO` record `server.shutdown_started` containing:
 - `signal`: signal name string (`terminated` or `interrupt`).

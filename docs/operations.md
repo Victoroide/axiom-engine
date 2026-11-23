@@ -11,14 +11,14 @@ AxiomEngine wraps calls to Amazon Bedrock with an in-memory circuit breaker (`go
 ### Symptoms and Behavior
 
 - The breaker enters the `Open` state for 15 seconds.
-- While open, incoming plan requests fail immediately without invoking Bedrock, returning HTTP 503 `service_unavailable` with header `Retry-After: 15`.
-- Four outcomes do not count: client cancellation (`context.Canceled`), unusable model output, a planner panic (`planner.panic`, HTTP 500), and upstream 4xx rejections other than 429 (`ValidationException`, `AccessDeniedException`, `ResourceNotFoundException`, `ServiceQuotaExceededException`, `ModelErrorException`).
+- Each topic acquires a concurrency permit before checking the breaker. If the breaker is still open at that point, it rejects the topic without dispatching the planner. The JSON plan route returns HTTP 503 `service_unavailable` with `Retry-After: 15`. If `LLM_QUEUE_TIMEOUT` expires first while the request is active, the route returns HTTP 503 `service_unavailable` with `Retry-After: 1` for [queue saturation](#queue-saturation).
+- The breaker records four errors as exclusions. They are cancellation (`context.Canceled`), unusable model output (`ErrInvalidOutput`), provider rejection (`ErrUpstreamRejected`), and a recovered planner panic received while the call context is active (`ErrPlannerPanic`). HTTP 408 and 429 from the provider count as failures. An excluded outcome in `Half-Open` frees a probe slot without advancing recovery.
 - When the 15-second open interval elapses, the breaker enters `Half-Open`, allowing two probe requests. If both probe requests succeed, the breaker returns to `Closed`. If either fails, the breaker trips to `Open` for another 15 seconds.
 
 ### Telemetry Signals
 
 - **Metric**: `axiom_circuit_breaker_state` gauge transitions: `0` (Closed), `1` (Half-Open), `2` (Open).
-- **Metric**: `http_server_requests_total{route="/api/v1/adaptive-plan",status="503"}` increments rapidly.
+- `http_server_requests_total{route="/api/v1/adaptive-plan",status="503"}` counts JSON plan responses with 503, including breaker rejections and queue timeouts.
 - **Log**: Structured warning record with message `circuit_breaker.state_change`, logging `name="llm"`, `from`, and `to`.
 
 ### Diagnostic and Mitigation Steps
@@ -30,6 +30,18 @@ AxiomEngine wraps calls to Amazon Bedrock with an in-memory circuit breaker (`go
 
 ---
 
+## Planner Panics
+
+The reasoning service recovers a panic in a running planner call and logs `planner.panic` at `ERROR`. The record includes `topic`, `request_id` (empty when unavailable), the formatted panic value in `panic`, and the goroutine stack in `stack`. The panic value can contain sensitive text.
+
+If the service receives `ErrPlannerPanic` while the call context is active, the breaker excludes it. A plan that fails with this error returns HTTP 500 `internal_error` on the JSON route, an `error` event with `internal_error` and `status: 500` on an active SSE stream, or an `internal_error` tool error over stdio MCP. The process keeps serving.
+
+If a dispatched topic's context expires or is canceled before the service accepts the planner result, that topic returns the context error even if its panic result is ready. The breaker records a deadline as a failure and cancellation as an exclusion. The first error returned by any topic determines the plan response and cancels sibling topic contexts. If a canceled planner later panics, the service still logs the panic and releases its permit as the call unwinds.
+
+If the process exits before serving requests and stderr shows a BAML initialization panic, see [Native Library Failures](#native-library-failures).
+
+---
+
 ## Bedrock Throttling
 
 When inbound request rates or concurrent token throughput exceed Amazon Bedrock service quotas, Bedrock returns HTTP 429 (`ThrottlingException`).
@@ -37,7 +49,7 @@ When inbound request rates or concurrent token throughput exceed Amazon Bedrock 
 ### Symptoms and Behavior
 
 - The service classifies throttled Bedrock responses and returns HTTP 503 `service_unavailable` with header `Retry-After: 5`.
-- Throttled calls count as breaker failures. Three in a row open the breaker, and clients then get `Retry-After: 15` instead of 5.
+- Throttled calls count as breaker failures. Three in a row open the breaker. When a topic acquires a permit and reaches the open breaker, the JSON plan route returns `Retry-After: 15`.
 
 ### Telemetry Signals
 
@@ -56,12 +68,15 @@ When inbound request rates or concurrent token throughput exceed Amazon Bedrock 
 
 ## Queue Saturation
 
-AxiomEngine limits concurrent Bedrock invocations across all in-flight HTTP requests using a bounded semaphore (`LLM_MAX_CONCURRENCY`, default 16). When all slots are busy, incoming topic planning tasks wait in a FIFO queue.
+AxiomEngine limits concurrent planner calls in each HTTP or stdio MCP process using a bounded semaphore (`LLM_MAX_CONCURRENCY`, default 16). When all slots are busy, incoming topic planning tasks wait in a FIFO queue.
 
 ### Symptoms and Behavior
 
 - A planning topic that waits longer than `LLM_QUEUE_TIMEOUT` (default: `min(2s, LLM_TIMEOUT / 2)`) is evicted from the queue and fails.
-- The request returns HTTP 503 `service_unavailable` with header `Retry-After: 1`.
+- The JSON plan route returns HTTP 503 `service_unavailable` with `Retry-After: 1`.
+- An active SSE stream keeps HTTP 200 and reports the queue failure in a terminal `error` event with `error` set to `service_unavailable` and `status` set to `503`. The `Retry-After` header applies to the JSON route.
+- The stdio MCP plan tool sets `isError` to `true` and returns `error` set to `service_unavailable` and `details` in structured content.
+- After dispatch, a deadline or cancellation can end the service's wait while the planner is still running. The slot stays occupied until the planner returns or unwinds after a panic. In HTTP mode, `axiom_llm_inflight` includes calls that outlast their response deadline.
 
 ### Telemetry Signals
 
@@ -77,6 +92,14 @@ AxiomEngine limits concurrent Bedrock invocations across all in-flight HTTP requ
 
 ---
 
+## HTTP Rate-Limit Storage
+
+The `/api/v1` routes apply a sliding-window budget per client IP after authentication when enabled. Each HTTP replica keeps its counters in memory by default. Replicas that configure `REDIS_URL` to use the same Redis database share counters under `axiom:rate:`. Stdio MCP bypasses HTTP rate limiting.
+
+If the configured Redis store cannot make a rate-limit decision, the API returns HTTP 503 `service_unavailable` with `Retry-After: 1` before dispatch. Look for `storage.failed` with `operation=rate_limit.consume`. Local health probes can still succeed during the outage. See [Replicas and shared storage](deployment.md#replicas-and-shared-storage).
+
+---
+
 ## Region and Credential Resolution
 
 AxiomEngine executes Bedrock calls via BAML's native CFFI engine, which resolves credentials and regions using the AWS SDK for Rust provider chain.
@@ -86,7 +109,7 @@ AxiomEngine executes Bedrock calls via BAML's native CFFI engine, which resolves
 - **Static Region Warning**: At startup, when `LLM_PROVIDER=aws-bedrock`, the server inspects static environment configuration (`AWS_REGION`, `AWS_DEFAULT_REGION`, or the configuration profile). If no static region is found, it logs warning `llm.region.unresolved`. Non-Bedrock providers bypass static region inspection.
 - **First Region Caching**: BAML initializes its AWS client upon the first call and caches the resolved AWS region for the lifetime of the process. If a region is resolved dynamically from IMDS, that region remains locked until process restart.
 - **IMDS Latency**: If the service runs in an environment where the EC2 Instance Metadata Service (IMDS) is unreachable (such as off-cloud development or non-AWS containers) and static region environment variables are missing, SDK credential and region resolution will attempt to query IMDSv2 and IMDSv1, incurring a network timeout of approximately 2 seconds before falling back.
-- **Credential Errors**: Missing or expired credentials cause upstream Bedrock calls to fail with native engine errors (for example, `Unspecified error code: 2` or `NoCredentialsError`), returned to the client as HTTP 502 `bad_gateway`. After three consecutive failures the breaker opens and clients get 503 with `Retry-After: 15`.
+- **Credential Errors**: Missing or expired credentials cause upstream Bedrock calls to fail with native engine errors (for example, `Unspecified error code: 2` or `NoCredentialsError`), returned to the client as HTTP 502 `bad_gateway`. When a topic acquires a permit and reaches the open breaker, the JSON plan route returns HTTP 503 with `Retry-After: 15`.
 
 ### Diagnostic and Mitigation Steps
 
@@ -256,9 +279,9 @@ Invocations to Amazon Bedrock incur operational costs based on input and output 
 ### Operational Cost Factors
 
 - **Non-Idempotent Inferences**: Requests omitting `Idempotency-Key` or retried after failure trigger fresh model inferences and generate additional token consumption. Callers should supply an `Idempotency-Key` on retryable requests to replay cached responses without incurring model token costs.
-- **Client Disconnects**: On the non-streaming route (`POST /api/v1/adaptive-plan`), client HTTP disconnects do not cancel in-flight Bedrock reasoning; work continues until `REQUEST_TIMEOUT` expires. On the streaming route (`POST /api/v1/adaptive-plan/stream`), closing the connection cancels in-flight topic reasoning when the response stream closes, and the slots are released; keepalive comments every 2 seconds surface a broken connection on the next write. Client timeouts on the non-streaming route should be configured conservatively.
+- The non-streaming route (`POST /api/v1/adaptive-plan`) continues reasoning after a **client disconnect** until the work completes or its deadline expires. The streaming route (`POST /api/v1/adaptive-plan/stream`) cancels the pipeline on a failed write or flush. Keepalives every 2 seconds help detect the disconnect. Dispatched calls release slots when the planner returns or unwinds after a panic. See [Queue Saturation](#queue-saturation).
 - **Concurrency Caps**: Configure `LLM_MAX_CONCURRENCY` to control maximum parallel model invocations and prevent traffic spikes from generating unbounded token usage.
-- **Aborted Calls**: Calls cut off by `LLM_TIMEOUT` or `REQUEST_TIMEOUT` close the connection, but AWS documents no billing rule for aborted Converse calls. Assume their tokens may be billed.
+- `LLM_TIMEOUT` and `REQUEST_TIMEOUT` end the service's wait for a result. If the provider continues processing the call, its tokens may still be billed.
 
 ---
 
@@ -275,9 +298,9 @@ Every HTTP request produces an `http.access` structured log record. For streamin
 
 With `METRICS_ENABLED=true`, `/metrics` exposes the series listed in [Observability](architecture.md#observability). The ones these procedures rely on:
 
-- `axiom_circuit_breaker_state`: 2 means open; plan requests fail fast with 503.
+- `axiom_circuit_breaker_state` is `2` when open. Topics acquire a concurrency permit before checking the breaker. See [Circuit Breaker Trips](#circuit-breaker-trips).
 - `axiom_llm_calls_total{outcome="throttled"}` and `{outcome="unavailable"}`: upstream throttling and availability failures.
 - `axiom_llm_inflight` against `LLM_MAX_CONCURRENCY`, with `axiom_llm_queue_wait_seconds` and `axiom_llm_queue_timeouts_total`: queue pressure.
 - `http_server_requests_total{route="/api/v1/adaptive-plan",status="503"}`: unavailable responses seen by clients.
 - `axiom_auth_previous_token_total`: callers still using the previous token during a rotation.
-- `axiom_resource_links_checked_total{result="ok|status|timeout|refused|invalid"}`: tracks outbound resource validation when enabled via `RESOURCE_LINK_CHECK=true` (optionally configured with `RESOURCE_LINK_TIMEOUT`, default `3s`). Links are not fetched while disabled. Enabling checks can increase response latency within `REQUEST_TIMEOUT`. A failed link drops the unreachable resource rather than failing its topic or request; exhausting the request deadline returns HTTP 504 `gateway_timeout`.
+- `axiom_resource_links_checked_total{result="ok|status|timeout|refused|invalid"}` counts outbound link checks in HTTP mode. `RESOURCE_LINK_CHECK=true` enables checks for both HTTP plan routes and the stdio MCP `generate_study_plan` tool. Each check can add latency up to `RESOURCE_LINK_TIMEOUT` (default `3s`), within the overall `REQUEST_TIMEOUT`. A failed link drops the resource and increments `_meta.resources_unreachable`. If link checking exhausts the request deadline, HTTP reports `gateway_timeout` and MCP returns a tool error.
