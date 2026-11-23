@@ -45,7 +45,12 @@ type TopicPathInput struct {
 
 // New constructs tools backed by the same bounded pipeline as the HTTP API.
 func New(cfg config.Config, g *graph.InMemoryGraph, planner service.Planner, logger *slog.Logger, version string) *mcp.Server {
-	s := mcp.NewServer(&mcp.Implementation{Name: "axiom-engine", Version: version}, &mcp.ServerOptions{Logger: logger})
+	return newServer(cfg, g, planner, logger, version, mcp.ServerOptions{})
+}
+
+func newServer(cfg config.Config, g *graph.InMemoryGraph, planner service.Planner, logger *slog.Logger, version string, options mcp.ServerOptions) *mcp.Server {
+	options.Logger = logger
+	s := mcp.NewServer(&mcp.Implementation{Name: "axiom-engine", Version: version}, &options)
 	var resourceLinks *service.ResourceLinkChecker
 	if cfg.ResourceLinks.Enabled {
 		resourceLinks = service.NewResourceLinkChecker(cfg.ResourceLinks.Timeout, nil, nil)
@@ -64,15 +69,16 @@ func New(cfg config.Config, g *graph.InMemoryGraph, planner service.Planner, log
 		}
 		return nil, out, toolError(err)
 	})
-	mcp.AddTool(s, &mcp.Tool{Name: "get_cognitive_graph", Description: "Explore failed concepts and their prerequisite neighborhood"}, func(_ context.Context, _ *mcp.CallToolRequest, in CognitiveGraphInput) (*mcp.CallToolResult, domain.CognitiveGraphResponse, error) {
-		out, err := service.CognitiveGraph(in.Topics, []string{in.TargetTopic}, in.Mastered, cfg.MaxFailedTopics, cfg.Mastery.MaxTopics, g)
+	mcp.AddTool(s, &mcp.Tool{Name: "get_cognitive_graph", Description: "Explore failed concepts and their prerequisite neighborhood"}, func(ctx context.Context, _ *mcp.CallToolRequest, in CognitiveGraphInput) (*mcp.CallToolResult, domain.CognitiveGraphResponse, error) {
+		out, err := service.CognitiveGraphContext(ctx, in.Topics, []string{in.TargetTopic}, in.Mastered, cfg.MaxFailedTopics, cfg.Mastery.MaxTopics, g)
 		return nil, out, toolError(err)
 	})
-	mcp.AddTool(s, &mcp.Tool{Name: "list_topics", Description: "List curriculum topics and direct prerequisites and dependents"}, func(_ context.Context, _ *mcp.CallToolRequest, in ListTopicsInput) (*mcp.CallToolResult, domain.TopicsResponse, error) {
-		return nil, domain.TopicsResponse{Topics: g.Topics(in.Q)}, nil
+	mcp.AddTool(s, &mcp.Tool{Name: "list_topics", Description: "List curriculum topics and direct prerequisites and dependents"}, func(ctx context.Context, _ *mcp.CallToolRequest, in ListTopicsInput) (*mcp.CallToolResult, domain.TopicsResponse, error) {
+		topics, err := g.TopicsContext(ctx, in.Q)
+		return nil, domain.TopicsResponse{Topics: topics}, toolError(err)
 	})
-	mcp.AddTool(s, &mcp.Tool{Name: "get_topic_path", Description: "Get a topic's prerequisite chain in study order"}, func(_ context.Context, _ *mcp.CallToolRequest, in TopicPathInput) (*mcp.CallToolResult, domain.TopicPathResponse, error) {
-		out, err := service.TopicPath(in.Topic, g)
+	mcp.AddTool(s, &mcp.Tool{Name: "get_topic_path", Description: "Get a topic's prerequisite chain in study order"}, func(ctx context.Context, _ *mcp.CallToolRequest, in TopicPathInput) (*mcp.CallToolResult, domain.TopicPathResponse, error) {
+		out, err := service.TopicPathContext(ctx, in.Topic, g)
 		return nil, out, toolError(err)
 	})
 	s.AddReceivingMiddleware(classifyToolErrors)

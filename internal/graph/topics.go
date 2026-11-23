@@ -1,7 +1,8 @@
 package graph
 
 import (
-	"maps"
+	"cmp"
+	"context"
 	"slices"
 	"strings"
 
@@ -10,45 +11,97 @@ import (
 
 // Topics returns concepts sorted by name, optionally filtered by canonical substring.
 func (g *InMemoryGraph) Topics(filter string) []domain.Topic {
+	topics, _ := g.TopicsContext(context.Background(), filter)
+	return topics
+}
+
+// TopicsContext returns matching concepts and stops the scan on cancellation.
+func (g *InMemoryGraph) TopicsContext(ctx context.Context, filter string) ([]domain.Topic, error) {
+	if err := ctx.Err(); err != nil {
+		return nil, err
+	}
 	topics := make([]domain.Topic, 0, len(g.nodes))
 	filter = Canonical(filter)
-	for _, name := range slices.Sorted(maps.Keys(g.nodes)) {
-		if strings.Contains(Canonical(name), filter) {
-			topics = append(topics, domain.Topic{Name: name, Prerequisites: g.Prerequisites(name), Dependents: g.Dependents(name)})
+	for name := range g.nodes {
+		if err := ctx.Err(); err != nil {
+			return nil, err
 		}
+		if !strings.Contains(Canonical(name), filter) {
+			continue
+		}
+		prerequisites, err := relatedTopics(ctx, g.forward[name], true)
+		if err != nil {
+			return nil, err
+		}
+		dependents, err := relatedTopics(ctx, g.reverse[name], false)
+		if err != nil {
+			return nil, err
+		}
+		topics = append(topics, domain.Topic{Name: name, Prerequisites: prerequisites, Dependents: dependents})
 	}
-	return topics
+	slices.SortFunc(topics, func(a, b domain.Topic) int { return cmp.Compare(a.Name, b.Name) })
+	if err := ctx.Err(); err != nil {
+		return nil, err
+	}
+	return topics, nil
 }
 
 // Prerequisites returns sorted, distinct direct prerequisites for a stored name.
 func (g *InMemoryGraph) Prerequisites(topic string) []string {
-	names := make([]string, 0, len(g.forward[topic]))
-	for _, edge := range g.forward[topic] {
-		names = append(names, edge.Object)
-	}
-	slices.Sort(names)
-	return slices.Compact(names)
+	names, _ := relatedTopics(context.Background(), g.forward[topic], true)
+	return names
 }
 
 // Dependents returns sorted, distinct direct dependents for a stored name.
 func (g *InMemoryGraph) Dependents(topic string) []string {
-	names := make([]string, 0, len(g.reverse[topic]))
-	for _, edge := range g.reverse[topic] {
-		names = append(names, edge.Subject)
+	names, _ := relatedTopics(context.Background(), g.reverse[topic], false)
+	return names
+}
+
+func relatedTopics(ctx context.Context, edges []domain.GraphTuple, outgoing bool) ([]string, error) {
+	names := make([]string, 0, len(edges))
+	for _, edge := range edges {
+		if err := ctx.Err(); err != nil {
+			return nil, err
+		}
+		name := edge.Subject
+		if outgoing {
+			name = edge.Object
+		}
+		names = append(names, name)
 	}
 	slices.Sort(names)
-	return slices.Compact(names)
+	if err := ctx.Err(); err != nil {
+		return nil, err
+	}
+	return slices.Compact(names), nil
 }
 
 // Path resolves a canonical name and returns its full prerequisite study order.
 func (g *InMemoryGraph) Path(topic string) (domain.TopicPathResponse, bool) {
+	path, ok, _ := g.PathContext(context.Background(), topic)
+	return path, ok
+}
+
+// PathContext resolves a topic and follows its prerequisites until canceled.
+func (g *InMemoryGraph) PathContext(ctx context.Context, topic string) (domain.TopicPathResponse, bool, error) {
+	if err := ctx.Err(); err != nil {
+		return domain.TopicPathResponse{}, false, err
+	}
 	name, ok := g.Resolve(topic)
 	if !ok {
-		return domain.TopicPathResponse{}, false
+		return domain.TopicPathResponse{}, false, nil
 	}
-	chain := g.GetPrerequisiteChain(name)
+	chain, err := g.prerequisiteChain(name, ctx.Err)
+	if err != nil {
+		return domain.TopicPathResponse{}, false, err
+	}
 	if chain == nil {
 		chain = []string{}
 	}
-	return domain.TopicPathResponse{Topic: name, PrerequisiteChain: chain, Dependents: g.Dependents(name)}, true
+	dependents, err := relatedTopics(ctx, g.reverse[name], false)
+	if err != nil {
+		return domain.TopicPathResponse{}, false, err
+	}
+	return domain.TopicPathResponse{Topic: name, PrerequisiteChain: chain, Dependents: dependents}, true, nil
 }

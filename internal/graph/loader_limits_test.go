@@ -1,6 +1,7 @@
 package graph
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -140,6 +141,22 @@ func TestDecodeChainAtNodeLimit(t *testing.T) {
 	if got := g.Summary().LongestChain; !slices.Equal(got, want) {
 		t.Fatalf("unexpected longest chain (length %d)", len(got))
 	}
+	t.Run("cancels during traversal", func(t *testing.T) {
+		ctx, cancel := context.WithCancel(t.Context())
+		defer cancel()
+		const cancelAfter = 64
+		checks := 0
+		chain, err := g.prerequisiteChain("N00000", func() error {
+			checks++
+			if checks == cancelAfter {
+				cancel()
+			}
+			return ctx.Err()
+		})
+		if !errors.Is(err, context.Canceled) || chain != nil || checks != cancelAfter {
+			t.Fatalf("walk returned %d prerequisites and %v after %d cancellation checks", len(chain), err, checks)
+		}
+	})
 	for _, tc := range []struct{ extra, want string }{
 		{`,{"subject":"N19999","relation":"is_a","object":"N20000"}]`, "20000 distinct nodes"},
 		{`,{"subject":"N19999","relation":"is_a","object":"N00000"}]`, "graph contains a prerequisite cycle: N00000 -> N00001"},
