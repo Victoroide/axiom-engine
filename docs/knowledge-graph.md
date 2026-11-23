@@ -27,7 +27,7 @@ The graph is loaded into `graph.InMemoryGraph` (`internal/graph/memory.go`), whi
 - `canonical: map[string]string`: Canonical representation (`internal/graph/canonical.go`) mapped to authoritative stored node name.
 - `all: []domain.GraphTuple`: Slice containing every unique tuple.
 
-Once loaded during process startup, `InMemoryGraph` is immutable. Read operations (BFS subgraph extraction, DFS prerequisite traversal, and existence checks) run concurrently without mutex contention.
+Once loaded during process startup, `InMemoryGraph` is immutable. Read operations (BFS subgraph extraction, iterative DFS prerequisite traversal, and existence checks) run concurrently without mutex contention.
 
 ---
 
@@ -124,18 +124,30 @@ Custom curricula can be loaded by setting the `GRAPH_FILE` environment variable 
 
 ### Validation Rules
 
-The graph loader (`Decode` in `internal/graph/loader.go`) enforces the following validation checks at startup:
+HTTP startup, MCP startup, and `validate-graph` share the same loader and validation rules.
 
-1. **Strict JSON Array Structure**: The payload must consist of a single top-level JSON array. Extraneous keys or multiple JSON documents trigger `graph must contain exactly one JSON array`.
+1. **Strict JSON Array Structure**: The payload must consist of a single top-level JSON array. Non-whitespace data after the closing bracket within the byte limit triggers `graph must contain exactly one JSON array`. If the decoder reaches the byte limit before detecting trailing data, any additional byte triggers `decode graph: graph exceeds 8388608 bytes`.
 2. **Disallowed Unknown Fields**: JSON objects containing keys other than `subject`, `relation`, or `object` are rejected.
 3. **Non-Empty Content**: The file must contain at least one tuple (`graph must contain at least one tuple`).
 4. **Non-Empty Fields**: After whitespace trimming, `subject`, `relation`, and `object` must all be non-empty strings (`tuple %d has an empty field`).
 5. **Permitted Relations**: The `relation` field must strictly match either `"depends_on"` or `"is_a"` (`tuple %d has unsupported relation %q`).
 6. **No Self Loops**: A tuple cannot reference the same concept as both subject and object. Violations trigger `tuple %d is a self loop`.
-7. **Deduplication**: Repeated identical triples are deduplicated during decoding.
+7. **Deduplication**: The loader validates and indexes tuples as it reads them. Repeated triples with identical trimmed fields count toward the input tuple limit and are stored once at their first occurrence.
 8. **Acyclic Prerequisite Structure**: Both `depends_on` and `is_a` edges must form a directed acyclic graph (DAG). Cyclic prerequisite dependencies are rejected at startup with `graph contains a prerequisite cycle: <path>` (for example, `graph contains a prerequisite cycle: B -> C -> B`). Traversal evaluates starting nodes in sorted order and rotates the cycle to its smallest node to report the path deterministically. Diagnostics show at most 16 nodes and truncate node names exceeding 64 runes with an ellipsis, reporting total node count when nodes are omitted.
 9. **Canonical Node Name Uniqueness**: Distinct node names may not share the same canonical form. Canonical collisions are rejected at startup (see [Node Naming](#node-naming)).
 10. **Addressable Node Names**: After outer whitespace is trimmed, subject and object node names must be at most 128 Unicode runes and must not contain commas, Unicode control characters (`unicode.Cc`), format characters (`unicode.Cf`), or the replacement character U+FFFD (including invalid UTF-8 sequences). Violations fail startup validation reporting the tuple index, field (`subject` or `object`), a quoted prefix of at most 64 runes, and the violated rule (`tuple %d subject %.64q contains a comma`, `contains a control character`, `contains a format character`, `contains a replacement character`, or `exceeds 128 runes`).
+
+### Curriculum Limits
+
+The limits are inclusive. The raw byte count includes leading, embedded, and trailing whitespace and the encoded bytes of Unicode characters and escapes. The tuple count includes duplicates. The concept count includes distinct subjects and objects together.
+
+| Curriculum | Raw bytes | Input tuples | Distinct concepts | Longest chain (concepts) |
+|---|---:|---:|---:|---:|
+| Supported maximum | 8,388,608 (8 MiB) | 50,000 | 20,000 | 20,000 |
+| [Embedded seed](../internal/graph/seed.json) | 1,906 | 20 | 23 | 6 |
+| [Computer science example](../examples/graphs/computer-science.json) | 13,308 | 173 | 130 | 12 |
+
+Cycle detection, prerequisite queries, and the longest-chain summary use iterative traversal. A chain may contain every concept in the graph, up to 19,999 prerequisite edges. Startup and `validate-graph` reject files that exceed a limit.
 
 ### Validating a Curriculum
 
