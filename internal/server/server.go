@@ -11,7 +11,6 @@ import (
 	"net/http"
 	"net/netip"
 	"regexp"
-	"runtime/debug"
 	"strconv"
 	"strings"
 	"sync"
@@ -38,9 +37,12 @@ import (
 	"github.com/Victoroide/axiom-engine/internal/idempotency"
 	"github.com/Victoroide/axiom-engine/internal/metrics"
 	"github.com/Victoroide/axiom-engine/internal/service"
+	"github.com/Victoroide/axiom-engine/internal/telemetry"
 )
 
 var clientRequestIDPattern = regexp.MustCompile(`^[A-Za-z0-9._:-]{1,128}$`)
+
+var errRecoveredPanic = errors.New("route handler panicked")
 
 var previousTokenWarnings = &previousTokenLogGate{}
 
@@ -236,8 +238,8 @@ func useMiddleware(app *fiber.App, cfg config.Config, logger *slog.Logger, error
 		}
 		return nil
 	})
-	app.Use(recover.New(recover.Config{EnableStackTrace: true, StackTraceHandler: func(c fiber.Ctx, e any) {
-		logger.ErrorContext(c.Context(), "panic.recovered", "request_id", requestid.FromContext(c), "error", fmt.Sprint(e), "stack", string(debug.Stack()))
+	app.Use(recover.New(recover.Config{PanicHandler: func(fiber.Ctx, any) error {
+		return errRecoveredPanic
 	}}))
 	app.Use(helmet.New(securityHeaders))
 	if len(cfg.CORSAllowedOrigins) > 0 {
@@ -400,7 +402,11 @@ func newErrorHandler(logger *slog.Logger) fiber.ErrorHandler {
 			if status == 500 {
 				code = "internal_error"
 			}
-			logger.ErrorContext(c.Context(), "request.failed", "request_id", c.GetRespHeader("X-Request-ID"), "error_class", code)
+			if errors.Is(err, errRecoveredPanic) {
+				telemetry.LogRequestPanic(c.Context(), logger, "panic.recovered", requestid.FromContext(c))
+			} else {
+				logger.ErrorContext(c.Context(), "request.failed", "request_id", c.GetRespHeader("X-Request-ID"), "error_class", code)
+			}
 		}
 		if status == 413 {
 			code = "payload_too_large"

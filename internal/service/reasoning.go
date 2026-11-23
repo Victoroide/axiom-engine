@@ -4,9 +4,7 @@ package service
 import (
 	"context"
 	"errors"
-	"fmt"
 	"log/slog"
-	"runtime/debug"
 	"time"
 
 	"github.com/sony/gobreaker/v2"
@@ -263,9 +261,9 @@ func (s *ReasoningService) generateTopic(ctx context.Context, req TopicRequest) 
 			// This goroutine is outside the HTTP recover middleware, so an
 			// unrecovered panic would stop the whole process.
 			defer func() {
-				if p := recover(); p != nil {
-					s.logger.ErrorContext(ctx, "planner.panic", "request_id", requestIDFromContext(ctx), "topic", req.Topic, "panic", fmt.Sprint(p), "stack", string(debug.Stack()))
-					r = result{err: ErrPlannerPanic}
+				if recover() != nil {
+					telemetry.LogRequestPanic(ctx, s.logger, "planner.panic", requestIDFromContext(ctx))
+					r = result{err: errLoggedPlannerPanic}
 				}
 			}()
 			items, err := s.planner.GenerateTopic(ctx, req)

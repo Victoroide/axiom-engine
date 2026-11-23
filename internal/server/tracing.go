@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net/http"
 	"strconv"
+	"strings"
 
 	"github.com/goccy/go-json"
 	"github.com/gofiber/fiber/v3"
@@ -42,6 +43,7 @@ func startRequestTrace(c fiber.Ctx) trace.Span {
 	if id == "" {
 		id = c.GetRespHeader("X-Request-ID")
 	}
+	id = strings.Clone(id)
 	carrier := propagation.MapCarrier{"traceparent": c.Get("traceparent"), "tracestate": c.Get("tracestate")}
 	propagator := propagation.TraceContext{}
 	base := telemetry.WithRequestID(c.Context(), id)

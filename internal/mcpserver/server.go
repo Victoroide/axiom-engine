@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"log/slog"
 
+	"github.com/google/uuid"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 
 	"github.com/Victoroide/axiom-engine/internal/config"
@@ -78,7 +79,17 @@ func New(cfg config.Config, g *graph.InMemoryGraph, planner service.Planner, log
 	if cfg.Tracing.Enabled || cfg.LangSmith.Enabled {
 		s.AddReceivingMiddleware(traceTools(cfg, logger))
 	}
+	s.AddReceivingMiddleware(withToolRequestID)
 	return s
+}
+
+func withToolRequestID(next mcp.MethodHandler) mcp.MethodHandler {
+	return func(ctx context.Context, method string, req mcp.Request) (mcp.Result, error) {
+		if method == "tools/call" {
+			ctx = telemetry.WithRequestID(ctx, uuid.NewString())
+		}
+		return next(ctx, method, req)
+	}
 }
 
 func toolError(err error) error {

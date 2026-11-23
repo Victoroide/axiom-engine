@@ -3,6 +3,7 @@ package telemetry
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"errors"
 	"io"
 	"log/slog"
@@ -119,6 +120,21 @@ func TestLogCorrelation(t *testing.T) {
 	}
 	Fail(trace.SpanFromContext(ctx), "unavailable")
 	span.SetAttributes(attribute.String("safe", "value"))
+}
+
+func TestRequestPanicLogSizeWithEscapedCorrelation(t *testing.T) {
+	var logs bytes.Buffer
+	logger := slog.New(LogHandler(slog.NewJSONHandler(&logs, nil)))
+	ctx := trace.ContextWithSpanContext(t.Context(), callerSpanContext(t))
+	id := strings.Repeat("\x00", 256)
+	LogRequestPanic(ctx, logger, "panic.recovered", id)
+	var record map[string]string
+	if err := json.Unmarshal(logs.Bytes(), &record); err != nil {
+		t.Fatal(err)
+	}
+	if logs.Len() > 1024 || record["request_id"] != id[:128] || record["trace_id"] == "" || record["span_id"] == "" || len(record) != 7 {
+		t.Fatalf("unexpected recovery log fields or size (%d bytes)", logs.Len())
+	}
 }
 
 func TestExporterErrorsAreSafeAndRateLimited(t *testing.T) {

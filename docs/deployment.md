@@ -322,11 +322,11 @@ Every HTTP request produces an `http.access` log record containing:
 - `ip`: client IP address resolved according to proxy configuration.
 - `client_disconnected`: boolean attribute present and set to `true` on streaming routes when the connection ends due to a failed write or flush.
 
-Panics recovered by middleware generate a `panic.recovered` record with `request_id`, `error`, and stack trace, then return HTTP 500 to the caller.
+A recovered HTTP handler panic emits `panic.recovered` and returns HTTP 500 `internal_error`. A recovered planner panic emits `planner.panic`. Each recovery emits one `ERROR` record with `error_class="internal_error"`, the HTTP or MCP `request_id`, and `trace_id` and `span_id` when available. Standard JSON lines for these records are at most 1024 bytes including the newline. The `request_id` is capped at 128 bytes, the recovered value is omitted, and the record contains zero stack frames.
 
-A panic in the planner, which runs outside the HTTP middleware, generates an `ERROR` record `planner.panic` with `request_id`, `topic`, the formatted panic value (`panic`), and the goroutine stack (`stack`). If the JSON plan request fails with `ErrPlannerPanic`, it returns HTTP 500 `internal_error`. A deadline or cancellation that ends the wait first takes precedence. See [Planner Panics](operations.md#planner-panics).
+When a recovered planner panic determines the plan failure, the JSON route returns HTTP 500 `internal_error` and stdio MCP returns an `internal_error` tool error. In that case, an open, connected SSE stream keeps HTTP 200 and sends a terminal `error` event with `error="internal_error"` and `status=500`. A deadline, cancellation, or an earlier error from another topic can determine the response first. A late planner panic still emits its correlated record and releases its permit as the call unwinds. See [Planner Panics](operations.md#planner-panics).
 
-Pipeline and upstream failures generate a `request.failed` record with `request_id`, `error_class`, and (when known) `topic` capped at 128 characters. This record omits upstream prompt content and error dumps. When hallucinated topics returned by the planner are dropped, a `stage.validation` warning record is emitted with `request_id` and `items_dropped`.
+The `request.failed` record for pipeline and upstream failures includes `request_id`, `error_class`, and, when known, `topic` capped at 128 characters. This record omits upstream prompt content and error dumps. When hallucinated topics returned by the planner are dropped, a `stage.validation` warning record is emitted with `request_id` and `items_dropped`.
 
 When a termination signal initiates graceful shutdown, the server emits an `INFO` record `server.shutdown_started` containing:
 - `signal`: signal name string (`terminated` or `interrupt`).

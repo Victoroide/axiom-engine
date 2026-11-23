@@ -138,7 +138,9 @@ Error classifications mirror the HTTP API status codes:
 - `gateway_timeout`: Model reasoning exceeded deadline (`REQUEST_TIMEOUT` or `LLM_TIMEOUT`).
 - `bad_gateway`: Upstream model reasoning failure or unparseable response.
 - `request_timeout`: Request was canceled.
-- `internal_error`: Unexpected server error or recovered panic.
+- `internal_error`: Unexpected server error or a recovered planner panic that determines the plan failure.
+
+A recovered planner panic emits a `planner.panic` record on stderr with `error_class="internal_error"` and the tool call's request ID, including when tracing is disabled. The record omits the recovered value. If cancellation, a deadline, or an earlier error from another topic determines the plan failure, the tool error carries that outcome and a late panic still produces its recovery record.
 
 ---
 

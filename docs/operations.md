@@ -32,9 +32,9 @@ AxiomEngine wraps calls to Amazon Bedrock with an in-memory circuit breaker (`go
 
 ## Planner Panics
 
-The reasoning service recovers a panic in a running planner call and logs `planner.panic` at `ERROR`. The record includes `topic`, `request_id` (empty when unavailable), the formatted panic value in `panic`, and the goroutine stack in `stack`. The panic value can contain sensitive text.
+The reasoning service recovers a panic in a running planner call and logs `planner.panic` at `ERROR`. The record includes `error_class="internal_error"`, `request_id` capped at 128 bytes, and `trace_id` and `span_id` when available. Standard JSON lines are at most 1024 bytes including the newline. The recovery record omits the recovered value and contains zero stack frames.
 
-If the service receives `ErrPlannerPanic` while the call context is active, the breaker excludes it. A plan that fails with this error returns HTTP 500 `internal_error` on the JSON route, an `error` event with `internal_error` and `status: 500` on an active SSE stream, or an `internal_error` tool error over stdio MCP. The process keeps serving.
+If the service receives `ErrPlannerPanic` while the call context is active, the breaker excludes it. When the recovered panic determines the plan failure, the JSON route returns HTTP 500 `internal_error`, an open, connected SSE stream keeps HTTP 200 and sends a terminal `error` event with `internal_error` and `status=500`, and stdio MCP returns an `internal_error` tool error. The process keeps serving.
 
 If a dispatched topic's context expires or is canceled before the service accepts the planner result, that topic returns the context error even if its panic result is ready. The breaker records a deadline as a failure and cancellation as an exclusion. The first error returned by any topic determines the plan response and cancels sibling topic contexts. If a canceled planner later panics, the service still logs the panic and releases its permit as the call unwinds.
 
