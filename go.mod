@@ -6,6 +6,7 @@ require (
 	github.com/alicebob/miniredis/v2 v2.40.0
 	github.com/boundaryml/baml v0.226.3
 	github.com/getkin/kin-openapi v0.153.0
+	github.com/go-jose/go-jose/v4 v4.1.9
 	github.com/go-rod/rod v0.116.2
 	github.com/goccy/go-json v0.12.0
 	github.com/gofiber/contrib/v3/swaggo v1.0.18
