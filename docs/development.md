@@ -231,7 +231,16 @@ Coverage areas include:
 - `internal/llm`: BAML adapter translation, context cancellation propagation, error wrapping, and prompt exclusion of mastered prerequisites.
 - `internal/service`: reasoning pipeline orchestration, duplicate elimination, unknown topic rejection, VARK style validation, learner history validation, exclusion of mastered prerequisites from study sequences, full graph prerequisite chain retention, removal of generated mastered items during validation, `_meta.items_skipped_mastered` accounting, per-topic progress callbacks, circuit breaker state transitions, and outbound resource link validation (HEAD with GET fallback on 405/501, redirect limits, shared deadlines, bounded concurrency, proxy/cookie exclusion, non-public dialer refusals, and `_meta.resources_unreachable`).
 - `internal/idempotency`: in-memory bounded store, reservation lifecycle, response TTL expiration, capacity eviction of expired before oldest entries, and concurrent access safety.
-- `internal/server` and `internal/api`: Fiber v3 routing, constant-time token verification, sliding-window rate limiting, request ID propagation, structured access logging, panic recovery, error response formatting, query and body validation for learner history (contradictory topic history, mastery limits, repeated, comma-separated, and empty query parameters, and cognitive shadow states including `unassessed`), resource link check configuration wiring, idempotency replay, mismatch, and conflict contracts, Server-Sent Events streaming contracts (event sequence, JSON errors before streaming, upstream error events, and deadlines), and real TCP disconnect cancellation with slot release.
+- `internal/server` and `internal/api`: Fiber v3 routing, constant-time token verification, local and Redis-backed IP rate limiting, request ID propagation, structured access logging, panic recovery, error response formatting, query and body validation for learner history (contradictory topic history, mastery limits, repeated, comma-separated, and empty query parameters, and cognitive shadow states including `unassessed`), resource link check configuration wiring, idempotency replay, mismatch, and conflict contracts, Server-Sent Events streaming contracts (event sequence, JSON errors before streaming, upstream error events, and deadlines), and real TCP disconnect cancellation with permit release after the planner returns.
+- `internal/mcpserver` verifies the same optional resource link policy on the stdio plan tool. This transport loads planner and link-check settings and bypasses HTTP rate limiting. See [MCP Mode Configuration](configuration.md#mcp-mode-configuration).
+
+Run the service's planner panic isolation test directly with the race detector.
+
+```sh
+go test -race -run TestPlannerPanicFailsOnlyTheRequest ./internal/service
+```
+
+The test sends five plan requests whose planner panics. Each fails with `ErrPlannerPanic`, the breaker records five exclusions and zero failures, and an unrelated plan succeeds. `TestPlannerIgnoringContextStillTimesOut` exercises a different path. The caller gets a deadline error while the only permit is still occupied. The permit becomes available when the planner returns. Both cases are in [the reasoning service tests](../internal/service/reasoning_test.go).
 
 #### Goroutine leak detection
 
@@ -312,7 +321,7 @@ Coverage includes:
 Transport execution:
 - Standard scenarios execute in-process using Fiber's `app.Test`.
 - Parser-level HTTP 400 (`bad_request`), 408 (`request_timeout`), 413 (`payload_too_large`), and 431 (`request_header_fields_too_large`) tests run against ephemeral TCP listeners because Fiber masks low-level request parsing errors in `app.Test`. Every operation is tested with an oversized body and headers and with the configured read timeout lowered to 200 ms. Slow-client cases send incomplete requests through a raw TCP connection and read the response with `http.ReadResponse`; malformed requests exercise all three probes. Listeners bind `127.0.0.1:0` and shut down explicitly, with no fixed ports or sleeps.
-- HTTP 500 test cases verify panic recovery in route handlers; planner panics originating in detached child goroutines are not contained.
+- HTTP 500 contract cases exercise recovery in HTTP route handlers. The reasoning service recovers planner panics inside the goroutine that executes the call. `TestPlannerPanicReturnsInternalError` verifies the JSON route's HTTP 500 `internal_error` and a successful subsequent request. A native library initialization failure aborts the process before `main`. See [Native Library Failures](operations.md#native-library-failures).
 
 ### Browser end-to-end tests
 

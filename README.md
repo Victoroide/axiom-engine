@@ -228,7 +228,7 @@ The service is configured using environment variables. The table below lists the
 | `LLM_MODEL` | `amazon.nova-micro-v1:0` (`aws-bedrock`) | Model identifier passed to the provider. Required for providers other than `aws-bedrock`. |
 | `LLM_BASE_URL` | `""` (`http://localhost:11434/v1` for `ollama`) | Custom API base URL for `openai`, `ollama`, or `openai-generic`. Required for `openai-generic`. |
 | `REQUEST_TIMEOUT` | `20s` | Maximum deadline for servicing incoming HTTP reasoning requests. |
-| `LLM_TIMEOUT` | `15s` | Timeout applied to each individual per-topic model call. |
+| `LLM_TIMEOUT` | `15s` | Maximum wait for an individual planner result after dispatch. |
 | `LLM_MAX_CONCURRENCY` | `16` | Maximum simultaneous in-flight provider calls across the process. |
 | `RATE_LIMIT_MAX` | `50` | Maximum requests allowed from a client IP within `RATE_LIMIT_WINDOW`. |
 | `RATE_LIMIT_WINDOW` | `1m` | Sliding window duration for IP rate limiting. |
@@ -390,7 +390,7 @@ curl -N -i -X POST http://localhost:8080/api/v1/adaptive-plan/stream \
   }'
 ```
 
-The server sends periodic `: keepalive` comments every 2 seconds. If a client disconnects prematurely, in-flight topic reasoning is cancelled immediately to release concurrency slots and avoid unnecessary token consumption.
+The server sends `: keepalive` comments every 2 seconds. A failed write or flush cancels the request context. Each dispatched planner call holds its concurrency slot until it returns or unwinds after a panic. Work that continues after cancellation can still consume tokens.
 
 ### Curriculum Topics
 
