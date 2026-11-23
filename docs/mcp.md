@@ -30,6 +30,14 @@ The server implements a bounded shutdown lifecycle over standard I/O:
 - Stdin `EOF` exits 0.
 - A second signal terminates immediately.
 
+### In-process Streamable HTTP
+
+`internal/mcpserver.NewStreamableHTTPHandler` constructs an `http.Handler` for in-process use with the four curriculum tools. The handler accepts POST with `Mcp-Protocol-Version: 2026-07-28` and the corresponding JSON-RPC request metadata. It can return JSON or request-scoped SSE. The handler allows an absent `Origin` and checks that a supplied origin matches the request scheme and host. [MCP Streamable HTTP specification](https://modelcontextprotocol.io/specification/2026-07-28/basic/transports/streamable-http)
+
+Reuse one handler across requests to share the `LLM_MAX_CONCURRENCY` limit and `LLM_QUEUE_TIMEOUT`. Requests have a 4 MiB body limit. Closing a response cancels reasoning and graph traversal for that request. The fixed HTTP registry advertises tool discovery and invocation. The hosting `http.Server` owns graceful shutdown and drains active requests.
+
+Response writes use the configured HTTP write timeout (`REQUEST_TIMEOUT + 10s`). Middleware that wraps the response writer must forward `SetWriteDeadline` or provide `Unwrap` so the handler can reach the underlying writer. The handler returns HTTP 500 before dispatch if it cannot set the deadline. [Go `http.ResponseController`](https://pkg.go.dev/net/http#ResponseController)
+
 ---
 
 ## Client Configuration
