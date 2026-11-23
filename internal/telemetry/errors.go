@@ -21,5 +21,7 @@ func (h *exportErrorHandler) Handle(_ error) {
 	}
 	h.next = now.Add(time.Minute)
 	h.mu.Unlock()
+	// Export workers can log during shutdown. Contain a failure in their log sink.
+	defer func() { _ = recover() }()
 	h.logger.Warn("tracing.export_failed", "error_class", "trace_export_failed")
 }

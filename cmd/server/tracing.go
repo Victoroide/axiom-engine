@@ -34,7 +34,13 @@ func (t *traceLifecycle) flush() {
 	}
 	ctx, cancel := context.WithDeadline(context.Background(), deadline)
 	defer cancel()
-	if err := t.shutdown(ctx); err != nil {
-		t.logger.Error("tracing.flush_failed", "error_class", "trace_export_failed")
-	}
+	failed := false
+	defer func() {
+		if recover() != nil || failed {
+			// A panic in the log sink must not escape shutdown either.
+			defer func() { _ = recover() }()
+			t.logger.Error("tracing.flush_failed", "error_class", "trace_export_failed")
+		}
+	}()
+	failed = t.shutdown(ctx) != nil
 }
