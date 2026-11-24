@@ -31,6 +31,10 @@ func TestRunLogsRetryErrorAsJSON(t *testing.T) {
 	testRunLogsErrorAsJSON(t, "AWS_MAX_ATTEMPTS", "0", "AWS_MAX_ATTEMPTS must be")
 }
 
+func TestRunLogsPromptBudgetErrorAsJSON(t *testing.T) {
+	testRunLogsErrorAsJSON(t, "LLM_MAX_TOPIC_INPUT_BYTES", "3093", "LLM_MAX_TOPIC_INPUT_BYTES must be at least 3094 bytes")
+}
+
 func testRunLogsErrorAsJSON(t *testing.T, key, value, want string) {
 	t.Helper()
 	if os.Getenv("AXIOM_ERROR_TEST") == "1" {
