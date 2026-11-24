@@ -240,6 +240,7 @@ make cover
 ```
 
 Coverage areas include:
+- `evaluation/outcomes` checks sample size, effects, intervals and missing scores with synthetic rows. See the [unaided learning outcome evaluation](../evaluation/outcomes/README.md) for the partner-run protocol and worked example.
 - `internal/config`: validation of environment variables, timeouts, port numbers, log levels, CIDR proxy allowlists, origin URLs, learner history limits (`MAX_MASTERED_TOPICS`), and resource link verification settings (`RESOURCE_LINK_CHECK`, `RESOURCE_LINK_TIMEOUT`).
 - `internal/graph`: in-memory graph construction, cycle-safe BFS traversal, topological sorting, prerequisite extraction, JSON file parsing, cognitive shadow state classification with and without learner history, and response byte-compatibility assertions for legacy requests.
 - `internal/llm`: BAML adapter translation, context cancellation propagation, error wrapping, and prompt exclusion of mastered prerequisites.
