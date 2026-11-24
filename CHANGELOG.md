@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- Share eight outbound resource checks across concurrent plan requests. Check each sanitized URL once per request, include queue time in the link timeout, and count every removed occurrence in `_meta.resources_unreachable`.
+
 ## [0.1.1] - 2026-11-24
 
 **Upgrade considerations:**

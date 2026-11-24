@@ -3,17 +3,20 @@ package service
 import (
 	"context"
 	"errors"
+	"fmt"
 	"io"
 	"net"
 	"net/http"
 	"net/http/httptest"
 	"net/netip"
 	"net/url"
-	"reflect"
+	"os"
+	"slices"
 	"strings"
 	"sync"
 	"sync/atomic"
 	"testing"
+	"testing/synctest"
 	"time"
 
 	"github.com/Victoroide/axiom-engine/internal/domain"
@@ -65,13 +68,6 @@ func TestResourceLinkHTTPOutcomes(t *testing.T) {
 			}
 			fallback.Add(1)
 			w.WriteHeader(http.StatusPartialContent)
-		case "/slow":
-			select {
-			case <-r.Context().Done():
-			case <-time.After(time.Second):
-				// Return success if the checker leaves the request running.
-				w.WriteHeader(http.StatusNoContent)
-			}
 		case "/r3":
 			http.Redirect(w, r, "/r2", http.StatusFound)
 		case "/r2":
@@ -85,29 +81,35 @@ func TestResourceLinkHTTPOutcomes(t *testing.T) {
 	checker := NewResourceLinkChecker(5*time.Second, loopbackLinkPolicy{}, recorder)
 	for _, tc := range []struct{ path, want string }{{"/ok", "ok"}, {"/missing", "status"}, {"/redirect", "ok"}, {"/fallback405", "ok"}, {"/fallback501", "ok"}, {"/r3", "ok"}, {"/r4", "status"}} {
 		t.Run(tc.path, func(t *testing.T) {
-			if got := checker.Check(t.Context(), remote.URL+tc.path); got != tc.want {
+			if got := checker.check(t.Context(), remote.URL+tc.path); got != tc.want {
 				t.Fatalf("result=%s want=%s", got, tc.want)
 			}
 		})
 	}
-	t.Run("/slow", func(t *testing.T) {
-		checker := NewResourceLinkChecker(50*time.Millisecond, loopbackLinkPolicy{}, recorder)
-		if got := checker.Check(t.Context(), remote.URL+"/slow"); got != "timeout" {
-			t.Fatalf("result=%s want=timeout", got)
-		}
+	t.Run("timeout", func(t *testing.T) {
+		synctest.Test(t, func(t *testing.T) {
+			checker := NewResourceLinkChecker(time.Second, nil, recorder)
+			checker.client.Transport = resourceLinkRoundTripFunc(func(req *http.Request) (*http.Response, error) {
+				<-req.Context().Done()
+				return nil, req.Context().Err()
+			})
+			if got := checker.Check(t.Context(), "https://links.example/slow"); got != "timeout" {
+				t.Fatalf("result=%s want=timeout", got)
+			}
+		})
 	})
 	if fallback.Load() != 2 {
 		t.Fatalf("fallback requests=%d", fallback.Load())
 	}
-	if got := checker.Check(t.Context(), "ftp://example.com/guide"); got != "invalid" {
+	if got := checker.check(t.Context(), "ftp://example.com/guide"); got != "invalid" {
 		t.Fatal(got)
 	}
-	if got := checker.Check(t.Context(), "http://user:pass@example.com/guide"); got != "invalid" {
+	if got := checker.check(t.Context(), "http://user:pass@example.com/guide"); got != "invalid" {
 		t.Fatal(got)
 	}
 	// A refused destination must also produce the bounded refused metric.
 	checker = NewResourceLinkChecker(time.Second, nil, recorder)
-	if got := checker.Check(t.Context(), "http://localhost/guide"); got != "refused" {
+	if got := checker.check(t.Context(), "http://127.0.0.1/guide"); got != "refused" {
 		t.Fatal(got)
 	}
 	scrape := httptest.NewRecorder()
@@ -125,17 +127,19 @@ var nonPublicLinkAddresses = []string{
 }
 
 func TestResourceLinkDefaultDialRefusesNonPublicAddresses(t *testing.T) {
-	checker := NewResourceLinkChecker(time.Second, nil, nil)
-	transport := checker.client.Transport.(*http.Transport)
 	for _, ip := range nonPublicLinkAddresses {
 		t.Run(ip, func(t *testing.T) {
-			conn, err := transport.DialContext(t.Context(), "tcp", net.JoinHostPort(ip, "80"))
-			if conn != nil {
-				_ = conn.Close()
-				t.Fatal("connected to non-public address")
-			}
-			if !errors.Is(err, errResourceLinkRefused) {
-				t.Fatalf("dial error=%v", err)
+			checker := NewResourceLinkChecker(time.Second, nil, nil)
+			transport := checker.client.Transport
+			checker.client.Transport = resourceLinkRoundTripFunc(func(req *http.Request) (*http.Response, error) {
+				response, err := transport.RoundTrip(req)
+				if !errors.Is(err, errResourceLinkRefused) {
+					t.Errorf("dial error=%v, want address policy refusal", err)
+				}
+				return response, err
+			})
+			if got := checker.check(t.Context(), "http://"+net.JoinHostPort(ip, "80")); got != "refused" {
+				t.Errorf("check result=%q, want refused", got)
 			}
 		})
 	}
@@ -163,7 +167,7 @@ func TestResourceLinkDefaultPolicyRefusesRedirectDestinations(t *testing.T) {
 		t.Run(ip, func(t *testing.T) {
 			checker := NewResourceLinkChecker(time.Second, nil, nil)
 			checker.client.Transport = redirectResponseTransport{next: checker.client.Transport, target: "http://" + net.JoinHostPort(ip, "80") + "/private"}
-			if got := checker.Check(t.Context(), "http://public.example/start"); got != "refused" {
+			if got := checker.check(t.Context(), "http://public.example/start"); got != "refused" {
 				t.Fatalf("redirect result=%s", got)
 			}
 		})
@@ -171,9 +175,61 @@ func TestResourceLinkDefaultPolicyRefusesRedirectDestinations(t *testing.T) {
 	for _, target := range []string{"file:///etc/passwd", "ftp://public.example/file", "http://public.example:8080/file", "https://user:secret@public.example/file"} {
 		checker := NewResourceLinkChecker(time.Second, nil, nil)
 		checker.client.Transport = redirectResponseTransport{next: checker.client.Transport, target: target}
-		if got := checker.Check(t.Context(), "http://public.example/start"); got != "invalid" {
+		if got := checker.check(t.Context(), "http://public.example/start"); got != "invalid" {
 			t.Errorf("target=%s result=%s", target, got)
 		}
+	}
+}
+
+type redirectLinkPolicy struct {
+	loopbackLinkPolicy
+	denied   netip.Addr
+	observed []netip.Addr
+}
+
+func (p *redirectLinkPolicy) ValidateAddress(ip netip.Addr) error {
+	p.observed = append(p.observed, ip)
+	if ip == p.denied {
+		return errResourceLinkRefused
+	}
+	return p.loopbackLinkPolicy.ValidateAddress(ip)
+}
+
+func TestResourceLinkRedirectRechecksDialAddress(t *testing.T) {
+	var hits atomic.Int32
+	remote := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		hits.Add(1)
+		if r.URL.Path == "/start" {
+			http.Redirect(w, r, "/denied", http.StatusFound)
+			return
+		}
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer remote.Close()
+	start := remote.Listener.Addr().(*net.TCPAddr).AddrPort()
+	denied := netip.MustParseAddr("127.0.0.2")
+	policy := &redirectLinkPolicy{denied: denied}
+	checker := NewResourceLinkChecker(time.Second, policy, nil)
+	transport := checker.client.Transport.(*http.Transport)
+	dial := transport.DialContext
+	var lookups atomic.Int32
+	transport.DialContext = func(ctx context.Context, network, authority string) (net.Conn, error) {
+		if authority != "links.example:80" {
+			t.Errorf("unexpected authority %s", authority)
+			return nil, errResourceLinkRefused
+		}
+		// Resolve the same authority to a different IP on the redirect.
+		address := start
+		if lookups.Add(1) > 1 {
+			address = netip.AddrPortFrom(denied, start.Port())
+		}
+		return dial(ctx, network, address.String())
+	}
+	if got := checker.check(t.Context(), "http://links.example/start"); got != "refused" {
+		t.Fatalf("redirect result=%q, want refused", got)
+	}
+	if !slices.Equal(policy.observed, []netip.Addr{start.Addr(), denied}) || hits.Load() != 1 {
+		t.Fatalf("dial addresses=%v, HTTP requests=%d", policy.observed, hits.Load())
 	}
 }
 
@@ -185,112 +241,287 @@ func TestResourceLinkTransportHasNoProxy(t *testing.T) {
 }
 
 func TestResourceLinkFallbackSharesDeadline(t *testing.T) {
-	var requests atomic.Int32
-	remote := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		requests.Add(1)
-		time.Sleep(140 * time.Millisecond)
-		if r.Method == http.MethodHead {
-			w.WriteHeader(http.StatusMethodNotAllowed)
-			return
+	synctest.Test(t, func(t *testing.T) {
+		const timeout = 200 * time.Millisecond
+		checker := NewResourceLinkChecker(timeout, nil, nil)
+		var methods []string
+		checker.client.Transport = resourceLinkRoundTripFunc(func(r *http.Request) (*http.Response, error) {
+			methods = append(methods, r.Method)
+			select {
+			case <-r.Context().Done():
+				return nil, r.Context().Err()
+			case <-time.After(140 * time.Millisecond):
+			}
+			if r.Method == http.MethodHead {
+				return linkResponse(r, http.StatusMethodNotAllowed), nil
+			}
+			return linkResponse(r, http.StatusPartialContent), nil
+		})
+		start := time.Now()
+		got := checker.Check(t.Context(), "https://links.example/guide")
+		if got != "timeout" || time.Since(start) != timeout || !slices.Equal(methods, []string{http.MethodHead, http.MethodGet}) {
+			t.Fatalf("result=%s elapsed=%s methods=%v", got, time.Since(start), methods)
 		}
-		w.WriteHeader(http.StatusOK)
-	}))
-	defer remote.Close()
-	checker := NewResourceLinkChecker(200*time.Millisecond, loopbackLinkPolicy{}, nil)
-	if got := checker.Check(t.Context(), remote.URL); got != "timeout" {
-		t.Fatalf("result=%s, want timeout within one 200ms budget", got)
-	}
-	if got := requests.Load(); got != 2 {
-		t.Fatalf("requests=%d, want HEAD and fallback GET", got)
-	}
+	})
 }
 
 func TestResourceLinkChecksRespectRequestDeadline(t *testing.T) {
-	remote := httptest.NewServer(http.HandlerFunc(func(_ http.ResponseWriter, r *http.Request) { <-r.Context().Done() }))
-	defer remote.Close()
-	checker := NewResourceLinkChecker(time.Second, loopbackLinkPolicy{}, nil)
-	ctx, cancel := context.WithTimeout(t.Context(), 30*time.Millisecond)
-	defer cancel()
-	start := time.Now()
-	if got := checker.Check(ctx, remote.URL); got != "timeout" {
-		t.Fatal(got)
+	synctest.Test(t, func(t *testing.T) {
+		checker := NewResourceLinkChecker(time.Second, nil, nil)
+		checker.client.Transport = resourceLinkRoundTripFunc(func(req *http.Request) (*http.Response, error) {
+			<-req.Context().Done()
+			return nil, req.Context().Err()
+		})
+		ctx, cancel := context.WithTimeout(t.Context(), 30*time.Millisecond)
+		defer cancel()
+		start := time.Now()
+		if got := checker.Check(ctx, "https://links.example/guide"); got != "timeout" || time.Since(start) != 30*time.Millisecond {
+			t.Fatalf("result=%s elapsed=%v, want timeout after 30ms", got, time.Since(start))
+		}
+	})
+}
+
+func TestResourceLinkCancellationClosesTLSConnection(t *testing.T) {
+	listener, err := (&net.ListenConfig{}).Listen(t.Context(), "tcp4", "127.0.0.1:0")
+	if err != nil {
+		t.Fatal(err)
 	}
-	if elapsed := time.Since(start); elapsed > 500*time.Millisecond {
-		t.Fatalf("elapsed=%v", elapsed)
+	defer func() { _ = listener.Close() }()
+	checker := NewResourceLinkChecker(time.Second, loopbackLinkPolicy{}, nil)
+	ctx, cancel := context.WithCancel(t.Context())
+	defer cancel()
+	done := make(chan string, 1)
+	go func() { done <- checker.check(ctx, "https://"+listener.Addr().String()) }()
+	conn, err := listener.Accept()
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = conn.Close() }()
+	var firstByte [1]byte
+	if _, err := io.ReadFull(conn, firstByte[:]); err != nil {
+		t.Fatalf("read TLS handshake: %v", err)
+	}
+	cancel()
+	if got := <-done; got != "timeout" {
+		t.Errorf("canceled result=%q, want timeout", got)
+	}
+	if _, err := io.Copy(io.Discard, conn); err != nil {
+		t.Fatalf("cancellation did not close the TLS connection: %v", err)
 	}
 }
 
-func TestResourceLinkFilteringIsBoundedAndOrdered(t *testing.T) {
-	var active, maximum atomic.Int32
-	entered := make(chan struct{}, 30)
-	release := make(chan struct{})
-	var once sync.Once
-	unblock := func() { once.Do(func() { close(release) }) }
-	defer unblock()
-	remote := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		n := active.Add(1)
-		defer active.Add(-1)
-		for old := maximum.Load(); n > old; old = maximum.Load() {
-			if maximum.CompareAndSwap(old, n) {
-				break
+type resourceLinkRoundTripFunc func(*http.Request) (*http.Response, error)
+
+func (f resourceLinkRoundTripFunc) RoundTrip(req *http.Request) (*http.Response, error) {
+	return f(req)
+}
+
+func linkResponse(req *http.Request, status int) *http.Response {
+	return &http.Response{StatusCode: status, Body: io.NopCloser(strings.NewReader("fixture-body-canary")), Request: req}
+}
+
+func TestResourceLinkFilteringAcrossRequests(t *testing.T) {
+	const base = "https://links.example/"
+	const guide = base + "guide?fixture-query-canary=1"
+	const missing = base + "missing"
+	const occurrences = 101
+	const distinct = 11
+	type requestKey struct{}
+	recorder := metrics.New()
+	synctest.Test(t, func(t *testing.T) {
+		var mu sync.Mutex
+		var active, maximum int
+		hits := [2]map[string]int{make(map[string]int), make(map[string]int)}
+		release := make(chan struct{})
+		checker := NewResourceLinkChecker(time.Second, nil, recorder)
+		checker.client.Transport = resourceLinkRoundTripFunc(func(req *http.Request) (*http.Response, error) {
+			i := req.Context().Value(requestKey{}).(int)
+			mu.Lock()
+			hits[i][req.URL.String()]++
+			active++
+			maximum = max(maximum, active)
+			mu.Unlock()
+			<-release
+			mu.Lock()
+			active--
+			mu.Unlock()
+			if req.URL.Path == "/missing" {
+				return linkResponse(req, http.StatusNotFound), nil
+			}
+			return linkResponse(req, http.StatusOK), nil
+		})
+		items := make([]domain.PlanItem, 0, occurrences+4)
+		for i := range occurrences {
+			items = append(items, domain.PlanItem{Topic: fmt.Sprintf("Topic %d", i), Resources: []domain.Resource{
+				{Title: "first", URL: " " + guide, ResourceType: "video"},
+				{Title: "removed", URL: missing, ResourceType: "video"},
+				{Title: "last", URL: guide, ResourceType: "diagram"},
+			}})
+		}
+		for i := range 3 {
+			resources := make([]domain.Resource, 4)
+			for j := range resources {
+				resources[j] = domain.Resource{Title: fmt.Sprint(j), URL: fmt.Sprintf("%sguide?group=%d&index=%d", base, i, j), ResourceType: "video"}
+			}
+			items = append(items, domain.PlanItem{Topic: fmt.Sprintf("Distinct %d", i), Resources: resources})
+		}
+		items = append(items, domain.PlanItem{Topic: "Empty"})
+		sanitized, removed := sanitizeOutput(items, "visual", false)
+		if removed != 3 {
+			t.Fatalf("output policy drops=%d, want 3", removed)
+		}
+		var requests sync.WaitGroup
+		for i := range hits {
+			requests.Go(func() {
+				ctx := context.WithValue(t.Context(), requestKey{}, i)
+				got, dropped := checker.filterResources(ctx, sanitized)
+				if dropped != occurrences || len(got) != len(sanitized) {
+					t.Errorf("request %d: items=%d drops=%d, want %d items and %d drops", i, len(got), dropped, len(sanitized), occurrences)
+					return
+				}
+				for j, item := range got {
+					want := sanitized[j].Resources
+					if j < occurrences {
+						want = []domain.Resource{want[0], want[2]}
+					}
+					if item.Topic != sanitized[j].Topic || !slices.Equal(item.Resources, want) || item.Resources == nil {
+						t.Errorf("request %d item %d: topic=%q resources=%v, want %q %v", i, j, item.Topic, item.Resources, sanitized[j].Topic, want)
+					}
+				}
+			})
+		}
+		synctest.Wait()
+		if active != 8 {
+			t.Errorf("aggregate concurrency while blocked=%d, want 8", active)
+		}
+		close(release)
+		requests.Wait()
+		if maximum != 8 {
+			t.Errorf("maximum aggregate concurrency=%d, want 8", maximum)
+		}
+		for i, counts := range hits {
+			if len(counts) != distinct {
+				t.Errorf("request %d: distinct checks=%d, want %d", i, len(counts), distinct)
+			}
+			for url, n := range counts {
+				if n != 1 || strings.Contains(url, "index=3") {
+					t.Errorf("request %d: checks for %s=%d", i, url, n)
+				}
 			}
 		}
-		entered <- struct{}{}
-		select {
-		case <-release:
-		case <-r.Context().Done():
-			return
-		}
-		if r.URL.Path == "/missing" {
-			w.WriteHeader(http.StatusNotFound)
-		} else {
-			w.WriteHeader(http.StatusOK)
-		}
-	}))
-	defer remote.Close()
-	items := make([]domain.PlanItem, 10)
-	for i := range items {
-		items[i] = domain.PlanItem{Topic: "Recursion", Resources: []domain.Resource{{Title: "first", URL: remote.URL + "/ok"}, {Title: "removed", URL: remote.URL + "/missing"}, {Title: "last", URL: remote.URL + "/ok"}}}
-	}
-	checker := NewResourceLinkChecker(time.Second, loopbackLinkPolicy{}, nil)
-	type result struct {
-		items   []domain.PlanItem
-		dropped int
-	}
-	done := make(chan result, 1)
-	go func() { got, n := checker.filterResources(t.Context(), items); done <- result{got, n} }()
-	for range 8 {
-		select {
-		case <-entered:
-		case <-time.After(time.Second):
-			unblock()
-			t.Fatal("checks did not fill concurrency limit")
+	})
+	scrape := httptest.NewRecorder()
+	recorder.Handler().ServeHTTP(scrape, httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/metrics", nil))
+	for _, line := range []string{`axiom_resource_links_checked_total{result="ok"} 20`, `axiom_resource_links_checked_total{result="status"} 2`} {
+		if !slices.Contains(strings.Split(scrape.Body.String(), "\n"), line) {
+			t.Errorf("missing %s", line)
 		}
 	}
-	unblock()
-	got := <-done
-	if maximum.Load() != 8 || got.dropped != 10 {
-		t.Fatalf("concurrency=%d dropped=%d", maximum.Load(), got.dropped)
-	}
-	for _, item := range got.items {
-		var titles []string
-		for _, r := range item.Resources {
-			titles = append(titles, r.Title)
-		}
-		if !reflect.DeepEqual(titles, []string{"first", "last"}) {
-			t.Fatalf("titles=%v", titles)
+	for _, marker := range []string{base, "fixture-query-canary", "fixture-body-canary"} {
+		if strings.Contains(scrape.Body.String(), marker) {
+			t.Errorf("resource link metrics contain %q", marker)
 		}
 	}
+}
+
+func TestResourceLinkCancellationAndTimeoutWhileQueued(t *testing.T) {
+	for _, tc := range []struct {
+		name, want string
+		wait       time.Duration
+	}{
+		{name: "caller cancels", want: "timeout"},
+		{name: "check deadline expires", want: "timeout", wait: time.Second},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			synctest.Test(t, func(t *testing.T) {
+				checker := NewResourceLinkChecker(time.Second, nil, nil)
+				entered := make(chan struct{}, 8)
+				release := make(chan struct{})
+				var queuedHits atomic.Int32
+				checker.client.Transport = resourceLinkRoundTripFunc(func(req *http.Request) (*http.Response, error) {
+					if req.URL.Path == "/hold" {
+						entered <- struct{}{}
+						<-release
+					} else {
+						queuedHits.Add(1)
+					}
+					return linkResponse(req, http.StatusOK), nil
+				})
+				var running sync.WaitGroup
+				for range 8 {
+					running.Go(func() { checker.Check(t.Context(), "https://links.example/hold") })
+				}
+				for range 8 {
+					<-entered
+				}
+				ctx, cancel := context.WithCancel(t.Context())
+				defer cancel()
+				done := make(chan string, 1)
+				go func() { done <- checker.Check(ctx, "https://links.example/queued") }()
+				synctest.Wait()
+				if queuedHits.Load() != 0 {
+					t.Error("queued check reached the transport while all permits were occupied")
+				}
+				if tc.wait == 0 {
+					cancel()
+				} else {
+					time.Sleep(tc.wait)
+				}
+				synctest.Wait()
+				select {
+				case got := <-done:
+					if got != tc.want {
+						t.Errorf("queued result=%q, want %q", got, tc.want)
+					}
+				default:
+					t.Error("queued check did not finish while all permits were occupied")
+				}
+				close(release)
+				running.Wait()
+				if queuedHits.Load() != 0 {
+					t.Error("canceled check reached the transport")
+				}
+				if got := checker.Check(t.Context(), "https://links.example/recovered"); got != "ok" {
+					t.Errorf("result after releasing permits=%q, want ok", got)
+				}
+			})
+		})
+	}
+}
+
+func TestResourceLinkPlanQueueUsesCheckDeadline(t *testing.T) {
+	synctest.Test(t, func(t *testing.T) {
+		checker := NewResourceLinkChecker(time.Second, nil, nil)
+		var hits atomic.Int32
+		checker.client.Transport = resourceLinkRoundTripFunc(func(req *http.Request) (*http.Response, error) {
+			hits.Add(1)
+			<-req.Context().Done()
+			return nil, req.Context().Err()
+		})
+		items := make([]domain.PlanItem, 9)
+		for i := range items {
+			items[i].Resources = []domain.Resource{{URL: fmt.Sprintf("https://links.example/%d", i)}}
+		}
+		start := time.Now()
+		got, dropped := checker.filterResources(t.Context(), items)
+		if len(got) != len(items) || dropped != 9 || hits.Load() != 8 || time.Since(start) != time.Second {
+			t.Fatalf("items=%d dropped=%d attempts=%d duration=%s", len(got), dropped, hits.Load(), time.Since(start))
+		}
+	})
 }
 
 func TestResourceLinksAreCheckedAfterSanitizing(t *testing.T) {
-	var hits atomic.Int32
-	remote := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) { hits.Add(1); w.WriteHeader(http.StatusNotFound) }))
-	defer remote.Close()
+	const link = "https://links.example/guide"
 	svc := newService(func(_ context.Context, r TopicRequest) ([]domain.PlanItem, error) {
-		return []domain.PlanItem{{Topic: r.Topic, Resources: []domain.Resource{{Title: "bad type", URL: remote.URL, ResourceType: "podcast"}, {Title: "missing", URL: remote.URL, ResourceType: "video"}}}}, nil
+		return []domain.PlanItem{{Topic: r.Topic, Resources: []domain.Resource{{Title: "bad type", URL: link, ResourceType: "podcast"}, {Title: "missing", URL: link, ResourceType: "video"}}}}, nil
 	})
-	svc.resourceLinks = NewResourceLinkChecker(time.Second, loopbackLinkPolicy{}, nil)
+	var hits atomic.Int32
+	checker := NewResourceLinkChecker(time.Second, nil, nil)
+	checker.client.Transport = resourceLinkRoundTripFunc(func(req *http.Request) (*http.Response, error) {
+		hits.Add(1)
+		return linkResponse(req, http.StatusNotFound), nil
+	})
+	svc.resourceLinks = checker
 	got, err := svc.GeneratePlan(t.Context(), request("Recursion"))
 	if err != nil {
 		t.Fatal(err)
@@ -319,7 +550,7 @@ func TestResourceLinkRedirectLimitIncludesFallback(t *testing.T) {
 	}))
 	defer remote.Close()
 	checker := NewResourceLinkChecker(time.Second, loopbackLinkPolicy{}, nil)
-	if got := checker.Check(t.Context(), remote.URL+"/start"); got != "status" {
+	if got := checker.check(t.Context(), remote.URL+"/start"); got != "status" {
 		t.Fatalf("result=%s requests=%d", got, hits.Load())
 	}
 	if hits.Load() != 5 {
@@ -328,15 +559,52 @@ func TestResourceLinkRedirectLimitIncludesFallback(t *testing.T) {
 }
 
 func TestResourceLinkDeadlinePropagatesFromPlan(t *testing.T) {
-	remote := httptest.NewServer(http.HandlerFunc(func(_ http.ResponseWriter, r *http.Request) { <-r.Context().Done() }))
-	defer remote.Close()
-	svc := newService(func(_ context.Context, r TopicRequest) ([]domain.PlanItem, error) {
-		return []domain.PlanItem{{Topic: r.Topic, Resources: []domain.Resource{{Title: "Slow guide", URL: remote.URL, ResourceType: "video"}}}}, nil
+	synctest.Test(t, func(t *testing.T) {
+		svc := newService(func(_ context.Context, r TopicRequest) ([]domain.PlanItem, error) {
+			return []domain.PlanItem{{Topic: r.Topic, Resources: []domain.Resource{{Title: "Slow guide", URL: "https://links.example/slow", ResourceType: "video"}}}}, nil
+		})
+		checker := NewResourceLinkChecker(time.Second, nil, nil)
+		checker.client.Transport = resourceLinkRoundTripFunc(func(req *http.Request) (*http.Response, error) {
+			<-req.Context().Done()
+			return nil, req.Context().Err()
+		})
+		svc.resourceLinks = checker
+		ctx, cancel := context.WithTimeout(t.Context(), 30*time.Millisecond)
+		defer cancel()
+		if _, err := svc.GeneratePlan(ctx, request("Recursion")); !errors.Is(err, context.DeadlineExceeded) {
+			t.Fatalf("error=%v", err)
+		}
 	})
-	svc.resourceLinks = NewResourceLinkChecker(time.Second, loopbackLinkPolicy{}, nil)
-	ctx, cancel := context.WithTimeout(t.Context(), 30*time.Millisecond)
-	defer cancel()
-	if _, err := svc.GeneratePlan(ctx, request("Recursion")); !errors.Is(err, context.DeadlineExceeded) {
-		t.Fatalf("error=%v", err)
-	}
+}
+
+type linkDeadlineContext struct {
+	context.Context
+	deadline time.Time
+}
+
+func (c linkDeadlineContext) Deadline() (time.Time, bool) { return c.deadline, true }
+
+func TestResourceLinkPlanDeadlineBeforeCancellationSignal(t *testing.T) {
+	synctest.Test(t, func(t *testing.T) {
+		const link = "https://links.example/guide"
+		svc := newService(func(_ context.Context, r TopicRequest) ([]domain.PlanItem, error) {
+			return []domain.PlanItem{{Topic: r.Topic, Resources: []domain.Resource{{Title: "Guide", URL: link, ResourceType: "video"}}}}, nil
+		})
+		checker := NewResourceLinkChecker(5*time.Second, nil, nil)
+		checker.client.Transport = resourceLinkRoundTripFunc(func(req *http.Request) (*http.Response, error) {
+			deadline, ok := req.Context().Deadline()
+			if !ok {
+				t.Error("resource request lost its deadline")
+				return linkResponse(req, http.StatusOK), nil
+			}
+			time.Sleep(time.Until(deadline))
+			// An I/O timeout can complete before the parent timer signals Done.
+			return nil, os.ErrDeadlineExceeded
+		})
+		svc.resourceLinks = checker
+		ctx := linkDeadlineContext{Context: t.Context(), deadline: time.Now().Add(time.Second)}
+		if _, err := svc.GeneratePlan(ctx, request("Recursion")); !errors.Is(err, context.DeadlineExceeded) {
+			t.Fatalf("error=%v, want deadline exceeded", err)
+		}
+	})
 }

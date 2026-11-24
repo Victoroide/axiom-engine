@@ -257,10 +257,10 @@ go test -race -run TestPlannerPanicFailsOnlyTheRequest ./internal/service
 
 The test sends five plan requests whose planner panics. Each fails with `ErrPlannerPanic`, the breaker records five exclusions and zero failures, and an unrelated plan succeeds. `TestPlannerIgnoringContextStillTimesOut` exercises a different path. The caller gets a deadline error while the only permit is still occupied. The permit becomes available when the planner returns. Both cases are in [the reasoning service tests](../internal/service/reasoning_test.go).
 
-The resource link HTTP outcome test uses a longer deadline for ordinary loopback responses and a short deadline for `/slow`. The slow handler waits for cancellation and eventually returns a successful response if the checker leaves the request running. Run the focused race test from the repository root alongside `make test` to check stability under load.
+Resource link tests use loopback servers for HTTP outcomes, redirects, and dial validation. Tests with synthetic time hold dials and socket cleanup behind release barriers. They also verify queue deadlines, late responses, per-request deduplication, and per-occurrence removal. The HTTP and MCP fixtures cover default policy wiring, injected policy, disabled checks, and empty resource lists. Run the focused race tests from the repository root.
 
 ```sh
-go test -race -count=200 -run '^TestResourceLinkHTTPOutcomes$' ./internal/service
+go test -race -shuffle=on -count=20 -run '^(TestResourceLink|TestPlanToolUsesResourceLinkPolicy)' ./internal/service ./internal/server ./internal/mcpserver
 ```
 
 The shared Redis budget test sends 24 concurrent requests across two replicas and requires exactly five HTTP 200 responses. Every other response must be HTTP 429. The parent test reports request and response-body errors and waits at most five seconds for results. It reserves up to one second for reporting and cleanup, capped at half the time remaining before the package deadline. If the wait expires, the parent collects any buffered results before reporting an incomplete batch.
