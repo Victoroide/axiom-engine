@@ -12,7 +12,6 @@ import (
 	"io"
 	"os"
 	"os/exec"
-	"path/filepath"
 	"strings"
 	"syscall"
 	"testing"
@@ -22,17 +21,13 @@ import (
 )
 
 func TestMCPShutdownWithUnreadStdout(t *testing.T) {
-	binary := filepath.Join(t.TempDir(), "axiom-server")
-	build := exec.CommandContext(t.Context(), "go", "build", "-o", binary, ".") //nolint:gosec // Build the server in a fresh test directory.
-	if out, err := build.CombinedOutput(); err != nil {
-		t.Fatalf("build: %v: %s", err, out)
-	}
+	t.Setenv("PATH", t.TempDir())
 	ctx, cancel := context.WithTimeout(t.Context(), 8*time.Second)
 	defer cancel()
-	cmd := exec.CommandContext(ctx, binary, "mcp") //nolint:gosec // Execute the server built by this test.
 	const budget = 100 * time.Millisecond
-	cmd.Env = append(mcpFixtureEnv(t), "BAML_LOG=off", "AXIOM_INTERNAL_TOKEN=", "AXIOM_INTERNAL_TOKEN_PREVIOUS=", "AXIOM_AUTH_DISABLED=invalid", "GRAPH_FILE=", "SHUTDOWN_TIMEOUT="+budget.String(),
+	env := append(mcpFixtureEnv(t), "BAML_LOG=off", "AXIOM_INTERNAL_TOKEN=", "AXIOM_INTERNAL_TOKEN_PREVIOUS=", "AXIOM_AUTH_DISABLED=invalid", "GRAPH_FILE=", "SHUTDOWN_TIMEOUT="+budget.String(),
 		"AWS_ACCESS_KEY_ID=dummy", "AWS_SECRET_ACCESS_KEY=dummy", "AWS_SESSION_TOKEN=", "AWS_PROFILE=", "AWS_REGION=us-east-1", "AWS_DEFAULT_REGION=us-east-1", "AWS_EC2_METADATA_DISABLED=true", "AWS_RETRY_MODE=standard", "AWS_MAX_ATTEMPTS=1")
+	cmd := serverCommand(ctx, env, "mcp")
 	stdin, err := cmd.StdinPipe()
 	if err != nil {
 		t.Fatal(err)

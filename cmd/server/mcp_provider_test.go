@@ -34,7 +34,7 @@ func mcpFixtureEnv(t *testing.T) []string {
 				return true
 			}
 		}
-		return slices.Contains([]string{"ANTHROPIC_API_KEY", "GOOGLE_API_KEY", "OPENAI_API_KEY"}, key)
+		return slices.Contains([]string{"ANTHROPIC_API_KEY", "BEDROCK_REQUIRE_EXPLICIT_REGION", "GOOGLE_API_KEY", "OPENAI_API_KEY"}, key)
 	})
 	configFile := filepath.Join(t.TempDir(), "aws-config")
 	if err := os.WriteFile(configFile, nil, 0600); err != nil {
@@ -46,21 +46,15 @@ func mcpFixtureEnv(t *testing.T) []string {
 
 func startConfiguredMCP(t *testing.T, settings map[string]string) *configuredMCP {
 	t.Helper()
-	binary := filepath.Join(t.TempDir(), "axiom-server")
-	build := exec.CommandContext(t.Context(), "go", "build", "-o", binary, ".") //nolint:gosec // Build the current server in a fresh test directory.
-	if data, err := build.CombinedOutput(); err != nil {
-		t.Fatalf("build: %v %s", err, data)
-	}
-	cmd := exec.CommandContext(t.Context(), binary, "mcp") //nolint:gosec // Execute the server built by this test.
 	defaults := map[string]string{"BAML_LOG": "off", "GRAPH_FILE": "", "AXIOM_AUTH_DISABLED": "invalid", "PORT": "invalid", "AWS_MAX_ATTEMPTS": "3", "AWS_RETRY_MODE": "standard", "TRACING_ENABLED": "false", "LANGSMITH_TRACING": "false", "RESOURCE_LINK_CHECK": "false"}
 	for k, v := range settings {
 		defaults[k] = v
 	}
-	cmd.Env = mcpFixtureEnv(t)
+	env := mcpFixtureEnv(t)
 	for k, v := range defaults {
-		cmd.Env = append(cmd.Env, k+"="+v)
+		env = append(env, k+"="+v)
 	}
-	p := startMCPProcess(t, cmd)
+	p := startMCPProcess(t, serverCommand(t.Context(), env, "mcp"))
 	p.initialize(t)
 	return p
 }

@@ -45,11 +45,6 @@ func TestValidateGraphCommand(t *testing.T) {
 
 func TestValidateGraphProcess(t *testing.T) {
 	dir := t.TempDir()
-	binary := filepath.Join(dir, "axiom-server")
-	build := exec.CommandContext(t.Context(), "go", "build", "-o", binary, ".") //nolint:gosec // Build the server in a fresh test directory.
-	if output, err := build.CombinedOutput(); err != nil {
-		t.Fatalf("build: %v: %s", err, output)
-	}
 	invalid := filepath.Join(dir, "invalid.json")
 	if err := os.WriteFile(invalid, []byte(`[{"subject":"A","relation":"unknown","object":"B"}]`), 0600); err != nil {
 		t.Fatal(err)
@@ -64,8 +59,8 @@ func TestValidateGraphProcess(t *testing.T) {
 		{filepath.Join(dir, "absent.json"), "open graph:", 1},
 	} {
 		t.Run(tc.file, func(t *testing.T) {
-			cmd := exec.CommandContext(t.Context(), binary, "validate-graph", tc.file) //nolint:gosec // Execute the server built by this test with fixture paths.
-			cmd.Env = append(os.Environ(), "AXIOM_INTERNAL_TOKEN=", "AXIOM_AUTH_DISABLED=invalid", "AWS_RETRY_MODE=invalid", "BAML_LOG=off", "PORT=invalid")
+			env := append(os.Environ(), "AXIOM_INTERNAL_TOKEN=", "AXIOM_AUTH_DISABLED=invalid", "AWS_RETRY_MODE=invalid", "BAML_LOG=off", "PORT=invalid")
+			cmd := serverCommand(t.Context(), env, "validate-graph", tc.file)
 			var stdout, stderr bytes.Buffer
 			cmd.Stdout = &stdout
 			cmd.Stderr = &stderr
@@ -100,11 +95,11 @@ func TestValidateGraphProcess(t *testing.T) {
 		t.Setenv("LLM_PROVIDER", "ollama")
 		t.Setenv("LLM_MODEL", "local-planner")
 		t.Setenv("LLM_BASE_URL", "http://127.0.0.1:11434/v1")
-		testGraphLoadParity(t, binary)
+		testGraphLoadParity(t)
 	})
 }
 
-func testGraphLoadParity(t *testing.T, binary string) {
+func testGraphLoadParity(t *testing.T) {
 	t.Helper()
 	const tuple = `[{"subject":"Topic","relation":"depends_on","object":"Base"}]`
 	const limit = 8 * 1024 * 1024
@@ -122,16 +117,15 @@ func testGraphLoadParity(t *testing.T, binary string) {
 			}
 			ctx, cancel := context.WithTimeout(t.Context(), 10*time.Second)
 			defer cancel()
-			cli := exec.CommandContext(ctx, binary, "validate-graph", path) //nolint:gosec // Run the server built by this test with a fixture path.
-			cli.Env = graphProcessEnv()
+			cli := serverCommand(ctx, graphProcessEnv(), "validate-graph", path)
 			var stdout, stderr bytes.Buffer
 			cli.Stdout, cli.Stderr = &stdout, &stderr
 			cliErr := cli.Run()
-			startup := exec.CommandContext(ctx, binary, "mcp") //nolint:gosec // Run the server built by this test with a fixture path.
-			startup.Env = append(graphProcessEnv(),
+			startupEnv := append(graphProcessEnv(),
 				"GRAPH_FILE="+path, "LOG_LEVEL=info",
 				"LLM_PROVIDER=aws-bedrock", "AWS_REGION=us-east-1", "AWS_MAX_ATTEMPTS=3", "AWS_RETRY_MODE=standard",
 			)
+			startup := serverCommand(ctx, startupEnv, "mcp")
 			logs, startupErr := startup.CombinedOutput()
 			if tc.suffix == "" {
 				if cliErr != nil || startupErr != nil || stderr.Len() != 0 {
