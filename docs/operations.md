@@ -108,18 +108,18 @@ If the configured Redis store cannot make a rate-limit decision, the API returns
 
 ## Region and Credential Resolution
 
-AxiomEngine executes Bedrock calls via BAML's native CFFI engine, which resolves credentials and regions using the AWS SDK for Rust provider chain.
+AxiomEngine executes Bedrock calls via BAML's native CFFI engine, which resolves credentials through the AWS SDK for Rust provider chain. It also resolves the region through that chain unless `BEDROCK_REQUIRE_EXPLICIT_REGION=true` supplies one.
 
 ### Symptoms and Behavior
 
-- **Static Region Warning**: At startup, when `LLM_PROVIDER=aws-bedrock`, the server inspects static environment configuration (`AWS_REGION`, `AWS_DEFAULT_REGION`, or the configuration profile). If no static region is found, it logs warning `llm.region.unresolved`. Non-Bedrock providers bypass static region inspection.
-- **First Region Caching**: BAML initializes its AWS client upon the first call and caches the resolved AWS region for the lifetime of the process. If a region is resolved dynamically from IMDS, that region remains locked until process restart.
-- **IMDS Latency**: If the service runs in an environment where the EC2 Instance Metadata Service (IMDS) is unreachable (such as off-cloud development or non-AWS containers) and static region environment variables are missing, SDK credential and region resolution will attempt to query IMDSv2 and IMDSv1, incurring a network timeout of approximately 2 seconds before falling back.
+- **Startup region source**. With `BEDROCK_REQUIRE_EXPLICIT_REGION=true`, HTTP and MCP startup require a valid `AWS_REGION`. In default Bedrock mode, startup inspects `AWS_REGION`, `AWS_DEFAULT_REGION` and the selected profile. When none provides a region, startup logs `llm.region.unresolved`. Non-Bedrock providers skip AWS region inspection.
+- **Region lifetime**. With `BEDROCK_REQUIRE_EXPLICIT_REGION=true`, the validated startup region is used for every call until restart. In default mode, the native chain resolves the region on each call, so a changed environment, profile file or metadata reply can change the signing region for later calls.
+- **IMDS latency**. If a Bedrock call needs a region and the environment and selected profile provide none, the service tries IMDSv2. Lookup time depends on the metadata endpoint and the call deadline. The native credential chain can also contact metadata when it needs credentials. [AWS SDK support for IMDS credentials](https://docs.aws.amazon.com/sdkref/latest/guide/feature-imds-credentials.html).
 - **Credential Errors**: Missing or expired credentials cause upstream Bedrock calls to fail with native engine errors (for example, `Unspecified error code: 2` or `NoCredentialsError`), returned to the client as HTTP 502 `bad_gateway`. When a topic acquires a permit and reaches the open breaker, the JSON plan route returns HTTP 503 with `Retry-After: 15`.
 
 ### Diagnostic and Mitigation Steps
 
-1. Always define `AWS_REGION` explicitly in the container environment to avoid startup warnings and eliminate IMDS resolution latency.
+1. Define `AWS_REGION` explicitly to avoid relying on IMDS for region resolution. Set `BEDROCK_REQUIRE_EXPLICIT_REGION=true` to fail startup when the region is missing or malformed and to keep that region for every call. Restart the process to change a pinned region.
 2. Confirm the startup record `server.started` reports the expected `aws_region_source` (`AWS_REGION`, `AWS_DEFAULT_REGION`, `profile:<name>`, or `""`).
 3. For container deployments on ECS or Kubernetes (EKS), ensure task roles or IAM Roles for Service Accounts (IRSA) provide required permissions (`bedrock:InvokeModel`) for model `amazon.nova-micro-v1:0`.
 4. For detailed credential resolution mechanics, see [Configuration: AWS Credential Resolution](configuration.md#aws-credential-resolution).

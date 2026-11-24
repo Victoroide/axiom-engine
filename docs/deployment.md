@@ -318,13 +318,13 @@ When the service starts successfully, it emits two `INFO` records in sequence be
    - `graph_source`: curriculum graph origin (`embedded` or `file`).
    - `graph_tuples`: count of loaded curriculum graph tuples.
    - `baml_version`: build dependency version string for BAML, or `"unknown"`.
-   - `aws_region_source`: resolved static AWS region source when `LLM_PROVIDER=aws-bedrock` (`AWS_REGION`, `AWS_DEFAULT_REGION`, `profile:<name>`, or `""`). Empty for other providers.
+   - `aws_region_source` reports `AWS_REGION` when explicit region validation is enabled. In default Bedrock mode it reports `AWS_REGION`, `AWS_DEFAULT_REGION`, `profile:<name>` or `""` from static inspection. It is empty for other providers.
 
 ```json
 {"level":"INFO","msg":"server.started","port":"8080","auth":"token","llm_provider":"aws-bedrock","llm_model":"amazon.nova-micro-v1:0","swagger_enabled":true,"metrics_enabled":false,"rate_limit_max":50,"rate_limit_window":"1m0s","request_timeout":"20s","llm_timeout":"15s","llm_queue_timeout":"2s","shutdown_timeout":"25s","shutdown_drain_delay":"0s","llm_max_concurrency":16,"max_failed_topics":10,"cors_origins_count":0,"trusted_proxies_count":0,"graph_source":"embedded","graph_tuples":20,"baml_version":"v0.226.3","aws_region_source":"AWS_REGION"}
 ```
 
-When `LLM_PROVIDER=aws-bedrock` and no static AWS region source is resolved (`aws_region_source` is `""`), the server emits a `WARN` record `llm.region.unresolved` (subject to `LOG_LEVEL`):
+In default Bedrock mode, an empty `aws_region_source` produces the `llm.region.unresolved` warning at `WARN`, subject to `LOG_LEVEL`. Set `BEDROCK_REQUIRE_EXPLICIT_REGION=true` to require `AWS_REGION` before startup can succeed. See [Region Resolution](configuration.md#region-resolution).
 
 ```json
 {"level":"WARN","msg":"llm.region.unresolved","instance_metadata":"enabled","detail":"instance metadata may still supply a region"}
