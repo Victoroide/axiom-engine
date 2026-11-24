@@ -1,0 +1,1466 @@
+{
+  "schema_version": "1.0.0",
+  "edition": "ap-csa-fall-2025",
+  "framework": "AP Computer Science A",
+  "effective_term": "Fall 2025",
+  "clarifications_revision": "2026-01-29",
+  "language": "en",
+  "programming_language": "Java",
+  "provisional": true,
+  "provisional_notice": "Subject-specialist verification is pending. Mapping of the embedded seed graph against AP Computer Science A (Fall 2025 CED and January 2026 Clarifications).",
+  "expert_review_form": "evaluation/curriculum/dispute-form.md",
+  "sources": [
+    {
+      "id": "ced",
+      "title": "AP Computer Science A Course and Exam Description (Effective Fall 2025)",
+      "publisher": "College Board",
+      "url": "https://apcentral.collegeboard.org/media/pdf/ap-computer-science-a-course-and-exam-description.pdf",
+      "revision": "2025 edition (PDF revised 2025-06-17)",
+      "sha256": "c81501ad5a022c83f1ca51119cccd1907b1394e1416d8c2a01bd43a38ab16486"
+    },
+    {
+      "id": "clarifications",
+      "title": "AP Computer Science A Clarifications and Corrections to the Course and Exam Description",
+      "publisher": "College Board",
+      "url": "https://apcentral.collegeboard.org/media/pdf/ap-computer-science-a-course-and-exam-description-clarification.pdf",
+      "revision": "2026-01-29 PDF revision (career-preparation wording implemented in August 2025; resource links and Progress Check edits announced for summer 2026; all 73 learning objectives unchanged)",
+      "sha256": "d39626653656bf0baa0127dc8c3fa50c5e7a41bc7b3747e43d997f69a2d18e56"
+    }
+  ],
+  "graph": {
+    "path": "internal/graph/seed.json",
+    "sha256": "7a9f78f6a80eeb7bc6e21afbf71b735621604615f0faf9c881d600ab5a7d84aa",
+    "concepts": 23,
+    "tuples": 20,
+    "depends_on_edges": 17,
+    "is_a_edges": 3,
+    "connected_components": 4
+  },
+  "total_denominator": 73,
+  "status_counts": {
+    "mapped": 0,
+    "partial": 24,
+    "missing": 49
+  },
+  "evidence_relations": {
+    "depends_on": 6,
+    "is_a": 0
+  },
+  "unresolved_disputes_count": 13,
+  "outside_course_count": 15,
+  "unit_breakdown": [
+    {
+      "unit": 1,
+      "unit_title": "Using Objects and Methods",
+      "objectives": 28,
+      "mapped": 0,
+      "partial": 10,
+      "missing": 18,
+      "unresolved_disputes": 6
+    },
+    {
+      "unit": 2,
+      "unit_title": "Selection and Iteration",
+      "objectives": 14,
+      "mapped": 0,
+      "partial": 1,
+      "missing": 13,
+      "unresolved_disputes": 0
+    },
+    {
+      "unit": 3,
+      "unit_title": "Class Creation",
+      "objectives": 10,
+      "mapped": 0,
+      "partial": 6,
+      "missing": 4,
+      "unresolved_disputes": 6
+    },
+    {
+      "unit": 4,
+      "unit_title": "Data Collections",
+      "objectives": 21,
+      "mapped": 0,
+      "partial": 7,
+      "missing": 14,
+      "unresolved_disputes": 1
+    }
+  ],
+  "mappings": [
+    {
+      "objective_id": "1.1.A",
+      "unit": 1,
+      "topic": "1.1",
+      "source_pages": "30",
+      "summary": "Design and express sequential everyday algorithms in plain prose or diagrams.",
+      "status": "missing",
+      "isolated_unrepresentable": true,
+      "provisional": true,
+      "concepts": [],
+      "evidence_edges": [],
+      "rationale": "The seed has no topic for planning an everyday sequence in prose or a diagram. A standalone planning topic has no evidenced tuple."
+    },
+    {
+      "objective_id": "1.1.B",
+      "unit": 1,
+      "topic": "1.1",
+      "source_pages": "30",
+      "summary": "Describe how source code is authored, checked by a compiler, and executed, including IDE support.",
+      "status": "missing",
+      "isolated_unrepresentable": true,
+      "provisional": true,
+      "concepts": [],
+      "evidence_edges": [],
+      "rationale": "The seed has no compiler or IDE topic to explain the path from source code to execution. A standalone compilation topic has no evidenced tuple."
+    },
+    {
+      "objective_id": "1.1.C",
+      "unit": 1,
+      "topic": "1.1",
+      "source_pages": "30-31",
+      "summary": "Distinguish compile-time syntax errors, logic errors found by testing, run-time failures, and exceptions.",
+      "status": "missing",
+      "provisional": true,
+      "concepts": [],
+      "evidence_edges": [],
+      "rationale": "The seed has no compilation, testing, or exception topics for distinguishing syntax errors, logic errors, and run-time failures."
+    },
+    {
+      "objective_id": "1.2.A",
+      "unit": 1,
+      "topic": "1.2",
+      "source_pages": "32",
+      "summary": "Choose between primitive and reference data-type categories for a stated problem requirement.",
+      "status": "missing",
+      "provisional": true,
+      "concepts": [],
+      "evidence_edges": [],
+      "rationale": "Variables identifies named storage, but the seed has no data-type concepts for choosing primitive versus reference types."
+    },
+    {
+      "objective_id": "1.2.B",
+      "unit": 1,
+      "topic": "1.2",
+      "source_pages": "32",
+      "summary": "Declare typed primitive variables (int, double, boolean) to store numeric and truth values.",
+      "status": "partial",
+      "provisional": true,
+      "concepts": [
+        "Variables"
+      ],
+      "evidence_edges": [],
+      "rationale": "Seed includes Variables, but omits Data Types, primitive categories, and Java int/double/boolean constraints."
+    },
+    {
+      "objective_id": "1.3.A",
+      "unit": 1,
+      "topic": "1.3",
+      "source_pages": "33",
+      "summary": "Write and trace console output statements using System.out.print and System.out.println.",
+      "status": "missing",
+      "provisional": true,
+      "concepts": [],
+      "evidence_edges": [],
+      "rationale": "The seed has no output topic for writing or tracing System.out.print and System.out.println calls."
+    },
+    {
+      "objective_id": "1.3.B",
+      "unit": 1,
+      "topic": "1.3",
+      "source_pages": "33",
+      "summary": "Construct and evaluate string literals including escape sequences for quotes, backslashes, and newlines.",
+      "status": "missing",
+      "provisional": true,
+      "concepts": [],
+      "evidence_edges": [],
+      "rationale": "The seed has no Strings topic to cover literal syntax or escapes for quotes, backslashes, and newlines."
+    },
+    {
+      "objective_id": "1.3.C",
+      "unit": 1,
+      "topic": "1.3",
+      "source_pages": "33-34",
+      "summary": "Write and evaluate int and double arithmetic expressions using +, -, *, /, %, precedence rules, and integer division by zero.",
+      "status": "missing",
+      "provisional": true,
+      "concepts": [],
+      "evidence_edges": [],
+      "rationale": "The seed has no arithmetic expressions or operator topics for precedence, numeric operations, and integer division."
+    },
+    {
+      "objective_id": "1.4.A",
+      "unit": 1,
+      "topic": "1.4",
+      "source_pages": "35",
+      "summary": "Initialize and update variables with = expressions, including null references, and trace stored values.",
+      "status": "partial",
+      "provisional": true,
+      "concepts": [
+        "Variables"
+      ],
+      "evidence_edges": [],
+      "rationale": "Seed includes Variables, but omits assignment operators, Expressions, and null references."
+    },
+    {
+      "objective_id": "1.4.B",
+      "unit": 1,
+      "topic": "1.4",
+      "source_pages": "35",
+      "summary": "Write Java code that reads input supplied to a program.",
+      "status": "missing",
+      "provisional": true,
+      "concepts": [],
+      "evidence_edges": [],
+      "rationale": "The seed has no input or I/O topic to support writing Java code that reads data."
+    },
+    {
+      "objective_id": "1.5.A",
+      "unit": 1,
+      "topic": "1.5",
+      "source_pages": "36",
+      "summary": "Apply explicit (int) and (double) casts and implicit widening in arithmetic, including truncation and rounding patterns.",
+      "status": "missing",
+      "provisional": true,
+      "concepts": [],
+      "evidence_edges": [],
+      "rationale": "The seed has no numeric-conversion topic to distinguish explicit casts, widening, and truncation."
+    },
+    {
+      "objective_id": "1.5.B",
+      "unit": 1,
+      "topic": "1.5",
+      "source_pages": "36-37",
+      "summary": "Identify integer overflow when 32-bit int calculations exceed Integer.MIN_VALUE through Integer.MAX_VALUE.",
+      "status": "missing",
+      "provisional": true,
+      "concepts": [],
+      "evidence_edges": [],
+      "rationale": "The seed has no model of fixed-width integers or the bounds that determine when int arithmetic overflows."
+    },
+    {
+      "objective_id": "1.5.C",
+      "unit": 1,
+      "topic": "1.5",
+      "source_pages": "37",
+      "summary": "Explain floating-point round-off errors caused by finite double representation precision.",
+      "status": "missing",
+      "provisional": true,
+      "concepts": [],
+      "evidence_edges": [],
+      "rationale": "The seed has no topic for how finite double precision causes rounding errors."
+    },
+    {
+      "objective_id": "1.6.A",
+      "unit": 1,
+      "topic": "1.6",
+      "source_pages": "38",
+      "summary": "Write and trace compound assignment (+=, -=, *=, /=, %=) and postfix ++ and -- variable updates.",
+      "status": "missing",
+      "provisional": true,
+      "concepts": [],
+      "evidence_edges": [],
+      "rationale": "Variables does not document arithmetic assignment, postfix increments or decrements, or the effect of tracing those updates."
+    },
+    {
+      "objective_id": "1.7.A",
+      "unit": 1,
+      "topic": "1.7",
+      "source_pages": "39",
+      "summary": "Read library and API documentation to determine a class's data attributes, methods, and package grouping.",
+      "status": "partial",
+      "provisional": true,
+      "concepts": [
+        "Classes",
+        "Objects"
+      ],
+      "evidence_edges": [],
+      "disputes": [
+        {
+          "id": "DSP-SEED-1.7.A-cls-obj",
+          "edge": {
+            "subject": "Classes",
+            "relation": "depends_on",
+            "object": "Objects"
+          },
+          "kind": "disputed_prerequisite",
+          "status": "unresolved",
+          "rationale": "Seed models Classes depending on Objects, reversing blueprint-to-instance conceptual dependency."
+        }
+      ],
+      "rationale": "Seed includes Classes and Objects, but omits API specifications, libraries, and Encapsulation."
+    },
+    {
+      "objective_id": "1.8.A",
+      "unit": 1,
+      "topic": "1.8",
+      "source_pages": "40",
+      "summary": "Document code behavior, preconditions, and postconditions with line, block, and Javadoc comments ignored by the compiler.",
+      "status": "missing",
+      "isolated_unrepresentable": true,
+      "provisional": true,
+      "concepts": [],
+      "evidence_edges": [],
+      "rationale": "The seed has no comments or Javadoc topic for documenting behavior and method contracts. A standalone documentation topic has no evidenced tuple."
+    },
+    {
+      "objective_id": "1.9.A",
+      "unit": 1,
+      "topic": "1.9",
+      "source_pages": "41",
+      "summary": "Select the matching method to invoke from documentation and method parameter signatures.",
+      "status": "partial",
+      "provisional": true,
+      "concepts": [
+        "Functions"
+      ],
+      "evidence_edges": [],
+      "rationale": "Seed includes Functions, but omits method signatures, parameter types, and procedural abstraction documentation."
+    },
+    {
+      "objective_id": "1.9.B",
+      "unit": 1,
+      "topic": "1.9",
+      "source_pages": "41-42",
+      "summary": "Explain method invocation rules for void and non-void methods, call-by-value arguments, overloading, and control flow return.",
+      "status": "partial",
+      "provisional": true,
+      "concepts": [
+        "Functions"
+      ],
+      "evidence_edges": [],
+      "rationale": "Seed includes Functions, but omits void/non-void returns, call-by-value arguments, and overloading."
+    },
+    {
+      "objective_id": "1.10.A",
+      "unit": 1,
+      "topic": "1.10",
+      "source_pages": "43",
+      "summary": "Invoke static class methods with the class name and dot operator and trace their return values.",
+      "status": "missing",
+      "provisional": true,
+      "concepts": [],
+      "evidence_edges": [],
+      "rationale": "The seed has Classes and Functions, but no static-method topic for calls made through a class name."
+    },
+    {
+      "objective_id": "1.11.A",
+      "unit": 1,
+      "topic": "1.11",
+      "source_pages": "44",
+      "summary": "Write and evaluate expressions calling Math.abs, Math.pow, Math.sqrt, and scaled Math.random ranges.",
+      "status": "missing",
+      "provisional": true,
+      "concepts": [],
+      "evidence_edges": [],
+      "rationale": "The seed has no numerical library topic for Math functions or transforming the range of Math.random results."
+    },
+    {
+      "objective_id": "1.12.A",
+      "unit": 1,
+      "topic": "1.12",
+      "source_pages": "45",
+      "summary": "Explain classes as object blueprints, Object as Java's universal superclass, and conceptual superclass/subclass relationships without designing hierarchies.",
+      "status": "partial",
+      "provisional": true,
+      "concepts": [
+        "Classes",
+        "Objects"
+      ],
+      "evidence_edges": [],
+      "disputes": [
+        {
+          "id": "DSP-SEED-1.12.A-abs-isa",
+          "edge": {
+            "subject": "Abstract Classes",
+            "relation": "is_a",
+            "object": "Classes"
+          },
+          "kind": "taxonomic_not_prerequisite",
+          "status": "unresolved",
+          "rationale": "Seed includes Abstract Classes is_a Classes; runtime traverses is_a as a prerequisite even though Abstract Classes is out of AP CSA scope."
+        },
+        {
+          "id": "DSP-SEED-1.12.A-cls-obj",
+          "edge": {
+            "subject": "Classes",
+            "relation": "depends_on",
+            "object": "Objects"
+          },
+          "kind": "disputed_prerequisite",
+          "status": "unresolved",
+          "rationale": "Seed treats Objects as prerequisite to Classes."
+        },
+        {
+          "id": "DSP-SEED-1.12.A-inh",
+          "edge": {
+            "subject": "Inheritance",
+            "relation": "depends_on",
+            "object": "Classes"
+          },
+          "kind": "out_of_scope_dependency",
+          "status": "unresolved",
+          "rationale": "Seed links Inheritance to Classes, whereas CED 1.12.A.2 excludes designing inheritance."
+        }
+      ],
+      "rationale": "Seed includes Classes and Objects, but omits Object root inheritance while linking out-of-scope Inheritance and taxonomic Abstract Classes is_a Classes."
+    },
+    {
+      "objective_id": "1.12.B",
+      "unit": 1,
+      "topic": "1.12",
+      "source_pages": "45",
+      "summary": "Declare variables of reference types that hold references to objects.",
+      "status": "partial",
+      "provisional": true,
+      "concepts": [
+        "Objects",
+        "Variables"
+      ],
+      "evidence_edges": [
+        {
+          "subject": "Objects",
+          "relation": "depends_on",
+          "object": "Variables"
+        }
+      ],
+      "rationale": "Seed includes Objects and Variables, but omits Java reference-type declarations."
+    },
+    {
+      "objective_id": "1.13.A",
+      "unit": 1,
+      "topic": "1.13",
+      "source_pages": "46",
+      "summary": "Match a constructor call to its signature among potentially overloaded constructors.",
+      "status": "missing",
+      "provisional": true,
+      "concepts": [],
+      "evidence_edges": [],
+      "rationale": "The Classes and Objects tuple leaves constructor signatures and overload selection unspecified."
+    },
+    {
+      "objective_id": "1.13.B",
+      "unit": 1,
+      "topic": "1.13",
+      "source_pages": "46",
+      "summary": "Declare reference variables typed for objects or initialized to null.",
+      "status": "partial",
+      "provisional": true,
+      "concepts": [
+        "Objects",
+        "Variables"
+      ],
+      "evidence_edges": [
+        {
+          "subject": "Objects",
+          "relation": "depends_on",
+          "object": "Variables"
+        }
+      ],
+      "rationale": "Seed includes Objects and Variables, but omits reference variable declarations and null."
+    },
+    {
+      "objective_id": "1.13.C",
+      "unit": 1,
+      "topic": "1.13",
+      "source_pages": "46-47",
+      "summary": "Instantiate objects with new, passing constructor arguments by value and tracing constructor execution.",
+      "status": "partial",
+      "provisional": true,
+      "concepts": [
+        "Classes",
+        "Objects"
+      ],
+      "evidence_edges": [],
+      "disputes": [
+        {
+          "id": "DSP-SEED-1.13.C-cls-obj",
+          "edge": {
+            "subject": "Classes",
+            "relation": "depends_on",
+            "object": "Objects"
+          },
+          "kind": "disputed_prerequisite",
+          "status": "unresolved",
+          "rationale": "Seed orders Objects before Classes."
+        }
+      ],
+      "rationale": "Seed includes Classes and Objects, but omits constructors, new instantiation, and call-by-value initialization."
+    },
+    {
+      "objective_id": "1.14.A",
+      "unit": 1,
+      "topic": "1.14",
+      "source_pages": "48",
+      "summary": "Invoke instance methods on object references with the dot operator, trace outcomes, and recognize NullPointerException on null targets.",
+      "status": "partial",
+      "provisional": true,
+      "concepts": [
+        "Classes",
+        "Functions",
+        "Objects"
+      ],
+      "evidence_edges": [],
+      "disputes": [
+        {
+          "id": "DSP-SEED-1.14.A-cls-obj",
+          "edge": {
+            "subject": "Classes",
+            "relation": "depends_on",
+            "object": "Objects"
+          },
+          "kind": "disputed_prerequisite",
+          "status": "unresolved",
+          "rationale": "Seed orders Objects before Classes."
+        }
+      ],
+      "rationale": "Seed includes Classes, Functions, and Objects without instance-method dispatch or NullPointerException."
+    },
+    {
+      "objective_id": "1.15.A",
+      "unit": 1,
+      "topic": "1.15",
+      "source_pages": "49-50",
+      "summary": "Create immutable String objects, concatenate strings with primitive or toString values, and trace results.",
+      "status": "missing",
+      "provisional": true,
+      "concepts": [],
+      "evidence_edges": [],
+      "rationale": "The seed has no Strings topic for immutability, concatenation, or conversion to text."
+    },
+    {
+      "objective_id": "1.15.B",
+      "unit": 1,
+      "topic": "1.15",
+      "source_pages": "50-51",
+      "summary": "Invoke String methods (length, substring, indexOf, equals, compareTo) and recognize out-of-bounds index exceptions.",
+      "status": "missing",
+      "provisional": true,
+      "concepts": [],
+      "evidence_edges": [],
+      "rationale": "The seed has no string operations to trace substring extraction, search, comparison, or invalid indexes."
+    },
+    {
+      "objective_id": "2.1.A",
+      "unit": 2,
+      "topic": "2.1",
+      "source_pages": "61",
+      "summary": "Express everyday algorithms combining sequence, conditional choice, and repetition in prose or diagrams.",
+      "status": "missing",
+      "provisional": true,
+      "concepts": [],
+      "evidence_edges": [],
+      "rationale": "The seed has no control-flow topic linking sequence, decisions, and repetition for everyday algorithms."
+    },
+    {
+      "objective_id": "2.2.A",
+      "unit": 2,
+      "topic": "2.2",
+      "source_pages": "62",
+      "summary": "Write and evaluate Boolean expressions that compare primitive values or reference identity with == and !=, and test numeric ordering with \u003c, \u003e, \u003c=, and \u003e=.",
+      "status": "missing",
+      "provisional": true,
+      "concepts": [],
+      "evidence_edges": [],
+      "rationale": "The seed has no relational operators or Boolean expressions for comparing numeric values or checking object identity."
+    },
+    {
+      "objective_id": "2.3.A",
+      "unit": 2,
+      "topic": "2.3",
+      "source_pages": "63",
+      "summary": "Implement and trace one-way if and two-way if-else branching statements.",
+      "status": "missing",
+      "provisional": true,
+      "concepts": [],
+      "evidence_edges": [],
+      "rationale": "The seed has no selection topic that shows a Boolean guard, an if branch, or an else branch."
+    },
+    {
+      "objective_id": "2.4.A",
+      "unit": 2,
+      "topic": "2.4",
+      "source_pages": "64",
+      "summary": "Implement and trace nested if and multiway if-else-if selection chains.",
+      "status": "missing",
+      "provisional": true,
+      "concepts": [],
+      "evidence_edges": [],
+      "rationale": "The seed has no conditional logic that could support nested choices or else-if chains."
+    },
+    {
+      "objective_id": "2.5.A",
+      "unit": 2,
+      "topic": "2.5",
+      "source_pages": "65",
+      "summary": "Construct and trace compound Boolean logic with !, \u0026\u0026, and ||, operator precedence, and short-circuit evaluation.",
+      "status": "missing",
+      "provisional": true,
+      "concepts": [],
+      "evidence_edges": [],
+      "rationale": "The seed has no Boolean operator or evaluation topic for compound conditions and short-circuiting."
+    },
+    {
+      "objective_id": "2.6.A",
+      "unit": 2,
+      "topic": "2.6",
+      "source_pages": "66",
+      "summary": "Prove Boolean equivalence using truth tables and De Morgan's laws.",
+      "status": "missing",
+      "provisional": true,
+      "concepts": [],
+      "evidence_edges": [],
+      "rationale": "The seed has no Boolean equivalence, truth-table, or De Morgan's law topic."
+    },
+    {
+      "objective_id": "2.6.B",
+      "unit": 2,
+      "topic": "2.6",
+      "source_pages": "66",
+      "summary": "Compare object references for alias identity (==, !=, null) versus attribute equality (equals).",
+      "status": "partial",
+      "provisional": true,
+      "concepts": [
+        "Objects"
+      ],
+      "evidence_edges": [],
+      "rationale": "Seed includes Objects, but omits Boolean comparisons, == alias checks, and equals."
+    },
+    {
+      "objective_id": "2.7.A",
+      "unit": 2,
+      "topic": "2.7",
+      "source_pages": "67",
+      "summary": "Recognize problems needing iteration and diagnose zero-iteration conditions, infinite loops, and off-by-one bugs.",
+      "status": "missing",
+      "provisional": true,
+      "concepts": [],
+      "evidence_edges": [],
+      "rationale": "The seed has no iteration topic for deciding when to loop or identifying zero iterations and termination errors."
+    },
+    {
+      "objective_id": "2.7.B",
+      "unit": 2,
+      "topic": "2.7",
+      "source_pages": "67",
+      "summary": "Write and trace while loop repetition governed by a pre-checked Boolean condition.",
+      "status": "missing",
+      "provisional": true,
+      "concepts": [],
+      "evidence_edges": [],
+      "rationale": "The seed has no while-loop topic for tracing a pre-checked condition and its repeated body."
+    },
+    {
+      "objective_id": "2.8.A",
+      "unit": 2,
+      "topic": "2.8",
+      "source_pages": "68",
+      "summary": "Write and trace for loops with header initialization, guard, and update, and convert between for and while.",
+      "status": "missing",
+      "provisional": true,
+      "concepts": [],
+      "evidence_edges": [],
+      "rationale": "The seed has no for-loop topic for tracing initialization, condition, and update or comparing the equivalent while loop."
+    },
+    {
+      "objective_id": "2.9.A",
+      "unit": 2,
+      "topic": "2.9",
+      "source_pages": "69",
+      "summary": "Implement and trace standard non-collection algorithms for divisibility, integer digits, counts, min/max, and sums or averages.",
+      "status": "missing",
+      "provisional": true,
+      "concepts": [],
+      "evidence_edges": [],
+      "rationale": "The seed has no numeric iteration topic for algorithms on digits, divisibility, counts, extrema, or sums."
+    },
+    {
+      "objective_id": "2.10.A",
+      "unit": 2,
+      "topic": "2.10",
+      "source_pages": "70",
+      "summary": "Implement and trace iterative algorithms that search, count substrings, and reverse strings.",
+      "status": "missing",
+      "provisional": true,
+      "concepts": [],
+      "evidence_edges": [],
+      "rationale": "The seed has no Strings or iteration topic for searching substrings, counting matches, or reversing text."
+    },
+    {
+      "objective_id": "2.11.A",
+      "unit": 2,
+      "topic": "2.11",
+      "source_pages": "71",
+      "summary": "Implement and trace nested loops where the inner loop finishes completely on each outer iteration.",
+      "status": "missing",
+      "provisional": true,
+      "concepts": [],
+      "evidence_edges": [],
+      "rationale": "The seed has no nested-loop topic that shows how the inner loop runs during each outer step."
+    },
+    {
+      "objective_id": "2.12.A",
+      "unit": 2,
+      "topic": "2.12",
+      "source_pages": "72",
+      "summary": "Trace loops to count statement executions and compare iterative run-time efficiency informally.",
+      "status": "missing",
+      "provisional": true,
+      "concepts": [],
+      "evidence_edges": [],
+      "rationale": "The seed names Binary Search and Merge Sort, but has no statement-count evidence for comparing the efficiency of iterative code."
+    },
+    {
+      "objective_id": "3.1.A",
+      "unit": 3,
+      "topic": "3.1",
+      "source_pages": "80-81",
+      "summary": "Plan class-based programs in prose or diagrams specifying data attributes, procedural decomposition, and method behaviors.",
+      "status": "partial",
+      "provisional": true,
+      "concepts": [
+        "Classes",
+        "Functions",
+        "Objects"
+      ],
+      "evidence_edges": [],
+      "disputes": [
+        {
+          "id": "DSP-SEED-3.1.A-abs-isa",
+          "edge": {
+            "subject": "Abstract Classes",
+            "relation": "is_a",
+            "object": "Classes"
+          },
+          "kind": "taxonomic_not_prerequisite",
+          "status": "unresolved",
+          "rationale": "Taxonomic Abstract Classes is_a Classes edge touches Classes."
+        },
+        {
+          "id": "DSP-SEED-3.1.A-cls-obj",
+          "edge": {
+            "subject": "Classes",
+            "relation": "depends_on",
+            "object": "Objects"
+          },
+          "kind": "disputed_prerequisite",
+          "status": "unresolved",
+          "rationale": "Seed orders Objects before Classes."
+        }
+      ],
+      "rationale": "Seed includes Classes, Functions, and Objects across disconnected components, but omits Encapsulation, design diagrams, and decomposition."
+    },
+    {
+      "objective_id": "3.2.A",
+      "unit": 3,
+      "topic": "3.2",
+      "source_pages": "82",
+      "summary": "Analyze software reliability, beneficial and harmful societal, economic, and cultural impacts, and open-source versus proprietary licensing.",
+      "status": "missing",
+      "isolated_unrepresentable": true,
+      "provisional": true,
+      "concepts": [],
+      "evidence_edges": [],
+      "rationale": "The seed has no reliability, software testing, social impact, or licensing topic. The standalone ethics requirements have no evidenced tuple."
+    },
+    {
+      "objective_id": "3.3.A",
+      "unit": 3,
+      "topic": "3.3",
+      "source_pages": "83",
+      "summary": "Apply public and private access modifiers to classes, instance fields, constructors, and methods to enforce encapsulation.",
+      "status": "partial",
+      "provisional": true,
+      "concepts": [
+        "Classes"
+      ],
+      "evidence_edges": [],
+      "disputes": [
+        {
+          "id": "DSP-SEED-3.3.A-cls-obj",
+          "edge": {
+            "subject": "Classes",
+            "relation": "depends_on",
+            "object": "Objects"
+          },
+          "kind": "disputed_prerequisite",
+          "status": "unresolved",
+          "rationale": "Seed orders Objects before Classes."
+        }
+      ],
+      "rationale": "Seed includes Classes without Encapsulation or public/private access control."
+    },
+    {
+      "objective_id": "3.4.A",
+      "unit": 3,
+      "topic": "3.4",
+      "source_pages": "84",
+      "summary": "Declare private instance fields, initialize object state in constructors (copying mutable arguments), and apply default constructor rules.",
+      "status": "partial",
+      "provisional": true,
+      "concepts": [
+        "Classes",
+        "Objects",
+        "Variables"
+      ],
+      "evidence_edges": [
+        {
+          "subject": "Objects",
+          "relation": "depends_on",
+          "object": "Variables"
+        }
+      ],
+      "disputes": [
+        {
+          "id": "DSP-SEED-3.4.A-cls-obj",
+          "edge": {
+            "subject": "Classes",
+            "relation": "depends_on",
+            "object": "Objects"
+          },
+          "kind": "disputed_prerequisite",
+          "status": "unresolved",
+          "rationale": "Seed orders Objects before Classes."
+        }
+      ],
+      "rationale": "Seed includes Classes, Objects, and Variables without constructor initialization or default field values."
+    },
+    {
+      "objective_id": "3.5.A",
+      "unit": 3,
+      "topic": "3.5",
+      "source_pages": "85-86",
+      "summary": "Author void mutators and typed non-void accessor or computation methods using primitive parameters passed by value and return flow.",
+      "status": "partial",
+      "provisional": true,
+      "concepts": [
+        "Classes",
+        "Functions",
+        "Variables"
+      ],
+      "evidence_edges": [],
+      "disputes": [
+        {
+          "id": "DSP-SEED-3.5.A-cls-obj",
+          "edge": {
+            "subject": "Classes",
+            "relation": "depends_on",
+            "object": "Objects"
+          },
+          "kind": "disputed_prerequisite",
+          "status": "unresolved",
+          "rationale": "Seed orders Objects before Classes."
+        }
+      ],
+      "rationale": "Seed includes Classes, Functions, and Variables without accessor/mutator definitions or return rules."
+    },
+    {
+      "objective_id": "3.6.A",
+      "unit": 3,
+      "topic": "3.6",
+      "source_pages": "87",
+      "summary": "Write and trace methods taking and returning object references, observing aliasing, mutable state effects, and same-class private access.",
+      "status": "partial",
+      "provisional": true,
+      "concepts": [
+        "Classes",
+        "Functions",
+        "Objects"
+      ],
+      "evidence_edges": [],
+      "disputes": [
+        {
+          "id": "DSP-SEED-3.6.A-cls-obj",
+          "edge": {
+            "subject": "Classes",
+            "relation": "depends_on",
+            "object": "Objects"
+          },
+          "kind": "disputed_prerequisite",
+          "status": "unresolved",
+          "rationale": "Seed orders Objects before Classes."
+        }
+      ],
+      "rationale": "Seed includes Classes, Functions, and Objects without reference parameter/return aliasing."
+    },
+    {
+      "objective_id": "3.7.A",
+      "unit": 3,
+      "topic": "3.7",
+      "source_pages": "88",
+      "summary": "Write static class methods that operate on static state and class helpers without direct instance state access.",
+      "status": "missing",
+      "provisional": true,
+      "concepts": [],
+      "evidence_edges": [],
+      "rationale": "Classes and Functions supply no evidence for writing static helpers or using class state independently of an instance."
+    },
+    {
+      "objective_id": "3.7.B",
+      "unit": 3,
+      "topic": "3.7",
+      "source_pages": "88",
+      "summary": "Declare shared static class variables and final constants with appropriate visibility.",
+      "status": "missing",
+      "provisional": true,
+      "concepts": [],
+      "evidence_edges": [],
+      "rationale": "Classes and Variables supply no evidence about shared static fields, visibility, or final constants."
+    },
+    {
+      "objective_id": "3.8.A",
+      "unit": 3,
+      "topic": "3.8",
+      "source_pages": "89",
+      "summary": "Determine variable visibility across blocks, constructors, methods, and parameters, including local shadowing of instance fields.",
+      "status": "partial",
+      "provisional": true,
+      "concepts": [
+        "Functions",
+        "Variables"
+      ],
+      "evidence_edges": [],
+      "rationale": "Seed includes Functions and Variables without Scope or shadowing rules."
+    },
+    {
+      "objective_id": "3.9.A",
+      "unit": 3,
+      "topic": "3.9",
+      "source_pages": "90",
+      "summary": "Use this within instance methods and constructors to refer to or pass the active receiver object (unavailable in static methods).",
+      "status": "missing",
+      "provisional": true,
+      "concepts": [],
+      "evidence_edges": [],
+      "rationale": "Objects does not specify the Java this expression or how methods refer to and pass their receiver."
+    },
+    {
+      "objective_id": "4.1.A",
+      "unit": 4,
+      "topic": "4.1",
+      "source_pages": "100",
+      "summary": "Explain personal privacy hazards from collecting and retaining user data and a developer's responsibility to safeguard privacy.",
+      "status": "missing",
+      "isolated_unrepresentable": true,
+      "provisional": true,
+      "concepts": [],
+      "evidence_edges": [],
+      "rationale": "The seed has no topic on collecting or retaining personal data or the responsibility to protect it. A standalone privacy topic has no evidenced tuple."
+    },
+    {
+      "objective_id": "4.1.B",
+      "unit": 4,
+      "topic": "4.1",
+      "source_pages": "100",
+      "summary": "Identify risks from algorithmic bias, biased collection practices, and incomplete or inaccurate data sets.",
+      "status": "missing",
+      "isolated_unrepresentable": true,
+      "provisional": true,
+      "concepts": [],
+      "evidence_edges": [],
+      "rationale": "The seed has no topic for biased collection or incomplete and inaccurate data. A standalone data-quality topic has no evidenced tuple."
+    },
+    {
+      "objective_id": "4.1.C",
+      "unit": 4,
+      "topic": "4.1",
+      "source_pages": "100",
+      "summary": "Evaluate whether a data set is fit to answer a specific problem without invalid extrapolation.",
+      "status": "missing",
+      "isolated_unrepresentable": true,
+      "provisional": true,
+      "concepts": [],
+      "evidence_edges": [],
+      "rationale": "The seed has no topic for assessing whether a data set answers a question or supports extrapolation. A standalone fitness judgment has no evidenced tuple."
+    },
+    {
+      "objective_id": "4.2.A",
+      "unit": 4,
+      "topic": "4.2",
+      "source_pages": "101",
+      "summary": "Represent everyday data-set workflows and tabular or charted structures in prose or diagrams prior to coding.",
+      "status": "missing",
+      "isolated_unrepresentable": true,
+      "provisional": true,
+      "concepts": [],
+      "evidence_edges": [],
+      "rationale": "Arrays models a programming structure, with no topic for using everyday charts, tables, or diagrams to plan a data workflow. That planning topic has no evidenced tuple."
+    },
+    {
+      "objective_id": "4.3.A",
+      "unit": 4,
+      "topic": "4.3",
+      "source_pages": "102",
+      "summary": "Create fixed-size 1D primitive or object arrays via new or initializer lists, index with [], check .length, and handle bounds errors.",
+      "status": "partial",
+      "provisional": true,
+      "concepts": [
+        "Arrays"
+      ],
+      "evidence_edges": [],
+      "rationale": "Seed includes Arrays as a root component without Java array indexing, .length, or bounds errors."
+    },
+    {
+      "objective_id": "4.4.A",
+      "unit": 4,
+      "topic": "4.4",
+      "source_pages": "103",
+      "summary": "Traverse 1D arrays with indexed for/while loops and enhanced for loops, distinguishing element-variable copies from object state updates.",
+      "status": "partial",
+      "provisional": true,
+      "concepts": [
+        "Arrays"
+      ],
+      "evidence_edges": [],
+      "rationale": "Seed includes Arrays without Loops, Iteration, or enhanced-for traversal rules."
+    },
+    {
+      "objective_id": "4.5.A",
+      "unit": 4,
+      "topic": "4.5",
+      "source_pages": "104",
+      "summary": "Implement and trace 1D array algorithms for extrema, totals, quantifiers, counts, adjacent pairs, duplicates, shifts or rotations, and reversal.",
+      "status": "partial",
+      "provisional": true,
+      "concepts": [
+        "Arrays"
+      ],
+      "evidence_edges": [],
+      "rationale": "Seed includes Arrays without loop constructs or standard array algorithms."
+    },
+    {
+      "objective_id": "4.6.A",
+      "unit": 4,
+      "topic": "4.6",
+      "source_pages": "105-107",
+      "summary": "Read persistent text files using java.io.File, Scanner, throws IOException, hasNext/next methods, literal String.split, and close.",
+      "status": "missing",
+      "provisional": true,
+      "concepts": [],
+      "evidence_edges": [],
+      "rationale": "The seed has no file input or string processing topics for reading and splitting persistent text and handling IOException."
+    },
+    {
+      "objective_id": "4.7.A",
+      "unit": 4,
+      "topic": "4.7",
+      "source_pages": "108-109",
+      "summary": "Use immutable Integer and Double wrappers with their primitives through boxing and unboxing. Use parseInt and parseDouble to parse strings into primitive numbers.",
+      "status": "missing",
+      "provisional": true,
+      "concepts": [],
+      "evidence_edges": [],
+      "rationale": "The seed has no wrapper or parsing concepts for boxing Integer and Double values or converting text into primitives."
+    },
+    {
+      "objective_id": "4.8.A",
+      "unit": 4,
+      "topic": "4.8",
+      "source_pages": "110-111",
+      "summary": "Create parameterized ArrayList\u003cE\u003e collections from java.util and trace size, add, get, set, and remove.",
+      "status": "missing",
+      "provisional": true,
+      "concepts": [],
+      "evidence_edges": [],
+      "disputes": [
+        {
+          "id": "DSP-SEED-4.8.A-gen-poly",
+          "edge": {
+            "subject": "Generics",
+            "relation": "depends_on",
+            "object": "Polymorphism"
+          },
+          "kind": "out_of_scope_dependency",
+          "status": "unresolved",
+          "rationale": "Seed links Generics to Polymorphism rather than parameterized ArrayList\u003cE\u003e usage."
+        }
+      ],
+      "rationale": "Arrays provides a fixed-length collection concept, with no parameterized ArrayList or evidence of its insertion, access, and removal operations."
+    },
+    {
+      "objective_id": "4.9.A",
+      "unit": 4,
+      "topic": "4.9",
+      "source_pages": "112",
+      "summary": "Traverse ArrayList collections safely, handling index shifts on deletion, IndexOutOfBoundsException, and ConcurrentModificationException.",
+      "status": "missing",
+      "provisional": true,
+      "concepts": [],
+      "evidence_edges": [],
+      "rationale": "The seed has no ArrayList traversal topic for coping with index shifts or collection modification exceptions."
+    },
+    {
+      "objective_id": "4.10.A",
+      "unit": 4,
+      "topic": "4.10",
+      "source_pages": "113",
+      "summary": "Implement and trace ArrayList manipulation algorithms (including insertion and deletion) and parallel multi-collection traversals.",
+      "status": "missing",
+      "provisional": true,
+      "concepts": [],
+      "evidence_edges": [],
+      "rationale": "The seed has no ArrayList algorithms for insertion, deletion, or processing multiple corresponding collections."
+    },
+    {
+      "objective_id": "4.11.A",
+      "unit": 4,
+      "topic": "4.11",
+      "source_pages": "114-115",
+      "summary": "Represent rectangular 2D arrays as arrays of row arrays, index via [row][col], inspect row and column lengths, and handle bounds errors.",
+      "status": "missing",
+      "provisional": true,
+      "concepts": [],
+      "evidence_edges": [],
+      "rationale": "Arrays has no edge or topic that identifies rectangular 2D arrays, row and column lengths, or row-column indexing."
+    },
+    {
+      "objective_id": "4.12.A",
+      "unit": 4,
+      "topic": "4.12",
+      "source_pages": "116",
+      "summary": "Traverse 2D arrays in row-major, column-major, or custom orders using nested indexed or enhanced for loops.",
+      "status": "missing",
+      "provisional": true,
+      "concepts": [],
+      "evidence_edges": [],
+      "rationale": "The seed has no 2D array or nested-loop topic for row-major, column-major, or custom traversals."
+    },
+    {
+      "objective_id": "4.13.A",
+      "unit": 4,
+      "topic": "4.13",
+      "source_pages": "117",
+      "summary": "Implement and trace 2D array algorithms across full grids, specific rows or columns, or subsections.",
+      "status": "missing",
+      "provisional": true,
+      "concepts": [],
+      "evidence_edges": [],
+      "rationale": "The seed has no topic for algorithms over 2D rows, columns, grids, or subregions."
+    },
+    {
+      "objective_id": "4.14.A",
+      "unit": 4,
+      "topic": "4.14",
+      "source_pages": "118",
+      "summary": "Implement and trace linear search across 1D arrays, ArrayList instances, and row-by-row 2D arrays.",
+      "status": "missing",
+      "provisional": true,
+      "concepts": [],
+      "evidence_edges": [],
+      "rationale": "Binary Search is the only search topic tied to Arrays. The seed has no sequential scan across arrays, ArrayList, or a 2D grid."
+    },
+    {
+      "objective_id": "4.15.A",
+      "unit": 4,
+      "topic": "4.15",
+      "source_pages": "119",
+      "summary": "Trace each pass of iterative selection sort and insertion sort on arrays and ArrayList collections.",
+      "status": "missing",
+      "provisional": true,
+      "concepts": [],
+      "evidence_edges": [],
+      "rationale": "Merge Sort is the only sorting topic in the seed. Selection and insertion sort passes over arrays or ArrayList are absent."
+    },
+    {
+      "objective_id": "4.16.A",
+      "unit": 4,
+      "topic": "4.16",
+      "source_pages": "120",
+      "summary": "Trace recursive methods with base cases, per-call local variables, and iterative equivalence without authoring recursive code.",
+      "status": "partial",
+      "provisional": true,
+      "concepts": [
+        "Functions",
+        "Recursion"
+      ],
+      "evidence_edges": [
+        {
+          "subject": "Recursion",
+          "relation": "depends_on",
+          "object": "Functions"
+        }
+      ],
+      "rationale": "Seed models Recursion depending on Functions, but omits base cases, stack frames, iterative equivalence, and tracing-only scope."
+    },
+    {
+      "objective_id": "4.17.A",
+      "unit": 4,
+      "topic": "4.17",
+      "source_pages": "121",
+      "summary": "Trace recursive traversals over strings, arrays, and ArrayList collections.",
+      "status": "partial",
+      "provisional": true,
+      "concepts": [
+        "Arrays",
+        "Recursion"
+      ],
+      "evidence_edges": [],
+      "rationale": "Seed includes Arrays and Recursion across separate disconnected components, omitting Strings and ArrayList recursive traversals."
+    },
+    {
+      "objective_id": "4.17.B",
+      "unit": 4,
+      "topic": "4.17",
+      "source_pages": "121",
+      "summary": "Trace each step of iterative or recursive binary search on sorted collections and compare efficiency to linear search.",
+      "status": "partial",
+      "provisional": true,
+      "concepts": [
+        "Arrays",
+        "Binary Search",
+        "Recursion"
+      ],
+      "evidence_edges": [
+        {
+          "subject": "Binary Search",
+          "relation": "depends_on",
+          "object": "Arrays"
+        }
+      ],
+      "rationale": "Seed connects Binary Search to Arrays in its Arrays component while Recursion sits in a separate disconnected component, omitting recursive binary search, ArrayList, and Linear Search comparison."
+    },
+    {
+      "objective_id": "4.17.C",
+      "unit": 4,
+      "topic": "4.17",
+      "source_pages": "121-122",
+      "summary": "Trace recursive divide-and-merge steps of merge sort on arrays and ArrayList collections.",
+      "status": "partial",
+      "provisional": true,
+      "concepts": [
+        "Arrays",
+        "Merge Sort",
+        "Recursion"
+      ],
+      "evidence_edges": [
+        {
+          "subject": "Merge Sort",
+          "relation": "depends_on",
+          "object": "Recursion"
+        }
+      ],
+      "rationale": "Seed links Merge Sort to Recursion in the Algorithms component, omitting the prerequisite link to Arrays and omitting ArrayList sorting."
+    }
+  ],
+  "unresolved_disputes": [
+    {
+      "dispute_id": "DSP-SEED-1.12.A-abs-isa",
+      "objective_id": "1.12.A",
+      "kind": "taxonomic_not_prerequisite",
+      "edge": {
+        "subject": "Abstract Classes",
+        "relation": "is_a",
+        "object": "Classes"
+      },
+      "rationale": "Seed includes Abstract Classes is_a Classes; runtime traverses is_a as a prerequisite even though Abstract Classes is out of AP CSA scope."
+    },
+    {
+      "dispute_id": "DSP-SEED-1.12.A-cls-obj",
+      "objective_id": "1.12.A",
+      "kind": "disputed_prerequisite",
+      "edge": {
+        "subject": "Classes",
+        "relation": "depends_on",
+        "object": "Objects"
+      },
+      "rationale": "Seed treats Objects as prerequisite to Classes."
+    },
+    {
+      "dispute_id": "DSP-SEED-1.12.A-inh",
+      "objective_id": "1.12.A",
+      "kind": "out_of_scope_dependency",
+      "edge": {
+        "subject": "Inheritance",
+        "relation": "depends_on",
+        "object": "Classes"
+      },
+      "rationale": "Seed links Inheritance to Classes, whereas CED 1.12.A.2 excludes designing inheritance."
+    },
+    {
+      "dispute_id": "DSP-SEED-1.13.C-cls-obj",
+      "objective_id": "1.13.C",
+      "kind": "disputed_prerequisite",
+      "edge": {
+        "subject": "Classes",
+        "relation": "depends_on",
+        "object": "Objects"
+      },
+      "rationale": "Seed orders Objects before Classes."
+    },
+    {
+      "dispute_id": "DSP-SEED-1.14.A-cls-obj",
+      "objective_id": "1.14.A",
+      "kind": "disputed_prerequisite",
+      "edge": {
+        "subject": "Classes",
+        "relation": "depends_on",
+        "object": "Objects"
+      },
+      "rationale": "Seed orders Objects before Classes."
+    },
+    {
+      "dispute_id": "DSP-SEED-1.7.A-cls-obj",
+      "objective_id": "1.7.A",
+      "kind": "disputed_prerequisite",
+      "edge": {
+        "subject": "Classes",
+        "relation": "depends_on",
+        "object": "Objects"
+      },
+      "rationale": "Seed models Classes depending on Objects, reversing blueprint-to-instance conceptual dependency."
+    },
+    {
+      "dispute_id": "DSP-SEED-3.1.A-abs-isa",
+      "objective_id": "3.1.A",
+      "kind": "taxonomic_not_prerequisite",
+      "edge": {
+        "subject": "Abstract Classes",
+        "relation": "is_a",
+        "object": "Classes"
+      },
+      "rationale": "Taxonomic Abstract Classes is_a Classes edge touches Classes."
+    },
+    {
+      "dispute_id": "DSP-SEED-3.1.A-cls-obj",
+      "objective_id": "3.1.A",
+      "kind": "disputed_prerequisite",
+      "edge": {
+        "subject": "Classes",
+        "relation": "depends_on",
+        "object": "Objects"
+      },
+      "rationale": "Seed orders Objects before Classes."
+    },
+    {
+      "dispute_id": "DSP-SEED-3.3.A-cls-obj",
+      "objective_id": "3.3.A",
+      "kind": "disputed_prerequisite",
+      "edge": {
+        "subject": "Classes",
+        "relation": "depends_on",
+        "object": "Objects"
+      },
+      "rationale": "Seed orders Objects before Classes."
+    },
+    {
+      "dispute_id": "DSP-SEED-3.4.A-cls-obj",
+      "objective_id": "3.4.A",
+      "kind": "disputed_prerequisite",
+      "edge": {
+        "subject": "Classes",
+        "relation": "depends_on",
+        "object": "Objects"
+      },
+      "rationale": "Seed orders Objects before Classes."
+    },
+    {
+      "dispute_id": "DSP-SEED-3.5.A-cls-obj",
+      "objective_id": "3.5.A",
+      "kind": "disputed_prerequisite",
+      "edge": {
+        "subject": "Classes",
+        "relation": "depends_on",
+        "object": "Objects"
+      },
+      "rationale": "Seed orders Objects before Classes."
+    },
+    {
+      "dispute_id": "DSP-SEED-3.6.A-cls-obj",
+      "objective_id": "3.6.A",
+      "kind": "disputed_prerequisite",
+      "edge": {
+        "subject": "Classes",
+        "relation": "depends_on",
+        "object": "Objects"
+      },
+      "rationale": "Seed orders Objects before Classes."
+    },
+    {
+      "dispute_id": "DSP-SEED-4.8.A-gen-poly",
+      "objective_id": "4.8.A",
+      "kind": "out_of_scope_dependency",
+      "edge": {
+        "subject": "Generics",
+        "relation": "depends_on",
+        "object": "Polymorphism"
+      },
+      "rationale": "Seed links Generics to Polymorphism rather than parameterized ArrayList\u003cE\u003e usage."
+    }
+  ],
+  "outside_course": [
+    {
+      "concept": "AVL Trees",
+      "category": "beyond_course_scope",
+      "reason": "Unit 4 collection objectives use 1D and 2D arrays and ArrayList. AVL tree balancing requires a separate tree representation and rotations."
+    },
+    {
+      "concept": "Abstract Classes",
+      "category": "taxonomic_abstraction",
+      "reason": "Unit 3 covers writing concrete Java classes and methods. The Abstract Classes is_a Classes tuple describes a subtype relationship, and abstract class design falls beyond those class-creation objectives."
+    },
+    {
+      "concept": "Binary Search Trees",
+      "category": "beyond_course_scope",
+      "reason": "CED 4.17.B traces binary search on an ordered collection. Binary search trees instead maintain ordering in linked tree nodes."
+    },
+    {
+      "concept": "Design Patterns",
+      "category": "beyond_course_scope",
+      "reason": "Unit 3 requires routine class design using fields, constructors, and methods. Named reusable object-oriented design patterns are outside that class-design scope."
+    },
+    {
+      "concept": "Dynamic Programming",
+      "category": "beyond_course_scope",
+      "reason": "Unit 4 traces traversal, search, sorting, and recursion on course collections. Dynamic programming adds caching and reuse of overlapping subproblems."
+    },
+    {
+      "concept": "Generics",
+      "category": "excluded_by_ced",
+      "reason": "Generic type authoring and polymorphism-bound generics are outside AP CSA (4.8.A uses parameterized ArrayList\u003cE\u003e only)."
+    },
+    {
+      "concept": "Graph Traversal",
+      "category": "beyond_course_scope",
+      "reason": "Unit 4 traversal objectives use indexed data. Graph traversal requires following links between vertices."
+    },
+    {
+      "concept": "Graphs",
+      "category": "beyond_course_scope",
+      "reason": "Unit 4 uses 1D and 2D arrays and ArrayList. Vertex and edge structure is a separate data model."
+    },
+    {
+      "concept": "Hash Tables",
+      "category": "beyond_course_scope",
+      "reason": "Unit 4 specifies arrays and ArrayList as containers. Hash tables add key-based lookup and collision handling."
+    },
+    {
+      "concept": "Inheritance",
+      "category": "excluded_by_ced",
+      "reason": "CED 1.12.A.2 explicitly excludes designing and implementing inheritance hierarchies from Fall 2025 AP CSA."
+    },
+    {
+      "concept": "Interfaces",
+      "category": "excluded_by_ced",
+      "reason": "Unit 3 covers writing Java classes and methods. Interface declarations and implementation contracts fall beyond these class-creation objectives."
+    },
+    {
+      "concept": "Linked Lists",
+      "category": "beyond_course_scope",
+      "reason": "Unit 4 covers 1D and 2D arrays and ArrayList. Pointer-linked nodes and link traversal belong to a separate collection representation."
+    },
+    {
+      "concept": "Pointers",
+      "category": "beyond_course_scope",
+      "reason": "CED 2.6.B covers Java references and object equivalence. Explicit memory addresses and address arithmetic go beyond those references."
+    },
+    {
+      "concept": "Polymorphism",
+      "category": "excluded_by_ced",
+      "reason": "CED 1.12.A.2 excludes inheritance hierarchy design and implementation. Subtype polymorphism and dynamic dispatch are beyond the required uses of classes and objects."
+    },
+    {
+      "concept": "Trees",
+      "category": "beyond_course_scope",
+      "reason": "Unit 4 covers 1D and 2D arrays and ArrayList. Tree nodes and branches form a separate collection model."
+    }
+  ]
+}
