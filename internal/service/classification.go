@@ -29,7 +29,10 @@ func ClassifyError(err error, shuttingDown bool) Failure {
 		return f
 	}
 	var unavailable *UnavailableError
+	var budget *PromptBudgetError
 	switch {
+	case errors.As(err, &budget):
+		f.Status, f.Response.Error, f.Response.Details = http.StatusUnprocessableEntity, "curriculum_context_too_large", budget.Error()
 	case errors.Is(err, context.DeadlineExceeded):
 		f.Status, f.Response.Error, f.Response.Details = http.StatusGatewayTimeout, "gateway_timeout", "reasoning exceeded deadline"
 	case errors.Is(err, ErrThrottled):

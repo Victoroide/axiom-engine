@@ -24,6 +24,11 @@ var ErrPlannerPanic = errors.New("planner panicked")
 
 var errLoggedPlannerPanic = fmt.Errorf("recovered %w", ErrPlannerPanic)
 
+// PromptBudgetError indicates that the complete curriculum input exceeds a limit.
+type PromptBudgetError struct{}
+
+func (*PromptBudgetError) Error() string { return "curriculum context exceeds the prompt budget" }
+
 // PlannerPanicLogged reports whether the service recovered and logged the panic.
 func PlannerPanicLogged(err error) bool {
 	return errors.Is(err, errLoggedPlannerPanic)

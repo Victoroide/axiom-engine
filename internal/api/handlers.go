@@ -69,7 +69,7 @@ func (h *Handler) RegisterRoutes(app *fiber.App, planMiddleware ...fiber.Handler
 // @Failure 408 {object} domain.ErrorResponse "Request not read within the 10 s read timeout"
 // @Failure 413 {object} domain.ErrorResponse
 // @Failure 415 {object} domain.ErrorResponse
-// @Failure 422 {object} domain.ErrorResponse
+// @Failure 422 {object} domain.ErrorResponse "Unknown curriculum topic, curriculum_context_too_large or idempotency key mismatch"
 // @Failure 429 {object} domain.ErrorResponse
 // @Failure 502 {object} domain.ErrorResponse "Upstream failure or no usable item for a requested topic"
 // @Failure 503 {object} domain.ErrorResponse "Temporary unavailability, upstream throttling or server shutdown"

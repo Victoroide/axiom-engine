@@ -55,7 +55,7 @@ func newServer(cfg config.Config, g *graph.InMemoryGraph, planner service.Planne
 	if cfg.ResourceLinks.Enabled {
 		resourceLinks = service.NewResourceLinkChecker(cfg.ResourceLinks.Timeout, nil, nil)
 	}
-	reasoning := service.NewReasoningService(g, planner, service.Options{ResourceLinks: resourceLinks, MaxMasteredTopics: cfg.Mastery.MaxTopics, LLMTimeout: cfg.LLMTimeout, MaxFailedTopics: cfg.MaxFailedTopics, MaxConcurrency: cfg.LLMMaxConcurrency, QueueTimeout: cfg.LLMQueueTimeout, Logger: logger})
+	reasoning := service.NewReasoningService(g, planner, service.Options{ResourceLinks: resourceLinks, PromptBudget: cfg.PromptBudget, MaxMasteredTopics: cfg.Mastery.MaxTopics, LLMTimeout: cfg.LLMTimeout, MaxFailedTopics: cfg.MaxFailedTopics, MaxConcurrency: cfg.LLMMaxConcurrency, QueueTimeout: cfg.LLMQueueTimeout, Logger: logger})
 	mcp.AddTool(s, &mcp.Tool{Name: "generate_study_plan", Description: "Generate a study plan for failed curriculum topics"}, func(ctx context.Context, _ *mcp.CallToolRequest, in PlanInput) (*mcp.CallToolResult, domain.PlanResponse, error) {
 		ctx, cancel := context.WithTimeout(ctx, cfg.RequestTimeout)
 		defer cancel()

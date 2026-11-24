@@ -466,7 +466,8 @@ paths:
           schema:
             $ref: '#/definitions/domain.ErrorResponse'
         "422":
-          description: Unprocessable Entity
+          description: Unknown curriculum topic, curriculum_context_too_large or idempotency
+            key mismatch
           headers:
             X-RateLimit-Limit:
               description: Maximum requests per rate-limit window
@@ -677,7 +678,8 @@ paths:
           schema:
             $ref: '#/definitions/domain.ErrorResponse'
         "422":
-          description: Unprocessable Entity
+          description: Unknown curriculum topic or curriculum_context_too_large before
+            streaming
           headers:
             X-RateLimit-Limit:
               description: Maximum requests per rate-limit window
@@ -725,6 +727,23 @@ paths:
           headers:
             Retry-After:
               description: Seconds to wait before retrying
+              type: integer
+            X-Request-ID:
+              description: Resolved request correlation identifier
+              type: string
+          schema:
+            $ref: '#/definitions/domain.ErrorResponse'
+        "504":
+          description: Deadline exceeded before streaming
+          headers:
+            X-RateLimit-Limit:
+              description: Maximum requests per rate-limit window
+              type: integer
+            X-RateLimit-Remaining:
+              description: Requests remaining in the rate-limit window
+              type: integer
+            X-RateLimit-Reset:
+              description: Seconds until the rate-limit window resets
               type: integer
             X-Request-ID:
               description: Resolved request correlation identifier

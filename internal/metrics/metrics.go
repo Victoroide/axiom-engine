@@ -25,6 +25,7 @@ type Metrics struct {
 	inflight         prometheus.Gauge
 	queueWait        prometheus.Histogram
 	queueTimeouts    prometheus.Counter
+	promptRejections prometheus.Counter
 	itemsDropped     *prometheus.CounterVec
 	resourcesDropped prometheus.Counter
 	resourceLinks    *prometheus.CounterVec
@@ -46,6 +47,7 @@ func New() *Metrics {
 		inflight:         prometheus.NewGauge(prometheus.GaugeOpts{Name: "axiom_llm_inflight", Help: "Upstream calls still executing, including calls past their deadline."}),
 		queueWait:        prometheus.NewHistogram(prometheus.HistogramOpts{Name: "axiom_llm_queue_wait_seconds", Buckets: []float64{0.001, 0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1, 2, 5}, Help: "Time waiting for an upstream concurrency slot."}),
 		queueTimeouts:    prometheus.NewCounter(prometheus.CounterOpts{Name: "axiom_llm_queue_timeouts_total", Help: "Concurrency queue waits that exhausted their admission timeout."}),
+		promptRejections: prometheus.NewCounter(prometheus.CounterOpts{Name: "axiom_plan_prompt_budget_rejections_total", Help: "Plan requests rejected before dispatch for exceeding the curriculum prompt budget."}),
 		itemsDropped:     prometheus.NewCounterVec(prometheus.CounterOpts{Name: "axiom_plan_items_dropped_total", Help: "Plan items removed during deduplication or graph validation."}, []string{"reason"}),
 		resourcesDropped: prometheus.NewCounter(prometheus.CounterOpts{Name: "axiom_plan_resources_dropped_total", Help: "Resources removed by the output policy."}),
 	}
@@ -67,7 +69,7 @@ func New() *Metrics {
 		}
 		return float64(source())
 	})
-	m.registry.MustRegister(telemetry.LangSmithDroppedSpansCollector(), m.httpDuration, m.httpRequests, m.previousToken, m.llmCalls, m.llmDuration, m.inflight, m.queueWait, m.queueTimeouts, m.itemsDropped, m.resourcesDropped, m.resourceLinks, state, collectors.NewGoCollector(), collectors.NewProcessCollector(collectors.ProcessCollectorOpts{}))
+	m.registry.MustRegister(telemetry.LangSmithDroppedSpansCollector(), m.httpDuration, m.httpRequests, m.previousToken, m.llmCalls, m.llmDuration, m.inflight, m.queueWait, m.queueTimeouts, m.promptRejections, m.itemsDropped, m.resourcesDropped, m.resourceLinks, state, collectors.NewGoCollector(), collectors.NewProcessCollector(collectors.ProcessCollectorOpts{}))
 	return m
 }
 
@@ -137,6 +139,13 @@ func (m *Metrics) ObserveQueueWait(elapsed time.Duration, timedOut bool) {
 		if timedOut {
 			m.queueTimeouts.Inc()
 		}
+	}
+}
+
+// RejectPromptBudget counts a request that exceeded the curriculum prompt budget.
+func (m *Metrics) RejectPromptBudget() {
+	if m != nil {
+		m.promptRejections.Inc()
 	}
 }
 
