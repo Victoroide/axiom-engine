@@ -1,0 +1,235 @@
+{
+  "schema_version": "1.0",
+  "course": "AP Computer Science A (Effective Fall 2025, Clarifications 2026-01-29)",
+  "packet_seed": 20251124,
+  "adjudicator_role": "Lead CS Curriculum Adjudicator",
+  "adjudicator_name": "",
+  "dataset_kind": "unmeasured_blank",
+  "instructions_note": "Copy both locked initial ratings in full. Name the adjudicator and give a resolution_reason for disagreements and any override of agreement.",
+  "rows": [
+    {
+      "response_id": "resp-aa4bf6029a3b",
+      "presentation_order": 1,
+      "rater_a_initial": null,
+      "rater_b_initial": null,
+      "disagreement": false,
+      "adjudicated": null
+    },
+    {
+      "response_id": "resp-117bc37bce05",
+      "presentation_order": 2,
+      "rater_a_initial": null,
+      "rater_b_initial": null,
+      "disagreement": false,
+      "adjudicated": null
+    },
+    {
+      "response_id": "resp-75a130e33039",
+      "presentation_order": 3,
+      "rater_a_initial": null,
+      "rater_b_initial": null,
+      "disagreement": false,
+      "adjudicated": null
+    },
+    {
+      "response_id": "resp-1e50b4ada71c",
+      "presentation_order": 4,
+      "rater_a_initial": null,
+      "rater_b_initial": null,
+      "disagreement": false,
+      "adjudicated": null
+    },
+    {
+      "response_id": "resp-5456b58de4d0",
+      "presentation_order": 5,
+      "rater_a_initial": null,
+      "rater_b_initial": null,
+      "disagreement": false,
+      "adjudicated": null
+    },
+    {
+      "response_id": "resp-2893256dc5f6",
+      "presentation_order": 6,
+      "rater_a_initial": null,
+      "rater_b_initial": null,
+      "disagreement": false,
+      "adjudicated": null
+    },
+    {
+      "response_id": "resp-2a078db8ca1a",
+      "presentation_order": 7,
+      "rater_a_initial": null,
+      "rater_b_initial": null,
+      "disagreement": false,
+      "adjudicated": null
+    },
+    {
+      "response_id": "resp-9a529fb8cb2c",
+      "presentation_order": 8,
+      "rater_a_initial": null,
+      "rater_b_initial": null,
+      "disagreement": false,
+      "adjudicated": null
+    },
+    {
+      "response_id": "resp-d9e57b9ef677",
+      "presentation_order": 9,
+      "rater_a_initial": null,
+      "rater_b_initial": null,
+      "disagreement": false,
+      "adjudicated": null
+    },
+    {
+      "response_id": "resp-724d0cd4c3dd",
+      "presentation_order": 10,
+      "rater_a_initial": null,
+      "rater_b_initial": null,
+      "disagreement": false,
+      "adjudicated": null
+    },
+    {
+      "response_id": "resp-c6d3ae0c80f4",
+      "presentation_order": 11,
+      "rater_a_initial": null,
+      "rater_b_initial": null,
+      "disagreement": false,
+      "adjudicated": null
+    },
+    {
+      "response_id": "resp-c5876efd070d",
+      "presentation_order": 12,
+      "rater_a_initial": null,
+      "rater_b_initial": null,
+      "disagreement": false,
+      "adjudicated": null
+    },
+    {
+      "response_id": "resp-f8ff6eb2ba75",
+      "presentation_order": 13,
+      "rater_a_initial": null,
+      "rater_b_initial": null,
+      "disagreement": false,
+      "adjudicated": null
+    },
+    {
+      "response_id": "resp-108c320063cd",
+      "presentation_order": 14,
+      "rater_a_initial": null,
+      "rater_b_initial": null,
+      "disagreement": false,
+      "adjudicated": null
+    },
+    {
+      "response_id": "resp-5f619b3762aa",
+      "presentation_order": 15,
+      "rater_a_initial": null,
+      "rater_b_initial": null,
+      "disagreement": false,
+      "adjudicated": null
+    },
+    {
+      "response_id": "resp-3f991041cdb5",
+      "presentation_order": 16,
+      "rater_a_initial": null,
+      "rater_b_initial": null,
+      "disagreement": false,
+      "adjudicated": null
+    },
+    {
+      "response_id": "resp-a59adcb5de89",
+      "presentation_order": 17,
+      "rater_a_initial": null,
+      "rater_b_initial": null,
+      "disagreement": false,
+      "adjudicated": null
+    },
+    {
+      "response_id": "resp-a2dcee8ac982",
+      "presentation_order": 18,
+      "rater_a_initial": null,
+      "rater_b_initial": null,
+      "disagreement": false,
+      "adjudicated": null
+    },
+    {
+      "response_id": "resp-e0fd8617fd04",
+      "presentation_order": 19,
+      "rater_a_initial": null,
+      "rater_b_initial": null,
+      "disagreement": false,
+      "adjudicated": null
+    },
+    {
+      "response_id": "resp-01fbc8b8c868",
+      "presentation_order": 20,
+      "rater_a_initial": null,
+      "rater_b_initial": null,
+      "disagreement": false,
+      "adjudicated": null
+    },
+    {
+      "response_id": "resp-8fc5d0d61018",
+      "presentation_order": 21,
+      "rater_a_initial": null,
+      "rater_b_initial": null,
+      "disagreement": false,
+      "adjudicated": null
+    },
+    {
+      "response_id": "resp-e828a5940f57",
+      "presentation_order": 22,
+      "rater_a_initial": null,
+      "rater_b_initial": null,
+      "disagreement": false,
+      "adjudicated": null
+    },
+    {
+      "response_id": "resp-2f9499d1e46e",
+      "presentation_order": 23,
+      "rater_a_initial": null,
+      "rater_b_initial": null,
+      "disagreement": false,
+      "adjudicated": null
+    },
+    {
+      "response_id": "resp-221167ceb116",
+      "presentation_order": 24,
+      "rater_a_initial": null,
+      "rater_b_initial": null,
+      "disagreement": false,
+      "adjudicated": null
+    },
+    {
+      "response_id": "resp-eb76dcc409d5",
+      "presentation_order": 25,
+      "rater_a_initial": null,
+      "rater_b_initial": null,
+      "disagreement": false,
+      "adjudicated": null
+    },
+    {
+      "response_id": "resp-dffa4f3ffe04",
+      "presentation_order": 26,
+      "rater_a_initial": null,
+      "rater_b_initial": null,
+      "disagreement": false,
+      "adjudicated": null
+    },
+    {
+      "response_id": "resp-c875aa8d7afc",
+      "presentation_order": 27,
+      "rater_a_initial": null,
+      "rater_b_initial": null,
+      "disagreement": false,
+      "adjudicated": null
+    },
+    {
+      "response_id": "resp-08214d6c1b9d",
+      "presentation_order": 28,
+      "rater_a_initial": null,
+      "rater_b_initial": null,
+      "disagreement": false,
+      "adjudicated": null
+    }
+  ]
+}

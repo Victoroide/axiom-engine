@@ -1,0 +1,469 @@
+{
+  "schema_version": "1.0",
+  "course": "AP Computer Science A (Effective Fall 2025, Clarifications 2026-01-29)",
+  "note": "Calibration examples are separate from the designated evaluation packet and carry worked anchors for rater training.",
+  "examples": [
+    {
+      "calibration_id": "CAL-01",
+      "unit": 1,
+      "topic_id": "1.3",
+      "topic_title": "Expressions and Output",
+      "prompt_context": "Learner struggled with Java mixed int/double division (Topic 1.3) and requested visual study material.",
+      "vark_profile": "visual",
+      "failed_topics": [
+        "Expressions"
+      ],
+      "items": [
+        {
+          "topic": "Expressions",
+          "priority": 1,
+          "prerequisite_chain": [
+            "Variables",
+            "Data Types"
+          ],
+          "explanation": "Review Data Types before Expressions: dividing two ints like 7 / 2 truncates to 3, whereas (double) 7 / 2 widens to 3.5; start by tracing type rules on three expressions.",
+          "resources": [
+            {
+              "title": "Visual Trace of Java int vs double Division",
+              "url": "https://example.org/materials/093c7fab7f1a",
+              "resource_type": "diagram"
+            },
+            {
+              "title": "Step-by-Step Arithmetic Precedence Walkthrough",
+              "url": "https://example.org/materials/a3d697e77247",
+              "resource_type": "video"
+            }
+          ]
+        }
+      ],
+      "resource_evidence": [
+        {
+          "item_index": 0,
+          "resource_index": 0,
+          "excerpt": "A two-panel diagram labels both operands and the resulting type. On the left, int 7 divided by int 2 gives int 3. On the right, casting 7 to double before division gives double 3.5."
+        },
+        {
+          "item_index": 0,
+          "resource_index": 1,
+          "excerpt": "The video draws a tree for 2 + 3 * 4 and evaluates the multiplication before the addition. Every operand in its examples is an int."
+        }
+      ],
+      "reference_locators": [
+        {
+          "document": "CED-2025",
+          "section": "Unit 1: Using Objects and Methods, Topic 1.3: Expressions and Output",
+          "page_locator": "CED p. 33 (PDF p. 40)",
+          "url": "https://apcentral.collegeboard.org/media/pdf/ap-computer-science-a-course-and-exam-description.pdf#page=40"
+        }
+      ],
+      "worked_anchor": {
+        "factual_accuracy": {
+          "status": "scored",
+          "score": 2
+        },
+        "prerequisite_rationale": {
+          "status": "scored",
+          "score": 2
+        },
+        "actionable_guidance": {
+          "status": "scored",
+          "score": 2
+        },
+        "resource_summary_status": "applicable",
+        "resource_ratings": [
+          {
+            "item_index": 0,
+            "resource_index": 0,
+            "rating": {
+              "status": "scored",
+              "score": 2
+            }
+          },
+          {
+            "item_index": 0,
+            "resource_index": 1,
+            "rating": {
+              "status": "scored",
+              "score": 1
+            }
+          }
+        ],
+        "critical_error": false,
+        "critical_error_type": "none",
+        "rationale": "The explanation accurately relates numeric types to division and gives the learner an exercise. The diagram addresses both types. The precedence video helps with evaluation order but gives no examples using double."
+      }
+    },
+    {
+      "calibration_id": "CAL-02",
+      "unit": 2,
+      "topic_id": "2.6",
+      "topic_title": "Comparing Boolean Expressions",
+      "prompt_context": "Learner failed Comparing Boolean Expressions (De Morgan's Law, Topic 2.6) and requested read_write material.",
+      "vark_profile": "read_write",
+      "failed_topics": [
+        "Boolean Logic"
+      ],
+      "items": [
+        {
+          "topic": "Boolean Logic",
+          "priority": 1,
+          "prerequisite_chain": [
+            "Variables",
+            "Data Types",
+            "Expressions"
+          ],
+          "explanation": "By De Morgan's Law, !(a \u0026\u0026 b) simplifies directly to !a \u0026\u0026 !b because negation distributes across each variable while preserving the \u0026\u0026 operator; read the summary notes.",
+          "resources": [
+            {
+              "title": "Boolean Simplification Notes",
+              "url": "https://example.org/materials/90786cdcc2a9",
+              "resource_type": "article"
+            }
+          ]
+        }
+      ],
+      "resource_evidence": [
+        {
+          "item_index": 0,
+          "resource_index": 0,
+          "excerpt": "The notes use a four-row truth table to compare !(a \u0026\u0026 b) with !a || !b, including a row where a is true and b is false."
+        }
+      ],
+      "reference_locators": [
+        {
+          "document": "CED-2025",
+          "section": "Unit 2: Selection and Iteration, Topic 2.6: Comparing Boolean Expressions",
+          "page_locator": "CED p. 66 (PDF p. 73)",
+          "url": "https://apcentral.collegeboard.org/media/pdf/ap-computer-science-a-course-and-exam-description.pdf#page=73"
+        }
+      ],
+      "worked_anchor": {
+        "factual_accuracy": {
+          "status": "scored",
+          "score": 0
+        },
+        "prerequisite_rationale": {
+          "status": "scored",
+          "score": 2
+        },
+        "actionable_guidance": {
+          "status": "scored",
+          "score": 1
+        },
+        "resource_summary_status": "applicable",
+        "resource_ratings": [
+          {
+            "item_index": 0,
+            "resource_index": 0,
+            "rating": {
+              "status": "scored",
+              "score": 2
+            }
+          }
+        ],
+        "critical_error": true,
+        "critical_error_type": "factual",
+        "rationale": "Critical factual anchor (score 0): states the opposite of De Morgan's Law (!(a \u0026\u0026 b) == !a || !b, not !a \u0026\u0026 !b). Even though JSON structure, VARK type, and prerequisite chain pass validation, the explanation teaches a false rule."
+      }
+    },
+    {
+      "calibration_id": "CAL-03",
+      "unit": 3,
+      "topic_id": "3.4",
+      "topic_title": "Constructors",
+      "prompt_context": "Learner struggled with writing class constructors (Topic 3.4) and requested kinesthetic practice.",
+      "vark_profile": "kinesthetic",
+      "failed_topics": [
+        "Constructors"
+      ],
+      "items": [
+        {
+          "topic": "Constructors",
+          "priority": 1,
+          "prerequisite_chain": [],
+          "explanation": "Before studying basic variables or what an object is, first master writing overloaded constructors and this-reference resolution so variables make sense later; try coding a constructor.",
+          "resources": [
+            {
+              "title": "Java Constructor Coding Lab",
+              "url": "https://example.org/materials/0493419c7048",
+              "resource_type": "lab"
+            }
+          ]
+        }
+      ],
+      "resource_evidence": [
+        {
+          "item_index": 0,
+          "resource_index": 0,
+          "excerpt": "In the lab, write a Box(int height) constructor and add Box() that delegates to it. Instantiate both forms and check the stored heights."
+        }
+      ],
+      "reference_locators": [
+        {
+          "document": "CED-2025",
+          "section": "Unit 3: Class Creation, Topic 3.4: Constructors",
+          "page_locator": "CED p. 84 (PDF p. 91)",
+          "url": "https://apcentral.collegeboard.org/media/pdf/ap-computer-science-a-course-and-exam-description.pdf#page=91"
+        }
+      ],
+      "worked_anchor": {
+        "factual_accuracy": {
+          "status": "scored",
+          "score": 2
+        },
+        "prerequisite_rationale": {
+          "status": "scored",
+          "score": 0
+        },
+        "actionable_guidance": {
+          "status": "scored",
+          "score": 1
+        },
+        "resource_summary_status": "applicable",
+        "resource_ratings": [
+          {
+            "item_index": 0,
+            "resource_index": 0,
+            "rating": {
+              "status": "scored",
+              "score": 2
+            }
+          }
+        ],
+        "critical_error": true,
+        "critical_error_type": "prerequisite",
+        "rationale": "Critical prerequisite anchor (score 0): reverses dependency direction by requiring overloaded constructors before basic variables and objects."
+      }
+    },
+    {
+      "calibration_id": "CAL-04",
+      "unit": 4,
+      "topic_id": "4.8",
+      "topic_title": "ArrayList Methods",
+      "prompt_context": "Learner struggled with ArrayList add/remove index shifts (Topic 4.8) and requested auditory material.",
+      "vark_profile": "auditory",
+      "failed_topics": [
+        "ArrayList Methods"
+      ],
+      "items": [
+        {
+          "topic": "ArrayList Methods",
+          "priority": 1,
+          "prerequisite_chain": [
+            "Arrays",
+            "Wrapper Classes"
+          ],
+          "explanation": "ArrayList.remove(index) shifts elements at index + 1 and above left by one and decreases size() by 1; practice tracing list indices before and after calling remove(1).",
+          "resources": [
+            {
+              "title": "Relational Database Normal Forms Podcast",
+              "url": "https://example.org/materials/286047f0cc16",
+              "resource_type": "podcast"
+            }
+          ]
+        }
+      ],
+      "resource_evidence": [
+        {
+          "item_index": 0,
+          "resource_index": 0,
+          "excerpt": "The audio episode defines database functional dependencies and decomposes a customer-orders table into third normal form."
+        }
+      ],
+      "reference_locators": [
+        {
+          "document": "CED-2025",
+          "section": "Unit 4: Data Collections, Topic 4.7: Wrapper Classes",
+          "page_locator": "CED p. 108 (PDF p. 115)",
+          "url": "https://apcentral.collegeboard.org/media/pdf/ap-computer-science-a-course-and-exam-description.pdf#page=115"
+        },
+        {
+          "document": "CED-2025",
+          "section": "Unit 4: Data Collections, Topic 4.8: ArrayList Methods",
+          "page_locator": "CED p. 110 (PDF p. 117)",
+          "url": "https://apcentral.collegeboard.org/media/pdf/ap-computer-science-a-course-and-exam-description.pdf#page=117"
+        },
+        {
+          "document": "CED-2025",
+          "section": "Unit 4: Data Collections, Topic 4.9: ArrayList Traversals",
+          "page_locator": "CED p. 112 (PDF p. 119)",
+          "url": "https://apcentral.collegeboard.org/media/pdf/ap-computer-science-a-course-and-exam-description.pdf#page=119"
+        }
+      ],
+      "worked_anchor": {
+        "factual_accuracy": {
+          "status": "scored",
+          "score": 2
+        },
+        "prerequisite_rationale": {
+          "status": "scored",
+          "score": 2
+        },
+        "actionable_guidance": {
+          "status": "scored",
+          "score": 2
+        },
+        "resource_summary_status": "applicable",
+        "resource_ratings": [
+          {
+            "item_index": 0,
+            "resource_index": 0,
+            "rating": {
+              "status": "scored",
+              "score": 0
+            }
+          }
+        ],
+        "critical_error": false,
+        "critical_error_type": "none",
+        "rationale": "Irrelevant resource anchor (resource score 0): explanation is accurate and actionable, and the resource uses a valid HTTPS URL and VARK type 'podcast', but its content covers SQL normal forms instead of Java ArrayList."
+      }
+    },
+    {
+      "calibration_id": "CAL-05",
+      "unit": 1,
+      "topic_id": "1.15",
+      "topic_title": "String Manipulation",
+      "prompt_context": "Learner missed String.substring(from, to) bounds (Topic 1.15) and requested read_write material; no links returned.",
+      "vark_profile": "read_write",
+      "failed_topics": [
+        "Strings"
+      ],
+      "items": [
+        {
+          "topic": "Strings",
+          "priority": 1,
+          "prerequisite_chain": [
+            "Variables",
+            "Data Types",
+            "Arrays"
+          ],
+          "explanation": "Because String indices run 0 to length() - 1, substring(from, to) includes index from and stops at to - 1 without mutating the original String; hand-trace s.substring(1, 4) on \"axiom\".",
+          "resources": []
+        }
+      ],
+      "reference_locators": [
+        {
+          "document": "CED-2025",
+          "section": "Unit 1: Using Objects and Methods, Topic 1.15: String Manipulation",
+          "page_locator": "CED p. 49 (PDF p. 56)",
+          "url": "https://apcentral.collegeboard.org/media/pdf/ap-computer-science-a-course-and-exam-description.pdf#page=56"
+        },
+        {
+          "document": "CED-2025",
+          "section": "Unit 1: Using Objects and Methods, Topic 1.15: String Manipulation",
+          "page_locator": "CED p. 50 (PDF p. 57)",
+          "url": "https://apcentral.collegeboard.org/media/pdf/ap-computer-science-a-course-and-exam-description.pdf#page=57"
+        }
+      ],
+      "worked_anchor": {
+        "factual_accuracy": {
+          "status": "scored",
+          "score": 2
+        },
+        "prerequisite_rationale": {
+          "status": "scored",
+          "score": 2
+        },
+        "actionable_guidance": {
+          "status": "scored",
+          "score": 2
+        },
+        "resource_summary_status": "na",
+        "resource_ratings": [],
+        "critical_error": false,
+        "critical_error_type": "none",
+        "rationale": "Empty resource N/A anchor: an empty resources array passes the wire contract cleanly; raters record resource relevance as N/A rather than 0."
+      }
+    },
+    {
+      "calibration_id": "CAL-06",
+      "unit": 4,
+      "topic_id": "4.6",
+      "topic_title": "Using Text Files",
+      "prompt_context": "Prompt asks whether local wrapper FileInputHelper.parseCustomRecord() matches AP CS A Scanner rules, without supplying FileInputHelper source code.",
+      "vark_profile": "visual",
+      "failed_topics": [
+        "File Handling"
+      ],
+      "items": [
+        {
+          "topic": "File Handling",
+          "priority": 1,
+          "prerequisite_chain": [
+            "Variables",
+            "Data Types",
+            "Program Input and Output",
+            "Expressions",
+            "Boolean Logic",
+            "Control Flow",
+            "Error Handling"
+          ],
+          "explanation": "FileInputHelper.parseCustomRecord() always trims blank lines and converts tokens automatically without IOException; review your classroom packet for its exact signature.",
+          "resources": [
+            {
+              "title": "FileInputHelper Call Diagram",
+              "url": "https://example.org/materials/be26a258d7a0",
+              "resource_type": "diagram"
+            }
+          ]
+        }
+      ],
+      "resource_evidence": [
+        {
+          "item_index": 0,
+          "resource_index": 0,
+          "unavailable_reason": "The classroom diagram was referenced but no copy or description was supplied."
+        }
+      ],
+      "reference_locators": [
+        {
+          "document": "CED-2025",
+          "section": "Topic 4.6: Using Text Files, 4.6.A.2–5 (file setup and handling failure)",
+          "page_locator": "CED p. 105 (PDF p. 112)",
+          "url": "https://apcentral.collegeboard.org/media/pdf/ap-computer-science-a-course-and-exam-description.pdf#page=112"
+        },
+        {
+          "document": "CED-2025",
+          "section": "Topic 4.6: Using Text Files, 4.6.A.6–7 (Scanner methods and scope exclusion)",
+          "page_locator": "CED p. 106 (PDF p. 113)",
+          "url": "https://apcentral.collegeboard.org/media/pdf/ap-computer-science-a-course-and-exam-description.pdf#page=113"
+        },
+        {
+          "document": "Java SE 21 API",
+          "section": "java.util.Scanner (file-open exception)",
+          "page_locator": "Scanner(File) constructor, Throws",
+          "url": "https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/util/Scanner.html#%3Cinit%3E(java.io.File)"
+        }
+      ],
+      "worked_anchor": {
+        "factual_accuracy": {
+          "status": "abstain",
+          "reason": "Referenced class FileInputHelper is absent from the prompt and CED; cannot verify its behavior."
+        },
+        "prerequisite_rationale": {
+          "status": "abstain",
+          "reason": "Insufficient context to evaluate helper prerequisites without source code."
+        },
+        "actionable_guidance": {
+          "status": "scored",
+          "score": 1
+        },
+        "resource_summary_status": "applicable",
+        "resource_ratings": [
+          {
+            "item_index": 0,
+            "resource_index": 0,
+            "rating": {
+              "status": "abstain",
+              "reason": "The diagram was not provided, so its content and relevance cannot be verified."
+            }
+          }
+        ],
+        "critical_error": false,
+        "critical_error_type": "none",
+        "rationale": "Abstain on the custom class behavior, its prerequisites, and the linked diagram because the source and diagram are unavailable. The advice to consult the packet gives a direction without a concrete verification step."
+      }
+    }
+  ]
+}

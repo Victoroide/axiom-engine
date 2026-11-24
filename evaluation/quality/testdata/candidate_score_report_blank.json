@@ -1,0 +1,1813 @@
+{
+  "schema_version": "1.0",
+  "dataset_kind": "unmeasured_blank",
+  "measured_candidate": false,
+  "status": "inconclusive",
+  "notice": "Blank candidate packet: zero independent human ratings recorded. Factual accuracy, prerequisite validity, guidance agreement, and provider performance remain unmeasured.",
+  "score_report": {
+    "schema_version": "1.0",
+    "dataset_kind": "unmeasured_blank",
+    "measured_candidate": false,
+    "provenance_note": "UNMEASURED BLANK PACKET: No independent specialist ratings recorded yet.",
+    "min_stratum_assessable": 10,
+    "total_cases": 28,
+    "completed_cases": 0,
+    "missing_ratings": 28,
+    "rater_a_initial_ratings": 0,
+    "rater_b_initial_ratings": 0,
+    "disagreements": 0,
+    "adjudicated_critical_errors": 0,
+    "dimensions": {
+      "actionable_guidance": {
+        "total_items": 28,
+        "assessable": 0,
+        "abstentions": 0,
+        "na_items": 0,
+        "missing": 28,
+        "score_0": 0,
+        "score_1": 0,
+        "score_2": 0,
+        "pass_fraction": 0
+      },
+      "factual_accuracy": {
+        "total_items": 28,
+        "assessable": 0,
+        "abstentions": 0,
+        "na_items": 0,
+        "missing": 28,
+        "score_0": 0,
+        "score_1": 0,
+        "score_2": 0,
+        "pass_fraction": 0,
+        "pass_ci_95": {
+          "defined": false,
+          "lower": 0,
+          "upper": 0,
+          "method": "wilson_score_95"
+        }
+      },
+      "prerequisite_rationale": {
+        "total_items": 28,
+        "assessable": 0,
+        "abstentions": 0,
+        "na_items": 0,
+        "missing": 28,
+        "score_0": 0,
+        "score_1": 0,
+        "score_2": 0,
+        "pass_fraction": 0
+      },
+      "resource_relevance": {
+        "total_items": 29,
+        "assessable": 0,
+        "abstentions": 0,
+        "na_items": 6,
+        "missing": 29,
+        "score_0": 0,
+        "score_1": 0,
+        "score_2": 0,
+        "pass_fraction": 0
+      }
+    },
+    "guidance_agreement": {
+      "paired_assessable": 0,
+      "abstentions": 0,
+      "missing": 28,
+      "kappa": 0,
+      "defined": false,
+      "bootstrap_ci_95": {
+        "defined": false,
+        "lower": 0,
+        "upper": 0,
+        "method": "paired_case_bootstrap_95"
+      },
+      "bootstrap_samples": 2000,
+      "undefined_bootstrap_replicates": 2000
+    },
+    "by_unit": [
+      {
+        "key": "unit_1",
+        "total_cases": 7,
+        "completed_cases": 0,
+        "missing_ratings": 7,
+        "assessable_factual": 0,
+        "factual_abstentions": 0,
+        "factual_passes": 0,
+        "factual_pass_fraction": 0,
+        "factual_pass_ci_95": {
+          "defined": false,
+          "lower": 0,
+          "upper": 0,
+          "method": "wilson_score_95"
+        },
+        "assessable_prerequisites": 0,
+        "prerequisite_abstentions": 0,
+        "guidance_agreement": {
+          "paired_assessable": 0,
+          "abstentions": 0,
+          "missing": 7,
+          "kappa": 0,
+          "defined": false,
+          "bootstrap_ci_95": {
+            "defined": false,
+            "lower": 0,
+            "upper": 0,
+            "method": "paired_case_bootstrap_95"
+          },
+          "bootstrap_samples": 2000,
+          "undefined_bootstrap_replicates": 2000
+        },
+        "supplied_resources": 9,
+        "missing_resources": 9,
+        "assessable_resources": 0,
+        "resource_abstentions": 0,
+        "na_items": 1,
+        "adjudicated_critical_errors": 0,
+        "status": "inconclusive",
+        "inconclusive_reasons": [
+          "incomplete ratings (7 missing)",
+          "assessable factual cases 0 \u003c 10",
+          "paired guidance ratings 0 \u003c 10",
+          "guidance kappa or bootstrap interval undefined"
+        ]
+      },
+      {
+        "key": "unit_2",
+        "total_cases": 7,
+        "completed_cases": 0,
+        "missing_ratings": 7,
+        "assessable_factual": 0,
+        "factual_abstentions": 0,
+        "factual_passes": 0,
+        "factual_pass_fraction": 0,
+        "factual_pass_ci_95": {
+          "defined": false,
+          "lower": 0,
+          "upper": 0,
+          "method": "wilson_score_95"
+        },
+        "assessable_prerequisites": 0,
+        "prerequisite_abstentions": 0,
+        "guidance_agreement": {
+          "paired_assessable": 0,
+          "abstentions": 0,
+          "missing": 7,
+          "kappa": 0,
+          "defined": false,
+          "bootstrap_ci_95": {
+            "defined": false,
+            "lower": 0,
+            "upper": 0,
+            "method": "paired_case_bootstrap_95"
+          },
+          "bootstrap_samples": 2000,
+          "undefined_bootstrap_replicates": 2000
+        },
+        "supplied_resources": 6,
+        "missing_resources": 6,
+        "assessable_resources": 0,
+        "resource_abstentions": 0,
+        "na_items": 2,
+        "adjudicated_critical_errors": 0,
+        "status": "inconclusive",
+        "inconclusive_reasons": [
+          "incomplete ratings (7 missing)",
+          "assessable factual cases 0 \u003c 10",
+          "paired guidance ratings 0 \u003c 10",
+          "guidance kappa or bootstrap interval undefined"
+        ]
+      },
+      {
+        "key": "unit_3",
+        "total_cases": 7,
+        "completed_cases": 0,
+        "missing_ratings": 7,
+        "assessable_factual": 0,
+        "factual_abstentions": 0,
+        "factual_passes": 0,
+        "factual_pass_fraction": 0,
+        "factual_pass_ci_95": {
+          "defined": false,
+          "lower": 0,
+          "upper": 0,
+          "method": "wilson_score_95"
+        },
+        "assessable_prerequisites": 0,
+        "prerequisite_abstentions": 0,
+        "guidance_agreement": {
+          "paired_assessable": 0,
+          "abstentions": 0,
+          "missing": 7,
+          "kappa": 0,
+          "defined": false,
+          "bootstrap_ci_95": {
+            "defined": false,
+            "lower": 0,
+            "upper": 0,
+            "method": "paired_case_bootstrap_95"
+          },
+          "bootstrap_samples": 2000,
+          "undefined_bootstrap_replicates": 2000
+        },
+        "supplied_resources": 6,
+        "missing_resources": 6,
+        "assessable_resources": 0,
+        "resource_abstentions": 0,
+        "na_items": 2,
+        "adjudicated_critical_errors": 0,
+        "status": "inconclusive",
+        "inconclusive_reasons": [
+          "incomplete ratings (7 missing)",
+          "assessable factual cases 0 \u003c 10",
+          "paired guidance ratings 0 \u003c 10",
+          "guidance kappa or bootstrap interval undefined"
+        ]
+      },
+      {
+        "key": "unit_4",
+        "total_cases": 7,
+        "completed_cases": 0,
+        "missing_ratings": 7,
+        "assessable_factual": 0,
+        "factual_abstentions": 0,
+        "factual_passes": 0,
+        "factual_pass_fraction": 0,
+        "factual_pass_ci_95": {
+          "defined": false,
+          "lower": 0,
+          "upper": 0,
+          "method": "wilson_score_95"
+        },
+        "assessable_prerequisites": 0,
+        "prerequisite_abstentions": 0,
+        "guidance_agreement": {
+          "paired_assessable": 0,
+          "abstentions": 0,
+          "missing": 7,
+          "kappa": 0,
+          "defined": false,
+          "bootstrap_ci_95": {
+            "defined": false,
+            "lower": 0,
+            "upper": 0,
+            "method": "paired_case_bootstrap_95"
+          },
+          "bootstrap_samples": 2000,
+          "undefined_bootstrap_replicates": 2000
+        },
+        "supplied_resources": 8,
+        "missing_resources": 8,
+        "assessable_resources": 0,
+        "resource_abstentions": 0,
+        "na_items": 1,
+        "adjudicated_critical_errors": 0,
+        "status": "inconclusive",
+        "inconclusive_reasons": [
+          "incomplete ratings (7 missing)",
+          "assessable factual cases 0 \u003c 10",
+          "paired guidance ratings 0 \u003c 10",
+          "guidance kappa or bootstrap interval undefined"
+        ]
+      }
+    ],
+    "by_topic": [
+      {
+        "key": "1.11 Math Class",
+        "total_cases": 1,
+        "completed_cases": 0,
+        "missing_ratings": 1,
+        "assessable_factual": 0,
+        "factual_abstentions": 0,
+        "factual_passes": 0,
+        "factual_pass_fraction": 0,
+        "factual_pass_ci_95": {
+          "defined": false,
+          "lower": 0,
+          "upper": 0,
+          "method": "wilson_score_95"
+        },
+        "assessable_prerequisites": 0,
+        "prerequisite_abstentions": 0,
+        "guidance_agreement": {
+          "paired_assessable": 0,
+          "abstentions": 0,
+          "missing": 1,
+          "kappa": 0,
+          "defined": false,
+          "bootstrap_ci_95": {
+            "defined": false,
+            "lower": 0,
+            "upper": 0,
+            "method": "paired_case_bootstrap_95"
+          },
+          "bootstrap_samples": 2000,
+          "undefined_bootstrap_replicates": 2000
+        },
+        "supplied_resources": 0,
+        "missing_resources": 0,
+        "assessable_resources": 0,
+        "resource_abstentions": 0,
+        "na_items": 1,
+        "adjudicated_critical_errors": 0,
+        "status": "inconclusive",
+        "inconclusive_reasons": [
+          "incomplete ratings (1 missing)",
+          "assessable factual cases 0 \u003c 10",
+          "paired guidance ratings 0 \u003c 10",
+          "guidance kappa or bootstrap interval undefined"
+        ]
+      },
+      {
+        "key": "1.13 Object Creation and Storage (Instantiation)",
+        "total_cases": 1,
+        "completed_cases": 0,
+        "missing_ratings": 1,
+        "assessable_factual": 0,
+        "factual_abstentions": 0,
+        "factual_passes": 0,
+        "factual_pass_fraction": 0,
+        "factual_pass_ci_95": {
+          "defined": false,
+          "lower": 0,
+          "upper": 0,
+          "method": "wilson_score_95"
+        },
+        "assessable_prerequisites": 0,
+        "prerequisite_abstentions": 0,
+        "guidance_agreement": {
+          "paired_assessable": 0,
+          "abstentions": 0,
+          "missing": 1,
+          "kappa": 0,
+          "defined": false,
+          "bootstrap_ci_95": {
+            "defined": false,
+            "lower": 0,
+            "upper": 0,
+            "method": "paired_case_bootstrap_95"
+          },
+          "bootstrap_samples": 2000,
+          "undefined_bootstrap_replicates": 2000
+        },
+        "supplied_resources": 1,
+        "missing_resources": 1,
+        "assessable_resources": 0,
+        "resource_abstentions": 0,
+        "na_items": 0,
+        "adjudicated_critical_errors": 0,
+        "status": "inconclusive",
+        "inconclusive_reasons": [
+          "incomplete ratings (1 missing)",
+          "assessable factual cases 0 \u003c 10",
+          "paired guidance ratings 0 \u003c 10",
+          "guidance kappa or bootstrap interval undefined"
+        ]
+      },
+      {
+        "key": "1.15 String Manipulation",
+        "total_cases": 1,
+        "completed_cases": 0,
+        "missing_ratings": 1,
+        "assessable_factual": 0,
+        "factual_abstentions": 0,
+        "factual_passes": 0,
+        "factual_pass_fraction": 0,
+        "factual_pass_ci_95": {
+          "defined": false,
+          "lower": 0,
+          "upper": 0,
+          "method": "wilson_score_95"
+        },
+        "assessable_prerequisites": 0,
+        "prerequisite_abstentions": 0,
+        "guidance_agreement": {
+          "paired_assessable": 0,
+          "abstentions": 0,
+          "missing": 1,
+          "kappa": 0,
+          "defined": false,
+          "bootstrap_ci_95": {
+            "defined": false,
+            "lower": 0,
+            "upper": 0,
+            "method": "paired_case_bootstrap_95"
+          },
+          "bootstrap_samples": 2000,
+          "undefined_bootstrap_replicates": 2000
+        },
+        "supplied_resources": 1,
+        "missing_resources": 1,
+        "assessable_resources": 0,
+        "resource_abstentions": 0,
+        "na_items": 0,
+        "adjudicated_critical_errors": 0,
+        "status": "inconclusive",
+        "inconclusive_reasons": [
+          "incomplete ratings (1 missing)",
+          "assessable factual cases 0 \u003c 10",
+          "paired guidance ratings 0 \u003c 10",
+          "guidance kappa or bootstrap interval undefined"
+        ]
+      },
+      {
+        "key": "1.2 Variables and Data Types",
+        "total_cases": 1,
+        "completed_cases": 0,
+        "missing_ratings": 1,
+        "assessable_factual": 0,
+        "factual_abstentions": 0,
+        "factual_passes": 0,
+        "factual_pass_fraction": 0,
+        "factual_pass_ci_95": {
+          "defined": false,
+          "lower": 0,
+          "upper": 0,
+          "method": "wilson_score_95"
+        },
+        "assessable_prerequisites": 0,
+        "prerequisite_abstentions": 0,
+        "guidance_agreement": {
+          "paired_assessable": 0,
+          "abstentions": 0,
+          "missing": 1,
+          "kappa": 0,
+          "defined": false,
+          "bootstrap_ci_95": {
+            "defined": false,
+            "lower": 0,
+            "upper": 0,
+            "method": "paired_case_bootstrap_95"
+          },
+          "bootstrap_samples": 2000,
+          "undefined_bootstrap_replicates": 2000
+        },
+        "supplied_resources": 2,
+        "missing_resources": 2,
+        "assessable_resources": 0,
+        "resource_abstentions": 0,
+        "na_items": 0,
+        "adjudicated_critical_errors": 0,
+        "status": "inconclusive",
+        "inconclusive_reasons": [
+          "incomplete ratings (1 missing)",
+          "assessable factual cases 0 \u003c 10",
+          "paired guidance ratings 0 \u003c 10",
+          "guidance kappa or bootstrap interval undefined"
+        ]
+      },
+      {
+        "key": "1.3 Expressions and Output",
+        "total_cases": 1,
+        "completed_cases": 0,
+        "missing_ratings": 1,
+        "assessable_factual": 0,
+        "factual_abstentions": 0,
+        "factual_passes": 0,
+        "factual_pass_fraction": 0,
+        "factual_pass_ci_95": {
+          "defined": false,
+          "lower": 0,
+          "upper": 0,
+          "method": "wilson_score_95"
+        },
+        "assessable_prerequisites": 0,
+        "prerequisite_abstentions": 0,
+        "guidance_agreement": {
+          "paired_assessable": 0,
+          "abstentions": 0,
+          "missing": 1,
+          "kappa": 0,
+          "defined": false,
+          "bootstrap_ci_95": {
+            "defined": false,
+            "lower": 0,
+            "upper": 0,
+            "method": "paired_case_bootstrap_95"
+          },
+          "bootstrap_samples": 2000,
+          "undefined_bootstrap_replicates": 2000
+        },
+        "supplied_resources": 1,
+        "missing_resources": 1,
+        "assessable_resources": 0,
+        "resource_abstentions": 0,
+        "na_items": 0,
+        "adjudicated_critical_errors": 0,
+        "status": "inconclusive",
+        "inconclusive_reasons": [
+          "incomplete ratings (1 missing)",
+          "assessable factual cases 0 \u003c 10",
+          "paired guidance ratings 0 \u003c 10",
+          "guidance kappa or bootstrap interval undefined"
+        ]
+      },
+      {
+        "key": "1.4 Assignment Statements and Input",
+        "total_cases": 1,
+        "completed_cases": 0,
+        "missing_ratings": 1,
+        "assessable_factual": 0,
+        "factual_abstentions": 0,
+        "factual_passes": 0,
+        "factual_pass_fraction": 0,
+        "factual_pass_ci_95": {
+          "defined": false,
+          "lower": 0,
+          "upper": 0,
+          "method": "wilson_score_95"
+        },
+        "assessable_prerequisites": 0,
+        "prerequisite_abstentions": 0,
+        "guidance_agreement": {
+          "paired_assessable": 0,
+          "abstentions": 0,
+          "missing": 1,
+          "kappa": 0,
+          "defined": false,
+          "bootstrap_ci_95": {
+            "defined": false,
+            "lower": 0,
+            "upper": 0,
+            "method": "paired_case_bootstrap_95"
+          },
+          "bootstrap_samples": 2000,
+          "undefined_bootstrap_replicates": 2000
+        },
+        "supplied_resources": 1,
+        "missing_resources": 1,
+        "assessable_resources": 0,
+        "resource_abstentions": 0,
+        "na_items": 0,
+        "adjudicated_critical_errors": 0,
+        "status": "inconclusive",
+        "inconclusive_reasons": [
+          "incomplete ratings (1 missing)",
+          "assessable factual cases 0 \u003c 10",
+          "paired guidance ratings 0 \u003c 10",
+          "guidance kappa or bootstrap interval undefined"
+        ]
+      },
+      {
+        "key": "1.5 Casting and Range of Variables",
+        "total_cases": 1,
+        "completed_cases": 0,
+        "missing_ratings": 1,
+        "assessable_factual": 0,
+        "factual_abstentions": 0,
+        "factual_passes": 0,
+        "factual_pass_fraction": 0,
+        "factual_pass_ci_95": {
+          "defined": false,
+          "lower": 0,
+          "upper": 0,
+          "method": "wilson_score_95"
+        },
+        "assessable_prerequisites": 0,
+        "prerequisite_abstentions": 0,
+        "guidance_agreement": {
+          "paired_assessable": 0,
+          "abstentions": 0,
+          "missing": 1,
+          "kappa": 0,
+          "defined": false,
+          "bootstrap_ci_95": {
+            "defined": false,
+            "lower": 0,
+            "upper": 0,
+            "method": "paired_case_bootstrap_95"
+          },
+          "bootstrap_samples": 2000,
+          "undefined_bootstrap_replicates": 2000
+        },
+        "supplied_resources": 3,
+        "missing_resources": 3,
+        "assessable_resources": 0,
+        "resource_abstentions": 0,
+        "na_items": 0,
+        "adjudicated_critical_errors": 0,
+        "status": "inconclusive",
+        "inconclusive_reasons": [
+          "incomplete ratings (1 missing)",
+          "assessable factual cases 0 \u003c 10",
+          "paired guidance ratings 0 \u003c 10",
+          "guidance kappa or bootstrap interval undefined"
+        ]
+      },
+      {
+        "key": "2.10 Implementing String Algorithms",
+        "total_cases": 1,
+        "completed_cases": 0,
+        "missing_ratings": 1,
+        "assessable_factual": 0,
+        "factual_abstentions": 0,
+        "factual_passes": 0,
+        "factual_pass_fraction": 0,
+        "factual_pass_ci_95": {
+          "defined": false,
+          "lower": 0,
+          "upper": 0,
+          "method": "wilson_score_95"
+        },
+        "assessable_prerequisites": 0,
+        "prerequisite_abstentions": 0,
+        "guidance_agreement": {
+          "paired_assessable": 0,
+          "abstentions": 0,
+          "missing": 1,
+          "kappa": 0,
+          "defined": false,
+          "bootstrap_ci_95": {
+            "defined": false,
+            "lower": 0,
+            "upper": 0,
+            "method": "paired_case_bootstrap_95"
+          },
+          "bootstrap_samples": 2000,
+          "undefined_bootstrap_replicates": 2000
+        },
+        "supplied_resources": 1,
+        "missing_resources": 1,
+        "assessable_resources": 0,
+        "resource_abstentions": 0,
+        "na_items": 0,
+        "adjudicated_critical_errors": 0,
+        "status": "inconclusive",
+        "inconclusive_reasons": [
+          "incomplete ratings (1 missing)",
+          "assessable factual cases 0 \u003c 10",
+          "paired guidance ratings 0 \u003c 10",
+          "guidance kappa or bootstrap interval undefined"
+        ]
+      },
+      {
+        "key": "2.2 Boolean Expressions",
+        "total_cases": 1,
+        "completed_cases": 0,
+        "missing_ratings": 1,
+        "assessable_factual": 0,
+        "factual_abstentions": 0,
+        "factual_passes": 0,
+        "factual_pass_fraction": 0,
+        "factual_pass_ci_95": {
+          "defined": false,
+          "lower": 0,
+          "upper": 0,
+          "method": "wilson_score_95"
+        },
+        "assessable_prerequisites": 0,
+        "prerequisite_abstentions": 0,
+        "guidance_agreement": {
+          "paired_assessable": 0,
+          "abstentions": 0,
+          "missing": 1,
+          "kappa": 0,
+          "defined": false,
+          "bootstrap_ci_95": {
+            "defined": false,
+            "lower": 0,
+            "upper": 0,
+            "method": "paired_case_bootstrap_95"
+          },
+          "bootstrap_samples": 2000,
+          "undefined_bootstrap_replicates": 2000
+        },
+        "supplied_resources": 1,
+        "missing_resources": 1,
+        "assessable_resources": 0,
+        "resource_abstentions": 0,
+        "na_items": 0,
+        "adjudicated_critical_errors": 0,
+        "status": "inconclusive",
+        "inconclusive_reasons": [
+          "incomplete ratings (1 missing)",
+          "assessable factual cases 0 \u003c 10",
+          "paired guidance ratings 0 \u003c 10",
+          "guidance kappa or bootstrap interval undefined"
+        ]
+      },
+      {
+        "key": "2.4 Nested if Statements",
+        "total_cases": 1,
+        "completed_cases": 0,
+        "missing_ratings": 1,
+        "assessable_factual": 0,
+        "factual_abstentions": 0,
+        "factual_passes": 0,
+        "factual_pass_fraction": 0,
+        "factual_pass_ci_95": {
+          "defined": false,
+          "lower": 0,
+          "upper": 0,
+          "method": "wilson_score_95"
+        },
+        "assessable_prerequisites": 0,
+        "prerequisite_abstentions": 0,
+        "guidance_agreement": {
+          "paired_assessable": 0,
+          "abstentions": 0,
+          "missing": 1,
+          "kappa": 0,
+          "defined": false,
+          "bootstrap_ci_95": {
+            "defined": false,
+            "lower": 0,
+            "upper": 0,
+            "method": "paired_case_bootstrap_95"
+          },
+          "bootstrap_samples": 2000,
+          "undefined_bootstrap_replicates": 2000
+        },
+        "supplied_resources": 1,
+        "missing_resources": 1,
+        "assessable_resources": 0,
+        "resource_abstentions": 0,
+        "na_items": 0,
+        "adjudicated_critical_errors": 0,
+        "status": "inconclusive",
+        "inconclusive_reasons": [
+          "incomplete ratings (1 missing)",
+          "assessable factual cases 0 \u003c 10",
+          "paired guidance ratings 0 \u003c 10",
+          "guidance kappa or bootstrap interval undefined"
+        ]
+      },
+      {
+        "key": "2.5 Compound Boolean Expressions",
+        "total_cases": 1,
+        "completed_cases": 0,
+        "missing_ratings": 1,
+        "assessable_factual": 0,
+        "factual_abstentions": 0,
+        "factual_passes": 0,
+        "factual_pass_fraction": 0,
+        "factual_pass_ci_95": {
+          "defined": false,
+          "lower": 0,
+          "upper": 0,
+          "method": "wilson_score_95"
+        },
+        "assessable_prerequisites": 0,
+        "prerequisite_abstentions": 0,
+        "guidance_agreement": {
+          "paired_assessable": 0,
+          "abstentions": 0,
+          "missing": 1,
+          "kappa": 0,
+          "defined": false,
+          "bootstrap_ci_95": {
+            "defined": false,
+            "lower": 0,
+            "upper": 0,
+            "method": "paired_case_bootstrap_95"
+          },
+          "bootstrap_samples": 2000,
+          "undefined_bootstrap_replicates": 2000
+        },
+        "supplied_resources": 2,
+        "missing_resources": 2,
+        "assessable_resources": 0,
+        "resource_abstentions": 0,
+        "na_items": 0,
+        "adjudicated_critical_errors": 0,
+        "status": "inconclusive",
+        "inconclusive_reasons": [
+          "incomplete ratings (1 missing)",
+          "assessable factual cases 0 \u003c 10",
+          "paired guidance ratings 0 \u003c 10",
+          "guidance kappa or bootstrap interval undefined"
+        ]
+      },
+      {
+        "key": "2.6 Comparing Boolean Expressions",
+        "total_cases": 1,
+        "completed_cases": 0,
+        "missing_ratings": 1,
+        "assessable_factual": 0,
+        "factual_abstentions": 0,
+        "factual_passes": 0,
+        "factual_pass_fraction": 0,
+        "factual_pass_ci_95": {
+          "defined": false,
+          "lower": 0,
+          "upper": 0,
+          "method": "wilson_score_95"
+        },
+        "assessable_prerequisites": 0,
+        "prerequisite_abstentions": 0,
+        "guidance_agreement": {
+          "paired_assessable": 0,
+          "abstentions": 0,
+          "missing": 1,
+          "kappa": 0,
+          "defined": false,
+          "bootstrap_ci_95": {
+            "defined": false,
+            "lower": 0,
+            "upper": 0,
+            "method": "paired_case_bootstrap_95"
+          },
+          "bootstrap_samples": 2000,
+          "undefined_bootstrap_replicates": 2000
+        },
+        "supplied_resources": 1,
+        "missing_resources": 1,
+        "assessable_resources": 0,
+        "resource_abstentions": 0,
+        "na_items": 0,
+        "adjudicated_critical_errors": 0,
+        "status": "inconclusive",
+        "inconclusive_reasons": [
+          "incomplete ratings (1 missing)",
+          "assessable factual cases 0 \u003c 10",
+          "paired guidance ratings 0 \u003c 10",
+          "guidance kappa or bootstrap interval undefined"
+        ]
+      },
+      {
+        "key": "2.7 while Loops",
+        "total_cases": 1,
+        "completed_cases": 0,
+        "missing_ratings": 1,
+        "assessable_factual": 0,
+        "factual_abstentions": 0,
+        "factual_passes": 0,
+        "factual_pass_fraction": 0,
+        "factual_pass_ci_95": {
+          "defined": false,
+          "lower": 0,
+          "upper": 0,
+          "method": "wilson_score_95"
+        },
+        "assessable_prerequisites": 0,
+        "prerequisite_abstentions": 0,
+        "guidance_agreement": {
+          "paired_assessable": 0,
+          "abstentions": 0,
+          "missing": 1,
+          "kappa": 0,
+          "defined": false,
+          "bootstrap_ci_95": {
+            "defined": false,
+            "lower": 0,
+            "upper": 0,
+            "method": "paired_case_bootstrap_95"
+          },
+          "bootstrap_samples": 2000,
+          "undefined_bootstrap_replicates": 2000
+        },
+        "supplied_resources": 0,
+        "missing_resources": 0,
+        "assessable_resources": 0,
+        "resource_abstentions": 0,
+        "na_items": 1,
+        "adjudicated_critical_errors": 0,
+        "status": "inconclusive",
+        "inconclusive_reasons": [
+          "incomplete ratings (1 missing)",
+          "assessable factual cases 0 \u003c 10",
+          "paired guidance ratings 0 \u003c 10",
+          "guidance kappa or bootstrap interval undefined"
+        ]
+      },
+      {
+        "key": "2.8 for Loops",
+        "total_cases": 1,
+        "completed_cases": 0,
+        "missing_ratings": 1,
+        "assessable_factual": 0,
+        "factual_abstentions": 0,
+        "factual_passes": 0,
+        "factual_pass_fraction": 0,
+        "factual_pass_ci_95": {
+          "defined": false,
+          "lower": 0,
+          "upper": 0,
+          "method": "wilson_score_95"
+        },
+        "assessable_prerequisites": 0,
+        "prerequisite_abstentions": 0,
+        "guidance_agreement": {
+          "paired_assessable": 0,
+          "abstentions": 0,
+          "missing": 1,
+          "kappa": 0,
+          "defined": false,
+          "bootstrap_ci_95": {
+            "defined": false,
+            "lower": 0,
+            "upper": 0,
+            "method": "paired_case_bootstrap_95"
+          },
+          "bootstrap_samples": 2000,
+          "undefined_bootstrap_replicates": 2000
+        },
+        "supplied_resources": 0,
+        "missing_resources": 0,
+        "assessable_resources": 0,
+        "resource_abstentions": 0,
+        "na_items": 1,
+        "adjudicated_critical_errors": 0,
+        "status": "inconclusive",
+        "inconclusive_reasons": [
+          "incomplete ratings (1 missing)",
+          "assessable factual cases 0 \u003c 10",
+          "paired guidance ratings 0 \u003c 10",
+          "guidance kappa or bootstrap interval undefined"
+        ]
+      },
+      {
+        "key": "3.3 Anatomy of a Class",
+        "total_cases": 2,
+        "completed_cases": 0,
+        "missing_ratings": 2,
+        "assessable_factual": 0,
+        "factual_abstentions": 0,
+        "factual_passes": 0,
+        "factual_pass_fraction": 0,
+        "factual_pass_ci_95": {
+          "defined": false,
+          "lower": 0,
+          "upper": 0,
+          "method": "wilson_score_95"
+        },
+        "assessable_prerequisites": 0,
+        "prerequisite_abstentions": 0,
+        "guidance_agreement": {
+          "paired_assessable": 0,
+          "abstentions": 0,
+          "missing": 2,
+          "kappa": 0,
+          "defined": false,
+          "bootstrap_ci_95": {
+            "defined": false,
+            "lower": 0,
+            "upper": 0,
+            "method": "paired_case_bootstrap_95"
+          },
+          "bootstrap_samples": 2000,
+          "undefined_bootstrap_replicates": 2000
+        },
+        "supplied_resources": 3,
+        "missing_resources": 3,
+        "assessable_resources": 0,
+        "resource_abstentions": 0,
+        "na_items": 0,
+        "adjudicated_critical_errors": 0,
+        "status": "inconclusive",
+        "inconclusive_reasons": [
+          "incomplete ratings (2 missing)",
+          "assessable factual cases 0 \u003c 10",
+          "paired guidance ratings 0 \u003c 10",
+          "guidance kappa or bootstrap interval undefined"
+        ]
+      },
+      {
+        "key": "3.4 Constructors",
+        "total_cases": 1,
+        "completed_cases": 0,
+        "missing_ratings": 1,
+        "assessable_factual": 0,
+        "factual_abstentions": 0,
+        "factual_passes": 0,
+        "factual_pass_fraction": 0,
+        "factual_pass_ci_95": {
+          "defined": false,
+          "lower": 0,
+          "upper": 0,
+          "method": "wilson_score_95"
+        },
+        "assessable_prerequisites": 0,
+        "prerequisite_abstentions": 0,
+        "guidance_agreement": {
+          "paired_assessable": 0,
+          "abstentions": 0,
+          "missing": 1,
+          "kappa": 0,
+          "defined": false,
+          "bootstrap_ci_95": {
+            "defined": false,
+            "lower": 0,
+            "upper": 0,
+            "method": "paired_case_bootstrap_95"
+          },
+          "bootstrap_samples": 2000,
+          "undefined_bootstrap_replicates": 2000
+        },
+        "supplied_resources": 0,
+        "missing_resources": 0,
+        "assessable_resources": 0,
+        "resource_abstentions": 0,
+        "na_items": 1,
+        "adjudicated_critical_errors": 0,
+        "status": "inconclusive",
+        "inconclusive_reasons": [
+          "incomplete ratings (1 missing)",
+          "assessable factual cases 0 \u003c 10",
+          "paired guidance ratings 0 \u003c 10",
+          "guidance kappa or bootstrap interval undefined"
+        ]
+      },
+      {
+        "key": "3.6 Methods: Passing and Returning References of an Object",
+        "total_cases": 1,
+        "completed_cases": 0,
+        "missing_ratings": 1,
+        "assessable_factual": 0,
+        "factual_abstentions": 0,
+        "factual_passes": 0,
+        "factual_pass_fraction": 0,
+        "factual_pass_ci_95": {
+          "defined": false,
+          "lower": 0,
+          "upper": 0,
+          "method": "wilson_score_95"
+        },
+        "assessable_prerequisites": 0,
+        "prerequisite_abstentions": 0,
+        "guidance_agreement": {
+          "paired_assessable": 0,
+          "abstentions": 0,
+          "missing": 1,
+          "kappa": 0,
+          "defined": false,
+          "bootstrap_ci_95": {
+            "defined": false,
+            "lower": 0,
+            "upper": 0,
+            "method": "paired_case_bootstrap_95"
+          },
+          "bootstrap_samples": 2000,
+          "undefined_bootstrap_replicates": 2000
+        },
+        "supplied_resources": 1,
+        "missing_resources": 1,
+        "assessable_resources": 0,
+        "resource_abstentions": 0,
+        "na_items": 0,
+        "adjudicated_critical_errors": 0,
+        "status": "inconclusive",
+        "inconclusive_reasons": [
+          "incomplete ratings (1 missing)",
+          "assessable factual cases 0 \u003c 10",
+          "paired guidance ratings 0 \u003c 10",
+          "guidance kappa or bootstrap interval undefined"
+        ]
+      },
+      {
+        "key": "3.7 Class Variables and Methods",
+        "total_cases": 1,
+        "completed_cases": 0,
+        "missing_ratings": 1,
+        "assessable_factual": 0,
+        "factual_abstentions": 0,
+        "factual_passes": 0,
+        "factual_pass_fraction": 0,
+        "factual_pass_ci_95": {
+          "defined": false,
+          "lower": 0,
+          "upper": 0,
+          "method": "wilson_score_95"
+        },
+        "assessable_prerequisites": 0,
+        "prerequisite_abstentions": 0,
+        "guidance_agreement": {
+          "paired_assessable": 0,
+          "abstentions": 0,
+          "missing": 1,
+          "kappa": 0,
+          "defined": false,
+          "bootstrap_ci_95": {
+            "defined": false,
+            "lower": 0,
+            "upper": 0,
+            "method": "paired_case_bootstrap_95"
+          },
+          "bootstrap_samples": 2000,
+          "undefined_bootstrap_replicates": 2000
+        },
+        "supplied_resources": 1,
+        "missing_resources": 1,
+        "assessable_resources": 0,
+        "resource_abstentions": 0,
+        "na_items": 0,
+        "adjudicated_critical_errors": 0,
+        "status": "inconclusive",
+        "inconclusive_reasons": [
+          "incomplete ratings (1 missing)",
+          "assessable factual cases 0 \u003c 10",
+          "paired guidance ratings 0 \u003c 10",
+          "guidance kappa or bootstrap interval undefined"
+        ]
+      },
+      {
+        "key": "3.8 Scope and Access",
+        "total_cases": 1,
+        "completed_cases": 0,
+        "missing_ratings": 1,
+        "assessable_factual": 0,
+        "factual_abstentions": 0,
+        "factual_passes": 0,
+        "factual_pass_fraction": 0,
+        "factual_pass_ci_95": {
+          "defined": false,
+          "lower": 0,
+          "upper": 0,
+          "method": "wilson_score_95"
+        },
+        "assessable_prerequisites": 0,
+        "prerequisite_abstentions": 0,
+        "guidance_agreement": {
+          "paired_assessable": 0,
+          "abstentions": 0,
+          "missing": 1,
+          "kappa": 0,
+          "defined": false,
+          "bootstrap_ci_95": {
+            "defined": false,
+            "lower": 0,
+            "upper": 0,
+            "method": "paired_case_bootstrap_95"
+          },
+          "bootstrap_samples": 2000,
+          "undefined_bootstrap_replicates": 2000
+        },
+        "supplied_resources": 1,
+        "missing_resources": 1,
+        "assessable_resources": 0,
+        "resource_abstentions": 0,
+        "na_items": 0,
+        "adjudicated_critical_errors": 0,
+        "status": "inconclusive",
+        "inconclusive_reasons": [
+          "incomplete ratings (1 missing)",
+          "assessable factual cases 0 \u003c 10",
+          "paired guidance ratings 0 \u003c 10",
+          "guidance kappa or bootstrap interval undefined"
+        ]
+      },
+      {
+        "key": "3.9 this Keyword",
+        "total_cases": 1,
+        "completed_cases": 0,
+        "missing_ratings": 1,
+        "assessable_factual": 0,
+        "factual_abstentions": 0,
+        "factual_passes": 0,
+        "factual_pass_fraction": 0,
+        "factual_pass_ci_95": {
+          "defined": false,
+          "lower": 0,
+          "upper": 0,
+          "method": "wilson_score_95"
+        },
+        "assessable_prerequisites": 0,
+        "prerequisite_abstentions": 0,
+        "guidance_agreement": {
+          "paired_assessable": 0,
+          "abstentions": 0,
+          "missing": 1,
+          "kappa": 0,
+          "defined": false,
+          "bootstrap_ci_95": {
+            "defined": false,
+            "lower": 0,
+            "upper": 0,
+            "method": "paired_case_bootstrap_95"
+          },
+          "bootstrap_samples": 2000,
+          "undefined_bootstrap_replicates": 2000
+        },
+        "supplied_resources": 0,
+        "missing_resources": 0,
+        "assessable_resources": 0,
+        "resource_abstentions": 0,
+        "na_items": 1,
+        "adjudicated_critical_errors": 0,
+        "status": "inconclusive",
+        "inconclusive_reasons": [
+          "incomplete ratings (1 missing)",
+          "assessable factual cases 0 \u003c 10",
+          "paired guidance ratings 0 \u003c 10",
+          "guidance kappa or bootstrap interval undefined"
+        ]
+      },
+      {
+        "key": "4.11 2D Array Creation and Access",
+        "total_cases": 1,
+        "completed_cases": 0,
+        "missing_ratings": 1,
+        "assessable_factual": 0,
+        "factual_abstentions": 0,
+        "factual_passes": 0,
+        "factual_pass_fraction": 0,
+        "factual_pass_ci_95": {
+          "defined": false,
+          "lower": 0,
+          "upper": 0,
+          "method": "wilson_score_95"
+        },
+        "assessable_prerequisites": 0,
+        "prerequisite_abstentions": 0,
+        "guidance_agreement": {
+          "paired_assessable": 0,
+          "abstentions": 0,
+          "missing": 1,
+          "kappa": 0,
+          "defined": false,
+          "bootstrap_ci_95": {
+            "defined": false,
+            "lower": 0,
+            "upper": 0,
+            "method": "paired_case_bootstrap_95"
+          },
+          "bootstrap_samples": 2000,
+          "undefined_bootstrap_replicates": 2000
+        },
+        "supplied_resources": 1,
+        "missing_resources": 1,
+        "assessable_resources": 0,
+        "resource_abstentions": 0,
+        "na_items": 0,
+        "adjudicated_critical_errors": 0,
+        "status": "inconclusive",
+        "inconclusive_reasons": [
+          "incomplete ratings (1 missing)",
+          "assessable factual cases 0 \u003c 10",
+          "paired guidance ratings 0 \u003c 10",
+          "guidance kappa or bootstrap interval undefined"
+        ]
+      },
+      {
+        "key": "4.16 Recursion",
+        "total_cases": 1,
+        "completed_cases": 0,
+        "missing_ratings": 1,
+        "assessable_factual": 0,
+        "factual_abstentions": 0,
+        "factual_passes": 0,
+        "factual_pass_fraction": 0,
+        "factual_pass_ci_95": {
+          "defined": false,
+          "lower": 0,
+          "upper": 0,
+          "method": "wilson_score_95"
+        },
+        "assessable_prerequisites": 0,
+        "prerequisite_abstentions": 0,
+        "guidance_agreement": {
+          "paired_assessable": 0,
+          "abstentions": 0,
+          "missing": 1,
+          "kappa": 0,
+          "defined": false,
+          "bootstrap_ci_95": {
+            "defined": false,
+            "lower": 0,
+            "upper": 0,
+            "method": "paired_case_bootstrap_95"
+          },
+          "bootstrap_samples": 2000,
+          "undefined_bootstrap_replicates": 2000
+        },
+        "supplied_resources": 1,
+        "missing_resources": 1,
+        "assessable_resources": 0,
+        "resource_abstentions": 0,
+        "na_items": 0,
+        "adjudicated_critical_errors": 0,
+        "status": "inconclusive",
+        "inconclusive_reasons": [
+          "incomplete ratings (1 missing)",
+          "assessable factual cases 0 \u003c 10",
+          "paired guidance ratings 0 \u003c 10",
+          "guidance kappa or bootstrap interval undefined"
+        ]
+      },
+      {
+        "key": "4.17 Recursive Searching and Sorting",
+        "total_cases": 2,
+        "completed_cases": 0,
+        "missing_ratings": 2,
+        "assessable_factual": 0,
+        "factual_abstentions": 0,
+        "factual_passes": 0,
+        "factual_pass_fraction": 0,
+        "factual_pass_ci_95": {
+          "defined": false,
+          "lower": 0,
+          "upper": 0,
+          "method": "wilson_score_95"
+        },
+        "assessable_prerequisites": 0,
+        "prerequisite_abstentions": 0,
+        "guidance_agreement": {
+          "paired_assessable": 0,
+          "abstentions": 0,
+          "missing": 2,
+          "kappa": 0,
+          "defined": false,
+          "bootstrap_ci_95": {
+            "defined": false,
+            "lower": 0,
+            "upper": 0,
+            "method": "paired_case_bootstrap_95"
+          },
+          "bootstrap_samples": 2000,
+          "undefined_bootstrap_replicates": 2000
+        },
+        "supplied_resources": 1,
+        "missing_resources": 1,
+        "assessable_resources": 0,
+        "resource_abstentions": 0,
+        "na_items": 1,
+        "adjudicated_critical_errors": 0,
+        "status": "inconclusive",
+        "inconclusive_reasons": [
+          "incomplete ratings (2 missing)",
+          "assessable factual cases 0 \u003c 10",
+          "paired guidance ratings 0 \u003c 10",
+          "guidance kappa or bootstrap interval undefined"
+        ]
+      },
+      {
+        "key": "4.3 Array Creation and Access",
+        "total_cases": 1,
+        "completed_cases": 0,
+        "missing_ratings": 1,
+        "assessable_factual": 0,
+        "factual_abstentions": 0,
+        "factual_passes": 0,
+        "factual_pass_fraction": 0,
+        "factual_pass_ci_95": {
+          "defined": false,
+          "lower": 0,
+          "upper": 0,
+          "method": "wilson_score_95"
+        },
+        "assessable_prerequisites": 0,
+        "prerequisite_abstentions": 0,
+        "guidance_agreement": {
+          "paired_assessable": 0,
+          "abstentions": 0,
+          "missing": 1,
+          "kappa": 0,
+          "defined": false,
+          "bootstrap_ci_95": {
+            "defined": false,
+            "lower": 0,
+            "upper": 0,
+            "method": "paired_case_bootstrap_95"
+          },
+          "bootstrap_samples": 2000,
+          "undefined_bootstrap_replicates": 2000
+        },
+        "supplied_resources": 2,
+        "missing_resources": 2,
+        "assessable_resources": 0,
+        "resource_abstentions": 0,
+        "na_items": 0,
+        "adjudicated_critical_errors": 0,
+        "status": "inconclusive",
+        "inconclusive_reasons": [
+          "incomplete ratings (1 missing)",
+          "assessable factual cases 0 \u003c 10",
+          "paired guidance ratings 0 \u003c 10",
+          "guidance kappa or bootstrap interval undefined"
+        ]
+      },
+      {
+        "key": "4.6 Using Text Files",
+        "total_cases": 1,
+        "completed_cases": 0,
+        "missing_ratings": 1,
+        "assessable_factual": 0,
+        "factual_abstentions": 0,
+        "factual_passes": 0,
+        "factual_pass_fraction": 0,
+        "factual_pass_ci_95": {
+          "defined": false,
+          "lower": 0,
+          "upper": 0,
+          "method": "wilson_score_95"
+        },
+        "assessable_prerequisites": 0,
+        "prerequisite_abstentions": 0,
+        "guidance_agreement": {
+          "paired_assessable": 0,
+          "abstentions": 0,
+          "missing": 1,
+          "kappa": 0,
+          "defined": false,
+          "bootstrap_ci_95": {
+            "defined": false,
+            "lower": 0,
+            "upper": 0,
+            "method": "paired_case_bootstrap_95"
+          },
+          "bootstrap_samples": 2000,
+          "undefined_bootstrap_replicates": 2000
+        },
+        "supplied_resources": 2,
+        "missing_resources": 2,
+        "assessable_resources": 0,
+        "resource_abstentions": 0,
+        "na_items": 0,
+        "adjudicated_critical_errors": 0,
+        "status": "inconclusive",
+        "inconclusive_reasons": [
+          "incomplete ratings (1 missing)",
+          "assessable factual cases 0 \u003c 10",
+          "paired guidance ratings 0 \u003c 10",
+          "guidance kappa or bootstrap interval undefined"
+        ]
+      },
+      {
+        "key": "4.9 ArrayList Traversals",
+        "total_cases": 1,
+        "completed_cases": 0,
+        "missing_ratings": 1,
+        "assessable_factual": 0,
+        "factual_abstentions": 0,
+        "factual_passes": 0,
+        "factual_pass_fraction": 0,
+        "factual_pass_ci_95": {
+          "defined": false,
+          "lower": 0,
+          "upper": 0,
+          "method": "wilson_score_95"
+        },
+        "assessable_prerequisites": 0,
+        "prerequisite_abstentions": 0,
+        "guidance_agreement": {
+          "paired_assessable": 0,
+          "abstentions": 0,
+          "missing": 1,
+          "kappa": 0,
+          "defined": false,
+          "bootstrap_ci_95": {
+            "defined": false,
+            "lower": 0,
+            "upper": 0,
+            "method": "paired_case_bootstrap_95"
+          },
+          "bootstrap_samples": 2000,
+          "undefined_bootstrap_replicates": 2000
+        },
+        "supplied_resources": 1,
+        "missing_resources": 1,
+        "assessable_resources": 0,
+        "resource_abstentions": 0,
+        "na_items": 0,
+        "adjudicated_critical_errors": 0,
+        "status": "inconclusive",
+        "inconclusive_reasons": [
+          "incomplete ratings (1 missing)",
+          "assessable factual cases 0 \u003c 10",
+          "paired guidance ratings 0 \u003c 10",
+          "guidance kappa or bootstrap interval undefined"
+        ]
+      }
+    ],
+    "by_preference": [
+      {
+        "key": "auditory",
+        "total_cases": 6,
+        "completed_cases": 0,
+        "missing_ratings": 6,
+        "assessable_factual": 0,
+        "factual_abstentions": 0,
+        "factual_passes": 0,
+        "factual_pass_fraction": 0,
+        "factual_pass_ci_95": {
+          "defined": false,
+          "lower": 0,
+          "upper": 0,
+          "method": "wilson_score_95"
+        },
+        "assessable_prerequisites": 0,
+        "prerequisite_abstentions": 0,
+        "guidance_agreement": {
+          "paired_assessable": 0,
+          "abstentions": 0,
+          "missing": 6,
+          "kappa": 0,
+          "defined": false,
+          "bootstrap_ci_95": {
+            "defined": false,
+            "lower": 0,
+            "upper": 0,
+            "method": "paired_case_bootstrap_95"
+          },
+          "bootstrap_samples": 2000,
+          "undefined_bootstrap_replicates": 2000
+        },
+        "supplied_resources": 3,
+        "missing_resources": 3,
+        "assessable_resources": 0,
+        "resource_abstentions": 0,
+        "na_items": 3,
+        "adjudicated_critical_errors": 0,
+        "status": "inconclusive",
+        "inconclusive_reasons": [
+          "incomplete ratings (6 missing)",
+          "assessable factual cases 0 \u003c 10",
+          "paired guidance ratings 0 \u003c 10",
+          "guidance kappa or bootstrap interval undefined"
+        ]
+      },
+      {
+        "key": "kinesthetic",
+        "total_cases": 7,
+        "completed_cases": 0,
+        "missing_ratings": 7,
+        "assessable_factual": 0,
+        "factual_abstentions": 0,
+        "factual_passes": 0,
+        "factual_pass_fraction": 0,
+        "factual_pass_ci_95": {
+          "defined": false,
+          "lower": 0,
+          "upper": 0,
+          "method": "wilson_score_95"
+        },
+        "assessable_prerequisites": 0,
+        "prerequisite_abstentions": 0,
+        "guidance_agreement": {
+          "paired_assessable": 0,
+          "abstentions": 0,
+          "missing": 7,
+          "kappa": 0,
+          "defined": false,
+          "bootstrap_ci_95": {
+            "defined": false,
+            "lower": 0,
+            "upper": 0,
+            "method": "paired_case_bootstrap_95"
+          },
+          "bootstrap_samples": 2000,
+          "undefined_bootstrap_replicates": 2000
+        },
+        "supplied_resources": 7,
+        "missing_resources": 7,
+        "assessable_resources": 0,
+        "resource_abstentions": 0,
+        "na_items": 1,
+        "adjudicated_critical_errors": 0,
+        "status": "inconclusive",
+        "inconclusive_reasons": [
+          "incomplete ratings (7 missing)",
+          "assessable factual cases 0 \u003c 10",
+          "paired guidance ratings 0 \u003c 10",
+          "guidance kappa or bootstrap interval undefined"
+        ]
+      },
+      {
+        "key": "read_write",
+        "total_cases": 7,
+        "completed_cases": 0,
+        "missing_ratings": 7,
+        "assessable_factual": 0,
+        "factual_abstentions": 0,
+        "factual_passes": 0,
+        "factual_pass_fraction": 0,
+        "factual_pass_ci_95": {
+          "defined": false,
+          "lower": 0,
+          "upper": 0,
+          "method": "wilson_score_95"
+        },
+        "assessable_prerequisites": 0,
+        "prerequisite_abstentions": 0,
+        "guidance_agreement": {
+          "paired_assessable": 0,
+          "abstentions": 0,
+          "missing": 7,
+          "kappa": 0,
+          "defined": false,
+          "bootstrap_ci_95": {
+            "defined": false,
+            "lower": 0,
+            "upper": 0,
+            "method": "paired_case_bootstrap_95"
+          },
+          "bootstrap_samples": 2000,
+          "undefined_bootstrap_replicates": 2000
+        },
+        "supplied_resources": 8,
+        "missing_resources": 8,
+        "assessable_resources": 0,
+        "resource_abstentions": 0,
+        "na_items": 1,
+        "adjudicated_critical_errors": 0,
+        "status": "inconclusive",
+        "inconclusive_reasons": [
+          "incomplete ratings (7 missing)",
+          "assessable factual cases 0 \u003c 10",
+          "paired guidance ratings 0 \u003c 10",
+          "guidance kappa or bootstrap interval undefined"
+        ]
+      },
+      {
+        "key": "visual",
+        "total_cases": 8,
+        "completed_cases": 0,
+        "missing_ratings": 8,
+        "assessable_factual": 0,
+        "factual_abstentions": 0,
+        "factual_passes": 0,
+        "factual_pass_fraction": 0,
+        "factual_pass_ci_95": {
+          "defined": false,
+          "lower": 0,
+          "upper": 0,
+          "method": "wilson_score_95"
+        },
+        "assessable_prerequisites": 0,
+        "prerequisite_abstentions": 0,
+        "guidance_agreement": {
+          "paired_assessable": 0,
+          "abstentions": 0,
+          "missing": 8,
+          "kappa": 0,
+          "defined": false,
+          "bootstrap_ci_95": {
+            "defined": false,
+            "lower": 0,
+            "upper": 0,
+            "method": "paired_case_bootstrap_95"
+          },
+          "bootstrap_samples": 2000,
+          "undefined_bootstrap_replicates": 2000
+        },
+        "supplied_resources": 11,
+        "missing_resources": 11,
+        "assessable_resources": 0,
+        "resource_abstentions": 0,
+        "na_items": 1,
+        "adjudicated_critical_errors": 0,
+        "status": "inconclusive",
+        "inconclusive_reasons": [
+          "incomplete ratings (8 missing)",
+          "assessable factual cases 0 \u003c 10",
+          "paired guidance ratings 0 \u003c 10",
+          "guidance kappa or bootstrap interval undefined"
+        ]
+      }
+    ],
+    "by_provider": [
+      {
+        "key": "synthetic-provider-a",
+        "total_cases": 12,
+        "completed_cases": 0,
+        "missing_ratings": 12,
+        "assessable_factual": 0,
+        "factual_abstentions": 0,
+        "factual_passes": 0,
+        "factual_pass_fraction": 0,
+        "factual_pass_ci_95": {
+          "defined": false,
+          "lower": 0,
+          "upper": 0,
+          "method": "wilson_score_95"
+        },
+        "assessable_prerequisites": 0,
+        "prerequisite_abstentions": 0,
+        "guidance_agreement": {
+          "paired_assessable": 0,
+          "abstentions": 0,
+          "missing": 12,
+          "kappa": 0,
+          "defined": false,
+          "bootstrap_ci_95": {
+            "defined": false,
+            "lower": 0,
+            "upper": 0,
+            "method": "paired_case_bootstrap_95"
+          },
+          "bootstrap_samples": 2000,
+          "undefined_bootstrap_replicates": 2000
+        },
+        "supplied_resources": 16,
+        "missing_resources": 16,
+        "assessable_resources": 0,
+        "resource_abstentions": 0,
+        "na_items": 2,
+        "adjudicated_critical_errors": 0,
+        "status": "inconclusive",
+        "inconclusive_reasons": [
+          "incomplete ratings (12 missing)",
+          "assessable factual cases 0 \u003c 10",
+          "paired guidance ratings 0 \u003c 10",
+          "guidance kappa or bootstrap interval undefined"
+        ]
+      },
+      {
+        "key": "synthetic-provider-b",
+        "total_cases": 8,
+        "completed_cases": 0,
+        "missing_ratings": 8,
+        "assessable_factual": 0,
+        "factual_abstentions": 0,
+        "factual_passes": 0,
+        "factual_pass_fraction": 0,
+        "factual_pass_ci_95": {
+          "defined": false,
+          "lower": 0,
+          "upper": 0,
+          "method": "wilson_score_95"
+        },
+        "assessable_prerequisites": 0,
+        "prerequisite_abstentions": 0,
+        "guidance_agreement": {
+          "paired_assessable": 0,
+          "abstentions": 0,
+          "missing": 8,
+          "kappa": 0,
+          "defined": false,
+          "bootstrap_ci_95": {
+            "defined": false,
+            "lower": 0,
+            "upper": 0,
+            "method": "paired_case_bootstrap_95"
+          },
+          "bootstrap_samples": 2000,
+          "undefined_bootstrap_replicates": 2000
+        },
+        "supplied_resources": 6,
+        "missing_resources": 6,
+        "assessable_resources": 0,
+        "resource_abstentions": 0,
+        "na_items": 2,
+        "adjudicated_critical_errors": 0,
+        "status": "inconclusive",
+        "inconclusive_reasons": [
+          "incomplete ratings (8 missing)",
+          "assessable factual cases 0 \u003c 10",
+          "paired guidance ratings 0 \u003c 10",
+          "guidance kappa or bootstrap interval undefined"
+        ]
+      },
+      {
+        "key": "synthetic-provider-c",
+        "total_cases": 8,
+        "completed_cases": 0,
+        "missing_ratings": 8,
+        "assessable_factual": 0,
+        "factual_abstentions": 0,
+        "factual_passes": 0,
+        "factual_pass_fraction": 0,
+        "factual_pass_ci_95": {
+          "defined": false,
+          "lower": 0,
+          "upper": 0,
+          "method": "wilson_score_95"
+        },
+        "assessable_prerequisites": 0,
+        "prerequisite_abstentions": 0,
+        "guidance_agreement": {
+          "paired_assessable": 0,
+          "abstentions": 0,
+          "missing": 8,
+          "kappa": 0,
+          "defined": false,
+          "bootstrap_ci_95": {
+            "defined": false,
+            "lower": 0,
+            "upper": 0,
+            "method": "paired_case_bootstrap_95"
+          },
+          "bootstrap_samples": 2000,
+          "undefined_bootstrap_replicates": 2000
+        },
+        "supplied_resources": 7,
+        "missing_resources": 7,
+        "assessable_resources": 0,
+        "resource_abstentions": 0,
+        "na_items": 2,
+        "adjudicated_critical_errors": 0,
+        "status": "inconclusive",
+        "inconclusive_reasons": [
+          "incomplete ratings (8 missing)",
+          "assessable factual cases 0 \u003c 10",
+          "paired guidance ratings 0 \u003c 10",
+          "guidance kappa or bootstrap interval undefined"
+        ]
+      }
+    ],
+    "gate": {
+      "passed": false,
+      "status": "inconclusive",
+      "zero_critical_errors": true,
+      "factual_pass_at_least_90": false,
+      "guidance_kappa_at_least_070": false,
+      "all_ratings_complete": false,
+      "minimum_assessable_met": false,
+      "kappa_defined": false,
+      "inconclusive_reasons": [
+        "incomplete ratings (0 of 28 cases completed; 28 missing)",
+        "assessable cases below minimum 10 (factual=0, guidance_pairs=0)",
+        "linear-weighted guidance kappa or bootstrap interval is undefined"
+      ]
+    }
+  }
+}
