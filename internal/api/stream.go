@@ -54,15 +54,16 @@ type planEvent struct {
 // @Failure 408 {object} domain.ErrorResponse
 // @Failure 413 {object} domain.ErrorResponse
 // @Failure 415 {object} domain.ErrorResponse
-// @Failure 422 {object} domain.ErrorResponse
+// @Failure 422 {object} domain.ErrorResponse "Unknown curriculum topic or curriculum_context_too_large before streaming"
 // @Failure 429 {object} domain.ErrorResponse
 // @Failure 431 {object} domain.ErrorResponse
 // @Failure 500 {object} domain.ErrorResponse
 // @Failure 503 {object} domain.ErrorResponse "Shared storage unavailable or server shutdown"
+// @Failure 504 {object} domain.ErrorResponse "Deadline exceeded before streaming"
 // @Header all {string} X-Request-ID "Resolved request correlation identifier"
-// @Header 200,400,413,415,422 {integer} X-RateLimit-Limit "Maximum requests per rate-limit window"
-// @Header 200,400,413,415,422 {integer} X-RateLimit-Remaining "Requests remaining in the rate-limit window"
-// @Header 200,400,413,415,422 {integer} X-RateLimit-Reset "Seconds until the rate-limit window resets"
+// @Header 200,400,413,415,422,504 {integer} X-RateLimit-Limit "Maximum requests per rate-limit window"
+// @Header 200,400,413,415,422,504 {integer} X-RateLimit-Remaining "Requests remaining in the rate-limit window"
+// @Header 200,400,413,415,422,504 {integer} X-RateLimit-Reset "Seconds until the rate-limit window resets"
 // @Header 429,503 {integer} Retry-After "Seconds to wait before retrying"
 // @x-events {"topic":{"description":"Completed topic call","payload":{"topic":"Recursion","index":0,"items_generated":1}},"plan":{"schema":{"$ref":"#/definitions/domain.PlanResponse"}},"error":{"description":"Usual error envelope plus equivalent HTTP status","payload":{"error":"bad_gateway","details":"upstream reasoning failed","status":502}}}
 // @Router /api/v1/adaptive-plan/stream [post]
@@ -71,12 +72,14 @@ func (h *Handler) handlePlanStream(c fiber.Ctx) error {
 	if !accepted {
 		return err
 	}
-	if _, err := h.reasoning.ValidateRequest(req); err != nil {
-		return h.writePipelineError(c, c.Context(), err)
-	}
 	parent := c.Context()
 	requestID := strings.Clone(requestid.FromContext(c))
 	ctx, cancel := context.WithTimeout(service.WithRequestID(parent, requestID), h.timeout)
+	prepared, err := h.reasoning.PreparePlan(ctx, req)
+	if err != nil {
+		cancel()
+		return h.writePipelineError(c, ctx, err)
+	}
 	telemetry.CaptureJSON(ctx, "input.value", struct {
 		FailedTopics []string `json:"failed_topics"`
 		VARKProfile  string   `json:"vark_profile"`
@@ -98,7 +101,7 @@ func (h *Handler) handlePlanStream(c fiber.Ctx) error {
 		}
 		events := make(chan planEvent, len(req.FailedTopics)+1)
 		go func() {
-			plan, err := h.reasoning.GeneratePlan(ctx, req, service.WithProgress(func(progress domain.TopicProgress) {
+			plan, err := prepared.Generate(ctx, service.WithProgress(func(progress domain.TopicProgress) {
 				select {
 				case events <- planEvent{name: "topic", payload: progress}:
 				case <-ctx.Done():

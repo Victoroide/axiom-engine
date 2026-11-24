@@ -16,6 +16,7 @@ type Config struct {
 	LangSmith             LangSmith
 	Tracing               Tracing
 	LLM                   LLM
+	PromptBudget          PromptBudget
 	ResourceLinks         ResourceLinks
 	Mastery               Mastery
 	Redis                 Redis
@@ -234,6 +235,11 @@ func Load(getenv func(string) string) (Config, error) {
 	if err := loadLLM(getenv, &c); err != nil {
 		return Config{}, err
 	}
+	budget, err := loadPromptBudget(getenv, c.LLM.Provider)
+	if err != nil {
+		return Config{}, err
+	}
+	c.PromptBudget = budget
 	if err := loadTracing(getenv, &c); err != nil {
 		return Config{}, err
 	}

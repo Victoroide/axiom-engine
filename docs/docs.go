@@ -205,7 +205,7 @@ const docTemplate = `{
                         }
                     },
                     "422": {
-                        "description": "Unprocessable Entity",
+                        "description": "Unknown curriculum topic, curriculum_context_too_large or idempotency key mismatch",
                         "schema": {
                             "$ref": "#/definitions/domain.ErrorResponse"
                         },
@@ -500,7 +500,7 @@ const docTemplate = `{
                         }
                     },
                     "422": {
-                        "description": "Unprocessable Entity",
+                        "description": "Unknown curriculum topic or curriculum_context_too_large before streaming",
                         "schema": {
                             "$ref": "#/definitions/domain.ErrorResponse"
                         },
@@ -572,6 +572,30 @@ const docTemplate = `{
                             "Retry-After": {
                                 "type": "integer",
                                 "description": "Seconds to wait before retrying"
+                            },
+                            "X-Request-ID": {
+                                "type": "string",
+                                "description": "Resolved request correlation identifier"
+                            }
+                        }
+                    },
+                    "504": {
+                        "description": "Deadline exceeded before streaming",
+                        "schema": {
+                            "$ref": "#/definitions/domain.ErrorResponse"
+                        },
+                        "headers": {
+                            "X-RateLimit-Limit": {
+                                "type": "integer",
+                                "description": "Maximum requests per rate-limit window"
+                            },
+                            "X-RateLimit-Remaining": {
+                                "type": "integer",
+                                "description": "Requests remaining in the rate-limit window"
+                            },
+                            "X-RateLimit-Reset": {
+                                "type": "integer",
+                                "description": "Seconds until the rate-limit window resets"
                             },
                             "X-Request-ID": {
                                 "type": "string",

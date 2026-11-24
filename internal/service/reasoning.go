@@ -12,6 +12,7 @@ import (
 	"golang.org/x/sync/errgroup"
 	"golang.org/x/sync/semaphore"
 
+	"github.com/Victoroide/axiom-engine/internal/config"
 	"github.com/Victoroide/axiom-engine/internal/domain"
 	"github.com/Victoroide/axiom-engine/internal/graph"
 	"github.com/Victoroide/axiom-engine/internal/metrics"
@@ -42,6 +43,7 @@ type Planner interface {
 // Options configures the bounded reasoning pipeline.
 type Options struct {
 	ResourceLinks     *ResourceLinkChecker
+	PromptBudget      config.PromptBudget
 	LLMTimeout        time.Duration
 	MaxFailedTopics   int
 	MaxMasteredTopics int
@@ -54,6 +56,7 @@ type Options struct {
 // ReasoningService coordinates validated, concurrent topic generation.
 type ReasoningService struct {
 	resourceLinks     *ResourceLinkChecker
+	promptBudget      config.PromptBudget
 	metrics           *metrics.Metrics
 	logger            *slog.Logger
 	graph             *graph.InMemoryGraph
@@ -81,9 +84,12 @@ func NewReasoningService(g *graph.InMemoryGraph, planner Planner, opts Options) 
 	if opts.MaxMasteredTopics <= 0 {
 		opts.MaxMasteredTopics = 100
 	}
+	if opts.PromptBudget == (config.PromptBudget{}) {
+		opts.PromptBudget = config.DefaultPromptBudget()
+	}
 	cb := gobreaker.NewCircuitBreaker[[]domain.PlanItem](breakerSettings(logger))
 	opts.Metrics.SetBreakerStateSource(func() int { return int(cb.State()) })
-	return &ReasoningService{resourceLinks: opts.ResourceLinks, metrics: opts.Metrics, logger: logger, graph: g, planner: planner, llmTimeout: opts.LLMTimeout, maxFailedTopics: opts.MaxFailedTopics, maxMasteredTopics: opts.MaxMasteredTopics, breaker: cb, queueTimeout: opts.QueueTimeout, slots: semaphore.NewWeighted(int64(opts.MaxConcurrency))}
+	return &ReasoningService{resourceLinks: opts.ResourceLinks, promptBudget: opts.PromptBudget, metrics: opts.Metrics, logger: logger, graph: g, planner: planner, llmTimeout: opts.LLMTimeout, maxFailedTopics: opts.MaxFailedTopics, maxMasteredTopics: opts.MaxMasteredTopics, breaker: cb, queueTimeout: opts.QueueTimeout, slots: semaphore.NewWeighted(int64(opts.MaxConcurrency))}
 }
 
 func breakerSettings(logger *slog.Logger) gobreaker.Settings {
@@ -101,51 +107,26 @@ func breakerSettings(logger *slog.Logger) gobreaker.Settings {
 
 // GeneratePlan returns a deterministic plan or a classified pipeline error.
 func (s *ReasoningService) GeneratePlan(ctx context.Context, req domain.AdaptivePlanRequest, options ...PlanOption) (domain.PlanResponse, error) {
-	start := time.Now()
+	plan, err := s.PreparePlan(ctx, req)
+	if err != nil {
+		return domain.PlanResponse{}, err
+	}
+	return plan.Generate(ctx, options...)
+}
+
+// Generate dispatches the prepared inputs and returns the validated plan.
+func (p *PreparedPlan) Generate(ctx context.Context, options ...PlanOption) (domain.PlanResponse, error) {
+	s := p.service
+	req := p.request
 	var opts planOptions
 	for _, option := range options {
 		option(&opts)
 	}
-	requested := req.FailedTopics
-	_, validationSpan := telemetry.Start(ctx, "plan.validate")
-	req, err := s.ValidateRequest(req)
-	if err != nil {
-		telemetry.Fail(validationSpan, "validation_error")
-	}
-	validationSpan.End()
-	if err != nil {
-		return domain.PlanResponse{}, err
-	}
-	mastered := make(map[string]bool, len(req.MasteredTopics))
-	for _, topic := range req.MasteredTopics {
-		mastered[topic] = true
-	}
-	skipped := make(map[string]bool)
-	orders := make([][]string, len(req.FailedTopics))
-	for i, topic := range req.FailedTopics {
-		orders[i] = make([]string, 0)
-		for _, prerequisite := range s.graph.GetPrerequisiteChain(topic) {
-			if mastered[prerequisite] {
-				skipped[prerequisite] = true
-			} else {
-				orders[i] = append(orders[i], prerequisite)
-			}
-		}
-	}
-	_, subgraphSpan := telemetry.Start(ctx, "plan.subgraph")
-	subgraph := s.graph.GetLocalSubgraph(req.FailedTopics, 2)
-	subgraphSpan.End()
 	llmStart := time.Now()
 	eg, egCtx := errgroup.WithContext(ctx)
-	plans := make([][]domain.PlanItem, len(req.FailedTopics))
-	for i, topic := range req.FailedTopics {
-		requestIndex := i
-		for index, original := range requested {
-			if graph.Canonical(original) == graph.Canonical(topic) {
-				requestIndex = index
-				break
-			}
-		}
+	plans := make([][]domain.PlanItem, len(p.topics))
+	for i, prepared := range p.topics {
+		topic, requestIndex := prepared.request.Topic, prepared.index
 		eg.Go(func() (topicErr error) {
 			topicCtx, topicSpan := telemetry.Start(egCtx, "plan.topic", attribute.String("axiom.topic", topic), attribute.Int("axiom.topic.index", requestIndex))
 			defer func() {
@@ -178,7 +159,7 @@ func (s *ReasoningService) GeneratePlan(ctx context.Context, req domain.Adaptive
 				callStart := time.Now()
 				defer func() { s.metrics.ObserveLLM(LLMOutcome(callErr), time.Since(callStart)) }()
 				started = true
-				items, callErr = s.generateTopic(llmCtx, TopicRequest{GraphContext: subgraph, Topic: topic, PrerequisiteOrder: orders[i], VARKProfile: req.VARKProfile})
+				items, callErr = s.generateTopic(llmCtx, prepared.request)
 				if callErr != nil {
 					return nil, callErr
 				}
@@ -244,7 +225,7 @@ func (s *ReasoningService) GeneratePlan(ctx context.Context, req domain.Adaptive
 		telemetry.Fail(outputSpan, "invalid_output")
 		return domain.PlanResponse{}, &TopicError{Topic: missing, cause: ErrInvalidOutput}
 	}
-	return domain.PlanResponse{StudentID: req.StudentID, CourseID: req.CourseID, Items: validated, Meta: domain.PipelineMeta{SubgraphTuples: len(subgraph), TopicsProcessed: len(req.FailedTopics), ItemsGenerated: countTotalItems(plans), ItemsValidated: len(validated), ItemsDropped: dropped, ItemsSkippedMastered: len(skipped), ResourcesUnreachable: unreachable, LLMLatencyMs: llmLatency.Milliseconds(), TotalLatencyMs: time.Since(start).Milliseconds()}}, nil
+	return domain.PlanResponse{StudentID: req.StudentID, CourseID: req.CourseID, Items: validated, Meta: domain.PipelineMeta{SubgraphTuples: p.edges, TopicsProcessed: len(req.FailedTopics), ItemsGenerated: countTotalItems(plans), ItemsValidated: len(validated), ItemsDropped: dropped, ItemsSkippedMastered: p.skipped, ResourcesUnreachable: unreachable, LLMLatencyMs: llmLatency.Milliseconds(), TotalLatencyMs: time.Since(p.start).Milliseconds()}}, nil
 }
 
 func (s *ReasoningService) acquirePlannerPermit(ctx context.Context) error {

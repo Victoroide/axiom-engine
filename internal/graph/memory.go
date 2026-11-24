@@ -105,6 +105,11 @@ func (g *InMemoryGraph) GetPrerequisiteChain(topic string) []string {
 	return chain
 }
 
+// PrerequisiteChainContext returns the stored topic's prerequisite order until canceled.
+func (g *InMemoryGraph) PrerequisiteChainContext(ctx context.Context, topic string) ([]string, error) {
+	return g.prerequisiteChain(topic, ctx.Err)
+}
+
 func (g *InMemoryGraph) prerequisiteChain(topic string, checkCanceled func() error) ([]string, error) {
 	walk := prerequisiteWalk{state: make(map[string]visitState)}
 	chain := []string{}
@@ -133,6 +138,11 @@ func (g *InMemoryGraph) prerequisiteChain(topic string, checkCanceled func() err
 func (g *InMemoryGraph) GetLocalSubgraph(failedTopics []string, depth int) []domain.GraphTuple {
 	tuples, _ := g.localSubgraph(failedTopics, depth, func() error { return nil })
 	return tuples
+}
+
+// LocalSubgraphContext collects the same tuples as GetLocalSubgraph until canceled.
+func (g *InMemoryGraph) LocalSubgraphContext(ctx context.Context, failedTopics []string, depth int) ([]domain.GraphTuple, error) {
+	return g.localSubgraph(failedTopics, depth, ctx.Err)
 }
 
 func (g *InMemoryGraph) localSubgraph(failedTopics []string, depth int, canceled func() error) ([]domain.GraphTuple, error) {
