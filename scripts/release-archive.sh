@@ -49,6 +49,10 @@ if [[ "$include_diagnostic" == 1 ]]; then
   cp bin/axiom-baml-check "$scratch/$name/axiom-baml-check"
   chmod 755 "$scratch/$name/axiom-baml-check"
 fi
+if [[ "${RELEASE_NATIVE_INVENTORY:-}" == true ]]; then
+  go -C tools run ./native-inventory -target "$os/$arch" write "$scratch/$name/$library" > "$scratch/$name/baml-native.cdx.json"
+  chmod 644 "$scratch/$name/baml-native.cdx.json"
+fi
 "$tar_command" --sort=name --mtime="@$SOURCE_DATE_EPOCH" --owner=0 --group=0 --numeric-owner \
   --format=ustar -cf - -C "$scratch" "$name" | gzip -n > "$output/$name.tar.gz"
 echo "$output/$name.tar.gz"

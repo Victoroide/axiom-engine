@@ -18,6 +18,7 @@ FUZZTIME ?= 30s
 RELEASE_VERSION ?= dev
 RELEASE_DIR ?= $(BIN_DIR)/release
 SOURCE_DATE_EPOCH ?= $(shell git log -1 --format=%ct)
+export RELEASE_NATIVE_INVENTORY
 
 ifeq ($(BAML_DIAGNOSTIC),1)
 BAML_CHECK_TARGET := build-baml-check
@@ -30,7 +31,7 @@ $(error BAML_DIAGNOSTIC must be 0 or 1)
 endif
 
 .PHONY: diagrams diagrams-check help generate swagger build run test cover test-e2e fuzz lint vuln fmt tidy-check generate-check toolchain-check docker-build container-smoke container-smoke-test clean tools-baml baml-check native-baml
-.PHONY: build-baml-check release-archive release-archive-smoke release-archive-test
+.PHONY: build-baml-check release-archive release-archive-smoke release-archive-test release-archive-runtime-test
 
 help: ## List available targets
 	@awk 'BEGIN {FS = ":.*## "} /^[a-zA-Z0-9_-]+:.*## / {printf "  %-18s %s\n", $$1, $$2}' $(MAKEFILE_LIST)
@@ -113,7 +114,11 @@ release-archive-smoke: ## Check an extracted archive's liveness and clean shutdo
 	./scripts/release-archive-smoke.sh "$(RELEASE_DIR)/axiom-engine_$(RELEASE_VERSION)_$(BAML_HOST_OS)_$(BAML_HOST_ARCH).tar.gz"
 
 release-archive-test: native-baml build build-baml-check ## Check archive contents, repeatability and runtime behavior
+	go -C tools test -count=1 ./native-inventory
 	./scripts/test-release-archive.sh
+
+release-archive-runtime-test: native-baml build build-baml-check ## Check the standard archive without inventory dependencies
+	./scripts/test-release-archive.sh --runtime-only
 
 run: native-baml ## Run the service using the current environment
 	CGO_ENABLED=1 go run ./cmd/server
@@ -140,6 +145,7 @@ lint: ## Vet build variants and check Go code and workflow files
 	shellcheck scripts/axiom-server-launch scripts/release-archive.sh scripts/release-archive-smoke.sh scripts/test-release-archive.sh
 	shellcheck scripts/release-provenance.sh scripts/test-release-provenance.sh
 	shellcheck scripts/ci-go-cache.sh
+	shellcheck scripts/native-inventory-schema.sh
 	./scripts/test-release-provenance.sh
 	go vet ./...
 	go vet -tags e2e ./...
