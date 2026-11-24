@@ -30,6 +30,11 @@ This document is the authoritative reference for all environment variables suppo
 | `GOOGLE_API_KEY` | String | `""` (unset) | Non-empty string | API key for Google AI model calls. Required when `LLM_PROVIDER=google-ai`. Configured in `internal/config/llm.go`. |
 | `LLM_API_KEY` | String | `""` (unset) | String | Optional API key sent to `openai-generic` endpoints. Configured in `internal/config/llm.go`. |
 | `LLM_MAX_CONCURRENCY` | Integer | `16` | `1` to `1024` | Maximum simultaneous in-flight provider calls across the entire process. Configured in `internal/config/config.go`. |
+| `LLM_MAX_CONTEXT_EDGES` | Integer | `256` | Positive integer | Maximum distinct tuples in the shared local neighborhood, including edges touching depth-two nodes. |
+| `LLM_MAX_PREREQUISITES` | Integer | `12` | Positive integer | Maximum prerequisite entries sent per topic after excluding mastered prerequisites. |
+| `LLM_MAX_TOPIC_INPUT_BYTES` | Integer | `16384` or `4480` for Ollama at `4096` context tokens | Integer at least `3094`; Ollama also applies its context ceiling | Maximum accounted input bytes for one topic. |
+| `LLM_MAX_REQUEST_INPUT_BYTES` | Integer | `131072` | Integer at least `LLM_MAX_TOPIC_INPUT_BYTES` | Maximum combined accounted input bytes across topics in one plan request. |
+| `LLM_OLLAMA_CONTEXT_TOKENS` | Integer | `4096` | Integer at least `2710` | Provisioned Ollama context used to bound the topic budget when `LLM_PROVIDER=ollama`. Set the same context on the Ollama server. |
 | `LLM_QUEUE_TIMEOUT` | Duration | `min(2s, LLM_TIMEOUT / 2)` (`2s` with the default `LLM_TIMEOUT`) | Positive Go duration less than `LLM_TIMEOUT` when set | Maximum wait for a topic's concurrency permit. On queue timeout the JSON plan route returns HTTP 503 `service_unavailable` with `Retry-After: 1`. See [Queue Saturation](operations.md#queue-saturation). Configured in `internal/config/config.go`. |
 | `LLM_TIMEOUT` | Duration | `15s` | Positive Go duration string | Maximum wait for an individual planner result after dispatch. Must fit within `REQUEST_TIMEOUT`. Configured in `internal/config/config.go`. |
 | `MAX_FAILED_TOPICS` | Integer | `10` | Positive integer (`> 0`) | Maximum number of unique failed topics accepted in a single adaptive plan or cognitive graph request. Configured in `internal/config/config.go`. |
@@ -62,6 +67,29 @@ This document is the authoritative reference for all environment variables suppo
 | `BAML_LIBRARY_DISABLE_DOWNLOAD` | Boolean | `false` (`true` in container) | `true` or `false` | When true, prevents the BAML runtime from attempting to download shared libraries from the internet at runtime. Set in `Dockerfile`. |
 
 ---
+
+## Curriculum prompt budget
+
+JSON, SSE and MCP use the configured provider's inclusive limits. Each topic includes the shared neighborhood, target, learning style and full prerequisite order after mastery filtering. Accounting includes UTF-8 bytes, JSON escaping, graph lines, numbered prerequisite lines and a 3,072-byte allowance for instructions, the output schema and chat framing. The smallest valid input uses 3,094 accounted bytes for one edge, a one-byte target and the `visual` learning style. Both HTTP and MCP reject lower caps at startup.
+
+The general maximum is 16,384 accounted bytes per topic and 131,072 accounted bytes across the default limit of ten unique failed topics. The aggregate cap applies even when each topic fits individually. Requests that exceed a limit return `curriculum_context_too_large` before dispatch, with the graph and prerequisite orders kept intact for accepted requests.
+
+For Ollama, the effective per-topic ceiling is 3,072 bytes plus the provisioned context in tokens minus 640 tokens for fixed text and framing and 2,048 for completion. The `mistral:v0.3` calibration measured 614 tokens for the fixed spans with framing. The remaining curriculum allowance budgets up to one token per accounted curriculum byte for this profile. At 4,096 context tokens, the default per-topic cap is 4,480 bytes and ten topics can account for up to 44,800 bytes together. The maximum-render fixture used 1,997 input tokens including framing and the leading token. With the full completion allowance it uses 4,045 of 4,096 tokens. Startup rejects topic caps above the calculated ceiling. Set `LLM_OLLAMA_CONTEXT_TOKENS` to the loaded context. For a different Ollama selection or template, verify input and completion fit in the provisioned context before setting the limits. [Ollama context settings](https://docs.ollama.com/context-length) · [Ollama Mistral v0.3 chat template](https://ollama.com/library/mistral:v0.3/blobs/1ff5b64b61b9) · [Pinned Mistral v0.3 tokenizer](https://huggingface.co/mistralai/Mistral-7B-Instruct-v0.3/blob/c170c70/tokenizer.json)
+
+At the general per-topic cap the template can produce at most 15,466 rendered UTF-8 bytes. The fixed text is 2,167 bytes. Each edge or prerequisite line costs at least one more byte in accounting than in the render because the line break is escaped. A render with at most 12 such lines has at most 13,027 curriculum bytes, since each line is at most 1,042 bytes and the target and style add at most 523 bytes. With 13 or more lines, subtract at least 13 from the 13,312-byte curriculum allowance. A fixture with 13 edges and unescaped four-byte Unicode characters attains the resulting maximum. For the 4,480-byte Ollama cap, one edge suffices to attain the maximum of 3,574 rendered UTF-8 bytes.
+
+The table shows separate escape-heavy fixtures at their accounted limits, with exactly one extra byte rejected before dispatch for each configuration. The JSON payload includes the provider envelope. Each dispatch requests up to 2,048 completion tokens. Fit depends on the configured context, tokenizer and chat template.
+
+| Provider | Fixture selection | Accounted bytes | Rendered UTF-8 bytes | JSON payload bytes |
+|---|---|---:|---:|---:|
+| `aws-bedrock` | `amazon.nova-micro-v1:0` | 16,384 | 12,539 | 15,714 |
+| `openai` | `gpt-4.1-mini` | 16,384 | 12,539 | 15,684 |
+| `anthropic` | `claude-haiku-4-5` | 16,384 | 12,539 | 15,686 |
+| `google-ai` | `gemini-2.5-flash` | 16,384 | 12,539 | 15,669 |
+| `ollama` | `mistral:v0.3` | 4,480 | 3,281 | 3,778 |
+| `openai-generic` | `meta-llama/Llama-3.1-8B-Instruct` | 16,384 | 12,539 | 15,679 |
+
+The 12-entry prerequisite limit keeps the requested output to at most 13 study items by default. The [example curriculum](../examples/graphs/computer-science.json) has a longest path of 11 prerequisites, while a full order also includes distinct prerequisites from other branches. With the general byte limits, the default admits 113 of 130 single-topic requests without mastery and rejects 17. `Write Ahead Logging` has 13 prerequisites and `Sharding` has 24 prerequisites. Raising only `LLM_MAX_PREREQUISITES` to `24` admitted all 130 inputs in the fixture. Check completion length before raising the limit for production traffic.
 
 ## Tracing
 
