@@ -30,7 +30,53 @@ case "$(go env GOHOSTOS)" in
   darwin) cmp bin/libbaml_cffi.dylib "${libraries[0]}" ;;
   linux) cmp bin/libbaml_cffi.so "${libraries[0]}" ;;
 esac
-test "$(find "$directory" -type f | wc -l | tr -d ' ')" -eq 5
+tar -tvzf "$archive" | awk '{print $1, $NF}' | LC_ALL=C sort > "$scratch/archive-members"
+{
+  printf 'drwxr-xr-x %s/\n' "$name"
+  printf '%s\n' "$name/LICENSE" "$name/README.md" | sed 's/^/-rw-r--r-- /'
+  printf '%s\n' "$name/axiom-server" "$name/axiom-server-launch" \
+    "$name/$(basename "${libraries[0]}")" | sed 's/^/-rwxr-xr-x /'
+} | LC_ALL=C sort > "$scratch/expected-members"
+diff -u "$scratch/expected-members" "$scratch/archive-members"
+echo "Default archive members and modes verified"
+
+./scripts/release-archive.sh 1.2.3 "$scratch/diagnostic" 1
+diagnostic_archive="$scratch/diagnostic/$name.tar.gz"
+tar -tvzf "$diagnostic_archive" | awk '{print $1, $NF}' | LC_ALL=C sort > "$scratch/diagnostic-members"
+{
+  cat "$scratch/archive-members"
+  printf '%s\n' "-rwxr-xr-x $name/axiom-baml-check"
+} | LC_ALL=C sort > "$scratch/expected-diagnostic-members"
+diff -u "$scratch/expected-diagnostic-members" "$scratch/diagnostic-members"
+mkdir "$scratch/diagnostic-extracted"
+tar -xzf "$diagnostic_archive" -C "$scratch/diagnostic-extracted"
+diagnostic_directory="$scratch/diagnostic-extracted/$name"
+for member in "$directory"/*; do
+  cmp "$member" "$diagnostic_directory/$(basename "$member")"
+done
+cmp bin/axiom-baml-check "$diagnostic_directory/axiom-baml-check"
+
+platform="$(go env GOHOSTOS)/$(go env GOHOSTARCH)"
+baml_version=$(sed -n 's/^ARG BAML_LIB_VERSION=//p' Dockerfile)
+check_diagnostic() {
+  local path=$1 exit_code=$2 status=$3 reason=$4 result=0
+  env -i "BAML_LIBRARY_PATH=$path" "AWS_SECRET_ACCESS_KEY=private-archive-canary" \
+    "$diagnostic_directory/axiom-baml-check" > "$scratch/diagnostic.stdout" 2> "$scratch/diagnostic.stderr" || result=$?
+  test "$result" -eq "$exit_code"
+  test ! -s "$scratch/diagnostic.stdout"
+  printf '{"status":"%s","reason":"%s","platform":"%s","baml_version":"%s"}\n' \
+    "$status" "$reason" "$platform" "$baml_version" > "$scratch/diagnostic.expected"
+  diff -u "$scratch/diagnostic.expected" "$scratch/diagnostic.stderr"
+}
+diagnostic_library="$diagnostic_directory/$(basename "${libraries[0]}")"
+check_diagnostic "$diagnostic_library" 0 ok verified
+cp "$diagnostic_library" "$scratch/private-archive-canary"
+size=$(wc -c < "$scratch/private-archive-canary" | tr -d ' ')
+last_byte=$(od -An -t u1 -j "$((size - 1))" -N 1 "$scratch/private-archive-canary" | tr -d ' ')
+printf '%b' "\\$(printf '%03o' "$((last_byte ^ 1))")" |
+  dd of="$scratch/private-archive-canary" bs=1 seek="$((size - 1))" conv=notrunc 2>/dev/null
+check_diagnostic "$scratch/private-archive-canary" 1 error digest_mismatch
+echo "Archive diagnostic verified the pinned library and rejected one changed byte"
 awk '
   /^#### Run an extracted archive$/ { section = 1 }
   section && /^```sh$/ { code = 1; next }

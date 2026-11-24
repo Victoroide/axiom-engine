@@ -4,6 +4,11 @@ set -euo pipefail
 cd "$(dirname "$0")/.."
 version=${1:?usage: release-archive.sh VERSION OUTPUT_DIRECTORY}
 output=${2:?usage: release-archive.sh VERSION OUTPUT_DIRECTORY}
+include_diagnostic=${3:-0}
+case "$include_diagnostic" in
+  0|1) ;;
+  *) echo 'BAML diagnostic option must be 0 or 1' >&2; exit 1 ;;
+esac
 if [[ ! "$version" =~ ^[a-zA-Z0-9][a-zA-Z0-9._-]*$ ]]; then
   echo "Version must contain only letters, digits, dots, underscores and hyphens" >&2
   exit 1
@@ -40,6 +45,10 @@ cp "bin/libbaml_cffi.$extension" "$scratch/$name/$library"
 cp LICENSE README.md "$scratch/$name/"
 chmod 755 "$scratch/$name" "$scratch/$name/axiom-server" "$scratch/$name/axiom-server-launch" "$scratch/$name/$library"
 chmod 644 "$scratch/$name/LICENSE" "$scratch/$name/README.md"
+if [[ "$include_diagnostic" == 1 ]]; then
+  cp bin/axiom-baml-check "$scratch/$name/axiom-baml-check"
+  chmod 755 "$scratch/$name/axiom-baml-check"
+fi
 "$tar_command" --sort=name --mtime="@$SOURCE_DATE_EPOCH" --owner=0 --group=0 --numeric-owner \
   --format=ustar -cf - -C "$scratch" "$name" | gzip -n > "$output/$name.tar.gz"
 echo "$output/$name.tar.gz"

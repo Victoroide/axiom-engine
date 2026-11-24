@@ -236,6 +236,30 @@ The binary health probe tests liveness against `/livez`, inheriting the exported
 
 Sending `SIGTERM` requests a clean process shutdown with exit status 0.
 
+### Check the native library before startup
+
+Set `BAML_DIAGNOSTIC=1` when building an archive from source to include `axiom-baml-check`.
+
+```sh
+make release-archive BAML_DIAGNOSTIC=1
+```
+
+Extract that archive, export `BAML_LIBRARY_PATH` as shown above, and run this in the shell that starts the server. The shell executes the launcher only if the diagnostic succeeds.
+
+```sh
+./axiom-baml-check && exec ./axiom-server-launch
+```
+
+Build the image with the same option. Run the executable as a separate preflight or init step with the same image, library path, mounts, and user as the service. This command checks the bundled library at the image's default path. `--no-healthcheck` prevents Docker from starting the native server health probe during the preflight.
+
+```sh
+make docker-build BAML_DIAGNOSTIC=1
+docker run --rm --read-only --network none --no-healthcheck --entrypoint /app/axiom-baml-check \
+  axiom-engine:local
+```
+
+The archive launcher and image entrypoint start the service directly. Diagnostic exit codes and native loader checks are covered in [Native library failures](operations.md#native-library-failures).
+
 ## Operating notes
 
 ### Choosing a curriculum

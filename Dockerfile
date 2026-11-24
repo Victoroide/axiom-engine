@@ -42,7 +42,27 @@ RUN --mount=type=cache,target=/root/.cache/go-build \
     test "$(go list -m -f '{{.Version}}' github.com/boundaryml/baml)" = "v$version"; \
     go build -trimpath -ldflags='-s -w' -o /out/axiom-server ./cmd/server
 
-FROM gcr.io/distroless/cc-debian13:nonroot@sha256:532c7a94f9e96ba9db75eb9388f4227751131c7cb0a411d1a8521af4096135de AS runtime
+FROM go-base AS baml-check
+WORKDIR /src
+COPY go.mod ./
+COPY cmd/axiom-baml-check ./cmd/axiom-baml-check
+ARG BAML_LIB_VERSION
+ARG BAML_LIB_SHA256_AMD64
+ARG BAML_LIB_SHA256_ARM64
+ARG TARGETARCH
+RUN --mount=type=cache,target=/root/.cache/go-build \
+    set -eu; \
+    case "$TARGETARCH" in \
+      amd64) checksum="$BAML_LIB_SHA256_AMD64" ;; \
+      arm64) checksum="$BAML_LIB_SHA256_ARM64" ;; \
+      *) echo "Unsupported BAML architecture: $TARGETARCH" >&2; exit 1 ;; \
+    esac; \
+    test "${#checksum}" = 64; \
+    CGO_ENABLED=0 go build -buildvcs=false -trimpath \
+      -ldflags="-s -w -X main.libraryVersion=$BAML_LIB_VERSION -X main.librarySHA256=$checksum" \
+      -o /out/axiom-baml-check ./cmd/axiom-baml-check
+
+FROM gcr.io/distroless/cc-debian13:nonroot@sha256:532c7a94f9e96ba9db75eb9388f4227751131c7cb0a411d1a8521af4096135de AS runtime-base
 
 ARG VERSION=dev
 ARG VCS_REF=unknown
@@ -69,3 +89,8 @@ EXPOSE 8080
 HEALTHCHECK --interval=10s --timeout=5s --start-period=10s --retries=3 \
     CMD ["/app/axiom-server", "healthcheck"]
 ENTRYPOINT ["/app/axiom-server"]
+
+FROM runtime-base AS runtime-with-baml-check
+COPY --from=baml-check /out/axiom-baml-check /app/axiom-baml-check
+
+FROM runtime-base AS runtime
