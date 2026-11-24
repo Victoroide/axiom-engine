@@ -35,7 +35,7 @@ func New(mode string) *Server {
 // Unknown modes panic.
 func NewHandler(mode string) *Server {
 	switch mode {
-	case "ok", "throttle", "denied", "hang", "garbage", "empty", "validation", "not-found", "timeout", "error", "internal", "unavailable", "malformed", "html", "max-tokens":
+	case "ok", "throttle", "denied", "unauthorized", "hang", "garbage", "empty", "validation", "not-found", "timeout", "error", "internal", "unavailable", "malformed", "html", "max-tokens", "no-content", "incomplete":
 	default:
 		panic(fmt.Sprintf("unknown Bedrock response mode: %q", mode))
 	}
@@ -79,19 +79,20 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		<-r.Context().Done()
 		s.once.Do(func() { close(s.disconnected) })
 		return
-	case "throttle", "denied", "validation", "not-found", "timeout", "error", "internal", "unavailable":
+	case "throttle", "denied", "unauthorized", "validation", "not-found", "timeout", "error", "internal", "unavailable":
 		reply := map[string]struct {
 			status int
 			code   string
 		}{
-			"throttle":    {429, "ThrottlingException"},
-			"denied":      {403, "AccessDeniedException"},
-			"validation":  {400, "ValidationException"},
-			"not-found":   {404, "ResourceNotFoundException"},
-			"timeout":     {408, "ModelTimeoutException"},
-			"error":       {424, "ModelErrorException"},
-			"internal":    {500, "InternalServerException"},
-			"unavailable": {503, "ServiceUnavailableException"},
+			"throttle":     {429, "ThrottlingException"},
+			"denied":       {403, "AccessDeniedException"},
+			"unauthorized": {401, "IncompleteSignature"},
+			"validation":   {400, "ValidationException"},
+			"not-found":    {404, "ResourceNotFoundException"},
+			"timeout":      {408, "ModelTimeoutException"},
+			"error":        {424, "ModelErrorException"},
+			"internal":     {500, "InternalServerException"},
+			"unavailable":  {503, "ServiceUnavailableException"},
 		}[s.mode]
 		w.Header().Set("x-amzn-ErrorType", reply.code+":http://internal.amazon.com/coral/com.amazon.bedrock/")
 		w.WriteHeader(reply.status)
@@ -112,12 +113,17 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		text = "I cannot produce a study plan."
 	case "empty":
 		text = `{"items":[]}`
+	case "incomplete":
+		text = `{"items":[{"topic":"Recursion","priority":1,`
 	case "max-tokens":
-		text = strings.TrimSuffix(text, "]}")
 		stopReason = "max_tokens"
 	}
+	content := []any{map[string]any{"text": text}}
+	if s.mode == "no-content" {
+		content = []any{}
+	}
 	_ = json.NewEncoder(w).Encode(map[string]any{
-		"output":     map[string]any{"message": map[string]any{"role": "assistant", "content": []any{map[string]any{"text": text}}}},
+		"output":     map[string]any{"message": map[string]any{"role": "assistant", "content": content}},
 		"stopReason": stopReason,
 		"usage":      map[string]int{"inputTokens": 100, "outputTokens": 50, "totalTokens": 150},
 		"metrics":    map[string]int{"latencyMs": 1},

@@ -5,11 +5,85 @@ import (
 	"errors"
 	"reflect"
 	"testing"
+	"time"
+
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/codes"
+	sdktrace "go.opentelemetry.io/otel/sdk/trace"
+	"go.opentelemetry.io/otel/sdk/trace/tracetest"
 
 	"github.com/Victoroide/axiom-engine/baml_client/types"
 	"github.com/Victoroide/axiom-engine/internal/domain"
 	"github.com/Victoroide/axiom-engine/internal/service"
 )
+
+type cancelOnSpanStart struct {
+	*tracetest.SpanRecorder
+	cancel context.CancelFunc
+}
+
+func (p cancelOnSpanStart) OnStart(ctx context.Context, span sdktrace.ReadWriteSpan) {
+	p.SpanRecorder.OnStart(ctx, span)
+	p.cancel()
+}
+
+type watchedCancellation struct {
+	context.Context
+	watched chan struct{}
+}
+
+func (c watchedCancellation) Done() <-chan struct{} {
+	select {
+	case c.watched <- struct{}{}:
+	default:
+	}
+	return c.Context.Done()
+}
+
+func TestBAMLCancellationDuringSetupSkipsNativeCall(t *testing.T) {
+	f := newProviderFixture(t, "openai", "ok")
+	parent, cancel := context.WithCancel(t.Context())
+	defer cancel()
+	ctx := watchedCancellation{Context: parent, watched: make(chan struct{}, 1)}
+	recorder := tracetest.NewSpanRecorder()
+	tp := sdktrace.NewTracerProvider(sdktrace.WithSpanProcessor(cancelOnSpanStart{recorder, cancel}))
+	previous := otel.GetTracerProvider()
+	otel.SetTracerProvider(tp)
+	defer otel.SetTracerProvider(previous)
+	defer func() { _ = tp.Shutdown(t.Context()) }()
+
+	items, err := New(f.settings).GenerateTopic(ctx, topicRequest())
+	if items != nil || !errors.Is(err, context.Canceled) || f.count() != 0 {
+		t.Errorf("items = %v, error = %v, attempts = %d; want cancellation before dispatch", items, err, f.count())
+	}
+	// The native client starts a goroutine watching Done whenever it is invoked.
+	select {
+	case <-ctx.watched:
+		t.Error("native client watched the canceled context")
+	default:
+	}
+	spans := recorder.Ended()
+	if len(spans) != 1 || spans[0].Status().Code != codes.Error || spans[0].Status().Description != "canceled" {
+		t.Fatalf("expected one canceled provider span, got %v", spans)
+	}
+}
+
+func TestBAMLDoesNotDispatchAfterContextDone(t *testing.T) {
+	adapter := &BAML{generate: func(context.Context, []types.GraphTuple, string, []string, string) (types.AdaptiveStudyPlan, error) {
+		t.Fatal("planner called after context ended")
+		return types.AdaptiveStudyPlan{}, nil
+	}}
+	canceled, cancel := context.WithCancel(t.Context())
+	cancel()
+	expired, cancelExpired := context.WithDeadline(t.Context(), time.Now().Add(-time.Second))
+	defer cancelExpired()
+	for _, ctx := range []context.Context{canceled, expired} {
+		items, err := adapter.GenerateTopic(ctx, topicRequest())
+		if items != nil || !errors.Is(err, ctx.Err()) {
+			t.Fatalf("items = %v, error = %v; want %v", items, err, ctx.Err())
+		}
+	}
+}
 
 func TestBAMLTranslation(t *testing.T) {
 	adapter := New()

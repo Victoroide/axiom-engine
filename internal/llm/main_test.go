@@ -3,6 +3,7 @@ package llm
 import (
 	"fmt"
 	"os"
+	"strings"
 	"testing"
 
 	"go.uber.org/goleak"
@@ -16,6 +17,21 @@ func TestMain(m *testing.M) {
 	if os.Getenv("BAML_LIBRARY_PATH") == "" || os.Getenv("BAML_LIBRARY_DISABLE_DOWNLOAD") != "true" {
 		fmt.Fprintln(os.Stderr, "internal/llm tests need the verified native library: run make test, or set BAML_LIBRARY_PATH to the library from make native-baml and BAML_LIBRARY_DISABLE_DOWNLOAD=true")
 		os.Exit(1)
+	}
+	for _, entry := range os.Environ() {
+		key, _, _ := strings.Cut(entry, "=")
+		if strings.HasPrefix(key, "BOUNDARY_") {
+			if err := os.Unsetenv(key); err != nil {
+				fmt.Fprintln(os.Stderr, err)
+				os.Exit(1)
+			}
+		}
+	}
+	for _, key := range []string{"NO_PROXY", "no_proxy"} {
+		if err := os.Setenv(key, "127.0.0.1,localhost,::1"); err != nil {
+			fmt.Fprintln(os.Stderr, err)
+			os.Exit(1)
+		}
 	}
 	goleak.VerifyTestMain(m,
 		goleak.IgnoreTopFunction("github.com/gofiber/fiber/v3/internal/memory.(*Storage).gc"),
