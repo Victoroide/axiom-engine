@@ -3,6 +3,7 @@ package server
 import (
 	"bufio"
 	"context"
+	"errors"
 	"io"
 	"net"
 	"net/http"
@@ -63,6 +64,11 @@ func runWireSubprocess(t *testing.T) bool {
 
 func startWireApp(t *testing.T, cfg config.Config, planner fakePlanner, logs io.Writer) (wireAddress, context.CancelFunc, <-chan error) {
 	t.Helper()
+	return startWireAppAfter(t, cfg, planner, logs, nil)
+}
+
+func startWireAppAfter(t *testing.T, cfg config.Config, planner fakePlanner, logs io.Writer, allowAccept <-chan struct{}) (wireAddress, context.CancelFunc, <-chan error) {
+	t.Helper()
 	app := newTestApp(t, cfg, planner, logs)
 	ready := make(chan wireAddress, 1)
 	app.Hooks().OnListen(func(data fiber.ListenData) error {
@@ -71,9 +77,20 @@ func startWireApp(t *testing.T, cfg config.Config, planner fakePlanner, logs io.
 	})
 	ctx, stop := context.WithCancel(t.Context())
 	done := make(chan error, 1)
+	ln, err := (&net.ListenConfig{}).Listen(ctx, "tcp", "127.0.0.1:0")
+	if err != nil {
+		stop()
+		t.Fatal(err)
+	}
+	if cfg.HTTPListener == config.HTTPListenerNetHTTP {
+		ready <- wireAddress(ln.Addr().String())
+	}
+	if allowAccept != nil {
+		ln = wireAcceptGate{Listener: ln, ready: allowAccept, stopped: ctx.Done()}
+	}
 	go func() {
 		defer close(done)
-		done <- Run(ctx, app, "127.0.0.1:0", cfg.ShutdownTimeout)
+		done <- serveListener(ctx, app, ln, cfg.ShutdownTimeout)
 	}()
 	t.Cleanup(func() {
 		stop()
@@ -95,6 +112,21 @@ func startWireApp(t *testing.T, cfg config.Config, planner fakePlanner, logs io.
 		t.Fatalf("server startup canceled before listening: %v", ctx.Err())
 	}
 	return "", nil, nil
+}
+
+// wireAcceptGate holds the socket before the HTTP server can arm its deadline.
+type wireAcceptGate struct {
+	net.Listener
+	ready, stopped <-chan struct{}
+}
+
+func (l wireAcceptGate) Accept() (net.Conn, error) {
+	select {
+	case <-l.stopped:
+		return nil, net.ErrClosed
+	case <-l.ready:
+		return l.Listener.Accept()
+	}
 }
 
 type wireConn struct {
@@ -150,6 +182,38 @@ func (c wireConn) sendRaw(t *testing.T, path, headersAndBody string) {
 	if _, err := io.WriteString(c, request); err != nil {
 		t.Fatal(err)
 	}
+}
+
+func sendPartialWireRequest(t *testing.T, cfg config.Config, planner fakePlanner, path, partial string) (wireConn, time.Duration) {
+	t.Helper()
+	accept := make(chan struct{})
+	addr, _, _ := startWireAppAfter(t, cfg, planner, nil, accept)
+	conn := addr.dial(t)
+	// Pause the client while the server is unable to start reading.
+	time.Sleep(cfg.ReadTimeout / 2)
+	conn.sendRaw(t, path, partial)
+	type arrival struct {
+		at  time.Time
+		err error
+	}
+	ready := make(chan struct{})
+	arrived := make(chan arrival, 1)
+	go func() {
+		close(ready)
+		_, err := conn.reader.Peek(1)
+		arrived <- arrival{time.Now(), err}
+	}()
+	<-ready
+	start := time.Now()
+	close(accept)
+	// Pause response parsing past the expected deadline. Peek timestamps the
+	// first response byte or EOF independently and leaves the byte buffered.
+	time.Sleep(250 * time.Millisecond)
+	first := receiveWire(t, arrived, "first response byte or EOF")
+	if first.err != nil && !errors.Is(first.err, io.EOF) {
+		t.Fatal(first.err)
+	}
+	return conn, first.at.Sub(start)
 }
 
 func (c wireConn) response(t *testing.T, req *http.Request) wireResponse {

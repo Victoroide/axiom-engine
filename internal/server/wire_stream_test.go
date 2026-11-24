@@ -15,6 +15,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/Victoroide/axiom-engine/internal/config"
 	"github.com/Victoroide/axiom-engine/internal/domain"
 	"github.com/Victoroide/axiom-engine/internal/service"
 )
@@ -84,6 +85,11 @@ func assertWireEOF(t *testing.T, reader *bufio.Reader) {
 }
 
 func TestWireStreamFailureAfterFirstByte(t *testing.T) {
+	wireStreamFailureCases(t, defaultConfig(t))
+}
+
+func wireStreamFailureCases(t *testing.T, cfg config.Config) {
+	t.Helper()
 	for _, tc := range []struct {
 		name    string
 		failure error
@@ -98,7 +104,7 @@ func TestWireStreamFailureAfterFirstByte(t *testing.T) {
 			}
 			failing := newWireCall(t)
 			failing.failure, failing.empty = tc.failure, tc.failure == nil
-			addr, _, _ := startWireApp(t, defaultConfig(t), func(ctx context.Context, r service.TopicRequest) ([]domain.PlanItem, error) {
+			addr, _, _ := startWireApp(t, cfg, func(ctx context.Context, r service.TopicRequest) ([]domain.PlanItem, error) {
 				if r.Topic == "Polymorphism" {
 					return failing.plan(ctx, r)
 				}
@@ -136,9 +142,14 @@ func TestWireStreamFlushesThroughProxyWithSlowReader(t *testing.T) {
 	if !runWireSubprocess(t) {
 		return
 	}
+	wireStreamFlushesThroughProxyWithSlowReader(t, defaultConfig(t))
+}
+
+func wireStreamFlushesThroughProxyWithSlowReader(t *testing.T, cfg config.Config) {
+	t.Helper()
 	pending := newWireCall(t)
 	logs := streamLogWriter{records: make(chan []byte, 40)}
-	addr, _, _ := startWireApp(t, defaultConfig(t), planWireCalls(map[string]*wireCall{"wire-proxied": pending}), logs)
+	addr, _, _ := startWireApp(t, cfg, planWireCalls(map[string]*wireCall{"wire-proxied": pending}), logs)
 	upstream := &url.URL{Scheme: "http", Host: string(addr)}
 	transport := &http.Transport{ResponseHeaderTimeout: wireSocketWait}
 	t.Cleanup(transport.CloseIdleConnections)

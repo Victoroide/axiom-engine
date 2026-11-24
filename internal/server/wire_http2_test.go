@@ -2,7 +2,6 @@ package server
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"io"
 	"net"
@@ -13,43 +12,58 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Victoroide/axiom-engine/internal/domain"
-	"github.com/Victoroide/axiom-engine/internal/graph"
-	"github.com/Victoroide/axiom-engine/internal/service"
-	"github.com/Victoroide/axiom-engine/internal/telemetry"
+	"github.com/gofiber/fiber/v3"
 )
 
-// Fiber serves HTTP/1.1. Exercise the reset probe with a real TLS HTTP/2 listener
-// that propagates the individual request context to the planner.
 func TestWireHTTP2ResetPreservesSiblingStream(t *testing.T) {
-	first, sibling := newWireCall(t), newWireCall(t)
-	planner := planWireCalls(map[string]*wireCall{"wire-reset": first, "wire-sibling": sibling})
-	cfg := defaultConfig(t)
-	reasoning := service.NewReasoningService(graph.NewInMemoryGraph(), planner, service.Options{
-		LLMTimeout: cfg.LLMTimeout, MaxFailedTopics: cfg.MaxFailedTopics,
-	})
-	listener := httptest.NewUnstartedServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		var req domain.AdaptivePlanRequest
-		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-			http.Error(w, "invalid request", http.StatusBadRequest)
-			return
-		}
-		id := r.Header.Get("X-Request-ID")
-		plan, err := reasoning.GeneratePlan(telemetry.WithRequestID(r.Context(), id), req)
-		if err != nil {
-			http.Error(w, "plan failed", http.StatusBadGateway)
-			return
-		}
-		w.Header().Set("X-Request-ID", id)
-		w.Header().Set("Content-Type", "application/json; charset=utf-8")
-		if err := json.NewEncoder(w).Encode(plan); err != nil {
-			t.Errorf("write HTTP/2 plan: %v", err)
-		}
-	}))
-	listener.EnableHTTP2 = true
-	listener.StartTLS()
-	t.Cleanup(listener.Close)
-	assertWireHTTP2Reset(t, listener.Client(), listener.URL, first, sibling, assertWireHTTP2Plan)
+	for _, name := range []string{"cleartext", "TLS"} {
+		t.Run(name, func(t *testing.T) {
+			if !runWireSubprocess(t) {
+				return
+			}
+			first, sibling := newWireCall(t), newWireCall(t)
+			cfg := netHTTPWireConfig(t)
+			planner := planWireCalls(map[string]*wireCall{"wire-reset": first, "wire-sibling": sibling})
+			if name == "cleartext" {
+				addr, _, _ := startWireApp(t, cfg, planner, nil)
+				protocols := new(http.Protocols)
+				protocols.SetUnencryptedHTTP2(true)
+				transport := &http.Transport{Protocols: protocols}
+				t.Cleanup(transport.CloseIdleConnections)
+				client := &http.Client{Transport: transport, Timeout: wireSocketWait}
+				assertWireHTTP2Reset(t, client, "http://"+string(addr), first, sibling, assertWireHTTP2Plan)
+				return
+			}
+			app := newTestApp(t, cfg, planner, nil)
+			app.Get("/transport", func(c fiber.Ctx) error {
+				state := c.RequestCtx().TLSConnectionState()
+				if !c.Secure() || state == nil || state.NegotiatedProtocol != "h2" || c.IP() != "127.0.0.1" {
+					t.Errorf("TLS=%v, secure=%v, peer=%q", state, c.Secure(), c.IP())
+				}
+				return c.SendStatus(http.StatusNoContent)
+			})
+			server := newHTTPServer(app, t.Context())
+			listener := httptest.NewUnstartedServer(server.Handler)
+			listener.Config = server
+			listener.EnableHTTP2 = true
+			listener.StartTLS()
+			t.Cleanup(listener.Close)
+			client := listener.Client()
+			req, err := http.NewRequestWithContext(t.Context(), http.MethodGet, listener.URL+"/transport", nil)
+			if err != nil {
+				t.Fatal(err)
+			}
+			resp, err := client.Do(req)
+			if err != nil {
+				t.Fatal(err)
+			}
+			_ = resp.Body.Close()
+			if resp.StatusCode != http.StatusNoContent || resp.ProtoMajor != 2 {
+				t.Fatalf("transport status=%d protocol=%s", resp.StatusCode, resp.Proto)
+			}
+			assertWireHTTP2Reset(t, client, listener.URL, first, sibling, assertWireHTTP2Plan)
+		})
+	}
 }
 
 func assertWireHTTP2Reset(t *testing.T, client *http.Client, baseURL string, first, sibling *wireCall, validateSibling func(*testing.T, wireHTTP2Result)) {
@@ -66,9 +80,11 @@ func assertWireHTTP2Reset(t *testing.T, client *http.Client, baseURL string, fir
 
 	reset := time.Now()
 	cancel()
-	firstCanceled := receiveWire(t, first.canceled, "HTTP/2 reset cancellation")
-	if !errors.Is(firstCanceled.err, context.Canceled) || firstCanceled.at.Before(reset) {
-		t.Fatalf("first stream cancellation=%v at %s", firstCanceled.err, firstCanceled.at)
+	select {
+	case firstCanceled := <-first.canceled:
+		assertWireCancelLatency(t, reset, firstCanceled)
+	case <-time.After(wireDisconnectBudget):
+		t.Fatal("planner did not observe the HTTP/2 stream reset within 500ms")
 	}
 	first.unblock()
 	if got := receiveWire(t, firstResult, "canceled client result"); !errors.Is(got.err, context.Canceled) {
@@ -80,7 +96,6 @@ func assertWireHTTP2Reset(t *testing.T, client *http.Client, baseURL string, fir
 		t.Fatalf("sibling result=%+v", got)
 	}
 	validateSibling(t, got)
-	t.Logf("stream reset to planner cancellation=%s", firstCanceled.at.Sub(reset))
 }
 
 func assertWireHTTP2Plan(t *testing.T, result wireHTTP2Result) {
