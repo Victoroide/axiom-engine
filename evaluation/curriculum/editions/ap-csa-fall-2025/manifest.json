@@ -1,0 +1,782 @@
+{
+  "schema_version": "1.0.0",
+  "edition": "ap-csa-fall-2025",
+  "framework": "AP Computer Science A",
+  "effective_term": "Fall 2025",
+  "clarifications_revision": "2026-01-29",
+  "language": "en",
+  "programming_language": "Java",
+  "page_reference": "Printed CED Course Framework V.1 page number (PDF page equals printed page plus 7).",
+  "redistribution_note": "Objective summaries are original descriptions authored for coverage measurement. Copyrighted exam questions, verbatim course tables, and essential-knowledge statements are excluded.",
+  "denominator": 73,
+  "expected_unit_counts": {
+    "1": 28,
+    "2": 14,
+    "3": 10,
+    "4": 21
+  },
+  "sources": [
+    {
+      "id": "ced",
+      "title": "AP Computer Science A Course and Exam Description (Effective Fall 2025)",
+      "publisher": "College Board",
+      "url": "https://apcentral.collegeboard.org/media/pdf/ap-computer-science-a-course-and-exam-description.pdf",
+      "revision": "2025 edition (PDF revised 2025-06-17)",
+      "sha256": "c81501ad5a022c83f1ca51119cccd1907b1394e1416d8c2a01bd43a38ab16486"
+    },
+    {
+      "id": "clarifications",
+      "title": "AP Computer Science A Clarifications and Corrections to the Course and Exam Description",
+      "publisher": "College Board",
+      "url": "https://apcentral.collegeboard.org/media/pdf/ap-computer-science-a-course-and-exam-description-clarification.pdf",
+      "revision": "2026-01-29 PDF revision (career-preparation wording implemented in August 2025; resource links and Progress Check edits announced for summer 2026; all 73 learning objectives unchanged)",
+      "sha256": "d39626653656bf0baa0127dc8c3fa50c5e7a41bc7b3747e43d997f69a2d18e56"
+    }
+  ],
+  "objectives": [
+    {
+      "id": "1.1.A",
+      "unit": 1,
+      "unit_title": "Using Objects and Methods",
+      "topic": "1.1",
+      "topic_title": "Introduction to Algorithms, Programming, and Compilers",
+      "source_id": "ced",
+      "source_page": 30,
+      "summary": "Design and express sequential everyday algorithms in plain prose or diagrams."
+    },
+    {
+      "id": "1.1.B",
+      "unit": 1,
+      "unit_title": "Using Objects and Methods",
+      "topic": "1.1",
+      "topic_title": "Introduction to Algorithms, Programming, and Compilers",
+      "source_id": "ced",
+      "source_page": 30,
+      "summary": "Describe how source code is authored, checked by a compiler, and executed, including IDE support."
+    },
+    {
+      "id": "1.1.C",
+      "unit": 1,
+      "unit_title": "Using Objects and Methods",
+      "topic": "1.1",
+      "topic_title": "Introduction to Algorithms, Programming, and Compilers",
+      "source_id": "ced",
+      "source_page": 30,
+      "summary": "Distinguish compile-time syntax errors, logic errors found by testing, run-time failures, and exceptions.",
+      "source_end_page": 31
+    },
+    {
+      "id": "1.2.A",
+      "unit": 1,
+      "unit_title": "Using Objects and Methods",
+      "topic": "1.2",
+      "topic_title": "Variables and Data Types",
+      "source_id": "ced",
+      "source_page": 32,
+      "summary": "Choose between primitive and reference data-type categories for a stated problem requirement."
+    },
+    {
+      "id": "1.2.B",
+      "unit": 1,
+      "unit_title": "Using Objects and Methods",
+      "topic": "1.2",
+      "topic_title": "Variables and Data Types",
+      "source_id": "ced",
+      "source_page": 32,
+      "summary": "Declare typed primitive variables (int, double, boolean) to store numeric and truth values."
+    },
+    {
+      "id": "1.3.A",
+      "unit": 1,
+      "unit_title": "Using Objects and Methods",
+      "topic": "1.3",
+      "topic_title": "Expressions and Output",
+      "source_id": "ced",
+      "source_page": 33,
+      "summary": "Write and trace console output statements using System.out.print and System.out.println."
+    },
+    {
+      "id": "1.3.B",
+      "unit": 1,
+      "unit_title": "Using Objects and Methods",
+      "topic": "1.3",
+      "topic_title": "Expressions and Output",
+      "source_id": "ced",
+      "source_page": 33,
+      "summary": "Construct and evaluate string literals including escape sequences for quotes, backslashes, and newlines."
+    },
+    {
+      "id": "1.3.C",
+      "unit": 1,
+      "unit_title": "Using Objects and Methods",
+      "topic": "1.3",
+      "topic_title": "Expressions and Output",
+      "source_id": "ced",
+      "source_page": 33,
+      "summary": "Write and evaluate int and double arithmetic expressions using +, -, *, /, %, precedence rules, and integer division by zero.",
+      "source_end_page": 34
+    },
+    {
+      "id": "1.4.A",
+      "unit": 1,
+      "unit_title": "Using Objects and Methods",
+      "topic": "1.4",
+      "topic_title": "Assignment Statements and Input",
+      "source_id": "ced",
+      "source_page": 35,
+      "summary": "Initialize and update variables with = expressions, including null references, and trace stored values."
+    },
+    {
+      "id": "1.4.B",
+      "unit": 1,
+      "unit_title": "Using Objects and Methods",
+      "topic": "1.4",
+      "topic_title": "Assignment Statements and Input",
+      "source_id": "ced",
+      "source_page": 35,
+      "summary": "Write Java code that reads input supplied to a program."
+    },
+    {
+      "id": "1.5.A",
+      "unit": 1,
+      "unit_title": "Using Objects and Methods",
+      "topic": "1.5",
+      "topic_title": "Casting and Range of Variables",
+      "source_id": "ced",
+      "source_page": 36,
+      "summary": "Apply explicit (int) and (double) casts and implicit widening in arithmetic, including truncation and rounding patterns."
+    },
+    {
+      "id": "1.5.B",
+      "unit": 1,
+      "unit_title": "Using Objects and Methods",
+      "topic": "1.5",
+      "topic_title": "Casting and Range of Variables",
+      "source_id": "ced",
+      "source_page": 36,
+      "summary": "Identify integer overflow when 32-bit int calculations exceed Integer.MIN_VALUE through Integer.MAX_VALUE.",
+      "source_end_page": 37
+    },
+    {
+      "id": "1.5.C",
+      "unit": 1,
+      "unit_title": "Using Objects and Methods",
+      "topic": "1.5",
+      "topic_title": "Casting and Range of Variables",
+      "source_id": "ced",
+      "source_page": 37,
+      "summary": "Explain floating-point round-off errors caused by finite double representation precision."
+    },
+    {
+      "id": "1.6.A",
+      "unit": 1,
+      "unit_title": "Using Objects and Methods",
+      "topic": "1.6",
+      "topic_title": "Compound Assignment Operators",
+      "source_id": "ced",
+      "source_page": 38,
+      "summary": "Write and trace compound assignment (+=, -=, *=, /=, %=) and postfix ++ and -- variable updates."
+    },
+    {
+      "id": "1.7.A",
+      "unit": 1,
+      "unit_title": "Using Objects and Methods",
+      "topic": "1.7",
+      "topic_title": "Application Program Interface (API) and Libraries",
+      "source_id": "ced",
+      "source_page": 39,
+      "summary": "Read library and API documentation to determine a class's data attributes, methods, and package grouping."
+    },
+    {
+      "id": "1.8.A",
+      "unit": 1,
+      "unit_title": "Using Objects and Methods",
+      "topic": "1.8",
+      "topic_title": "Documentation with Comments",
+      "source_id": "ced",
+      "source_page": 40,
+      "summary": "Document code behavior, preconditions, and postconditions with line, block, and Javadoc comments ignored by the compiler."
+    },
+    {
+      "id": "1.9.A",
+      "unit": 1,
+      "unit_title": "Using Objects and Methods",
+      "topic": "1.9",
+      "topic_title": "Method Signatures",
+      "source_id": "ced",
+      "source_page": 41,
+      "summary": "Select the matching method to invoke from documentation and method parameter signatures."
+    },
+    {
+      "id": "1.9.B",
+      "unit": 1,
+      "unit_title": "Using Objects and Methods",
+      "topic": "1.9",
+      "topic_title": "Method Signatures",
+      "source_id": "ced",
+      "source_page": 41,
+      "summary": "Explain method invocation rules for void and non-void methods, call-by-value arguments, overloading, and control flow return.",
+      "source_end_page": 42
+    },
+    {
+      "id": "1.10.A",
+      "unit": 1,
+      "unit_title": "Using Objects and Methods",
+      "topic": "1.10",
+      "topic_title": "Calling Class Methods",
+      "source_id": "ced",
+      "source_page": 43,
+      "summary": "Invoke static class methods with the class name and dot operator and trace their return values."
+    },
+    {
+      "id": "1.11.A",
+      "unit": 1,
+      "unit_title": "Using Objects and Methods",
+      "topic": "1.11",
+      "topic_title": "Math Class",
+      "source_id": "ced",
+      "source_page": 44,
+      "summary": "Write and evaluate expressions calling Math.abs, Math.pow, Math.sqrt, and scaled Math.random ranges."
+    },
+    {
+      "id": "1.12.A",
+      "unit": 1,
+      "unit_title": "Using Objects and Methods",
+      "topic": "1.12",
+      "topic_title": "Objects: Instances of Classes",
+      "source_id": "ced",
+      "source_page": 45,
+      "summary": "Explain classes as object blueprints, Object as Java's universal superclass, and conceptual superclass/subclass relationships without designing hierarchies."
+    },
+    {
+      "id": "1.12.B",
+      "unit": 1,
+      "unit_title": "Using Objects and Methods",
+      "topic": "1.12",
+      "topic_title": "Objects: Instances of Classes",
+      "source_id": "ced",
+      "source_page": 45,
+      "summary": "Declare variables of reference types that hold references to objects."
+    },
+    {
+      "id": "1.13.A",
+      "unit": 1,
+      "unit_title": "Using Objects and Methods",
+      "topic": "1.13",
+      "topic_title": "Object Creation and Storage (Instantiation)",
+      "source_id": "ced",
+      "source_page": 46,
+      "summary": "Match a constructor call to its signature among potentially overloaded constructors."
+    },
+    {
+      "id": "1.13.B",
+      "unit": 1,
+      "unit_title": "Using Objects and Methods",
+      "topic": "1.13",
+      "topic_title": "Object Creation and Storage (Instantiation)",
+      "source_id": "ced",
+      "source_page": 46,
+      "summary": "Declare reference variables typed for objects or initialized to null."
+    },
+    {
+      "id": "1.13.C",
+      "unit": 1,
+      "unit_title": "Using Objects and Methods",
+      "topic": "1.13",
+      "topic_title": "Object Creation and Storage (Instantiation)",
+      "source_id": "ced",
+      "source_page": 46,
+      "summary": "Instantiate objects with new, passing constructor arguments by value and tracing constructor execution.",
+      "source_end_page": 47
+    },
+    {
+      "id": "1.14.A",
+      "unit": 1,
+      "unit_title": "Using Objects and Methods",
+      "topic": "1.14",
+      "topic_title": "Calling Instance Methods",
+      "source_id": "ced",
+      "source_page": 48,
+      "summary": "Invoke instance methods on object references with the dot operator, trace outcomes, and recognize NullPointerException on null targets."
+    },
+    {
+      "id": "1.15.A",
+      "unit": 1,
+      "unit_title": "Using Objects and Methods",
+      "topic": "1.15",
+      "topic_title": "String Manipulation",
+      "source_id": "ced",
+      "source_page": 49,
+      "summary": "Create immutable String objects, concatenate strings with primitive or toString values, and trace results.",
+      "source_end_page": 50
+    },
+    {
+      "id": "1.15.B",
+      "unit": 1,
+      "unit_title": "Using Objects and Methods",
+      "topic": "1.15",
+      "topic_title": "String Manipulation",
+      "source_id": "ced",
+      "source_page": 50,
+      "summary": "Invoke String methods (length, substring, indexOf, equals, compareTo) and recognize out-of-bounds index exceptions.",
+      "source_end_page": 51
+    },
+    {
+      "id": "2.1.A",
+      "unit": 2,
+      "unit_title": "Selection and Iteration",
+      "topic": "2.1",
+      "topic_title": "Algorithms with Selection and Repetition",
+      "source_id": "ced",
+      "source_page": 61,
+      "summary": "Express everyday algorithms combining sequence, conditional choice, and repetition in prose or diagrams."
+    },
+    {
+      "id": "2.2.A",
+      "unit": 2,
+      "unit_title": "Selection and Iteration",
+      "topic": "2.2",
+      "topic_title": "Boolean Expressions",
+      "source_id": "ced",
+      "source_page": 62,
+      "summary": "Write and evaluate Boolean expressions that compare primitive values or reference identity with == and !=, and test numeric ordering with <, >, <=, and >=."
+    },
+    {
+      "id": "2.3.A",
+      "unit": 2,
+      "unit_title": "Selection and Iteration",
+      "topic": "2.3",
+      "topic_title": "if Statements",
+      "source_id": "ced",
+      "source_page": 63,
+      "summary": "Implement and trace one-way if and two-way if-else branching statements."
+    },
+    {
+      "id": "2.4.A",
+      "unit": 2,
+      "unit_title": "Selection and Iteration",
+      "topic": "2.4",
+      "topic_title": "Nested if Statements",
+      "source_id": "ced",
+      "source_page": 64,
+      "summary": "Implement and trace nested if and multiway if-else-if selection chains."
+    },
+    {
+      "id": "2.5.A",
+      "unit": 2,
+      "unit_title": "Selection and Iteration",
+      "topic": "2.5",
+      "topic_title": "Compound Boolean Expressions",
+      "source_id": "ced",
+      "source_page": 65,
+      "summary": "Construct and trace compound Boolean logic with !, &&, and ||, operator precedence, and short-circuit evaluation."
+    },
+    {
+      "id": "2.6.A",
+      "unit": 2,
+      "unit_title": "Selection and Iteration",
+      "topic": "2.6",
+      "topic_title": "Comparing Boolean Expressions",
+      "source_id": "ced",
+      "source_page": 66,
+      "summary": "Prove Boolean equivalence using truth tables and De Morgan's laws."
+    },
+    {
+      "id": "2.6.B",
+      "unit": 2,
+      "unit_title": "Selection and Iteration",
+      "topic": "2.6",
+      "topic_title": "Comparing Boolean Expressions",
+      "source_id": "ced",
+      "source_page": 66,
+      "summary": "Compare object references for alias identity (==, !=, null) versus attribute equality (equals)."
+    },
+    {
+      "id": "2.7.A",
+      "unit": 2,
+      "unit_title": "Selection and Iteration",
+      "topic": "2.7",
+      "topic_title": "while Loops",
+      "source_id": "ced",
+      "source_page": 67,
+      "summary": "Recognize problems needing iteration and diagnose zero-iteration conditions, infinite loops, and off-by-one bugs."
+    },
+    {
+      "id": "2.7.B",
+      "unit": 2,
+      "unit_title": "Selection and Iteration",
+      "topic": "2.7",
+      "topic_title": "while Loops",
+      "source_id": "ced",
+      "source_page": 67,
+      "summary": "Write and trace while loop repetition governed by a pre-checked Boolean condition."
+    },
+    {
+      "id": "2.8.A",
+      "unit": 2,
+      "unit_title": "Selection and Iteration",
+      "topic": "2.8",
+      "topic_title": "for Loops",
+      "source_id": "ced",
+      "source_page": 68,
+      "summary": "Write and trace for loops with header initialization, guard, and update, and convert between for and while."
+    },
+    {
+      "id": "2.9.A",
+      "unit": 2,
+      "unit_title": "Selection and Iteration",
+      "topic": "2.9",
+      "topic_title": "Implementing Selection and Iteration Algorithms",
+      "source_id": "ced",
+      "source_page": 69,
+      "summary": "Implement and trace standard non-collection algorithms for divisibility, integer digits, counts, min/max, and sums or averages."
+    },
+    {
+      "id": "2.10.A",
+      "unit": 2,
+      "unit_title": "Selection and Iteration",
+      "topic": "2.10",
+      "topic_title": "Implementing String Algorithms",
+      "source_id": "ced",
+      "source_page": 70,
+      "summary": "Implement and trace iterative algorithms that search, count substrings, and reverse strings."
+    },
+    {
+      "id": "2.11.A",
+      "unit": 2,
+      "unit_title": "Selection and Iteration",
+      "topic": "2.11",
+      "topic_title": "Nested Iteration",
+      "source_id": "ced",
+      "source_page": 71,
+      "summary": "Implement and trace nested loops where the inner loop finishes completely on each outer iteration."
+    },
+    {
+      "id": "2.12.A",
+      "unit": 2,
+      "unit_title": "Selection and Iteration",
+      "topic": "2.12",
+      "topic_title": "Informal Run-Time Analysis",
+      "source_id": "ced",
+      "source_page": 72,
+      "summary": "Trace loops to count statement executions and compare iterative run-time efficiency informally."
+    },
+    {
+      "id": "3.1.A",
+      "unit": 3,
+      "unit_title": "Class Creation",
+      "topic": "3.1",
+      "topic_title": "Abstraction and Program Design",
+      "source_id": "ced",
+      "source_page": 80,
+      "summary": "Plan class-based programs in prose or diagrams specifying data attributes, procedural decomposition, and method behaviors.",
+      "source_end_page": 81
+    },
+    {
+      "id": "3.2.A",
+      "unit": 3,
+      "unit_title": "Class Creation",
+      "topic": "3.2",
+      "topic_title": "Impact of Program Design",
+      "source_id": "ced",
+      "source_page": 82,
+      "summary": "Analyze software reliability, beneficial and harmful societal, economic, and cultural impacts, and open-source versus proprietary licensing."
+    },
+    {
+      "id": "3.3.A",
+      "unit": 3,
+      "unit_title": "Class Creation",
+      "topic": "3.3",
+      "topic_title": "Anatomy of a Class",
+      "source_id": "ced",
+      "source_page": 83,
+      "summary": "Apply public and private access modifiers to classes, instance fields, constructors, and methods to enforce encapsulation."
+    },
+    {
+      "id": "3.4.A",
+      "unit": 3,
+      "unit_title": "Class Creation",
+      "topic": "3.4",
+      "topic_title": "Constructors",
+      "source_id": "ced",
+      "source_page": 84,
+      "summary": "Declare private instance fields, initialize object state in constructors (copying mutable arguments), and apply default constructor rules."
+    },
+    {
+      "id": "3.5.A",
+      "unit": 3,
+      "unit_title": "Class Creation",
+      "topic": "3.5",
+      "topic_title": "Methods: How to Write Them",
+      "source_id": "ced",
+      "source_page": 85,
+      "summary": "Author void mutators and typed non-void accessor or computation methods using primitive parameters passed by value and return flow.",
+      "source_end_page": 86
+    },
+    {
+      "id": "3.6.A",
+      "unit": 3,
+      "unit_title": "Class Creation",
+      "topic": "3.6",
+      "topic_title": "Methods: Passing and Returning References of an Object",
+      "source_id": "ced",
+      "source_page": 87,
+      "summary": "Write and trace methods taking and returning object references, observing aliasing, mutable state effects, and same-class private access."
+    },
+    {
+      "id": "3.7.A",
+      "unit": 3,
+      "unit_title": "Class Creation",
+      "topic": "3.7",
+      "topic_title": "Class Variables and Methods",
+      "source_id": "ced",
+      "source_page": 88,
+      "summary": "Write static class methods that operate on static state and class helpers without direct instance state access."
+    },
+    {
+      "id": "3.7.B",
+      "unit": 3,
+      "unit_title": "Class Creation",
+      "topic": "3.7",
+      "topic_title": "Class Variables and Methods",
+      "source_id": "ced",
+      "source_page": 88,
+      "summary": "Declare shared static class variables and final constants with appropriate visibility."
+    },
+    {
+      "id": "3.8.A",
+      "unit": 3,
+      "unit_title": "Class Creation",
+      "topic": "3.8",
+      "topic_title": "Scope and Access",
+      "source_id": "ced",
+      "source_page": 89,
+      "summary": "Determine variable visibility across blocks, constructors, methods, and parameters, including local shadowing of instance fields."
+    },
+    {
+      "id": "3.9.A",
+      "unit": 3,
+      "unit_title": "Class Creation",
+      "topic": "3.9",
+      "topic_title": "this Keyword",
+      "source_id": "ced",
+      "source_page": 90,
+      "summary": "Use this within instance methods and constructors to refer to or pass the active receiver object (unavailable in static methods)."
+    },
+    {
+      "id": "4.1.A",
+      "unit": 4,
+      "unit_title": "Data Collections",
+      "topic": "4.1",
+      "topic_title": "Ethical and Social Issues Around Data Collection",
+      "source_id": "ced",
+      "source_page": 100,
+      "summary": "Explain personal privacy hazards from collecting and retaining user data and a developer's responsibility to safeguard privacy."
+    },
+    {
+      "id": "4.1.B",
+      "unit": 4,
+      "unit_title": "Data Collections",
+      "topic": "4.1",
+      "topic_title": "Ethical and Social Issues Around Data Collection",
+      "source_id": "ced",
+      "source_page": 100,
+      "summary": "Identify risks from algorithmic bias, biased collection practices, and incomplete or inaccurate data sets."
+    },
+    {
+      "id": "4.1.C",
+      "unit": 4,
+      "unit_title": "Data Collections",
+      "topic": "4.1",
+      "topic_title": "Ethical and Social Issues Around Data Collection",
+      "source_id": "ced",
+      "source_page": 100,
+      "summary": "Evaluate whether a data set is fit to answer a specific problem without invalid extrapolation."
+    },
+    {
+      "id": "4.2.A",
+      "unit": 4,
+      "unit_title": "Data Collections",
+      "topic": "4.2",
+      "topic_title": "Introduction to Using Data Sets",
+      "source_id": "ced",
+      "source_page": 101,
+      "summary": "Represent everyday data-set workflows and tabular or charted structures in prose or diagrams prior to coding."
+    },
+    {
+      "id": "4.3.A",
+      "unit": 4,
+      "unit_title": "Data Collections",
+      "topic": "4.3",
+      "topic_title": "Array Creation and Access",
+      "source_id": "ced",
+      "source_page": 102,
+      "summary": "Create fixed-size 1D primitive or object arrays via new or initializer lists, index with [], check .length, and handle bounds errors."
+    },
+    {
+      "id": "4.4.A",
+      "unit": 4,
+      "unit_title": "Data Collections",
+      "topic": "4.4",
+      "topic_title": "Array Traversals",
+      "source_id": "ced",
+      "source_page": 103,
+      "summary": "Traverse 1D arrays with indexed for/while loops and enhanced for loops, distinguishing element-variable copies from object state updates."
+    },
+    {
+      "id": "4.5.A",
+      "unit": 4,
+      "unit_title": "Data Collections",
+      "topic": "4.5",
+      "topic_title": "Implementing Array Algorithms",
+      "source_id": "ced",
+      "source_page": 104,
+      "summary": "Implement and trace 1D array algorithms for extrema, totals, quantifiers, counts, adjacent pairs, duplicates, shifts or rotations, and reversal."
+    },
+    {
+      "id": "4.6.A",
+      "unit": 4,
+      "unit_title": "Data Collections",
+      "topic": "4.6",
+      "topic_title": "Using Text Files",
+      "source_id": "ced",
+      "source_page": 105,
+      "summary": "Read persistent text files using java.io.File, Scanner, throws IOException, hasNext/next methods, literal String.split, and close.",
+      "source_end_page": 107
+    },
+    {
+      "id": "4.7.A",
+      "unit": 4,
+      "unit_title": "Data Collections",
+      "topic": "4.7",
+      "topic_title": "Wrapper Classes",
+      "source_id": "ced",
+      "source_page": 108,
+      "summary": "Use immutable Integer and Double wrappers with their primitives through boxing and unboxing. Use parseInt and parseDouble to parse strings into primitive numbers.",
+      "source_end_page": 109
+    },
+    {
+      "id": "4.8.A",
+      "unit": 4,
+      "unit_title": "Data Collections",
+      "topic": "4.8",
+      "topic_title": "ArrayList Methods",
+      "source_id": "ced",
+      "source_page": 110,
+      "summary": "Create parameterized ArrayList<E> collections from java.util and trace size, add, get, set, and remove.",
+      "source_end_page": 111
+    },
+    {
+      "id": "4.9.A",
+      "unit": 4,
+      "unit_title": "Data Collections",
+      "topic": "4.9",
+      "topic_title": "ArrayList Traversals",
+      "source_id": "ced",
+      "source_page": 112,
+      "summary": "Traverse ArrayList collections safely, handling index shifts on deletion, IndexOutOfBoundsException, and ConcurrentModificationException."
+    },
+    {
+      "id": "4.10.A",
+      "unit": 4,
+      "unit_title": "Data Collections",
+      "topic": "4.10",
+      "topic_title": "Implementing ArrayList Algorithms",
+      "source_id": "ced",
+      "source_page": 113,
+      "summary": "Implement and trace ArrayList manipulation algorithms (including insertion and deletion) and parallel multi-collection traversals."
+    },
+    {
+      "id": "4.11.A",
+      "unit": 4,
+      "unit_title": "Data Collections",
+      "topic": "4.11",
+      "topic_title": "2D Array Creation and Access",
+      "source_id": "ced",
+      "source_page": 114,
+      "summary": "Represent rectangular 2D arrays as arrays of row arrays, index via [row][col], inspect row and column lengths, and handle bounds errors.",
+      "source_end_page": 115
+    },
+    {
+      "id": "4.12.A",
+      "unit": 4,
+      "unit_title": "Data Collections",
+      "topic": "4.12",
+      "topic_title": "2D Array Traversals",
+      "source_id": "ced",
+      "source_page": 116,
+      "summary": "Traverse 2D arrays in row-major, column-major, or custom orders using nested indexed or enhanced for loops."
+    },
+    {
+      "id": "4.13.A",
+      "unit": 4,
+      "unit_title": "Data Collections",
+      "topic": "4.13",
+      "topic_title": "Implementing 2D Array Algorithms",
+      "source_id": "ced",
+      "source_page": 117,
+      "summary": "Implement and trace 2D array algorithms across full grids, specific rows or columns, or subsections."
+    },
+    {
+      "id": "4.14.A",
+      "unit": 4,
+      "unit_title": "Data Collections",
+      "topic": "4.14",
+      "topic_title": "Searching Algorithms",
+      "source_id": "ced",
+      "source_page": 118,
+      "summary": "Implement and trace linear search across 1D arrays, ArrayList instances, and row-by-row 2D arrays."
+    },
+    {
+      "id": "4.15.A",
+      "unit": 4,
+      "unit_title": "Data Collections",
+      "topic": "4.15",
+      "topic_title": "Sorting Algorithms",
+      "source_id": "ced",
+      "source_page": 119,
+      "summary": "Trace each pass of iterative selection sort and insertion sort on arrays and ArrayList collections."
+    },
+    {
+      "id": "4.16.A",
+      "unit": 4,
+      "unit_title": "Data Collections",
+      "topic": "4.16",
+      "topic_title": "Recursion",
+      "source_id": "ced",
+      "source_page": 120,
+      "summary": "Trace recursive methods with base cases, per-call local variables, and iterative equivalence without authoring recursive code."
+    },
+    {
+      "id": "4.17.A",
+      "unit": 4,
+      "unit_title": "Data Collections",
+      "topic": "4.17",
+      "topic_title": "Recursive Searching and Sorting",
+      "source_id": "ced",
+      "source_page": 121,
+      "summary": "Trace recursive traversals over strings, arrays, and ArrayList collections."
+    },
+    {
+      "id": "4.17.B",
+      "unit": 4,
+      "unit_title": "Data Collections",
+      "topic": "4.17",
+      "topic_title": "Recursive Searching and Sorting",
+      "source_id": "ced",
+      "source_page": 121,
+      "summary": "Trace each step of iterative or recursive binary search on sorted collections and compare efficiency to linear search."
+    },
+    {
+      "id": "4.17.C",
+      "unit": 4,
+      "unit_title": "Data Collections",
+      "topic": "4.17",
+      "topic_title": "Recursive Searching and Sorting",
+      "source_id": "ced",
+      "source_page": 121,
+      "summary": "Trace recursive divide-and-merge steps of merge sort on arrays and ArrayList collections.",
+      "source_end_page": 122
+    }
+  ]
+}

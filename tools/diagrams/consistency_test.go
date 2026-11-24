@@ -145,7 +145,7 @@ func TestCardGapMinimum(t *testing.T) {
 
 func TestModulePackageInventory(t *testing.T) {
 	root := t.TempDir()
-	for _, dir := range []string{"cmd/server", "baml_client", "internal/known", "extra", "docs", "test/example"} {
+	for _, dir := range []string{"cmd/server", "baml_client", "internal/known", "extra", "docs", "test/example", "evaluation", "evaluation/curriculum/cmd/coverage-report", "evaluation/other/deep/package", "evaluationservice"} {
 		writeFixture(t, root, dir+"/code.go", []byte("package example\n"))
 	}
 	writeFixture(t, root, "tools/go.mod", []byte("module separate\n"))
@@ -154,7 +154,7 @@ func TestModulePackageInventory(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	want := map[string]bool{"cmd/server": true, "baml_client": true, "internal/known": true, "extra": true, "docs": true, "test/example": true}
+	want := map[string]bool{"cmd/server": true, "baml_client": true, "internal/known": true, "extra": true, "docs": true, "test/example": true, "evaluationservice": true}
 	if !maps.Equal(inventory, want) {
 		t.Fatalf("module inventory missed a package or crossed a module boundary: %v", inventory)
 	}
