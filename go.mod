@@ -5,6 +5,7 @@ go 1.27.4
 require (
 	github.com/alicebob/miniredis/v2 v2.40.0
 	github.com/boundaryml/baml v0.226.3
+	github.com/clipperhouse/uax29/v2 v2.7.0
 	github.com/getkin/kin-openapi v0.153.0
 	github.com/go-jose/go-jose/v4 v4.1.9
 	github.com/go-rod/rod v0.116.2

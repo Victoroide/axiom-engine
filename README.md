@@ -258,6 +258,7 @@ The service is configured using environment variables. The table below lists the
 | `REDIS_URL` | `""` (unset) | Optional Redis URL for shared rate limiting and plan idempotency across replicas. |
 | `IDEMPOTENCY_TTL` | `24h` | Retention duration for idempotent study plan replay responses (`0s` disables). |
 | `RESOURCE_LINK_CHECK` | `false` | When `true`, verifies recommended resource URLs with outbound HTTP checks before returning plans. |
+| `PRESERVE_DISPLAY_JOINS` | `false` | When `true`, preserves contextual joiners and truncates study text at whole grapheme clusters in HTTP and MCP responses. |
 | `TRACING_ENABLED` | `false` | When `true`, exports OpenTelemetry traces over OTLP/HTTP to an external collector. |
 | `LANGSMITH_TRACING` | `false` | When `true`, exports model traces to LangSmith (requires `LANGSMITH_API_KEY`). |
 | `METRICS_ENABLED` | `false` | When `true`, serves Prometheus metrics at `GET /metrics` without authentication. |

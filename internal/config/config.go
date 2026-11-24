@@ -18,6 +18,7 @@ type Config struct {
 	LLM                   LLM
 	PromptBudget          PromptBudget
 	ResourceLinks         ResourceLinks
+	PreserveDisplayJoins  bool
 	Mastery               Mastery
 	Redis                 Redis
 	Idempotency           Idempotency
@@ -74,6 +75,7 @@ func Load(getenv func(string) string) (Config, error) {
 		{"AXIOM_AUTH_DISABLED", &c.AuthDisabled},
 		{"METRICS_ENABLED", &c.MetricsEnabled},
 		{"SWAGGER_ENABLED", &c.SwaggerEnabled},
+		{"PRESERVE_DISPLAY_JOINS", &c.PreserveDisplayJoins},
 	} {
 		if v := getenv(item.key); v != "" {
 			switch v {

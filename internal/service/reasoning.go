@@ -42,31 +42,33 @@ type Planner interface {
 
 // Options configures the bounded reasoning pipeline.
 type Options struct {
-	ResourceLinks     *ResourceLinkChecker
-	PromptBudget      config.PromptBudget
-	LLMTimeout        time.Duration
-	MaxFailedTopics   int
-	MaxMasteredTopics int
-	MaxConcurrency    int
-	QueueTimeout      time.Duration
-	Logger            *slog.Logger
-	Metrics           *metrics.Metrics
+	ResourceLinks        *ResourceLinkChecker
+	PromptBudget         config.PromptBudget
+	PreserveDisplayJoins bool
+	LLMTimeout           time.Duration
+	MaxFailedTopics      int
+	MaxMasteredTopics    int
+	MaxConcurrency       int
+	QueueTimeout         time.Duration
+	Logger               *slog.Logger
+	Metrics              *metrics.Metrics
 }
 
 // ReasoningService coordinates validated, concurrent topic generation.
 type ReasoningService struct {
-	resourceLinks     *ResourceLinkChecker
-	promptBudget      config.PromptBudget
-	metrics           *metrics.Metrics
-	logger            *slog.Logger
-	graph             *graph.InMemoryGraph
-	planner           Planner
-	llmTimeout        time.Duration
-	maxFailedTopics   int
-	maxMasteredTopics int
-	queueTimeout      time.Duration
-	slots             *semaphore.Weighted
-	breaker           *gobreaker.CircuitBreaker[[]domain.PlanItem]
+	resourceLinks        *ResourceLinkChecker
+	promptBudget         config.PromptBudget
+	preserveDisplayJoins bool
+	metrics              *metrics.Metrics
+	logger               *slog.Logger
+	graph                *graph.InMemoryGraph
+	planner              Planner
+	llmTimeout           time.Duration
+	maxFailedTopics      int
+	maxMasteredTopics    int
+	queueTimeout         time.Duration
+	slots                *semaphore.Weighted
+	breaker              *gobreaker.CircuitBreaker[[]domain.PlanItem]
 }
 
 // NewReasoningService constructs a pipeline with a shared backend circuit breaker.
@@ -89,7 +91,7 @@ func NewReasoningService(g *graph.InMemoryGraph, planner Planner, opts Options) 
 	}
 	cb := gobreaker.NewCircuitBreaker[[]domain.PlanItem](breakerSettings(logger))
 	opts.Metrics.SetBreakerStateSource(func() int { return int(cb.State()) })
-	return &ReasoningService{resourceLinks: opts.ResourceLinks, promptBudget: opts.PromptBudget, metrics: opts.Metrics, logger: logger, graph: g, planner: planner, llmTimeout: opts.LLMTimeout, maxFailedTopics: opts.MaxFailedTopics, maxMasteredTopics: opts.MaxMasteredTopics, breaker: cb, queueTimeout: opts.QueueTimeout, slots: semaphore.NewWeighted(int64(opts.MaxConcurrency))}
+	return &ReasoningService{resourceLinks: opts.ResourceLinks, promptBudget: opts.PromptBudget, preserveDisplayJoins: opts.PreserveDisplayJoins, metrics: opts.Metrics, logger: logger, graph: g, planner: planner, llmTimeout: opts.LLMTimeout, maxFailedTopics: opts.MaxFailedTopics, maxMasteredTopics: opts.MaxMasteredTopics, breaker: cb, queueTimeout: opts.QueueTimeout, slots: semaphore.NewWeighted(int64(opts.MaxConcurrency))}
 }
 
 func breakerSettings(logger *slog.Logger) gobreaker.Settings {
@@ -202,7 +204,7 @@ func (p *PreparedPlan) Generate(ctx context.Context, options ...PlanOption) (dom
 	_, outputSpan := telemetry.Start(ctx, "plan.validate_output")
 	defer outputSpan.End()
 	duplicates := countTotalItems(plans) - len(merged)
-	merged, resourcesDropped := sanitizeOutput(merged, req.VARKProfile)
+	merged, resourcesDropped := sanitizeOutput(merged, req.VARKProfile, s.preserveDisplayJoins)
 	s.metrics.ObserveDroppedResources(resourcesDropped)
 	if resourcesDropped > 0 {
 		s.logger.WarnContext(ctx, "stage.output", "request_id", requestIDFromContext(ctx), "resources_dropped", resourcesDropped)

@@ -319,7 +319,7 @@ func registerAPI(app *fiber.App, cfg config.Config, deps Dependencies, logger *s
 	if cfg.ResourceLinks.Enabled {
 		resourceLinks = service.NewResourceLinkChecker(cfg.ResourceLinks.Timeout, nil, recorder)
 	}
-	reasoning := service.NewReasoningService(deps.Graph, deps.Planner, service.Options{ResourceLinks: resourceLinks, PromptBudget: cfg.PromptBudget, LLMTimeout: cfg.LLMTimeout, MaxFailedTopics: cfg.MaxFailedTopics, MaxMasteredTopics: cfg.Mastery.MaxTopics, MaxConcurrency: cfg.LLMMaxConcurrency, QueueTimeout: cfg.LLMQueueTimeout, Logger: logger, Metrics: recorder})
+	reasoning := service.NewReasoningService(deps.Graph, deps.Planner, service.Options{ResourceLinks: resourceLinks, PromptBudget: cfg.PromptBudget, PreserveDisplayJoins: cfg.PreserveDisplayJoins, LLMTimeout: cfg.LLMTimeout, MaxFailedTopics: cfg.MaxFailedTopics, MaxMasteredTopics: cfg.Mastery.MaxTopics, MaxConcurrency: cfg.LLMMaxConcurrency, QueueTimeout: cfg.LLMQueueTimeout, Logger: logger, Metrics: recorder})
 	var planMiddleware []fiber.Handler
 	if cfg.Idempotency.TTL > 0 {
 		var store idempotency.Store = idempotency.NewMemory(cfg.Idempotency.TTL, cfg.Idempotency.MaxEntries)

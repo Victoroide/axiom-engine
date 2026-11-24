@@ -15,7 +15,7 @@ func TestLoadMCP(t *testing.T) {
 	if c.GraphFile != "curriculum.json" || c.LLMMaxConcurrency != 3 || c.ShutdownTimeout != time.Second {
 		t.Fatalf("config=%+v", c)
 	}
-	for _, key := range []string{"LLM_TIMEOUT", "LLM_MAX_CONCURRENCY", "LLM_QUEUE_TIMEOUT", "MAX_FAILED_TOPICS", "MAX_MASTERED_TOPICS", "RESOURCE_LINK_CHECK", "RESOURCE_LINK_TIMEOUT", "REQUEST_TIMEOUT", "SHUTDOWN_TIMEOUT", "LOG_LEVEL"} {
+	for _, key := range []string{"LLM_TIMEOUT", "LLM_MAX_CONCURRENCY", "LLM_QUEUE_TIMEOUT", "MAX_FAILED_TOPICS", "MAX_MASTERED_TOPICS", "PRESERVE_DISPLAY_JOINS", "RESOURCE_LINK_CHECK", "RESOURCE_LINK_TIMEOUT", "REQUEST_TIMEOUT", "SHUTDOWN_TIMEOUT", "LOG_LEVEL"} {
 		t.Run(key, func(t *testing.T) {
 			_, err := LoadMCP(func(k string) string {
 				if k == key {

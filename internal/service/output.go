@@ -10,11 +10,20 @@ import (
 	"github.com/Victoroide/axiom-engine/internal/domain"
 )
 
-func sanitizeOutput(items []domain.PlanItem, profile string) ([]domain.PlanItem, int) {
+const (
+	maxExplanationRunes   = 1000
+	maxResourceTitleRunes = 200
+)
+
+func sanitizeOutput(items []domain.PlanItem, profile string, preserveDisplayJoins bool) ([]domain.PlanItem, int) {
+	clean := cleanText
+	if preserveDisplayJoins {
+		clean = cleanDisplayText
+	}
 	out := make([]domain.PlanItem, len(items))
 	dropped := 0
 	for i, item := range items {
-		item.Explanation = cleanText(item.Explanation, 1000)
+		item.Explanation = clean(item.Explanation, maxExplanationRunes)
 		resources := make([]domain.Resource, 0, 3)
 		for _, resource := range item.Resources {
 			kind := strings.ToLower(strings.TrimSpace(resource.ResourceType))
@@ -25,7 +34,7 @@ func sanitizeOutput(items []domain.PlanItem, profile string) ([]domain.PlanItem,
 			}
 			resource.URL = cleanURL
 			resource.ResourceType = kind
-			resource.Title = cleanText(resource.Title, 200)
+			resource.Title = clean(resource.Title, maxResourceTitleRunes)
 			resources = append(resources, resource)
 		}
 		item.Resources = resources
