@@ -61,11 +61,12 @@ func (g *previousTokenLogGate) allow(now time.Time) bool {
 	return true
 }
 
-// Dependencies supplies the immutable graph, external planner and logger.
+// Dependencies supplies the immutable graph, external planner, logger and optional link policy.
 type Dependencies struct {
-	Graph   *graph.InMemoryGraph
-	Planner service.Planner
-	Logger  *slog.Logger
+	Graph              *graph.InMemoryGraph
+	Planner            service.Planner
+	Logger             *slog.Logger
+	ResourceLinkPolicy service.ResourceLinkPolicy
 }
 
 // New constructs an application without opening a listener.
@@ -335,7 +336,7 @@ func registerAPI(app *fiber.App, cfg config.Config, deps Dependencies, logger *s
 	app.Use("/api/v1", limiter.New(limitConfig))
 	var resourceLinks *service.ResourceLinkChecker
 	if cfg.ResourceLinks.Enabled {
-		resourceLinks = service.NewResourceLinkChecker(cfg.ResourceLinks.Timeout, nil, recorder)
+		resourceLinks = service.NewResourceLinkChecker(cfg.ResourceLinks.Timeout, deps.ResourceLinkPolicy, recorder)
 	}
 	reasoning := service.NewReasoningService(deps.Graph, deps.Planner, service.Options{ResourceLinks: resourceLinks, PromptBudget: cfg.PromptBudget, PreserveDisplayJoins: cfg.PreserveDisplayJoins, LLMTimeout: cfg.LLMTimeout, MaxFailedTopics: cfg.MaxFailedTopics, MaxMasteredTopics: cfg.Mastery.MaxTopics, MaxConcurrency: cfg.LLMMaxConcurrency, QueueTimeout: cfg.LLMQueueTimeout, Logger: logger, Metrics: recorder})
 	var planMiddleware []fiber.Handler
