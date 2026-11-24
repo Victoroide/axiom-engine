@@ -3,6 +3,8 @@ package llm
 
 import (
 	"context"
+	"os"
+	"strings"
 
 	runtime "github.com/boundaryml/baml/engine/language_client_go/pkg"
 	"go.opentelemetry.io/otel/attribute"
@@ -16,6 +18,7 @@ import (
 )
 
 type generateFunc func(context.Context, []types.GraphTuple, string, []string, string) (types.AdaptiveStudyPlan, error)
+type nativeGenerateFunc func(context.Context, []types.GraphTuple, string, []string, string, ...baml.CallOptionFunc) (types.AdaptiveStudyPlan, error)
 
 // BAML generates per-topic plans using the configured provider.
 type BAML struct{ generate generateFunc }
@@ -26,6 +29,10 @@ func New(settings ...config.LLM) *BAML {
 	if len(settings) > 0 {
 		cfg = settings[0]
 	}
+	return newBAML(cfg, baml.GenerateTopicPlan)
+}
+
+func newBAML(cfg config.LLM, generate nativeGenerateFunc) *BAML {
 	registry := &runtime.ClientRegistry{}
 	registry.AddLlmClient("Planner", cfg.Provider, clientOptions(cfg))
 	registry.SetPrimaryClient("Planner")
@@ -34,7 +41,7 @@ func New(settings ...config.LLM) *BAML {
 			attribute.String("gen_ai.operation.name", "chat"), attribute.String("gen_ai.provider.name", providerConvention(cfg.Provider)), attribute.String("gen_ai.system", providerConvention(cfg.Provider)), attribute.String("gen_ai.request.model", cfg.Model), attribute.Int("gen_ai.request.max_tokens", config.PlannerOutputTokens), attribute.Float64("gen_ai.request.temperature", 0.1))
 		telemetry.Annotate(ctx, span, "llm", "chat "+cfg.Model)
 		defer span.End()
-		opts := []baml.CallOptionFunc{baml.WithClientRegistry(registry)}
+		opts := []baml.CallOptionFunc{baml.WithClientRegistry(registry), baml.WithEnv(nativeTraceOverrides())}
 		if span.IsRecording() {
 			collector, err := baml.NewCollector("planner")
 			if err != nil {
@@ -57,7 +64,11 @@ func New(settings ...config.LLM) *BAML {
 				}
 			}()
 		}
-		plan, err := baml.GenerateTopicPlan(ctx, g, t, p, v, opts...)
+		if err := ctx.Err(); err != nil {
+			telemetry.Fail(span, service.LLMOutcome(err))
+			return types.AdaptiveStudyPlan{}, err
+		}
+		plan, err := generate(ctx, g, t, p, v, opts...)
 		if err != nil {
 			failure := classify(err)
 			if ctx.Err() != nil {
@@ -67,6 +78,22 @@ func New(settings ...config.LLM) *BAML {
 		}
 		return plan, err
 	}}
+}
+
+func nativeTraceOverrides() map[string]string {
+	// An empty override removes the variable from the generated client's environment.
+	overrides := map[string]string{"BOUNDARY_SECRET": "", "BOUNDARY_PROJECT_ID": "", "BOUNDARY_API_KEY": ""}
+	for _, entry := range os.Environ() {
+		key, _, _ := strings.Cut(entry, "=")
+		if suffix, ok := strings.CutPrefix(key, "BOUNDARY_"); ok {
+			// The native tracer also recognizes mixed-case suffixes.
+			switch strings.ToLower(suffix) {
+			case "secret", "project_id", "api_key":
+				overrides[key] = ""
+			}
+		}
+	}
+	return overrides
 }
 
 func clientOptions(cfg config.LLM) map[string]any {
@@ -98,6 +125,9 @@ func clientOptions(cfg config.LLM) map[string]any {
 
 // GenerateTopic translates the domain boundary to and from generated types.
 func (b *BAML) GenerateTopic(ctx context.Context, r service.TopicRequest) ([]domain.PlanItem, error) {
+	if err := ctx.Err(); err != nil {
+		return nil, err
+	}
 	tuples := make([]types.GraphTuple, len(r.GraphContext))
 	for i, t := range r.GraphContext {
 		tuples[i] = types.GraphTuple{Subject: t.Subject, Relation: t.Relation, Object: t.Object}

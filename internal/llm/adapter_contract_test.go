@@ -26,8 +26,14 @@ func bedrockEndpoint(t *testing.T, mode string) *fakebedrock.Server {
 	t.Helper()
 	s := fakebedrock.New(mode)
 	t.Cleanup(s.Close)
-	t.Setenv("AWS_ENDPOINT_URL", s.URL)
-	t.Setenv("AWS_ENDPOINT_URL_BEDROCK_RUNTIME", s.URL)
+	setBedrockEndpoint(t, s.URL, "3")
+	return s
+}
+
+func setBedrockEndpoint(t *testing.T, endpoint, maxAttempts string) {
+	t.Helper()
+	t.Setenv("AWS_ENDPOINT_URL", endpoint)
+	t.Setenv("AWS_ENDPOINT_URL_BEDROCK_RUNTIME", endpoint)
 	t.Setenv("AWS_IGNORE_CONFIGURED_ENDPOINT_URLS", "false")
 	configFile := filepath.Join(t.TempDir(), "aws-config")
 	if err := os.WriteFile(configFile, nil, 0600); err != nil {
@@ -39,12 +45,15 @@ func bedrockEndpoint(t *testing.T, mode string) *fakebedrock.Server {
 	t.Setenv("AWS_DEFAULT_REGION", "us-east-1")
 	t.Setenv("AWS_ACCESS_KEY_ID", "dummy")
 	t.Setenv("AWS_SECRET_ACCESS_KEY", "dummy")
+	t.Setenv("AWS_BEARER_TOKEN_BEDROCK", "")
+	if err := os.Unsetenv("AWS_BEARER_TOKEN_BEDROCK"); err != nil {
+		t.Fatal(err)
+	}
 	t.Setenv("AWS_SESSION_TOKEN", "")
 	t.Setenv("AWS_PROFILE", "")
 	t.Setenv("AWS_EC2_METADATA_DISABLED", "true")
-	t.Setenv("AWS_MAX_ATTEMPTS", "3")
+	t.Setenv("AWS_MAX_ATTEMPTS", maxAttempts)
 	t.Setenv("AWS_RETRY_MODE", "standard")
-	return s
 }
 
 func topicRequest() service.TopicRequest {
@@ -98,6 +107,7 @@ func TestAdapterIsolatesAWSConfiguration(t *testing.T) {
 	t.Cleanup(other.Close)
 	t.Setenv("AWS_ENDPOINT_URL_BEDROCK_RUNTIME", other.URL)
 	t.Setenv("AWS_IGNORE_CONFIGURED_ENDPOINT_URLS", "true")
+	t.Setenv("AWS_BEARER_TOKEN_BEDROCK", "ambient-bearer-fixture")
 	for _, key := range []string{"AWS_CONFIG_FILE", "AWS_SHARED_CREDENTIALS_FILE"} {
 		path := filepath.Join(t.TempDir(), key)
 		if err := os.WriteFile(path, []byte("[default]\nregion=us-west-2\n"), 0600); err != nil {
@@ -105,23 +115,31 @@ func TestAdapterIsolatesAWSConfiguration(t *testing.T) {
 		}
 		t.Setenv(key, path)
 	}
-	s := bedrockEndpoint(t, "ok")
-	if os.Getenv("AWS_ENDPOINT_URL_BEDROCK_RUNTIME") != s.URL || os.Getenv("AWS_IGNORE_CONFIGURED_ENDPOINT_URLS") != "false" {
-		t.Fatal("external endpoint settings remain active")
-	}
-	for _, key := range []string{"AWS_CONFIG_FILE", "AWS_SHARED_CREDENTIALS_FILE"} {
-		data, err := os.ReadFile(os.Getenv(key)) //nolint:gosec // bedrockEndpoint replaces both paths with an empty file in t.TempDir.
-		if err != nil || len(data) != 0 {
-			t.Fatalf("%s is not an empty local file: %v", key, err)
+	t.Run("dummy signature", func(t *testing.T) {
+		f := newProviderFixture(t, "aws-bedrock", "ok")
+		if os.Getenv("AWS_ENDPOINT_URL_BEDROCK_RUNTIME") != f.endpoint || os.Getenv("AWS_ENDPOINT_URL") != f.endpoint || os.Getenv("AWS_IGNORE_CONFIGURED_ENDPOINT_URLS") != "false" {
+			t.Fatal("external endpoint settings remain active")
 		}
-	}
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
-	if _, err := New().GenerateTopic(ctx, topicRequest()); err != nil {
-		t.Fatal(err)
-	}
-	if s.Count() != 1 || other.Count() != 0 {
-		t.Fatalf("local requests = %d, external requests = %d", s.Count(), other.Count())
+		for _, key := range []string{"AWS_CONFIG_FILE", "AWS_SHARED_CREDENTIALS_FILE"} {
+			data, err := os.ReadFile(os.Getenv(key)) //nolint:gosec // The fixture replaces both paths with a file in t.TempDir.
+			if err != nil || len(data) != 0 {
+				t.Fatalf("%s is not an empty local file: %v", key, err)
+			}
+		}
+		ctx, cancel := context.WithTimeout(t.Context(), 5*time.Second)
+		defer cancel()
+		if _, err := New(f.settings).GenerateTopic(ctx, topicRequest()); err != nil {
+			t.Fatal(err)
+		}
+		if f.count() != 1 || other.Count() != 0 {
+			t.Fatalf("local requests = %d, external requests = %d", f.count(), other.Count())
+		}
+		if strings.Contains(f.capturedRequests()[0].headers, "ambient-bearer-fixture") {
+			t.Error("captured request used the ambient bearer credential")
+		}
+	})
+	if os.Getenv("AWS_BEARER_TOKEN_BEDROCK") != "ambient-bearer-fixture" {
+		t.Error("fixture did not restore the caller's bearer credential")
 	}
 }
 

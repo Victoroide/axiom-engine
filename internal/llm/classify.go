@@ -19,13 +19,17 @@ func classify(err error) error {
 		return nil
 	}
 	message := strings.ToLower(err.Error())
-	header, _, _ := strings.Cut(message, "\n")
+	header, rest, _ := strings.Cut(message, "\n")
 	var class error
 	if status := bamlStatus.FindStringSubmatch(header); len(status) == 2 {
 		code, _ := strconv.Atoi(status[1])
+		detail, _, _ := strings.Cut(rest, "\n")
 		switch {
 		case code == 429:
 			class = service.ErrThrottled
+		// The native client also uses code 2 for connection and credential errors.
+		case code == 2 && (strings.HasSuffix(status[0], "badresponse 2") || detail == "message: anthropic response contains no text"):
+			class = service.ErrInvalidOutput
 		case code == 408, code >= 500 && code <= 599, code == 2:
 			class = service.ErrUpstreamUnavailable
 		case code >= 400 && code <= 499:
