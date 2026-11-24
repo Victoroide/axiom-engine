@@ -9,7 +9,10 @@ tool (
 	golang.org/x/vuln/cmd/govulncheck
 )
 
-require golang.org/x/image v0.48.0
+require (
+	github.com/santhosh-tekuri/jsonschema/v6 v6.0.3
+	golang.org/x/image v0.48.0
+)
 
 require (
 	github.com/KyleBanks/depth v1.2.1 // indirect

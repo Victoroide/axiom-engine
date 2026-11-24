@@ -6,6 +6,7 @@ test_dir=$(cd "${RELEASE_TEST_DIR:-${TMPDIR:-/tmp}}" && pwd)
 scratch=$(mktemp -d "$test_dir/axiom-release-test.XXXXXX")
 trap 'rm -rf "$scratch"' EXIT
 export SOURCE_DATE_EPOCH=1700000000
+unset RELEASE_NATIVE_INVENTORY
 
 ./scripts/release-archive.sh 1.2.3 "$scratch/first"
 sleep 1
@@ -39,6 +40,7 @@ tar -tvzf "$archive" | awk '{print $1, $NF}' | LC_ALL=C sort > "$scratch/archive
 } | LC_ALL=C sort > "$scratch/expected-members"
 diff -u "$scratch/expected-members" "$scratch/archive-members"
 echo "Default archive members and modes verified"
+test ! -e "$directory/baml-native.cdx.json"
 
 ./scripts/release-archive.sh 1.2.3 "$scratch/diagnostic" 1
 diagnostic_archive="$scratch/diagnostic/$name.tar.gz"
@@ -77,6 +79,53 @@ printf '%b' "\\$(printf '%03o' "$((last_byte ^ 1))")" |
   dd of="$scratch/private-archive-canary" bs=1 seek="$((size - 1))" conv=notrunc 2>/dev/null
 check_diagnostic "$scratch/private-archive-canary" 1 error digest_mismatch
 echo "Archive diagnostic verified the pinned library and rejected one changed byte"
+
+if [[ "${1:-}" != --runtime-only ]]; then
+  target="$(go env GOHOSTOS)/$(go env GOHOSTARCH)"
+  schema="$PWD/bin/cyclonedx-1.7.2"
+  ./scripts/native-inventory-schema.sh "$schema"
+  RELEASE_NATIVE_INVENTORY=true ./scripts/release-archive.sh 1.2.3 "$scratch/inventory"
+  RELEASE_NATIVE_INVENTORY=true ./scripts/release-archive.sh 1.2.3 "$scratch/inventory-repeat"
+  inventory_archive="$scratch/inventory/$name.tar.gz"
+  cmp "$inventory_archive" "$scratch/inventory-repeat/$name.tar.gz"
+  digest=$(shasum -a 256 "$inventory_archive" | awk '{print $1}')
+  verify_inventory() {
+    go -C tools run ./native-inventory -target "$target" -schema-dir "$schema" -archive-sha256 "$1" verify-archive "$2"
+  }
+  verify_inventory "$digest" "$inventory_archive"
+  echo "Verified native inventory for $target in $name.tar.gz ($digest)"
+
+  mkdir "$scratch/modified"
+  tar -xzf "$inventory_archive" -C "$scratch/modified"
+  modified="$scratch/modified/$name"
+  inventory="$modified/baml-native.cdx.json"
+  cp "$inventory" "$scratch/original.cdx.json"
+  sed -E 's/("version": "[^"]+)"/\1-wrong"/' "$scratch/original.cdx.json" > "$inventory"
+  modified_archive="$scratch/modified/$name.tar.gz"
+  COPYFILE_DISABLE=1 tar --format=ustar -czf "$modified_archive" -C "$scratch/modified" "$name"
+  if verify_inventory "$digest" "$modified_archive" >"$scratch/inventory-error" 2>&1; then
+    echo 'Changed archive matched the original archive digest' >&2
+    exit 1
+  fi
+  grep -Fq 'archive SHA-256' "$scratch/inventory-error"
+  modified_digest=$(shasum -a 256 "$modified_archive" | awk '{print $1}')
+  if verify_inventory "$modified_digest" "$modified_archive" >"$scratch/inventory-error" 2>&1; then
+    echo 'Accepted an incorrect native library version in the inventory' >&2
+    exit 1
+  fi
+  grep -Fq 'inventory does not match' "$scratch/inventory-error"
+  cp "$scratch/original.cdx.json" "$inventory"
+  printf 'tampered' >> "$modified/$(basename "${libraries[0]}")"
+  COPYFILE_DISABLE=1 tar --format=ustar -czf "$modified_archive" -C "$scratch/modified" "$name"
+  modified_digest=$(shasum -a 256 "$modified_archive" | awk '{print $1}')
+  if verify_inventory "$modified_digest" "$modified_archive" >"$scratch/inventory-error" 2>&1; then
+    echo 'Accepted tampered native library bytes' >&2
+    exit 1
+  fi
+  grep -Fq 'native library SHA-256' "$scratch/inventory-error"
+  echo 'Archive digest, component version and native byte substitutions rejected'
+fi
+
 awk '
   /^#### Run an extracted archive$/ { section = 1 }
   section && /^```sh$/ { code = 1; next }
