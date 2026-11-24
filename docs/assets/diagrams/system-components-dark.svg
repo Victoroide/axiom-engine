@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="840" height="592" viewBox="0 0 840 592" role="img" fill="#e6edf3">
 <title>AxiomEngine packages</title>
-<desc>Go package imports reduced to direct arrows that are not implied by a longer chain. From cmd/server, HTTP packages lead through internal/server and internal/api to the reasoning service; MCP and the LLM adapter also import that service. The adapter imports baml_client. The API imports idempotency storage, and the service imports the graph and metrics. The standalone internal/auth package verifies access tokens. The transitive closure of these arrows equals the non-shared imports among the packages shown. The docs and test packages are excluded, along with generated baml_client support packages whose imports are represented by baml_client. The edge-less band contains config, telemetry and domain, which are imported throughout. Motion follows cmd/server to internal/server, internal/api, internal/service and internal/graph.</desc>
+<desc>Go package imports reduced to direct arrows that are not implied by a longer chain. From cmd/server, HTTP packages lead through internal/server and internal/api to the reasoning service; MCP and the LLM adapter also import that service. The adapter imports baml_client. The API imports idempotency storage, and the service imports the graph and metrics. The standalone cmd/axiom-baml-check command checks the native library, and internal/auth verifies access tokens. The transitive closure of these arrows equals the non-shared imports among the packages shown. The docs and test packages are excluded, along with generated baml_client support packages whose imports are represented by baml_client. The edge-less band contains config, telemetry and domain, which are imported throughout. Motion follows cmd/server to internal/server, internal/api, internal/service and internal/graph.</desc>
 <style>@keyframes n0{0%{opacity:0}1.111%{opacity:0}5.556%{opacity:1}14.444%{opacity:1}18.889%{opacity:0}100%{opacity:0}}@keyframes n1{0%{opacity:0}11.111%{opacity:0}15.556%{opacity:1}28.889%{opacity:1}33.333%{opacity:0}100%{opacity:0}}@keyframes n2{0%{opacity:0}25.556%{opacity:0}30%{opacity:1}43.333%{opacity:1}47.778%{opacity:0}100%{opacity:0}}@keyframes n4{0%{opacity:0}40%{opacity:0}44.444%{opacity:1}57.778%{opacity:1}62.222%{opacity:0}100%{opacity:0}}@keyframes n5{0%{opacity:0}54.444%{opacity:0}58.889%{opacity:1}67.778%{opacity:1}72.222%{opacity:0}100%{opacity:0}}@keyframes e0{0%{opacity:0;stroke-dashoffset:13.25}1.111%{opacity:0;stroke-dashoffset:13.25}1.122%{opacity:1;stroke-dashoffset:13.25}9.989%{opacity:1;stroke-dashoffset:-193.25}10%{opacity:0;stroke-dashoffset:-193.25}10.011%{opacity:0;stroke-dashoffset:13.25}100%{opacity:0;stroke-dashoffset:13.25}}@keyframes e3{0%{opacity:0;stroke-dashoffset:13.25}15.556%{opacity:0;stroke-dashoffset:13.25}15.567%{opacity:1;stroke-dashoffset:13.25}24.433%{opacity:1;stroke-dashoffset:-41.25}24.444%{opacity:0;stroke-dashoffset:-41.25}24.456%{opacity:0;stroke-dashoffset:13.25}100%{opacity:0;stroke-dashoffset:13.25}}@keyframes e4{0%{opacity:0;stroke-dashoffset:13.25}30%{opacity:0;stroke-dashoffset:13.25}30.011%{opacity:1;stroke-dashoffset:13.25}38.878%{opacity:1;stroke-dashoffset:-25.25}38.889%{opacity:0;stroke-dashoffset:-25.25}38.9%{opacity:0;stroke-dashoffset:13.25}100%{opacity:0;stroke-dashoffset:13.25}}@keyframes e9{0%{opacity:0;stroke-dashoffset:13.25}44.444%{opacity:0;stroke-dashoffset:13.25}44.456%{opacity:1;stroke-dashoffset:13.25}53.322%{opacity:1;stroke-dashoffset:-41.25}53.333%{opacity:0;stroke-dashoffset:-41.25}53.344%{opacity:0;stroke-dashoffset:13.25}100%{opacity:0;stroke-dashoffset:13.25}}@media(prefers-reduced-motion:reduce){.pulse,.hit,.ink{animation:none!important;opacity:0!important}}</style>
 <defs>
 <path id="r2c" d="M63 175L105 -102L206 -102L130 175L63 175"/>
@@ -46,6 +46,7 @@
 <path id="r78" d="M32 0L224 -280L43 -546L146 -546L213 -440Q232 -411 247 -384Q262 -358 276 -334Q289 -358 303 -384Q316 -411 335 -440L405 -546L505 -546L323 -275L514 0L412 0L332 -123Q314 -150 300 -175Q286 -201 272 -224Q259 -201 246 -175Q233 -150 214 -123L133 0L32 0"/>
 <path id="r79" d="M68 198L91 122L100 124Q141 135 170 121Q199 107 219 48L235 3L26 -546L123 -546L239 -222Q251 -187 261 -151Q271 -116 281 -82Q290 -116 300 -151Q310 -187 323 -222L440 -546L536 -546L296 82Q271 146 231 177Q191 208 133 208Q109 208 92 205Q75 201 68 198"/>
 <path id="rb7" d="M144 -280Q117 -280 97 -299Q78 -318 78 -346Q78 -373 97 -392Q117 -412 144 -412Q171 -412 190 -392Q210 -373 210 -346Q210 -318 190 -299Q171 -280 144 -280"/>
+<path id="s2d" d="M396 -355L396 -250L69 -250L69 -355L396 -355"/>
 <path id="s2f" d="M362 -762L128 109L17 109L251 -762L362 -762"/>
 <path id="s41" d="M24 0L278 -728L444 -728L704 0L561 0L499 -180L227 -180L167 0L24 0M261 -285L463 -285L431 -378Q415 -428 397 -489Q380 -550 360 -626Q340 -550 324 -488Q307 -426 292 -378L261 -285"/>
 <path id="s43" d="M383 10Q288 10 212 -35Q137 -79 94 -163Q50 -246 50 -363Q50 -481 94 -564Q138 -648 213 -693Q288 -737 383 -737Q463 -737 528 -708Q593 -678 636 -621Q678 -565 690 -485L559 -485Q546 -550 499 -585Q451 -621 385 -621Q296 -621 238 -554Q181 -487 181 -363Q181 -238 239 -172Q296 -107 385 -107Q450 -107 498 -142Q546 -178 559 -242L690 -242Q680 -172 640 -115Q600 -58 535 -24Q469 10 383 10"/>
@@ -155,6 +156,9 @@
 </g>
 <g fill="#161b22" stroke="#30363d" stroke-width="1.25">
 <rect class="node" x="640" y="376" width="184" height="56" rx="10"/>
+</g>
+<g fill="#161b22" stroke="#30363d" stroke-width="1.25">
+<rect class="node" x="640" y="88" width="184" height="56" rx="10"/>
 </g>
 <g fill="#161b22" stroke="#30363d" stroke-width="1.25">
 <rect class="node" x="16" y="472" width="184" height="56" rx="10"/>
@@ -716,6 +720,55 @@
 <use href="#r69" x="8817"/>
 <use href="#r65" x="9059"/>
 <use href="#r72" x="9642"/>
+</g>
+<g transform="translate(652 109) scale(0.014)">
+<use href="#s63"/>
+<use href="#s6d" x="583"/>
+<use href="#s64" x="1483"/>
+<use href="#s2f" x="2107"/>
+<use href="#s61" x="2486"/>
+<use href="#s78" x="3060"/>
+<use href="#s69" x="3629"/>
+<use href="#s6f" x="3891"/>
+<use href="#s6d" x="4500"/>
+<use href="#s2d" x="5400"/>
+<use href="#s62" x="5865"/>
+<use href="#s61" x="6489"/>
+<use href="#s6d" x="7063"/>
+<use href="#s6c" x="7964"/>
+<use href="#s2d" x="8226"/>
+<use href="#s63" x="8691"/>
+<use href="#s68" x="9273"/>
+<use href="#s65" x="9886"/>
+<use href="#s63" x="10477"/>
+<use href="#s6b" x="11060"/>
+</g>
+<g fill="#9198a1" transform="translate(652 129) scale(0.012)">
+<use href="#r4e"/>
+<use href="#r61" x="753"/>
+<use href="#r74" x="1315"/>
+<use href="#r69" x="1642"/>
+<use href="#r76" x="1884"/>
+<use href="#r65" x="2446"/>
+<use href="#r6c" x="3311"/>
+<use href="#r69" x="3553"/>
+<use href="#r62" x="3795"/>
+<use href="#r72" x="4407"/>
+<use href="#r61" x="4784"/>
+<use href="#r72" x="5345"/>
+<use href="#r79" x="5722"/>
+<use href="#r76" x="6565"/>
+<use href="#r65" x="7127"/>
+<use href="#r72" x="7710"/>
+<use href="#r69" x="8087"/>
+<use href="#r66" x="8329"/>
+<use href="#r69" x="8699"/>
+<use href="#r63" x="8941"/>
+<use href="#r61" x="9512"/>
+<use href="#r74" x="10074"/>
+<use href="#r69" x="10401"/>
+<use href="#r6f" x="10643"/>
+<use href="#r6e" x="11243"/>
 </g>
 <g transform="translate(28 493) scale(0.014)">
 <use href="#s69"/>
