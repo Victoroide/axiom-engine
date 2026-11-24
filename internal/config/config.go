@@ -11,6 +11,16 @@ import (
 	"time"
 )
 
+// HTTPListener selects the HTTP server that accepts connections.
+type HTTPListener string
+
+const (
+	// HTTPListenerFiber uses the native Fiber listener.
+	HTTPListenerFiber HTTPListener = "fiber"
+	// HTTPListenerNetHTTP uses net/http with request-scoped cancellation.
+	HTTPListenerNetHTTP HTTPListener = "net-http"
+)
+
 // Config contains startup configuration for the service.
 type Config struct {
 	LangSmith             LangSmith
@@ -22,6 +32,7 @@ type Config struct {
 	Mastery               Mastery
 	Redis                 Redis
 	Idempotency           Idempotency
+	HTTPListener          HTTPListener
 	Port                  string
 	AuthDisabled          bool
 	InternalToken         string
@@ -48,6 +59,7 @@ type Config struct {
 
 func defaults() Config {
 	return Config{
+		HTTPListener:       HTTPListenerFiber,
 		Port:               "8080",
 		SwaggerEnabled:     true,
 		RateLimitMax:       50,
@@ -68,6 +80,13 @@ func Load(getenv func(string) string) (Config, error) {
 	c.InternalToken = getenv("AXIOM_INTERNAL_TOKEN")
 	c.InternalTokenPrevious = getenv("AXIOM_INTERNAL_TOKEN_PREVIOUS")
 	c.GraphFile = getenv("GRAPH_FILE")
+	switch listener := HTTPListener(getenv("HTTP_LISTENER")); listener {
+	case "":
+	case HTTPListenerFiber, HTTPListenerNetHTTP:
+		c.HTTPListener = listener
+	default:
+		return Config{}, fmt.Errorf("HTTP_LISTENER must be fiber or net-http")
+	}
 	for _, item := range []struct {
 		key string
 		dst *bool

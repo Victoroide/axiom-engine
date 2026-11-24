@@ -99,3 +99,31 @@ func TestRedisInFlightOutlivesResponseTTL(t *testing.T) {
 	}
 
 }
+
+func TestAbortPreservesPublishedResponse(t *testing.T) {
+	server := miniredis.RunT(t)
+	client := redis.NewClient(&redis.Options{Addr: server.Addr()})
+	t.Cleanup(func() { _ = client.Close() })
+	for name, store := range map[string]Store{
+		"memory": NewMemory(time.Hour, 10),
+		"redis":  NewRedis(client, time.Hour, time.Minute),
+	} {
+		t.Run(name, func(t *testing.T) {
+			ctx := t.Context()
+			owner, state, err := store.Begin(ctx, "key", "body")
+			if err != nil || state != Acquired {
+				t.Fatalf("reserve state=%v err=%v", state, err)
+			}
+			if err := store.Complete(ctx, "key", owner.Token, Response{Status: 200, Body: []byte("ok")}); err != nil {
+				t.Fatal(err)
+			}
+			if err := store.Abort(ctx, "key", owner.Token); err != nil {
+				t.Fatal(err)
+			}
+			replay, state, err := store.Begin(ctx, "key", "body")
+			if err != nil || state != Replay || string(replay.Response.Body) != "ok" {
+				t.Fatalf("published response after cleanup=%+v, state=%v, err=%v", replay, state, err)
+			}
+		})
+	}
+}

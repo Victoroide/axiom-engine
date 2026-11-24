@@ -4,16 +4,26 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log/slog"
 	"net"
 	"net/http"
 	"sync/atomic"
 	"time"
 
 	"github.com/gofiber/fiber/v3"
+
+	"github.com/Victoroide/axiom-engine/internal/api"
+	"github.com/Victoroide/axiom-engine/internal/config"
 )
 
 const requestContextKey = "requestContext"
 const drainStateKey = "drainState"
+const listenerSettingsKey = "listenerSettings"
+
+type listenerSettings struct {
+	mode   config.HTTPListener
+	logger *slog.Logger
+}
 
 type drainState struct {
 	delay    time.Duration
@@ -29,12 +39,40 @@ func Run(ctx context.Context, app *fiber.App, address string, shutdownTimeout ti
 	if err != nil {
 		return fmt.Errorf("listen: %w", err)
 	}
+	return serveListener(ctx, app, ln, shutdownTimeout)
+}
+
+func serveListener(ctx context.Context, app *fiber.App, ln net.Listener, shutdownTimeout time.Duration) error {
 	defer func() { _ = ln.Close() }()
-	base, cancel := context.WithCancel(context.WithoutCancel(ctx))
+	base, cancelCause := context.WithCancelCause(context.WithoutCancel(ctx))
+	cancel := func() { cancelCause(api.ErrServerDraining) }
 	defer cancel()
 	app.State().Set(requestContextKey, base)
+	serve := func() error { return app.Listener(ln, fiber.ListenConfig{DisableStartupMessage: true}) }
+	shutdown := func(ctx context.Context) error {
+		// Close the listener even if cancellation beats Fiber's startup.
+		_ = ln.Close()
+		return app.ShutdownWithContext(ctx)
+	}
+	if settings, ok := fiber.GetState[listenerSettings](app.State(), listenerSettingsKey); ok {
+		mode := config.HTTPListenerFiber
+		if settings.mode == config.HTTPListenerNetHTTP {
+			mode = settings.mode
+			srv := newHTTPServer(app, base)
+			serve = func() error { return srv.Serve(httpReadListener{ln}) }
+			shutdown = func(ctx context.Context) error {
+				err := srv.Shutdown(ctx)
+				if err != nil {
+					_ = srv.Close()
+				}
+				// Run the application's shutdown hooks after the listener drains.
+				return errors.Join(err, app.ShutdownWithContext(ctx))
+			}
+		}
+		settings.logger.Info("server.listening", "address", ln.Addr().String(), "listener", mode)
+	}
 	stopped := make(chan error, 1)
-	go func() { stopped <- app.Listener(ln, fiber.ListenConfig{DisableStartupMessage: true}) }()
+	go func() { stopped <- serve() }()
 	select {
 	case err := <-stopped:
 		return err
@@ -51,11 +89,11 @@ func Run(ctx context.Context, app *fiber.App, address string, shutdownTimeout ti
 		}
 		cancelTimer := time.AfterFunc(shutdownTimeout-time.Second, cancel)
 		defer cancelTimer.Stop()
-		// Close the listener even if cancellation beats Fiber's startup.
-		_ = ln.Close()
-		shutdownErr := app.ShutdownWithTimeout(shutdownTimeout)
+		shutdownCtx, stop := context.WithTimeout(context.WithoutCancel(ctx), shutdownTimeout)
+		defer stop()
+		shutdownErr := shutdown(shutdownCtx)
 		serveErr := <-stopped
-		if serveErr != nil && !errors.Is(serveErr, net.ErrClosed) {
+		if serveErr != nil && !errors.Is(serveErr, net.ErrClosed) && !errors.Is(serveErr, http.ErrServerClosed) {
 			return fmt.Errorf("serve: %w", serveErr)
 		}
 		if shutdownErr != nil && !errors.Is(shutdownErr, net.ErrClosed) {

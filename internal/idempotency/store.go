@@ -32,6 +32,8 @@ type Reservation struct {
 
 // Store atomically reserves keys and publishes successful responses.
 type Store interface {
+	// Begin can return a token with an error when the reservation may have
+	// been created. Abort can safely release that token if it still owns it.
 	Begin(context.Context, string, string) (Reservation, State, error)
 	Complete(context.Context, string, string, Response) error
 	Abort(context.Context, string, string) error

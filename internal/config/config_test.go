@@ -94,6 +94,40 @@ func TestHTTPTimeouts(t *testing.T) {
 	}
 }
 
+func TestHTTPListenerRejectsInvalidValues(t *testing.T) {
+	for _, value := range []string{"NET-HTTP", "net/http", " fiber", "both"} {
+		t.Run(value, func(t *testing.T) {
+			_, err := loadWithoutAuth(func(k string) string {
+				if k == "HTTP_LISTENER" {
+					return value
+				}
+				return ""
+			})
+			if err == nil || !strings.Contains(err.Error(), "HTTP_LISTENER") {
+				t.Fatalf("HTTP_LISTENER=%q returned %v", value, err)
+			}
+		})
+	}
+}
+
+func TestHTTPListenerSelection(t *testing.T) {
+	for input, want := range map[string]HTTPListener{
+		"":         HTTPListenerFiber,
+		"fiber":    HTTPListenerFiber,
+		"net-http": HTTPListenerNetHTTP,
+	} {
+		c, err := loadWithoutAuth(func(key string) string {
+			if key == "HTTP_LISTENER" {
+				return input
+			}
+			return ""
+		})
+		if err != nil || c.HTTPListener != want {
+			t.Fatalf("HTTP_LISTENER=%q loaded %q, err=%v", input, c.HTTPListener, err)
+		}
+	}
+}
+
 func TestShutdownTimeoutDefaultsAboveRequestTimeout(t *testing.T) {
 	for _, tc := range []struct {
 		request, shutdown string

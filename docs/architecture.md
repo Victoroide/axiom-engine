@@ -171,7 +171,9 @@ Upstream model inference isolates learner identity from prompt construction. Whe
 
 ### Timeouts
 
-HTTP transport timeouts configured on Fiber (`ReadTimeout`, `WriteTimeout`, `IdleTimeout`) operate at the socket layer. Fasthttp arms `WriteTimeout` only after request handler execution completes, so transport write timeouts do not bound active handler execution.
+The listener enforces transport read, write and idle deadlines. Fiber starts its write deadline after the handler returns. With `HTTP_LISTENER=net-http`, the write deadline starts before dispatch, and the HTTP request context carries peer cancellation and the drain signal into the same Fiber middleware and routes. See [HTTP Listener](configuration.md#http-listener).
+
+On Linux and macOS the opt-in HTTP/1 listener checks TCP shutdown without reading from the connection. This allows cancellation after Go buffers a pipelined byte and stops monitoring subsequent reads. HTTP/2 uses the native stream context. [Go HTTP/1 background reads](https://github.com/golang/go/blob/go1.27.4/src/net/http/server.go#L742-L776), [Linux socket polling](https://man7.org/linux/man-pages/man2/poll.2.html), [macOS TCP states](https://github.com/apple-oss-distributions/xnu/blob/main/bsd/netinet/tcp_fsm.h).
 
 The reasoning service enforces deadlines autonomously:
 - **Request Deadline**: Handlers enforce `REQUEST_TIMEOUT` (default `20s`) using context deadlines. Exceeding this limit returns HTTP 504 `gateway_timeout`.

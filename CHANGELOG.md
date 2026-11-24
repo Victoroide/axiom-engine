@@ -12,6 +12,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Add an in-process stateless MCP Streamable HTTP handler for the July 2026 protocol.
 - Add a `plan.queue.wait` trace span for topic requests that encounter an occupied reasoning permit.
 - Expose `axiom_llm_inflight_after_cancel` for planner calls that still occupy a local slot after cancellation or a deadline.
+- Add the opt-in `HTTP_LISTENER=net-http` setting so HTTP/1 disconnects and HTTP/2 stream resets cancel queued or running reasoning. HTTP/1 cancellation also works with pipelined requests waiting on Linux and macOS. A client that closes only its write side may still read a 408 response. Release canceled idempotency reservations while storage is available.
 
 ### Changed
 

@@ -44,18 +44,18 @@ return {0, ''}
 // Begin atomically reserves a key or reads its current state.
 func (s *Redis) Begin(ctx context.Context, key, fingerprint string) (Reservation, State, error) {
 	token := uuid.NewString()
+	reservation := Reservation{Token: token}
 	values, err := beginScript.Run(ctx, s.client, []string{redisKey(key)}, fingerprint, token, max(1, s.pendingTTL.Milliseconds())).Slice()
 	if err != nil {
-		return Reservation{}, Acquired, err
+		return reservation, Acquired, err
 	}
 	if len(values) != 2 {
-		return Reservation{}, Acquired, fmt.Errorf("invalid reservation result")
+		return reservation, Acquired, fmt.Errorf("invalid reservation result")
 	}
 	n, ok := values[0].(int64)
 	if !ok || n < 0 || n > 3 {
-		return Reservation{}, Acquired, fmt.Errorf("invalid reservation state")
+		return reservation, Acquired, fmt.Errorf("invalid reservation state")
 	}
-	reservation := Reservation{Token: token}
 	if State(n) == Replay {
 		encoded, ok := values[1].(string)
 		if !ok {
@@ -69,7 +69,7 @@ func (s *Redis) Begin(ctx context.Context, key, fingerprint string) (Reservation
 }
 
 var completeScript = redis.NewScript(`
-if redis.call('HGET', KEYS[1], 'token') == ARGV[1] then
+if redis.call('HGET', KEYS[1], 'token') == ARGV[1] and redis.call('HEXISTS', KEYS[1], 'response') == 0 then
  redis.call('HSET', KEYS[1], 'response', ARGV[2])
  redis.call('PEXPIRE', KEYS[1], ARGV[3])
 end
@@ -86,7 +86,9 @@ func (s *Redis) Complete(ctx context.Context, key, token string, response Respon
 }
 
 var abortScript = redis.NewScript(`
-if redis.call('HGET', KEYS[1], 'token') == ARGV[1] then redis.call('DEL', KEYS[1]) end
+if redis.call('HGET', KEYS[1], 'token') == ARGV[1] and redis.call('HEXISTS', KEYS[1], 'response') == 0 then
+ redis.call('DEL', KEYS[1])
+end
 return 1
 `)
 

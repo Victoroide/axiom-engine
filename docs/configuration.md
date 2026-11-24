@@ -11,6 +11,7 @@ This document is the authoritative reference for all environment variables suppo
 | Variable | Type | Default | Accepted Values | Effect |
 |---|---|---|---|---|
 | `PORT` | Integer | `8080` | `1` to `65535` | TCP port on which the HTTP server listens. Configured in `internal/config/config.go`. |
+| `HTTP_LISTENER` | Enum | `fiber` | `fiber` or `net-http` | Selects the HTTP listener. An unset or empty value uses Fiber. |
 | `AXIOM_AUTH_DISABLED` | Boolean | `false` | `true` or `false` | When `true`, disables token authentication on `/api/v1/*` routes and logs a startup warning `auth.disabled`. Must be `false` when `AXIOM_INTERNAL_TOKEN` or `AXIOM_INTERNAL_TOKEN_PREVIOUS` is configured; configuring either simultaneously fails startup. When `false`, `AXIOM_INTERNAL_TOKEN` is required. Configured in `internal/config/config.go`. |
 | `AXIOM_INTERNAL_TOKEN` | String | `""` (unset) | At least 32 visible ASCII characters (`0x21`–`0x7E`) without whitespace | Shared secret token required in `X-Internal-Token` or `Authorization: Bearer` on `/api/v1/*` routes. Required at startup unless `AXIOM_AUTH_DISABLED=true`; configuring both simultaneously fails startup. Non-empty tokens must satisfy length and character rules even when authentication is disabled. Tokens are not trimmed. Configured in `internal/config/config.go`. |
 | `AXIOM_INTERNAL_TOKEN_PREVIOUS` | String | `""` (unset) | At least 32 visible ASCII characters (`0x21`–`0x7E`) without whitespace; must differ from `AXIOM_INTERNAL_TOKEN` | Optional previous secret token accepted in `X-Internal-Token` or `Authorization: Bearer` on `/api/v1/*` routes to support zero-downtime rotation (see [Token rotation](deployment.md#token-rotation)). Requires authentication to be enabled; must be empty when `AXIOM_AUTH_DISABLED=true`. Configured in `internal/config/config.go`. |
@@ -139,13 +140,21 @@ Span content recording is controlled by `TRACING_CAPTURE_CONTENT`:
 
 ---
 
+## HTTP Listener
+
+`HTTP_LISTENER=net-http` opts into a single cleartext listener that accepts HTTP/1.1 and prior-knowledge HTTP/2 on `PORT`. An HTTP/1 connection close or HTTP/2 stream reset cancels the affected request context. Other streams on the same HTTP/2 connection continue. Linux and macOS also detect an HTTP/1 close when pipelined requests are waiting. A TCP write-half close cancels active reasoning too. A client that keeps its read side open may receive the JSON 408 response and responses for subsequent parsed requests in order. A reverse proxy must propagate downstream cancellation to the service for it to take effect. Use `HTTP_LISTENER=fiber` to switch back to the default HTTP/1 listener on restart. [Go request context documentation](https://pkg.go.dev/net/http@go1.27.4#Request.Context).
+
+Both listeners return the application JSON envelope for an oversized body (413) or a body read timeout (408). A payload read failure discards request metadata and leaves quota available. A declared length over the limit or a rejected HTTP/1 chunk trailer retains the parsed headers and follows the normal quota policy. Both listeners return 400 for malformed trailers and for received trailer fields that Fiber disallows. Oversized and stalled trailers return 431 and 408 respectively.
+
+A prohibited trailer name in an initial HTTP/1 `Trailer` header is rejected before the body is read. When the declaration reaches application error handling, the response is JSON 400 with a generated request ID and quota remains available. Fiber also uses the application envelope for malformed or oversized HTTP headers and incomplete headers that time out. The opt-in HTTP/1 server handles some failures before dispatch. Its native behavior includes plain-text 400 or 431 for malformed or oversized headers, plain-text 400 for chunked declarations of `Content-Length`, `Trailer`, and `Transfer-Encoding`, an empty 417 for an unsupported `Expect` value, and a connection close at the incomplete-header deadline. Those pre-handler outcomes have no application request ID. HTTP/2 framing errors follow the HTTP/2 protocol.
+
 ## Derived Transport Timeouts
 
-Transport-level deadlines are derived from configuration in `internal/config/config.go` and enforced on the Fiber application (`internal/server/server.go`) without requiring separate environment variables:
+Both listeners use the transport deadlines derived in `internal/config/config.go`.
 
-- **Read Timeout**: `10s` (`fiber.Config.ReadTimeout`). Bounds reading of request headers and body.
-- **Write Timeout**: Derived as `REQUEST_TIMEOUT + 10s` (default `30s`, `fiber.Config.WriteTimeout`). Bounds response delivery. Config loading rejects `REQUEST_TIMEOUT` values that would cause duration overflow.
-- **Idle Timeout**: `1m` (`fiber.Config.IdleTimeout`). Bounds keep-alive connections.
+- **Read timeout**. The listener has 10 seconds to read request headers and body.
+- **Write timeout**. The listener bounds response writes with `REQUEST_TIMEOUT + 10s` (default `30s`). Fiber starts the write deadline after the handler returns. The opt-in listener sets it before dispatch. Config loading rejects `REQUEST_TIMEOUT` values that would cause duration overflow.
+- **Idle timeout**. The listener waits up to 1 minute for traffic on a keep-alive connection.
 
 ---
 
@@ -202,7 +211,7 @@ When started with `axiom-server mcp`, the server runs in Model Context Protocol 
 In MCP mode, runtime settings are loaded via `internal/config/mcp.go`:
 - **Shared configuration**: `GRAPH_FILE`, `LOG_LEVEL`, `REQUEST_TIMEOUT`, `LLM_TIMEOUT`, `LLM_QUEUE_TIMEOUT`, `LLM_MAX_CONCURRENCY`, `MAX_FAILED_TOPICS`, `MAX_MASTERED_TOPICS`, `PRESERVE_DISPLAY_JOINS`, `RESOURCE_LINK_CHECK`, `RESOURCE_LINK_TIMEOUT`, and `SHUTDOWN_TIMEOUT` retain their standard default values and bounds.
 - **Shutdown timeout**: `SHUTDOWN_TIMEOUT` also bounds MCP shutdown, defaulting to `max(REQUEST_TIMEOUT + 5s, 11s)` (`25s`). Admitted tool calls drain within this timeout before remaining work is canceled and the transport is closed. If explicitly configured, it must be a positive Go duration; unlike HTTP mode, the `11s` HTTP minimum is not enforced because there is no HTTP listener or connection draining.
-- **Ignored HTTP settings**: The following HTTP-only variables are ignored and will not cause startup validation failures even if unset, empty, or configured with values that would be invalid for the HTTP server: `REDIS_URL`, `IDEMPOTENCY_TTL`, `IDEMPOTENCY_MAX_ENTRIES`, `PORT`, `AXIOM_AUTH_DISABLED`, `AXIOM_INTERNAL_TOKEN`, `AXIOM_INTERNAL_TOKEN_PREVIOUS`, `CORS_ALLOWED_ORIGINS`, `TRUSTED_PROXIES`, `RATE_LIMIT_MAX`, `RATE_LIMIT_WINDOW`, `METRICS_ENABLED`, `SWAGGER_ENABLED`, and `SHUTDOWN_DRAIN_DELAY`.
+- MCP ignores HTTP-only settings even when their values would fail HTTP startup validation. These settings include `HTTP_LISTENER`, `REDIS_URL`, `IDEMPOTENCY_TTL`, `IDEMPOTENCY_MAX_ENTRIES`, `PORT`, `AXIOM_AUTH_DISABLED`, `AXIOM_INTERNAL_TOKEN`, `AXIOM_INTERNAL_TOKEN_PREVIOUS`, `CORS_ALLOWED_ORIGINS`, `TRUSTED_PROXIES`, `RATE_LIMIT_MAX`, `RATE_LIMIT_WINDOW`, `METRICS_ENABLED`, `SWAGGER_ENABLED`, and `SHUTDOWN_DRAIN_DELAY`.
 - **Provider selection**: `LLM_PROVIDER`, `LLM_MODEL`, `LLM_BASE_URL` and provider API keys have the same validation and defaults as HTTP; the selected client registry is shared by all plan tools. Startup records on stderr include `llm_provider` and `llm_model`.
 - **Validation**: AWS retry mode (`AWS_RETRY_MODE`, `AWS_MAX_ATTEMPTS`) is validated only for `aws-bedrock`; BAML logging (`BAML_LOG`) is always validated.
 - **Tracing**: `TRACING_ENABLED` and standard `OTEL_*` settings apply to MCP tool-call spans. EOF and signal shutdown flush the provider; signal shutdown uses the remaining `SHUTDOWN_TIMEOUT` after tool draining and transport closure.

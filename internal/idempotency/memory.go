@@ -75,7 +75,7 @@ func (m *Memory) prune(now time.Time) {
 func (m *Memory) Complete(_ context.Context, key, token string, response Response) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
-	if e, ok := m.entries[key]; ok && e.Token == token {
+	if e, ok := m.entries[key]; ok && e.Token == token && e.Response == nil {
 		response.Body = append([]byte(nil), response.Body...)
 		response.ContentType = strings.Clone(response.ContentType)
 		e.Response = &response
@@ -89,7 +89,7 @@ func (m *Memory) Complete(_ context.Context, key, token string, response Respons
 func (m *Memory) Abort(_ context.Context, key, token string) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
-	if e, ok := m.entries[key]; ok && e.Token == token {
+	if e, ok := m.entries[key]; ok && e.Token == token && e.Response == nil {
 		delete(m.entries, key)
 	}
 	return nil
