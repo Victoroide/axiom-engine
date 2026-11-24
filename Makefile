@@ -111,7 +111,7 @@ fuzz: ## Fuzz parsers and output policy without the native library
 
 lint: ## Vet build variants and check Go code and workflow files
 	@command -v shellcheck >/dev/null || { echo "shellcheck is required for workflow linting; install it and add it to PATH" >&2; exit 1; }
-	shellcheck scripts/release-archive.sh scripts/release-archive-smoke.sh scripts/test-release-archive.sh
+	shellcheck scripts/axiom-server-launch scripts/release-archive.sh scripts/release-archive-smoke.sh scripts/test-release-archive.sh
 	shellcheck scripts/release-provenance.sh scripts/test-release-provenance.sh
 	./scripts/test-release-provenance.sh
 	go vet ./...

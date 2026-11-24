@@ -422,11 +422,11 @@ Every failed check stops the script with `container smoke: <reason>`. `make cont
 
 ### Release archives
 
-Release archive targets build, package, and test standalone distribution archives containing `axiom-server`, the pinned native BAML CFFI library, `LICENSE`, and `README.md`.
+Release archive targets build, package, and test standalone distribution archives containing `axiom-server-launch`, `axiom-server`, the pinned native BAML CFFI library, `LICENSE`, and `README.md`.
 
 - `make release-archive`: builds the service binary and verified native library, then packages them into a deterministic `.tar.gz` archive. GNU tar is required (`brew install gnu-tar` on macOS).
-- `make release-archive-smoke`: clears inherited internal tokens, checks an extracted archive's liveness via `./axiom-server healthcheck` against `/livez` within 30 seconds, and verifies exit status 0 on `SIGTERM`.
-- `make release-archive-test`: validates archive contents, checks repeatable packaging of the same built inputs rather than byte-for-byte reproducibility across independent builds, runs smoke tests, and verifies rejection of invalid versions, non-numeric timestamps, and missing native libraries.
+- `make release-archive-smoke` clears inherited internal tokens and `BAML_LOG`, starts the launcher, checks `/livez` with `./axiom-server-launch healthcheck`, and verifies exit status 0 on `SIGTERM`.
+- `make release-archive-test` checks archive contents, repeatable packaging, and the bundled offline setup. It exercises launch from an installation path with spaces, native log privacy on successful and failed calls, rejected logging levels, stdio framing, argument and signal forwarding, and startup diagnostics. It also checks invalid versions, non-numeric timestamps, and missing native libraries.
 
 Packaging settings:
 - `RELEASE_VERSION`: archive version string (default: `dev`).

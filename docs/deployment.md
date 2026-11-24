@@ -143,7 +143,7 @@ Release builds attach SLSA build provenance and an SPDX Software Bill of Materia
 Published GitHub releases attach native executable archives for `linux/amd64`, `linux/arm64`, and `darwin/arm64` alongside container images.
 
 Each release attaches:
-- `axiom-engine_<version>_<os>_<arch>.tar.gz`: platform archives containing `axiom-server`, the verified native BAML CFFI library, `LICENSE`, and `README.md`. `<version>` omits the release tag's leading `v`.
+- `axiom-engine_<version>_<os>_<arch>.tar.gz`: platform archives containing `axiom-server-launch`, `axiom-server`, the verified native BAML CFFI library, `LICENSE`, and `README.md`. `<version>` omits the release tag's leading `v`.
 - `checksums.txt`: SHA-256 digests of all three archives.
 - `checksums.txt.sigstore.json`: Cosign keyless signature bundle verifying `checksums.txt`.
 - `axiom-engine_<version>.sigstore.json`: Sigstore bundle containing SLSA build provenance and verification material for all three archives.
@@ -207,32 +207,31 @@ tar -xzf axiom-engine_1.2.3_linux_amd64.tar.gz
 cd axiom-engine_1.2.3_linux_amd64
 ```
 
-The extracted directory contains `axiom-server`, `LICENSE`, `README.md`, and the bundled native library under its upstream filename:
+Set `BAML_LIBRARY_PATH` to the bundled native library for your platform:
 - `linux/amd64`: `libbaml_cffi-x86_64-unknown-linux-gnu.so`
 - `linux/arm64`: `libbaml_cffi-aarch64-unknown-linux-gnu.so`
 - `darwin/arm64`: `libbaml_cffi-aarch64-apple-darwin.dylib`
 
-Export a shared environment used by both the server and the healthcheck probe, so the probe inherits it. `AXIOM_INTERNAL_TOKEN` needs at least 32 visible ASCII characters; generate it with `openssl rand -hex 32`. Setting `BAML_LOG=off` keeps native logging from writing prompt and reply contents.
+Export the settings shared by the server and healthcheck. `BAML_LIBRARY_DISABLE_DOWNLOAD=true` disables runtime library downloads. Generate an internal token with `openssl rand -hex 32` and configure credentials for your provider.
 
 ```sh
 # On linux/amd64:
 export BAML_LIBRARY_PATH="$PWD/libbaml_cffi-x86_64-unknown-linux-gnu.so"
 export BAML_LIBRARY_DISABLE_DOWNLOAD=true
-export BAML_LOG=off
 export AXIOM_INTERNAL_TOKEN="$(openssl rand -hex 32)"
 export AWS_REGION="us-east-1"
 export AWS_ACCESS_KEY_ID="your-access-key-id"
 export AWS_SECRET_ACCESS_KEY="your-secret-access-key"
 
-./axiom-server
+./axiom-server-launch
 ```
 
-For other architectures, adjust `BAML_LIBRARY_PATH` accordingly (`libbaml_cffi-aarch64-unknown-linux-gnu.so` on `linux/arm64` or `libbaml_cffi-aarch64-apple-darwin.dylib` on `darwin/arm64`). Authentication and model provider configuration requirements apply unchanged.
+The launcher accepts an unset `BAML_LOG` or `off`, `error`, `warn`, or `warning`, regardless of case. It rejects other values before native initialization. It sets `BAML_LOG=off` and `BAML_INTERNAL_LOG=off` and clears `BAML_TRACE_FILE`, `BOUNDARY_API_KEY`, and `BOUNDARY_SECRET`, including case variants of the `SECRET` suffix. The native library can write prompts and responses to logs and trace files or send them to its trace publisher. Use those same settings when launching `axiom-server` directly without native diagnostics. With the pinned library, an unset `BAML_LOG` or `warning` on the raw binary activates INFO. Even `warn` can expose prompts and responses when a call fails.
 
 The binary health probe tests liveness against `/livez`, inheriting the exported environment:
 
 ```sh
-./axiom-server healthcheck
+./axiom-server-launch healthcheck
 ```
 
 Sending `SIGTERM` requests a clean process shutdown with exit status 0.

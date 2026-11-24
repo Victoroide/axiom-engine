@@ -127,7 +127,7 @@ The BAML CFFI dynamic library (`libbaml_cffi.so` on Linux, `libbaml_cffi.dylib` 
 ### Symptoms and Behavior
 
 - The generated Go BAML client loads the dynamic library during package initialization (`init()`), before `main()` executes.
-- If the shared library is missing from `BAML_LIBRARY_PATH`, cannot be opened, is built for another architecture, or reports another version, the process crashes immediately with a panic printed in plain text to standard error. BAML does not check the checksum at load time. Only the image build and `make native-baml` compare it with the pin.
+- If the shared library is missing from `BAML_LIBRARY_PATH`, cannot be opened, is built for another architecture, or reports another version, the process crashes immediately with a panic printed in plain text to standard error. The image and archive builds verify the native library against the pin before packaging.
 - Because this failure occurs during package initialization, the structured JSON application logger has not yet been instantiated. No `server.started` or `server.failed` JSON record will be produced.
 
 ### Diagnostic and Mitigation Steps
@@ -136,6 +136,8 @@ The BAML CFFI dynamic library (`libbaml_cffi.so` on Linux, `libbaml_cffi.dylib` 
 2. Ensure the container or environment sets `BAML_LIBRARY_PATH` to the absolute path of the native library (for example, `/app/libbaml_cffi.so` in runtime containers).
 3. Ensure `BAML_LIBRARY_DISABLE_DOWNLOAD=true` is set to prevent unverified dynamic library downloads at runtime.
 4. In local development, run `make native-baml`. It downloads the pinned library when `bin/` has none and checks its SHA-256 against the Dockerfile pin. If the check fails, delete the file and run it again. `make baml-check` only checks that the generator, Go module and Dockerfile versions agree.
+
+Use `axiom-server-launch` for extracted archives. It disables the public and internal BAML loggers and clears the native trace file and upload settings. If you enable native diagnostics on a direct binary launch, use synthetic input because those diagnostics can contain prompts and responses. [Run an archive](deployment.md#run-an-archive).
 
 ---
 

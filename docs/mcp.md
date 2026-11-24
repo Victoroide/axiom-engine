@@ -6,11 +6,13 @@ AxiomEngine provides a Model Context Protocol (MCP) server running over standard
 
 ## Server Execution
 
-The MCP server is invoked via the `mcp` subcommand:
+For an extracted archive, configure the bundled library and disable runtime library downloads as shown in the archive setup. In the extracted directory, run the `mcp` subcommand through the launcher. [Run an extracted archive](../README.md#run-an-extracted-archive).
 
 ```sh
-axiom-server mcp
+./axiom-server-launch mcp
 ```
+
+For a source build, copy `scripts/axiom-server-launch` beside the built `axiom-server` and configure the native library before running the launcher.
 
 ### Architecture and Transport
 
@@ -42,24 +44,25 @@ Response writes use the configured HTTP write timeout (`REQUEST_TIMEOUT + 10s`).
 
 ## Client Configuration
 
-To configure AxiomEngine in an MCP client (for example a desktop assistant or an editor extension), configure an entry in the client's MCP configuration file:
+For an extracted release archive, configure the client to run `axiom-server-launch mcp` with the bundled library for your platform:
 
 ```json
 {
   "mcpServers": {
     "axiom-engine": {
-      "command": "/absolute/path/axiom-server",
+      "command": "/absolute/path/axiom-server-launch",
       "args": ["mcp"],
       "env": {
         "AWS_REGION": "us-east-1",
-        "BAML_LIBRARY_PATH": "/absolute/path/libbaml_cffi.dylib",
-        "BAML_LIBRARY_DISABLE_DOWNLOAD": "true",
-        "BAML_LOG": "off"
+        "BAML_LIBRARY_PATH": "/absolute/path/libbaml_cffi-aarch64-apple-darwin.dylib",
+        "BAML_LIBRARY_DISABLE_DOWNLOAD": "true"
       }
     }
   }
 }
 ```
+
+Use the launcher as the client command so both native loggers and the native trace file and upload settings are disabled before startup. Native diagnostics can appear on stdout and disrupt JSON-RPC framing. [Release archive library filenames](deployment.md#run-an-archive).
 
 For the default `aws-bedrock` provider, credentials resolve through the standard AWS credential chain (environment variables, profile configuration, or IAM roles). Other providers use their configured API keys and endpoints.
 
@@ -176,7 +179,7 @@ The container image preconfigures `BAML_LIBRARY_PATH=/app/libbaml_cffi.so`, `BAM
 Interactive inspection and manual tool execution can be performed using the official MCP Inspector:
 
 ```sh
-npx @modelcontextprotocol/inspector /absolute/path/axiom-server mcp
+npx @modelcontextprotocol/inspector /absolute/path/axiom-server-launch mcp
 ```
 
-Ensure environment variables (`AWS_REGION`, `BAML_LIBRARY_PATH`, `BAML_LIBRARY_DISABLE_DOWNLOAD`, `BAML_LOG`) are set in the launching shell before running the command.
+Set `BAML_LIBRARY_PATH`, `BAML_LIBRARY_DISABLE_DOWNLOAD=true`, and your provider settings in the launching shell. [Server Execution](#server-execution).

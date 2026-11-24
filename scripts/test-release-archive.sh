@@ -2,7 +2,8 @@
 set -euo pipefail
 
 cd "$(dirname "$0")/.."
-scratch=$(mktemp -d "${RELEASE_TEST_DIR:-${TMPDIR:-/tmp}}/axiom-release-test.XXXXXX")
+test_dir=$(cd "${RELEASE_TEST_DIR:-${TMPDIR:-/tmp}}" && pwd)
+scratch=$(mktemp -d "$test_dir/axiom-release-test.XXXXXX")
 trap 'rm -rf "$scratch"' EXIT
 export SOURCE_DATE_EPOCH=1700000000
 
@@ -12,10 +13,14 @@ sleep 1
 name="axiom-engine_1.2.3_$(go env GOHOSTOS)_$(go env GOHOSTARCH)"
 archive="$scratch/first/$name.tar.gz"
 cmp "$archive" "$scratch/second/$name.tar.gz"
-mkdir "$scratch/extracted"
-tar -xzf "$archive" -C "$scratch/extracted"
-directory="$scratch/extracted/$name"
+extracted="$scratch/extracted archive"
+mkdir "$extracted"
+tar -xzf "$archive" -C "$extracted"
+directory="$extracted/$name"
 cmp bin/axiom-server "$directory/axiom-server"
+cmp scripts/axiom-server-launch "$directory/axiom-server-launch"
+test -x "$directory/axiom-server"
+test -x "$directory/axiom-server-launch"
 cmp LICENSE "$directory/LICENSE"
 cmp README.md "$directory/README.md"
 shopt -s nullglob
@@ -25,7 +30,76 @@ case "$(go env GOHOSTOS)" in
   darwin) cmp bin/libbaml_cffi.dylib "${libraries[0]}" ;;
   linux) cmp bin/libbaml_cffi.so "${libraries[0]}" ;;
 esac
-test "$(find "$directory" -type f | wc -l | tr -d ' ')" -eq 4
+test "$(find "$directory" -type f | wc -l | tr -d ' ')" -eq 5
+awk '
+  /^#### Run an extracted archive$/ { section = 1 }
+  section && /^```sh$/ { code = 1; next }
+  code && /^```$/ { exit }
+  code { print }
+' "$directory/README.md" > "$scratch/archive-env.sh"
+if [[ ! -s "$scratch/archive-env.sh" ]]; then
+  echo "The bundled README is missing the offline archive setup" >&2
+  exit 1
+fi
+(
+  cd "$directory"
+  unset BAML_LIBRARY_PATH BAML_LIBRARY_DISABLE_DOWNLOAD
+  # shellcheck source=/dev/null
+  source "$scratch/archive-env.sh"
+  test "$BAML_LIBRARY_PATH" = "${libraries[0]}"
+  test "$BAML_LIBRARY_DISABLE_DOWNLOAD" = true
+)
+grep -Fxq './axiom-server-launch' "$directory/README.md"
+probe="$scratch/launcher environment"
+mkdir "$probe"
+cp "$directory/axiom-server-launch" "$probe/"
+cat > "$probe/axiom-server" <<'SH'
+#!/bin/sh
+set -eu
+test "$#" -eq 1 && test "$1" = mcp || exit 1
+test "${BAML_LOG-}" = off && test "${BAML_INTERNAL_LOG-}" = off || exit 1
+if env | LC_ALL=C grep -Eiq '^(BAML_TRACE_FILE|BOUNDARY_API_KEY|BOUNDARY_SECRET)='; then
+  printf '%s\n' 'The launched binary inherited a native trace setting' >&2
+  exit 1
+fi
+SH
+chmod 755 "$probe/axiom-server"
+
+# The legacy exporter accepts every capitalization of the SECRET suffix.
+keys=(BOUNDARY_)
+for pair in Ss Ee Cc Rr Ee Tt; do
+  variants=()
+  for key in "${keys[@]}"; do
+    variants+=("$key${pair:0:1}" "$key${pair:1:1}")
+  done
+  keys=("${variants[@]}")
+done
+settings=("PATH=$probe:/usr/bin:/bin" BAML_LOG=warning BAML_INTERNAL_LOG=trace BAML_TRACE_FILE=fixture BOUNDARY_API_KEY=fixture)
+for key in "${keys[@]}"; do
+  settings+=("$key=fixture")
+done
+env -i "${settings[@]}" "$probe/axiom-server-launch" mcp
+echo 'Launcher exec environment verified with all 64 legacy credential spellings'
+
+for guide in "$directory/README.md" docs/mcp.md; do
+  awk '
+    /^```sh$/ { shell = 1; block = ""; invokes_mcp = 0; next }
+    shell && /^```$/ { if (invokes_mcp) printf "%s", block; shell = 0; next }
+    shell {
+      block = block $0 "\n"
+      if ($0 ~ /(^|[[:space:]])(\.\/)?axiom-server(-launch)?[[:space:]]+mcp[[:space:]]*$/) invokes_mcp = 1
+    }
+  ' "$guide" > "$scratch/mcp-examples.sh"
+  test -s "$scratch/mcp-examples.sh"
+  if ! (cd "$probe" && env -i "${settings[@]}" bash -e "$scratch/mcp-examples.sh"); then
+    printf 'Unsafe MCP launch example in %s\n' "$(basename "$guide")" >&2
+    exit 1
+  fi
+done
+echo 'Offline archive setup and MCP examples verified'
+RELEASE_ARCHIVE_TEST_INSTALL="$directory" BAML_LIBRARY_PATH="${libraries[0]}" \
+  CGO_ENABLED=1 BAML_LIBRARY_DISABLE_DOWNLOAD=true BAML_LOG=off \
+  go test -trimpath ./cmd/server -run '^TestReleaseArchiveLauncher$' -count=1 -v
 ./scripts/release-archive-smoke.sh "$archive"
 for token_variable in AXIOM_INTERNAL_TOKEN AXIOM_INTERNAL_TOKEN_PREVIOUS; do
   echo "Checking archive smoke with inherited $token_variable"
@@ -45,7 +119,7 @@ if SOURCE_DATE_EPOCH=invalid ./scripts/release-archive.sh 1.2.3 "$scratch/invali
   exit 1
 fi
 rm "${libraries[0]}"
-tar -czf "$scratch/missing-library.tar.gz" -C "$scratch/extracted" "$name"
+tar -czf "$scratch/missing-library.tar.gz" -C "$extracted" "$name"
 if ./scripts/release-archive-smoke.sh "$scratch/missing-library.tar.gz" >"$scratch/missing.log" 2>&1; then
   echo "An archive without its native library was accepted" >&2
   exit 1
