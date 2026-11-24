@@ -1,0 +1,876 @@
+{
+  "schema_version": "1.0.0",
+  "edition": "ap-csa-fall-2025",
+  "graph_path": "internal/graph/seed.json",
+  "graph_sha256": "7a9f78f6a80eeb7bc6e21afbf71b735621604615f0faf9c881d600ab5a7d84aa",
+  "provisional": true,
+  "provisional_notice": "Mapping of the embedded seed graph against AP Computer Science A (Fall 2025 CED and January 2026 Clarifications).",
+  "expert_review_form": "evaluation/curriculum/dispute-form.md",
+  "mappings": [
+    {
+      "objective_id": "1.1.A",
+      "status": "missing",
+      "concepts": [],
+      "evidence_edges": [],
+      "rationale": "The seed has no topic for planning an everyday sequence in prose or a diagram. A standalone planning topic has no evidenced tuple.",
+      "isolated_unrepresentable": true
+    },
+    {
+      "objective_id": "1.1.B",
+      "status": "missing",
+      "concepts": [],
+      "evidence_edges": [],
+      "rationale": "The seed has no compiler or IDE topic to explain the path from source code to execution. A standalone compilation topic has no evidenced tuple.",
+      "isolated_unrepresentable": true
+    },
+    {
+      "objective_id": "1.1.C",
+      "status": "missing",
+      "concepts": [],
+      "evidence_edges": [],
+      "rationale": "The seed has no compilation, testing, or exception topics for distinguishing syntax errors, logic errors, and run-time failures."
+    },
+    {
+      "objective_id": "1.2.A",
+      "status": "missing",
+      "concepts": [],
+      "evidence_edges": [],
+      "rationale": "Variables identifies named storage, but the seed has no data-type concepts for choosing primitive versus reference types."
+    },
+    {
+      "objective_id": "1.2.B",
+      "status": "partial",
+      "concepts": [
+        "Variables"
+      ],
+      "evidence_edges": [],
+      "rationale": "Seed includes Variables, but omits Data Types, primitive categories, and Java int/double/boolean constraints."
+    },
+    {
+      "objective_id": "1.3.A",
+      "status": "missing",
+      "concepts": [],
+      "evidence_edges": [],
+      "rationale": "The seed has no output topic for writing or tracing System.out.print and System.out.println calls."
+    },
+    {
+      "objective_id": "1.3.B",
+      "status": "missing",
+      "concepts": [],
+      "evidence_edges": [],
+      "rationale": "The seed has no Strings topic to cover literal syntax or escapes for quotes, backslashes, and newlines."
+    },
+    {
+      "objective_id": "1.3.C",
+      "status": "missing",
+      "concepts": [],
+      "evidence_edges": [],
+      "rationale": "The seed has no arithmetic expressions or operator topics for precedence, numeric operations, and integer division."
+    },
+    {
+      "objective_id": "1.4.A",
+      "status": "partial",
+      "concepts": [
+        "Variables"
+      ],
+      "evidence_edges": [],
+      "rationale": "Seed includes Variables, but omits assignment operators, Expressions, and null references."
+    },
+    {
+      "objective_id": "1.4.B",
+      "status": "missing",
+      "concepts": [],
+      "evidence_edges": [],
+      "rationale": "The seed has no input or I/O topic to support writing Java code that reads data."
+    },
+    {
+      "objective_id": "1.5.A",
+      "status": "missing",
+      "concepts": [],
+      "evidence_edges": [],
+      "rationale": "The seed has no numeric-conversion topic to distinguish explicit casts, widening, and truncation."
+    },
+    {
+      "objective_id": "1.5.B",
+      "status": "missing",
+      "concepts": [],
+      "evidence_edges": [],
+      "rationale": "The seed has no model of fixed-width integers or the bounds that determine when int arithmetic overflows."
+    },
+    {
+      "objective_id": "1.5.C",
+      "status": "missing",
+      "concepts": [],
+      "evidence_edges": [],
+      "rationale": "The seed has no topic for how finite double precision causes rounding errors."
+    },
+    {
+      "objective_id": "1.6.A",
+      "status": "missing",
+      "concepts": [],
+      "evidence_edges": [],
+      "rationale": "Variables does not document arithmetic assignment, postfix increments or decrements, or the effect of tracing those updates."
+    },
+    {
+      "objective_id": "1.7.A",
+      "status": "partial",
+      "concepts": [
+        "Classes",
+        "Objects"
+      ],
+      "evidence_edges": [],
+      "rationale": "Seed includes Classes and Objects, but omits API specifications, libraries, and Encapsulation.",
+      "disputes": [
+        {
+          "id": "DSP-SEED-1.7.A-cls-obj",
+          "kind": "disputed_prerequisite",
+          "status": "unresolved",
+          "rationale": "Seed models Classes depending on Objects, reversing blueprint-to-instance conceptual dependency.",
+          "edge": {
+            "subject": "Classes",
+            "relation": "depends_on",
+            "object": "Objects"
+          }
+        }
+      ]
+    },
+    {
+      "objective_id": "1.8.A",
+      "status": "missing",
+      "concepts": [],
+      "evidence_edges": [],
+      "rationale": "The seed has no comments or Javadoc topic for documenting behavior and method contracts. A standalone documentation topic has no evidenced tuple.",
+      "isolated_unrepresentable": true
+    },
+    {
+      "objective_id": "1.9.A",
+      "status": "partial",
+      "concepts": [
+        "Functions"
+      ],
+      "evidence_edges": [],
+      "rationale": "Seed includes Functions, but omits method signatures, parameter types, and procedural abstraction documentation."
+    },
+    {
+      "objective_id": "1.9.B",
+      "status": "partial",
+      "concepts": [
+        "Functions"
+      ],
+      "evidence_edges": [],
+      "rationale": "Seed includes Functions, but omits void/non-void returns, call-by-value arguments, and overloading."
+    },
+    {
+      "objective_id": "1.10.A",
+      "status": "missing",
+      "concepts": [],
+      "evidence_edges": [],
+      "rationale": "The seed has Classes and Functions, but no static-method topic for calls made through a class name."
+    },
+    {
+      "objective_id": "1.11.A",
+      "status": "missing",
+      "concepts": [],
+      "evidence_edges": [],
+      "rationale": "The seed has no numerical library topic for Math functions or transforming the range of Math.random results."
+    },
+    {
+      "objective_id": "1.12.A",
+      "status": "partial",
+      "concepts": [
+        "Classes",
+        "Objects"
+      ],
+      "evidence_edges": [],
+      "rationale": "Seed includes Classes and Objects, but omits Object root inheritance while linking out-of-scope Inheritance and taxonomic Abstract Classes is_a Classes.",
+      "disputes": [
+        {
+          "id": "DSP-SEED-1.12.A-cls-obj",
+          "kind": "disputed_prerequisite",
+          "status": "unresolved",
+          "rationale": "Seed treats Objects as prerequisite to Classes.",
+          "edge": {
+            "subject": "Classes",
+            "relation": "depends_on",
+            "object": "Objects"
+          }
+        },
+        {
+          "id": "DSP-SEED-1.12.A-abs-isa",
+          "kind": "taxonomic_not_prerequisite",
+          "status": "unresolved",
+          "rationale": "Seed includes Abstract Classes is_a Classes; runtime traverses is_a as a prerequisite even though Abstract Classes is out of AP CSA scope.",
+          "edge": {
+            "subject": "Abstract Classes",
+            "relation": "is_a",
+            "object": "Classes"
+          }
+        },
+        {
+          "id": "DSP-SEED-1.12.A-inh",
+          "kind": "out_of_scope_dependency",
+          "status": "unresolved",
+          "rationale": "Seed links Inheritance to Classes, whereas CED 1.12.A.2 excludes designing inheritance.",
+          "edge": {
+            "subject": "Inheritance",
+            "relation": "depends_on",
+            "object": "Classes"
+          }
+        }
+      ]
+    },
+    {
+      "objective_id": "1.12.B",
+      "status": "partial",
+      "concepts": [
+        "Objects",
+        "Variables"
+      ],
+      "evidence_edges": [
+        {
+          "subject": "Objects",
+          "relation": "depends_on",
+          "object": "Variables"
+        }
+      ],
+      "rationale": "Seed includes Objects and Variables, but omits Java reference-type declarations."
+    },
+    {
+      "objective_id": "1.13.A",
+      "status": "missing",
+      "concepts": [],
+      "evidence_edges": [],
+      "rationale": "The Classes and Objects tuple leaves constructor signatures and overload selection unspecified."
+    },
+    {
+      "objective_id": "1.13.B",
+      "status": "partial",
+      "concepts": [
+        "Objects",
+        "Variables"
+      ],
+      "evidence_edges": [
+        {
+          "subject": "Objects",
+          "relation": "depends_on",
+          "object": "Variables"
+        }
+      ],
+      "rationale": "Seed includes Objects and Variables, but omits reference variable declarations and null."
+    },
+    {
+      "objective_id": "1.13.C",
+      "status": "partial",
+      "concepts": [
+        "Classes",
+        "Objects"
+      ],
+      "evidence_edges": [],
+      "rationale": "Seed includes Classes and Objects, but omits constructors, new instantiation, and call-by-value initialization.",
+      "disputes": [
+        {
+          "id": "DSP-SEED-1.13.C-cls-obj",
+          "kind": "disputed_prerequisite",
+          "status": "unresolved",
+          "rationale": "Seed orders Objects before Classes.",
+          "edge": {
+            "subject": "Classes",
+            "relation": "depends_on",
+            "object": "Objects"
+          }
+        }
+      ]
+    },
+    {
+      "objective_id": "1.14.A",
+      "status": "partial",
+      "concepts": [
+        "Classes",
+        "Functions",
+        "Objects"
+      ],
+      "evidence_edges": [],
+      "rationale": "Seed includes Classes, Functions, and Objects without instance-method dispatch or NullPointerException.",
+      "disputes": [
+        {
+          "id": "DSP-SEED-1.14.A-cls-obj",
+          "kind": "disputed_prerequisite",
+          "status": "unresolved",
+          "rationale": "Seed orders Objects before Classes.",
+          "edge": {
+            "subject": "Classes",
+            "relation": "depends_on",
+            "object": "Objects"
+          }
+        }
+      ]
+    },
+    {
+      "objective_id": "1.15.A",
+      "status": "missing",
+      "concepts": [],
+      "evidence_edges": [],
+      "rationale": "The seed has no Strings topic for immutability, concatenation, or conversion to text."
+    },
+    {
+      "objective_id": "1.15.B",
+      "status": "missing",
+      "concepts": [],
+      "evidence_edges": [],
+      "rationale": "The seed has no string operations to trace substring extraction, search, comparison, or invalid indexes."
+    },
+    {
+      "objective_id": "2.1.A",
+      "status": "missing",
+      "concepts": [],
+      "evidence_edges": [],
+      "rationale": "The seed has no control-flow topic linking sequence, decisions, and repetition for everyday algorithms."
+    },
+    {
+      "objective_id": "2.2.A",
+      "status": "missing",
+      "concepts": [],
+      "evidence_edges": [],
+      "rationale": "The seed has no relational operators or Boolean expressions for comparing numeric values or checking object identity."
+    },
+    {
+      "objective_id": "2.3.A",
+      "status": "missing",
+      "concepts": [],
+      "evidence_edges": [],
+      "rationale": "The seed has no selection topic that shows a Boolean guard, an if branch, or an else branch."
+    },
+    {
+      "objective_id": "2.4.A",
+      "status": "missing",
+      "concepts": [],
+      "evidence_edges": [],
+      "rationale": "The seed has no conditional logic that could support nested choices or else-if chains."
+    },
+    {
+      "objective_id": "2.5.A",
+      "status": "missing",
+      "concepts": [],
+      "evidence_edges": [],
+      "rationale": "The seed has no Boolean operator or evaluation topic for compound conditions and short-circuiting."
+    },
+    {
+      "objective_id": "2.6.A",
+      "status": "missing",
+      "concepts": [],
+      "evidence_edges": [],
+      "rationale": "The seed has no Boolean equivalence, truth-table, or De Morgan's law topic."
+    },
+    {
+      "objective_id": "2.6.B",
+      "status": "partial",
+      "concepts": [
+        "Objects"
+      ],
+      "evidence_edges": [],
+      "rationale": "Seed includes Objects, but omits Boolean comparisons, == alias checks, and equals."
+    },
+    {
+      "objective_id": "2.7.A",
+      "status": "missing",
+      "concepts": [],
+      "evidence_edges": [],
+      "rationale": "The seed has no iteration topic for deciding when to loop or identifying zero iterations and termination errors."
+    },
+    {
+      "objective_id": "2.7.B",
+      "status": "missing",
+      "concepts": [],
+      "evidence_edges": [],
+      "rationale": "The seed has no while-loop topic for tracing a pre-checked condition and its repeated body."
+    },
+    {
+      "objective_id": "2.8.A",
+      "status": "missing",
+      "concepts": [],
+      "evidence_edges": [],
+      "rationale": "The seed has no for-loop topic for tracing initialization, condition, and update or comparing the equivalent while loop."
+    },
+    {
+      "objective_id": "2.9.A",
+      "status": "missing",
+      "concepts": [],
+      "evidence_edges": [],
+      "rationale": "The seed has no numeric iteration topic for algorithms on digits, divisibility, counts, extrema, or sums."
+    },
+    {
+      "objective_id": "2.10.A",
+      "status": "missing",
+      "concepts": [],
+      "evidence_edges": [],
+      "rationale": "The seed has no Strings or iteration topic for searching substrings, counting matches, or reversing text."
+    },
+    {
+      "objective_id": "2.11.A",
+      "status": "missing",
+      "concepts": [],
+      "evidence_edges": [],
+      "rationale": "The seed has no nested-loop topic that shows how the inner loop runs during each outer step."
+    },
+    {
+      "objective_id": "2.12.A",
+      "status": "missing",
+      "concepts": [],
+      "evidence_edges": [],
+      "rationale": "The seed names Binary Search and Merge Sort, but has no statement-count evidence for comparing the efficiency of iterative code."
+    },
+    {
+      "objective_id": "3.1.A",
+      "status": "partial",
+      "concepts": [
+        "Classes",
+        "Functions",
+        "Objects"
+      ],
+      "evidence_edges": [],
+      "rationale": "Seed includes Classes, Functions, and Objects across disconnected components, but omits Encapsulation, design diagrams, and decomposition.",
+      "disputes": [
+        {
+          "id": "DSP-SEED-3.1.A-cls-obj",
+          "kind": "disputed_prerequisite",
+          "status": "unresolved",
+          "rationale": "Seed orders Objects before Classes.",
+          "edge": {
+            "subject": "Classes",
+            "relation": "depends_on",
+            "object": "Objects"
+          }
+        },
+        {
+          "id": "DSP-SEED-3.1.A-abs-isa",
+          "kind": "taxonomic_not_prerequisite",
+          "status": "unresolved",
+          "rationale": "Taxonomic Abstract Classes is_a Classes edge touches Classes.",
+          "edge": {
+            "subject": "Abstract Classes",
+            "relation": "is_a",
+            "object": "Classes"
+          }
+        }
+      ]
+    },
+    {
+      "objective_id": "3.2.A",
+      "status": "missing",
+      "concepts": [],
+      "evidence_edges": [],
+      "rationale": "The seed has no reliability, software testing, social impact, or licensing topic. The standalone ethics requirements have no evidenced tuple.",
+      "isolated_unrepresentable": true
+    },
+    {
+      "objective_id": "3.3.A",
+      "status": "partial",
+      "concepts": [
+        "Classes"
+      ],
+      "evidence_edges": [],
+      "rationale": "Seed includes Classes without Encapsulation or public/private access control.",
+      "disputes": [
+        {
+          "id": "DSP-SEED-3.3.A-cls-obj",
+          "kind": "disputed_prerequisite",
+          "status": "unresolved",
+          "rationale": "Seed orders Objects before Classes.",
+          "edge": {
+            "subject": "Classes",
+            "relation": "depends_on",
+            "object": "Objects"
+          }
+        }
+      ]
+    },
+    {
+      "objective_id": "3.4.A",
+      "status": "partial",
+      "concepts": [
+        "Classes",
+        "Objects",
+        "Variables"
+      ],
+      "evidence_edges": [
+        {
+          "subject": "Objects",
+          "relation": "depends_on",
+          "object": "Variables"
+        }
+      ],
+      "rationale": "Seed includes Classes, Objects, and Variables without constructor initialization or default field values.",
+      "disputes": [
+        {
+          "id": "DSP-SEED-3.4.A-cls-obj",
+          "kind": "disputed_prerequisite",
+          "status": "unresolved",
+          "rationale": "Seed orders Objects before Classes.",
+          "edge": {
+            "subject": "Classes",
+            "relation": "depends_on",
+            "object": "Objects"
+          }
+        }
+      ]
+    },
+    {
+      "objective_id": "3.5.A",
+      "status": "partial",
+      "concepts": [
+        "Classes",
+        "Functions",
+        "Variables"
+      ],
+      "evidence_edges": [],
+      "rationale": "Seed includes Classes, Functions, and Variables without accessor/mutator definitions or return rules.",
+      "disputes": [
+        {
+          "id": "DSP-SEED-3.5.A-cls-obj",
+          "kind": "disputed_prerequisite",
+          "status": "unresolved",
+          "rationale": "Seed orders Objects before Classes.",
+          "edge": {
+            "subject": "Classes",
+            "relation": "depends_on",
+            "object": "Objects"
+          }
+        }
+      ]
+    },
+    {
+      "objective_id": "3.6.A",
+      "status": "partial",
+      "concepts": [
+        "Classes",
+        "Functions",
+        "Objects"
+      ],
+      "evidence_edges": [],
+      "rationale": "Seed includes Classes, Functions, and Objects without reference parameter/return aliasing.",
+      "disputes": [
+        {
+          "id": "DSP-SEED-3.6.A-cls-obj",
+          "kind": "disputed_prerequisite",
+          "status": "unresolved",
+          "rationale": "Seed orders Objects before Classes.",
+          "edge": {
+            "subject": "Classes",
+            "relation": "depends_on",
+            "object": "Objects"
+          }
+        }
+      ]
+    },
+    {
+      "objective_id": "3.7.A",
+      "status": "missing",
+      "concepts": [],
+      "evidence_edges": [],
+      "rationale": "Classes and Functions supply no evidence for writing static helpers or using class state independently of an instance."
+    },
+    {
+      "objective_id": "3.7.B",
+      "status": "missing",
+      "concepts": [],
+      "evidence_edges": [],
+      "rationale": "Classes and Variables supply no evidence about shared static fields, visibility, or final constants."
+    },
+    {
+      "objective_id": "3.8.A",
+      "status": "partial",
+      "concepts": [
+        "Functions",
+        "Variables"
+      ],
+      "evidence_edges": [],
+      "rationale": "Seed includes Functions and Variables without Scope or shadowing rules."
+    },
+    {
+      "objective_id": "3.9.A",
+      "status": "missing",
+      "concepts": [],
+      "evidence_edges": [],
+      "rationale": "Objects does not specify the Java this expression or how methods refer to and pass their receiver."
+    },
+    {
+      "objective_id": "4.1.A",
+      "status": "missing",
+      "concepts": [],
+      "evidence_edges": [],
+      "rationale": "The seed has no topic on collecting or retaining personal data or the responsibility to protect it. A standalone privacy topic has no evidenced tuple.",
+      "isolated_unrepresentable": true
+    },
+    {
+      "objective_id": "4.1.B",
+      "status": "missing",
+      "concepts": [],
+      "evidence_edges": [],
+      "rationale": "The seed has no topic for biased collection or incomplete and inaccurate data. A standalone data-quality topic has no evidenced tuple.",
+      "isolated_unrepresentable": true
+    },
+    {
+      "objective_id": "4.1.C",
+      "status": "missing",
+      "concepts": [],
+      "evidence_edges": [],
+      "rationale": "The seed has no topic for assessing whether a data set answers a question or supports extrapolation. A standalone fitness judgment has no evidenced tuple.",
+      "isolated_unrepresentable": true
+    },
+    {
+      "objective_id": "4.2.A",
+      "status": "missing",
+      "concepts": [],
+      "evidence_edges": [],
+      "rationale": "Arrays models a programming structure, with no topic for using everyday charts, tables, or diagrams to plan a data workflow. That planning topic has no evidenced tuple.",
+      "isolated_unrepresentable": true
+    },
+    {
+      "objective_id": "4.3.A",
+      "status": "partial",
+      "concepts": [
+        "Arrays"
+      ],
+      "evidence_edges": [],
+      "rationale": "Seed includes Arrays as a root component without Java array indexing, .length, or bounds errors."
+    },
+    {
+      "objective_id": "4.4.A",
+      "status": "partial",
+      "concepts": [
+        "Arrays"
+      ],
+      "evidence_edges": [],
+      "rationale": "Seed includes Arrays without Loops, Iteration, or enhanced-for traversal rules."
+    },
+    {
+      "objective_id": "4.5.A",
+      "status": "partial",
+      "concepts": [
+        "Arrays"
+      ],
+      "evidence_edges": [],
+      "rationale": "Seed includes Arrays without loop constructs or standard array algorithms."
+    },
+    {
+      "objective_id": "4.6.A",
+      "status": "missing",
+      "concepts": [],
+      "evidence_edges": [],
+      "rationale": "The seed has no file input or string processing topics for reading and splitting persistent text and handling IOException."
+    },
+    {
+      "objective_id": "4.7.A",
+      "status": "missing",
+      "concepts": [],
+      "evidence_edges": [],
+      "rationale": "The seed has no wrapper or parsing concepts for boxing Integer and Double values or converting text into primitives."
+    },
+    {
+      "objective_id": "4.8.A",
+      "status": "missing",
+      "concepts": [],
+      "evidence_edges": [],
+      "rationale": "Arrays provides a fixed-length collection concept, with no parameterized ArrayList or evidence of its insertion, access, and removal operations.",
+      "disputes": [
+        {
+          "id": "DSP-SEED-4.8.A-gen-poly",
+          "kind": "out_of_scope_dependency",
+          "status": "unresolved",
+          "rationale": "Seed links Generics to Polymorphism rather than parameterized ArrayList<E> usage.",
+          "edge": {
+            "subject": "Generics",
+            "relation": "depends_on",
+            "object": "Polymorphism"
+          }
+        }
+      ]
+    },
+    {
+      "objective_id": "4.9.A",
+      "status": "missing",
+      "concepts": [],
+      "evidence_edges": [],
+      "rationale": "The seed has no ArrayList traversal topic for coping with index shifts or collection modification exceptions."
+    },
+    {
+      "objective_id": "4.10.A",
+      "status": "missing",
+      "concepts": [],
+      "evidence_edges": [],
+      "rationale": "The seed has no ArrayList algorithms for insertion, deletion, or processing multiple corresponding collections."
+    },
+    {
+      "objective_id": "4.11.A",
+      "status": "missing",
+      "concepts": [],
+      "evidence_edges": [],
+      "rationale": "Arrays has no edge or topic that identifies rectangular 2D arrays, row and column lengths, or row-column indexing."
+    },
+    {
+      "objective_id": "4.12.A",
+      "status": "missing",
+      "concepts": [],
+      "evidence_edges": [],
+      "rationale": "The seed has no 2D array or nested-loop topic for row-major, column-major, or custom traversals."
+    },
+    {
+      "objective_id": "4.13.A",
+      "status": "missing",
+      "concepts": [],
+      "evidence_edges": [],
+      "rationale": "The seed has no topic for algorithms over 2D rows, columns, grids, or subregions."
+    },
+    {
+      "objective_id": "4.14.A",
+      "status": "missing",
+      "concepts": [],
+      "evidence_edges": [],
+      "rationale": "Binary Search is the only search topic tied to Arrays. The seed has no sequential scan across arrays, ArrayList, or a 2D grid."
+    },
+    {
+      "objective_id": "4.15.A",
+      "status": "missing",
+      "concepts": [],
+      "evidence_edges": [],
+      "rationale": "Merge Sort is the only sorting topic in the seed. Selection and insertion sort passes over arrays or ArrayList are absent."
+    },
+    {
+      "objective_id": "4.16.A",
+      "status": "partial",
+      "concepts": [
+        "Functions",
+        "Recursion"
+      ],
+      "evidence_edges": [
+        {
+          "subject": "Recursion",
+          "relation": "depends_on",
+          "object": "Functions"
+        }
+      ],
+      "rationale": "Seed models Recursion depending on Functions, but omits base cases, stack frames, iterative equivalence, and tracing-only scope."
+    },
+    {
+      "objective_id": "4.17.A",
+      "status": "partial",
+      "concepts": [
+        "Arrays",
+        "Recursion"
+      ],
+      "evidence_edges": [],
+      "rationale": "Seed includes Arrays and Recursion across separate disconnected components, omitting Strings and ArrayList recursive traversals."
+    },
+    {
+      "objective_id": "4.17.B",
+      "status": "partial",
+      "concepts": [
+        "Arrays",
+        "Binary Search",
+        "Recursion"
+      ],
+      "evidence_edges": [
+        {
+          "subject": "Binary Search",
+          "relation": "depends_on",
+          "object": "Arrays"
+        }
+      ],
+      "rationale": "Seed connects Binary Search to Arrays in its Arrays component while Recursion sits in a separate disconnected component, omitting recursive binary search, ArrayList, and Linear Search comparison."
+    },
+    {
+      "objective_id": "4.17.C",
+      "status": "partial",
+      "concepts": [
+        "Arrays",
+        "Merge Sort",
+        "Recursion"
+      ],
+      "evidence_edges": [
+        {
+          "subject": "Merge Sort",
+          "relation": "depends_on",
+          "object": "Recursion"
+        }
+      ],
+      "rationale": "Seed links Merge Sort to Recursion in the Algorithms component, omitting the prerequisite link to Arrays and omitting ArrayList sorting."
+    }
+  ],
+  "outside_course": [
+    {
+      "concept": "AVL Trees",
+      "category": "beyond_course_scope",
+      "reason": "Unit 4 collection objectives use 1D and 2D arrays and ArrayList. AVL tree balancing requires a separate tree representation and rotations."
+    },
+    {
+      "concept": "Abstract Classes",
+      "category": "taxonomic_abstraction",
+      "reason": "Unit 3 covers writing concrete Java classes and methods. The Abstract Classes is_a Classes tuple describes a subtype relationship, and abstract class design falls beyond those class-creation objectives."
+    },
+    {
+      "concept": "Binary Search Trees",
+      "category": "beyond_course_scope",
+      "reason": "CED 4.17.B traces binary search on an ordered collection. Binary search trees instead maintain ordering in linked tree nodes."
+    },
+    {
+      "concept": "Design Patterns",
+      "category": "beyond_course_scope",
+      "reason": "Unit 3 requires routine class design using fields, constructors, and methods. Named reusable object-oriented design patterns are outside that class-design scope."
+    },
+    {
+      "concept": "Dynamic Programming",
+      "category": "beyond_course_scope",
+      "reason": "Unit 4 traces traversal, search, sorting, and recursion on course collections. Dynamic programming adds caching and reuse of overlapping subproblems."
+    },
+    {
+      "concept": "Generics",
+      "category": "excluded_by_ced",
+      "reason": "Generic type authoring and polymorphism-bound generics are outside AP CSA (4.8.A uses parameterized ArrayList<E> only)."
+    },
+    {
+      "concept": "Graph Traversal",
+      "category": "beyond_course_scope",
+      "reason": "Unit 4 traversal objectives use indexed data. Graph traversal requires following links between vertices."
+    },
+    {
+      "concept": "Graphs",
+      "category": "beyond_course_scope",
+      "reason": "Unit 4 uses 1D and 2D arrays and ArrayList. Vertex and edge structure is a separate data model."
+    },
+    {
+      "concept": "Hash Tables",
+      "category": "beyond_course_scope",
+      "reason": "Unit 4 specifies arrays and ArrayList as containers. Hash tables add key-based lookup and collision handling."
+    },
+    {
+      "concept": "Inheritance",
+      "category": "excluded_by_ced",
+      "reason": "CED 1.12.A.2 explicitly excludes designing and implementing inheritance hierarchies from Fall 2025 AP CSA."
+    },
+    {
+      "concept": "Interfaces",
+      "category": "excluded_by_ced",
+      "reason": "Unit 3 covers writing Java classes and methods. Interface declarations and implementation contracts fall beyond these class-creation objectives."
+    },
+    {
+      "concept": "Linked Lists",
+      "category": "beyond_course_scope",
+      "reason": "Unit 4 covers 1D and 2D arrays and ArrayList. Pointer-linked nodes and link traversal belong to a separate collection representation."
+    },
+    {
+      "concept": "Pointers",
+      "category": "beyond_course_scope",
+      "reason": "CED 2.6.B covers Java references and object equivalence. Explicit memory addresses and address arithmetic go beyond those references."
+    },
+    {
+      "concept": "Polymorphism",
+      "category": "excluded_by_ced",
+      "reason": "CED 1.12.A.2 excludes inheritance hierarchy design and implementation. Subtype polymorphism and dynamic dispatch are beyond the required uses of classes and objects."
+    },
+    {
+      "concept": "Trees",
+      "category": "beyond_course_scope",
+      "reason": "Unit 4 covers 1D and 2D arrays and ArrayList. Tree nodes and branches form a separate collection model."
+    }
+  ]
+}

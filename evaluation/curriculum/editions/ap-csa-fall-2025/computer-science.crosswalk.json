@@ -1,0 +1,1950 @@
+{
+  "schema_version": "1.0.0",
+  "edition": "ap-csa-fall-2025",
+  "graph_path": "examples/graphs/computer-science.json",
+  "graph_sha256": "cb6e4fce400c34f6850e813b95f3ba3612db6f5b02bb20fec71e9b3e109651ee",
+  "provisional": true,
+  "provisional_notice": "Mapping against AP Computer Science A (Fall 2025 CED and January 2026 Clarifications). Disputed edges do not count as verified instruction.",
+  "expert_review_form": "evaluation/curriculum/dispute-form.md",
+  "mappings": [
+    {
+      "objective_id": "1.1.A",
+      "status": "missing",
+      "concepts": [],
+      "evidence_edges": [],
+      "rationale": "Graph lacks everyday algorithm design, sequencing, or flowchart/diagramming concepts; Algorithm Analysis measures asymptotic loop cost rather than introductory sequencing. Edge-only tuples also cannot express a standalone introductory topic without inventing an edge.",
+      "isolated_unrepresentable": true
+    },
+    {
+      "objective_id": "1.1.B",
+      "status": "missing",
+      "concepts": [],
+      "evidence_edges": [],
+      "rationale": "Graph contains no compiler, IDE, or source-to-execution lifecycle concepts, and standalone compilation concepts cannot be modeled in edge-only tuples without inventing edges.",
+      "isolated_unrepresentable": true
+    },
+    {
+      "objective_id": "1.1.C",
+      "status": "partial",
+      "concepts": [
+        "Error Handling",
+        "Exceptions"
+      ],
+      "evidence_edges": [],
+      "rationale": "Graph includes Exceptions and Error Handling, partially touching runtime exceptions, but omits compile-time syntax errors and logic errors detected via testing.",
+      "disputes": [
+        {
+          "id": "DSP-1.1.C-exceptions-classes",
+          "kind": "ordering_mismatch",
+          "status": "unresolved",
+          "rationale": "Graph requires Classes and Error Handling before Exceptions, whereas AP CSA introduces run-time exceptions in Topic 1.1 and arithmetic/bounds errors in Unit 1 before Unit 3 class creation, and omits general try/catch handling.",
+          "edge": {
+            "subject": "Exceptions",
+            "relation": "depends_on",
+            "object": "Classes"
+          }
+        },
+        {
+          "id": "DSP-1.1.C-error-handling-scope",
+          "kind": "scope_mismatch",
+          "status": "unresolved",
+          "rationale": "Graph treats general Error Handling as a prerequisite, whereas AP CSA does not teach try/catch exception handlers and covers only specific runtime exceptions and throws IOException.",
+          "edge": {
+            "subject": "Exceptions",
+            "relation": "depends_on",
+            "object": "Error Handling"
+          }
+        }
+      ]
+    },
+    {
+      "objective_id": "1.2.A",
+      "status": "partial",
+      "concepts": [
+        "Data Types",
+        "Objects",
+        "References",
+        "Variables"
+      ],
+      "evidence_edges": [
+        {
+          "subject": "Data Types",
+          "relation": "depends_on",
+          "object": "Variables"
+        },
+        {
+          "subject": "Objects",
+          "relation": "depends_on",
+          "object": "Variables"
+        }
+      ],
+      "rationale": "Graph models Data Types and Objects separately, but links References to out-of-scope Pointers rather than Data Types and omits Java's primitive-versus-reference distinction.",
+      "disputes": [
+        {
+          "id": "DSP-1.2.A-references-pointers",
+          "kind": "out_of_scope_dependency",
+          "status": "unresolved",
+          "rationale": "Graph makes References depend on Pointers, whereas AP CSA teaches Java object references without C-style pointers or address arithmetic (Pointers is outside the course).",
+          "edge": {
+            "subject": "References",
+            "relation": "depends_on",
+            "object": "Pointers"
+          }
+        }
+      ]
+    },
+    {
+      "objective_id": "1.2.B",
+      "status": "partial",
+      "concepts": [
+        "Boolean Logic",
+        "Data Types",
+        "Variables"
+      ],
+      "evidence_edges": [
+        {
+          "subject": "Data Types",
+          "relation": "depends_on",
+          "object": "Variables"
+        }
+      ],
+      "rationale": "Variables and Data Types cover typed variable declarations generally, but the graph omits Java's three in-scope primitives (int, double, boolean) and the five excluded primitive types."
+    },
+    {
+      "objective_id": "1.3.A",
+      "status": "partial",
+      "concepts": [
+        "Data Types",
+        "Program Input and Output"
+      ],
+      "evidence_edges": [
+        {
+          "subject": "Program Input and Output",
+          "relation": "depends_on",
+          "object": "Data Types"
+        }
+      ],
+      "rationale": "Program Input and Output broadly covers I/O operations without distinguishing Java console output or System.out.print versus System.out.println newline behavior."
+    },
+    {
+      "objective_id": "1.3.B",
+      "status": "partial",
+      "concepts": [
+        "Strings"
+      ],
+      "evidence_edges": [],
+      "rationale": "Graph includes Strings, but omits string literal syntax and escape sequences and places Arrays as a prerequisite before Strings.",
+      "disputes": [
+        {
+          "id": "DSP-1.3.B-strings-arrays",
+          "kind": "disputed_prerequisite",
+          "status": "unresolved",
+          "rationale": "Graph requires Arrays before Strings, whereas AP CSA teaches String literals and methods in Unit 1 (and algorithms in Unit 2) before 1D arrays in Unit 4, without treating String as an array.",
+          "edge": {
+            "subject": "Strings",
+            "relation": "depends_on",
+            "object": "Arrays"
+          }
+        }
+      ]
+    },
+    {
+      "objective_id": "1.3.C",
+      "status": "partial",
+      "concepts": [
+        "Data Types",
+        "Exceptions",
+        "Expressions"
+      ],
+      "evidence_edges": [
+        {
+          "subject": "Expressions",
+          "relation": "depends_on",
+          "object": "Data Types"
+        }
+      ],
+      "rationale": "Expressions and Data Types represent expression evaluation broadly, while Exceptions touches division errors, but Java int-versus-double truncation, modulo preconditions, precedence, and ArithmeticException are unmodeled.",
+      "disputes": [
+        {
+          "id": "DSP-1.3.C-exceptions-classes",
+          "kind": "ordering_mismatch",
+          "status": "unresolved",
+          "rationale": "Graph requires Classes and Error Handling before Exceptions, whereas AP CSA introduces run-time exceptions in Topic 1.1 and arithmetic/bounds errors in Unit 1 before Unit 3 class creation, and omits general try/catch handling.",
+          "edge": {
+            "subject": "Exceptions",
+            "relation": "depends_on",
+            "object": "Classes"
+          }
+        }
+      ]
+    },
+    {
+      "objective_id": "1.4.A",
+      "status": "partial",
+      "concepts": [
+        "Expressions",
+        "Variables"
+      ],
+      "evidence_edges": [],
+      "rationale": "Variables and Expressions reflect state and evaluated expressions generally, but omit = assignment semantics, uninitialized-variable rules, and null references."
+    },
+    {
+      "objective_id": "1.4.B",
+      "status": "partial",
+      "concepts": [
+        "Program Input and Output"
+      ],
+      "evidence_edges": [],
+      "rationale": "Program Input and Output identifies the general input topic, with no evidence of how to write Java code to read input. The course excludes any particular input form as a requirement (CED p. 35)."
+    },
+    {
+      "objective_id": "1.5.A",
+      "status": "missing",
+      "concepts": [],
+      "evidence_edges": [],
+      "rationale": "Graph has no primitive type-casting, widening, truncation, or floating-point rounding concepts."
+    },
+    {
+      "objective_id": "1.5.B",
+      "status": "missing",
+      "concepts": [],
+      "evidence_edges": [],
+      "rationale": "Graph has no fixed-width 32-bit integer bounds or overflow concepts (Integer.MIN_VALUE / Integer.MAX_VALUE)."
+    },
+    {
+      "objective_id": "1.5.C",
+      "status": "missing",
+      "concepts": [],
+      "evidence_edges": [],
+      "rationale": "Graph has no floating-point precision limit or double round-off error concepts."
+    },
+    {
+      "objective_id": "1.6.A",
+      "status": "missing",
+      "concepts": [],
+      "evidence_edges": [],
+      "rationale": "Graph has no compound assignment operators (+=, -=, *=, /=, %=) or postfix increment/decrement concepts."
+    },
+    {
+      "objective_id": "1.7.A",
+      "status": "partial",
+      "concepts": [
+        "Classes",
+        "Encapsulation",
+        "Objects"
+      ],
+      "evidence_edges": [
+        {
+          "subject": "Encapsulation",
+          "relation": "depends_on",
+          "object": "Classes"
+        }
+      ],
+      "rationale": "Classes, Objects, and Encapsulation reflect class attributes and behaviors generally, but Java API specifications, packages, and library lookup are absent.",
+      "disputes": [
+        {
+          "id": "DSP-1.7.A-classes-objects",
+          "kind": "disputed_prerequisite",
+          "status": "unresolved",
+          "rationale": "Graph makes Classes strictly depend on Objects; while Unit 1 introduces using library objects before Unit 3 class creation, AP CSA 1.12.A defines an object as an instance of a class blueprint.",
+          "edge": {
+            "subject": "Classes",
+            "relation": "depends_on",
+            "object": "Objects"
+          }
+        }
+      ]
+    },
+    {
+      "objective_id": "1.8.A",
+      "status": "missing",
+      "concepts": [],
+      "evidence_edges": [],
+      "rationale": "Graph omits source code comments, Javadoc generation, preconditions, and postconditions, and edge-only tuples cannot represent a standalone documentation topic without inventing an edge.",
+      "isolated_unrepresentable": true
+    },
+    {
+      "objective_id": "1.9.A",
+      "status": "partial",
+      "concepts": [
+        "Functions",
+        "Variables"
+      ],
+      "evidence_edges": [
+        {
+          "subject": "Functions",
+          "relation": "depends_on",
+          "object": "Variables"
+        }
+      ],
+      "rationale": "Functions reflects callable procedures with variables, but omits Java method signatures, parameter ordering, and procedural abstraction from API docs while placing Control Flow ahead of Functions.",
+      "disputes": [
+        {
+          "id": "DSP-1.9.A-functions-control-flow",
+          "kind": "disputed_prerequisite",
+          "status": "unresolved",
+          "rationale": "Graph makes Functions depend on Control Flow, whereas AP CSA teaches method signatures and calling library/instance methods in Unit 1 prior to branching and loop control flow in Unit 2.",
+          "edge": {
+            "subject": "Functions",
+            "relation": "depends_on",
+            "object": "Control Flow"
+          }
+        }
+      ]
+    },
+    {
+      "objective_id": "1.9.B",
+      "status": "partial",
+      "concepts": [
+        "Functions"
+      ],
+      "evidence_edges": [],
+      "rationale": "Functions reflects procedural calls generally, but omits void versus non-void return rules, call-by-value copies, and method overloading, and disputes Control Flow ordering.",
+      "disputes": [
+        {
+          "id": "DSP-1.9.B-functions-control-flow",
+          "kind": "disputed_prerequisite",
+          "status": "unresolved",
+          "rationale": "Graph makes Functions depend on Control Flow, whereas AP CSA teaches method signatures and calling library/instance methods in Unit 1 prior to branching and loop control flow in Unit 2.",
+          "edge": {
+            "subject": "Functions",
+            "relation": "depends_on",
+            "object": "Control Flow"
+          }
+        }
+      ]
+    },
+    {
+      "objective_id": "1.10.A",
+      "status": "missing",
+      "concepts": [],
+      "evidence_edges": [],
+      "rationale": "Graph has no concept of static class methods or invoking methods on a class identifier rather than an instance."
+    },
+    {
+      "objective_id": "1.11.A",
+      "status": "missing",
+      "concepts": [],
+      "evidence_edges": [],
+      "rationale": "Graph has no java.lang.Math library methods or scaled Math.random range generation concepts."
+    },
+    {
+      "objective_id": "1.12.A",
+      "status": "partial",
+      "concepts": [
+        "Classes",
+        "Objects"
+      ],
+      "evidence_edges": [],
+      "rationale": "Classes and Objects touch instance-versus-blueprint concepts, but the graph omits Object as root class, disputes Classes depending on Objects, connects out-of-scope Inheritance, and attaches taxonomic edge Abstract Classes is_a Classes.",
+      "disputes": [
+        {
+          "id": "DSP-1.12.A-classes-objects",
+          "kind": "disputed_prerequisite",
+          "status": "unresolved",
+          "rationale": "Graph makes Classes strictly depend on Objects; while Unit 1 introduces using library objects before Unit 3 class creation, AP CSA 1.12.A defines an object as an instance of a class blueprint.",
+          "edge": {
+            "subject": "Classes",
+            "relation": "depends_on",
+            "object": "Objects"
+          }
+        },
+        {
+          "id": "DSP-1.12.A-abstract-classes-is-a",
+          "kind": "taxonomic_not_prerequisite",
+          "status": "unresolved",
+          "rationale": "Graph includes taxonomic edge Abstract Classes is_a Classes; runtime traverses is_a identically to depends_on, yet Abstract Classes is outside Fall 2025 AP CSA and taxonomy does not prove an instructional prerequisite.",
+          "edge": {
+            "subject": "Abstract Classes",
+            "relation": "is_a",
+            "object": "Classes"
+          }
+        },
+        {
+          "id": "DSP-1.12.A-inheritance-excluded",
+          "kind": "out_of_scope_dependency",
+          "status": "unresolved",
+          "rationale": "Graph connects Inheritance to Classes; Fall 2025 AP CSA 1.12.A.2 explicitly excludes designing and implementing inheritance hierarchies while keeping only conceptual awareness of Object.",
+          "edge": {
+            "subject": "Inheritance",
+            "relation": "depends_on",
+            "object": "Classes"
+          }
+        }
+      ]
+    },
+    {
+      "objective_id": "1.12.B",
+      "status": "partial",
+      "concepts": [
+        "Objects",
+        "References",
+        "Variables"
+      ],
+      "evidence_edges": [
+        {
+          "subject": "Objects",
+          "relation": "depends_on",
+          "object": "Variables"
+        }
+      ],
+      "rationale": "Objects, References, and Variables cover reference variable declarations broadly, but References depends on out-of-scope Pointers.",
+      "disputes": [
+        {
+          "id": "DSP-1.12.B-references-pointers",
+          "kind": "out_of_scope_dependency",
+          "status": "unresolved",
+          "rationale": "Graph makes References depend on Pointers, whereas AP CSA teaches Java object references without C-style pointers or address arithmetic (Pointers is outside the course).",
+          "edge": {
+            "subject": "References",
+            "relation": "depends_on",
+            "object": "Pointers"
+          }
+        }
+      ]
+    },
+    {
+      "objective_id": "1.13.A",
+      "status": "missing",
+      "concepts": [],
+      "evidence_edges": [],
+      "rationale": "Graph contains no constructor, constructor signature, or constructor overloading concepts."
+    },
+    {
+      "objective_id": "1.13.B",
+      "status": "partial",
+      "concepts": [
+        "Objects",
+        "References",
+        "Variables"
+      ],
+      "evidence_edges": [
+        {
+          "subject": "Objects",
+          "relation": "depends_on",
+          "object": "Variables"
+        }
+      ],
+      "rationale": "Variables, Objects, and References touch object-reference declarations, but omit null initialization and depend on out-of-scope Pointers.",
+      "disputes": [
+        {
+          "id": "DSP-1.13.B-references-pointers",
+          "kind": "out_of_scope_dependency",
+          "status": "unresolved",
+          "rationale": "Graph makes References depend on Pointers, whereas AP CSA teaches Java object references without C-style pointers or address arithmetic (Pointers is outside the course).",
+          "edge": {
+            "subject": "References",
+            "relation": "depends_on",
+            "object": "Pointers"
+          }
+        }
+      ]
+    },
+    {
+      "objective_id": "1.13.C",
+      "status": "partial",
+      "concepts": [
+        "Classes",
+        "Objects"
+      ],
+      "evidence_edges": [],
+      "rationale": "Classes and Objects touch object types, but constructor invocation with new, call-by-value constructor parameters, and constructor control transfer are absent.",
+      "disputes": [
+        {
+          "id": "DSP-1.13.C-classes-objects",
+          "kind": "disputed_prerequisite",
+          "status": "unresolved",
+          "rationale": "Graph makes Classes strictly depend on Objects; while Unit 1 introduces using library objects before Unit 3 class creation, AP CSA 1.12.A defines an object as an instance of a class blueprint.",
+          "edge": {
+            "subject": "Classes",
+            "relation": "depends_on",
+            "object": "Objects"
+          }
+        }
+      ]
+    },
+    {
+      "objective_id": "1.14.A",
+      "status": "partial",
+      "concepts": [
+        "Classes",
+        "Exceptions",
+        "Functions",
+        "Objects"
+      ],
+      "evidence_edges": [],
+      "rationale": "Objects, Classes, Functions, and Exceptions relate to method calls on objects, but Java dot-operator dispatch and NullPointerException are missing and prerequisite ordering is disputed.",
+      "disputes": [
+        {
+          "id": "DSP-1.14.A-classes-objects",
+          "kind": "disputed_prerequisite",
+          "status": "unresolved",
+          "rationale": "Graph makes Classes strictly depend on Objects; while Unit 1 introduces using library objects before Unit 3 class creation, AP CSA 1.12.A defines an object as an instance of a class blueprint.",
+          "edge": {
+            "subject": "Classes",
+            "relation": "depends_on",
+            "object": "Objects"
+          }
+        },
+        {
+          "id": "DSP-1.14.A-functions-control-flow",
+          "kind": "disputed_prerequisite",
+          "status": "unresolved",
+          "rationale": "Graph makes Functions depend on Control Flow, whereas AP CSA teaches method signatures and calling library/instance methods in Unit 1 prior to branching and loop control flow in Unit 2.",
+          "edge": {
+            "subject": "Functions",
+            "relation": "depends_on",
+            "object": "Control Flow"
+          }
+        },
+        {
+          "id": "DSP-1.14.A-exceptions-classes",
+          "kind": "ordering_mismatch",
+          "status": "unresolved",
+          "rationale": "Graph requires Classes and Error Handling before Exceptions, whereas AP CSA introduces run-time exceptions in Topic 1.1 and arithmetic/bounds errors in Unit 1 before Unit 3 class creation, and omits general try/catch handling.",
+          "edge": {
+            "subject": "Exceptions",
+            "relation": "depends_on",
+            "object": "Classes"
+          }
+        }
+      ]
+    },
+    {
+      "objective_id": "1.15.A",
+      "status": "partial",
+      "concepts": [
+        "Objects",
+        "Strings"
+      ],
+      "evidence_edges": [],
+      "rationale": "Strings and Objects exist in the graph, but String immutability, java.lang defaults, primitive concatenation, and implicit toString are absent and Strings depends on Arrays.",
+      "disputes": [
+        {
+          "id": "DSP-1.15.A-strings-arrays",
+          "kind": "disputed_prerequisite",
+          "status": "unresolved",
+          "rationale": "Graph requires Arrays before Strings, whereas AP CSA teaches String literals and methods in Unit 1 (and algorithms in Unit 2) before 1D arrays in Unit 4, without treating String as an array.",
+          "edge": {
+            "subject": "Strings",
+            "relation": "depends_on",
+            "object": "Arrays"
+          }
+        }
+      ]
+    },
+    {
+      "objective_id": "1.15.B",
+      "status": "partial",
+      "concepts": [
+        "Exceptions",
+        "Strings"
+      ],
+      "evidence_edges": [],
+      "rationale": "Strings and Exceptions partially relate to string operations and index bounds errors, but Java Quick Reference String methods (length, substring, indexOf, equals, compareTo) are absent and Strings depends on Arrays.",
+      "disputes": [
+        {
+          "id": "DSP-1.15.B-strings-arrays",
+          "kind": "disputed_prerequisite",
+          "status": "unresolved",
+          "rationale": "Graph requires Arrays before Strings, whereas AP CSA teaches String literals and methods in Unit 1 (and algorithms in Unit 2) before 1D arrays in Unit 4, without treating String as an array.",
+          "edge": {
+            "subject": "Strings",
+            "relation": "depends_on",
+            "object": "Arrays"
+          }
+        }
+      ]
+    },
+    {
+      "objective_id": "2.1.A",
+      "status": "partial",
+      "concepts": [
+        "Control Flow",
+        "Iteration",
+        "Loops"
+      ],
+      "evidence_edges": [
+        {
+          "subject": "Loops",
+          "relation": "depends_on",
+          "object": "Control Flow"
+        },
+        {
+          "subject": "Iteration",
+          "relation": "depends_on",
+          "object": "Loops"
+        }
+      ],
+      "rationale": "Control Flow, Loops, and Iteration cover selection and repetition concepts, but omit representing everyday algorithms in prose or diagrams."
+    },
+    {
+      "objective_id": "2.2.A",
+      "status": "partial",
+      "concepts": [
+        "Boolean Logic",
+        "Expressions"
+      ],
+      "evidence_edges": [
+        {
+          "subject": "Boolean Logic",
+          "relation": "depends_on",
+          "object": "Expressions"
+        }
+      ],
+      "rationale": "Boolean Logic and Expressions provide a general basis for Boolean comparisons. The graph gives no evidence for numeric ordering or the distinction between comparing primitive values and reference identity."
+    },
+    {
+      "objective_id": "2.3.A",
+      "status": "partial",
+      "concepts": [
+        "Boolean Logic",
+        "Control Flow"
+      ],
+      "evidence_edges": [
+        {
+          "subject": "Control Flow",
+          "relation": "depends_on",
+          "object": "Boolean Logic"
+        }
+      ],
+      "rationale": "Broad Control Flow combines all branching constructs without explicitly distinguishing one-way if and two-way if-else selection."
+    },
+    {
+      "objective_id": "2.4.A",
+      "status": "partial",
+      "concepts": [
+        "Boolean Logic",
+        "Control Flow"
+      ],
+      "evidence_edges": [
+        {
+          "subject": "Control Flow",
+          "relation": "depends_on",
+          "object": "Boolean Logic"
+        }
+      ],
+      "rationale": "Broad Control Flow does not distinguish nested if branches or multiway if-else-if selection order."
+    },
+    {
+      "objective_id": "2.5.A",
+      "status": "partial",
+      "concepts": [
+        "Boolean Logic",
+        "Expressions"
+      ],
+      "evidence_edges": [
+        {
+          "subject": "Boolean Logic",
+          "relation": "depends_on",
+          "object": "Expressions"
+        }
+      ],
+      "rationale": "Broad Boolean Logic does not distinguish compound logical operators (!, &&, ||), precedence, or short-circuit evaluation from simple Boolean expressions."
+    },
+    {
+      "objective_id": "2.6.A",
+      "status": "partial",
+      "concepts": [
+        "Boolean Logic",
+        "Expressions"
+      ],
+      "evidence_edges": [
+        {
+          "subject": "Boolean Logic",
+          "relation": "depends_on",
+          "object": "Expressions"
+        }
+      ],
+      "rationale": "Boolean Logic depends on Expressions, which supports the idea of comparing logical expressions. Truth tables and De Morgan's laws are missing. The upstream Sets dependency is outside course scope.",
+      "disputes": [
+        {
+          "id": "DSP-2.6.A-discrete-sets",
+          "kind": "out_of_scope_dependency",
+          "status": "unresolved",
+          "rationale": "Discrete Mathematics depends on Sets (outside AP CSA), so truth-table and De Morgan equivalence cannot rely on Discrete Mathematics as verified course evidence.",
+          "edge": {
+            "subject": "Discrete Mathematics",
+            "relation": "depends_on",
+            "object": "Sets"
+          }
+        }
+      ]
+    },
+    {
+      "objective_id": "2.6.B",
+      "status": "partial",
+      "concepts": [
+        "Boolean Logic",
+        "Objects",
+        "References"
+      ],
+      "evidence_edges": [],
+      "rationale": "Objects, References, and Boolean Logic relate to object comparison, but == alias checks versus .equals() equivalence and null checks are unmodeled and References depends on Pointers.",
+      "disputes": [
+        {
+          "id": "DSP-2.6.B-references-pointers",
+          "kind": "out_of_scope_dependency",
+          "status": "unresolved",
+          "rationale": "Graph makes References depend on Pointers, whereas AP CSA teaches Java object references without C-style pointers or address arithmetic (Pointers is outside the course).",
+          "edge": {
+            "subject": "References",
+            "relation": "depends_on",
+            "object": "Pointers"
+          }
+        }
+      ]
+    },
+    {
+      "objective_id": "2.7.A",
+      "status": "partial",
+      "concepts": [
+        "Iteration",
+        "Loops"
+      ],
+      "evidence_edges": [
+        {
+          "subject": "Iteration",
+          "relation": "depends_on",
+          "object": "Loops"
+        }
+      ],
+      "rationale": "Loops and Iteration cover repetition broadly, but omit zero-iteration guards, infinite-loop conditions, and off-by-one error analysis."
+    },
+    {
+      "objective_id": "2.7.B",
+      "status": "partial",
+      "concepts": [
+        "Control Flow",
+        "Iteration",
+        "Loops"
+      ],
+      "evidence_edges": [
+        {
+          "subject": "Loops",
+          "relation": "depends_on",
+          "object": "Control Flow"
+        },
+        {
+          "subject": "Iteration",
+          "relation": "depends_on",
+          "object": "Loops"
+        }
+      ],
+      "rationale": "Generic Loops and Iteration nodes do not distinguish pre-test while loops from counted or enhanced loops."
+    },
+    {
+      "objective_id": "2.8.A",
+      "status": "partial",
+      "concepts": [
+        "Control Flow",
+        "Iteration",
+        "Loops"
+      ],
+      "evidence_edges": [
+        {
+          "subject": "Loops",
+          "relation": "depends_on",
+          "object": "Control Flow"
+        },
+        {
+          "subject": "Iteration",
+          "relation": "depends_on",
+          "object": "Loops"
+        }
+      ],
+      "rationale": "Generic Loops and Iteration nodes do not model for-loop header initialization/guard/update phases or for-to-while equivalence."
+    },
+    {
+      "objective_id": "2.9.A",
+      "status": "partial",
+      "concepts": [
+        "Control Flow",
+        "Iteration",
+        "Loops"
+      ],
+      "evidence_edges": [
+        {
+          "subject": "Loops",
+          "relation": "depends_on",
+          "object": "Control Flow"
+        },
+        {
+          "subject": "Iteration",
+          "relation": "depends_on",
+          "object": "Loops"
+        }
+      ],
+      "rationale": "Control Flow, Loops, and Iteration cover underlying mechanisms without specifying standard non-collection algorithms (divisibility, digit extraction, min/max, sums/averages)."
+    },
+    {
+      "objective_id": "2.10.A",
+      "status": "partial",
+      "concepts": [
+        "Iteration",
+        "Loops",
+        "Strings"
+      ],
+      "evidence_edges": [
+        {
+          "subject": "Iteration",
+          "relation": "depends_on",
+          "object": "Loops"
+        }
+      ],
+      "rationale": "Loops, Iteration, and Strings cover components of string iteration, but standard substring search/count/reversal algorithms are unmodeled and Strings depends on Arrays.",
+      "disputes": [
+        {
+          "id": "DSP-2.10.A-strings-arrays",
+          "kind": "disputed_prerequisite",
+          "status": "unresolved",
+          "rationale": "Graph requires Arrays before Strings, whereas AP CSA teaches String literals and methods in Unit 1 (and algorithms in Unit 2) before 1D arrays in Unit 4, without treating String as an array.",
+          "edge": {
+            "subject": "Strings",
+            "relation": "depends_on",
+            "object": "Arrays"
+          }
+        }
+      ]
+    },
+    {
+      "objective_id": "2.11.A",
+      "status": "partial",
+      "concepts": [
+        "Iteration",
+        "Loops"
+      ],
+      "evidence_edges": [
+        {
+          "subject": "Iteration",
+          "relation": "depends_on",
+          "object": "Loops"
+        }
+      ],
+      "rationale": "Loops and Iteration do not distinguish nested loop execution where inner loops run to completion on each outer step."
+    },
+    {
+      "objective_id": "2.12.A",
+      "status": "partial",
+      "concepts": [
+        "Algorithm Analysis",
+        "Loops"
+      ],
+      "evidence_edges": [
+        {
+          "subject": "Algorithm Analysis",
+          "relation": "depends_on",
+          "object": "Loops"
+        }
+      ],
+      "rationale": "Algorithm Analysis touches run-time counting, but AP CSA 2.12.A uses informal statement execution counts without formal Discrete Mathematics or asymptotic complexity.",
+      "disputes": [
+        {
+          "id": "DSP-2.12.A-algo-discrete",
+          "kind": "out_of_scope_dependency",
+          "status": "unresolved",
+          "rationale": "Graph requires Discrete Mathematics (and Sets) before Algorithm Analysis, pulling formal proofs out of scope for Unit 2 informal execution counting.",
+          "edge": {
+            "subject": "Algorithm Analysis",
+            "relation": "depends_on",
+            "object": "Discrete Mathematics"
+          }
+        }
+      ]
+    },
+    {
+      "objective_id": "3.1.A",
+      "status": "partial",
+      "concepts": [
+        "Classes",
+        "Composition",
+        "Encapsulation",
+        "Functions",
+        "Objects"
+      ],
+      "evidence_edges": [
+        {
+          "subject": "Composition",
+          "relation": "depends_on",
+          "object": "Objects"
+        },
+        {
+          "subject": "Encapsulation",
+          "relation": "depends_on",
+          "object": "Classes"
+        }
+      ],
+      "rationale": "Classes, Composition, Encapsulation, and Functions support parts of class abstraction, but prose/diagram design, static versus instance attributes, and method decomposition are unmodeled.",
+      "disputes": [
+        {
+          "id": "DSP-3.1.A-classes-objects",
+          "kind": "disputed_prerequisite",
+          "status": "unresolved",
+          "rationale": "Graph makes Classes strictly depend on Objects; while Unit 1 introduces using library objects before Unit 3 class creation, AP CSA 1.12.A defines an object as an instance of a class blueprint.",
+          "edge": {
+            "subject": "Classes",
+            "relation": "depends_on",
+            "object": "Objects"
+          }
+        },
+        {
+          "id": "DSP-3.1.A-abstract-classes-is-a",
+          "kind": "taxonomic_not_prerequisite",
+          "status": "unresolved",
+          "rationale": "Graph includes taxonomic edge Abstract Classes is_a Classes; runtime traverses is_a identically to depends_on, yet Abstract Classes is outside Fall 2025 AP CSA and taxonomy does not prove an instructional prerequisite.",
+          "edge": {
+            "subject": "Abstract Classes",
+            "relation": "is_a",
+            "object": "Classes"
+          }
+        }
+      ]
+    },
+    {
+      "objective_id": "3.2.A",
+      "status": "partial",
+      "concepts": [
+        "Functions",
+        "Unit Testing"
+      ],
+      "evidence_edges": [
+        {
+          "subject": "Unit Testing",
+          "relation": "depends_on",
+          "object": "Functions"
+        }
+      ],
+      "rationale": "Unit Testing depends on Functions, which relates to checking behavior under varied conditions for reliability (CED 3.2.A.1). This tuple leaves social and economic effects, ethical trade-offs, and software licensing unaddressed."
+    },
+    {
+      "objective_id": "3.3.A",
+      "status": "partial",
+      "concepts": [
+        "Classes",
+        "Encapsulation"
+      ],
+      "evidence_edges": [
+        {
+          "subject": "Encapsulation",
+          "relation": "depends_on",
+          "object": "Classes"
+        }
+      ],
+      "rationale": "Encapsulation covers information hiding in classes, but omits Java public/private rules for top-level classes, constructors, instance variables, and helper methods.",
+      "disputes": [
+        {
+          "id": "DSP-3.3.A-classes-objects",
+          "kind": "disputed_prerequisite",
+          "status": "unresolved",
+          "rationale": "Graph makes Classes strictly depend on Objects; while Unit 1 introduces using library objects before Unit 3 class creation, AP CSA 1.12.A defines an object as an instance of a class blueprint.",
+          "edge": {
+            "subject": "Classes",
+            "relation": "depends_on",
+            "object": "Objects"
+          }
+        }
+      ]
+    },
+    {
+      "objective_id": "3.4.A",
+      "status": "partial",
+      "concepts": [
+        "Classes",
+        "Composition",
+        "Objects",
+        "Variables"
+      ],
+      "evidence_edges": [
+        {
+          "subject": "Composition",
+          "relation": "depends_on",
+          "object": "Objects"
+        },
+        {
+          "subject": "Objects",
+          "relation": "depends_on",
+          "object": "Variables"
+        }
+      ],
+      "rationale": "Classes, Composition (has-a), and Variables cover instance attributes conceptually, but omit constructors, mutable parameter copying, and Java default field values.",
+      "disputes": [
+        {
+          "id": "DSP-3.4.A-classes-objects",
+          "kind": "disputed_prerequisite",
+          "status": "unresolved",
+          "rationale": "Graph makes Classes strictly depend on Objects; while Unit 1 introduces using library objects before Unit 3 class creation, AP CSA 1.12.A defines an object as an instance of a class blueprint.",
+          "edge": {
+            "subject": "Classes",
+            "relation": "depends_on",
+            "object": "Objects"
+          }
+        }
+      ]
+    },
+    {
+      "objective_id": "3.5.A",
+      "status": "partial",
+      "concepts": [
+        "Classes",
+        "Functions",
+        "Variables"
+      ],
+      "evidence_edges": [
+        {
+          "subject": "Functions",
+          "relation": "depends_on",
+          "object": "Variables"
+        }
+      ],
+      "rationale": "Classes and Functions touch methods with variables, but omit accessor/mutator conventions, void versus non-void class methods, and Java primitive pass-by-value rules.",
+      "disputes": [
+        {
+          "id": "DSP-3.5.A-classes-objects",
+          "kind": "disputed_prerequisite",
+          "status": "unresolved",
+          "rationale": "Graph makes Classes strictly depend on Objects; while Unit 1 introduces using library objects before Unit 3 class creation, AP CSA 1.12.A defines an object as an instance of a class blueprint.",
+          "edge": {
+            "subject": "Classes",
+            "relation": "depends_on",
+            "object": "Objects"
+          }
+        },
+        {
+          "id": "DSP-3.5.A-functions-control-flow",
+          "kind": "disputed_prerequisite",
+          "status": "unresolved",
+          "rationale": "Graph makes Functions depend on Control Flow, whereas AP CSA teaches method signatures and calling library/instance methods in Unit 1 prior to branching and loop control flow in Unit 2.",
+          "edge": {
+            "subject": "Functions",
+            "relation": "depends_on",
+            "object": "Control Flow"
+          }
+        }
+      ]
+    },
+    {
+      "objective_id": "3.6.A",
+      "status": "partial",
+      "concepts": [
+        "Classes",
+        "Encapsulation",
+        "Functions",
+        "Objects",
+        "References"
+      ],
+      "evidence_edges": [
+        {
+          "subject": "Encapsulation",
+          "relation": "depends_on",
+          "object": "Classes"
+        }
+      ],
+      "rationale": "Objects, References, Classes, and Functions touch object references, but omit parameter aliasing, returning object references, and same-class private access, while References depends on Pointers.",
+      "disputes": [
+        {
+          "id": "DSP-3.6.A-references-pointers",
+          "kind": "out_of_scope_dependency",
+          "status": "unresolved",
+          "rationale": "Graph makes References depend on Pointers, whereas AP CSA teaches Java object references without C-style pointers or address arithmetic (Pointers is outside the course).",
+          "edge": {
+            "subject": "References",
+            "relation": "depends_on",
+            "object": "Pointers"
+          }
+        },
+        {
+          "id": "DSP-3.6.A-classes-objects",
+          "kind": "disputed_prerequisite",
+          "status": "unresolved",
+          "rationale": "Graph makes Classes strictly depend on Objects; while Unit 1 introduces using library objects before Unit 3 class creation, AP CSA 1.12.A defines an object as an instance of a class blueprint.",
+          "edge": {
+            "subject": "Classes",
+            "relation": "depends_on",
+            "object": "Objects"
+          }
+        }
+      ]
+    },
+    {
+      "objective_id": "3.7.A",
+      "status": "missing",
+      "concepts": [],
+      "evidence_edges": [],
+      "rationale": "Graph has no concept of static class methods or restrictions on accessing instance state without an object parameter."
+    },
+    {
+      "objective_id": "3.7.B",
+      "status": "missing",
+      "concepts": [],
+      "evidence_edges": [],
+      "rationale": "Graph has no concept of shared static class variables or final constants."
+    },
+    {
+      "objective_id": "3.8.A",
+      "status": "partial",
+      "concepts": [
+        "Classes",
+        "Functions",
+        "Scope",
+        "Variables"
+      ],
+      "evidence_edges": [
+        {
+          "subject": "Scope",
+          "relation": "depends_on",
+          "object": "Functions"
+        }
+      ],
+      "rationale": "Scope models lexical visibility within Functions, but omits block-level scope, constructor parameter scope, and shadowing of class instance variables."
+    },
+    {
+      "objective_id": "3.9.A",
+      "status": "missing",
+      "concepts": [],
+      "evidence_edges": [],
+      "rationale": "Graph has no self-referencing this keyword concept or distinction between instance and static contexts."
+    },
+    {
+      "objective_id": "4.1.A",
+      "status": "missing",
+      "concepts": [],
+      "evidence_edges": [],
+      "rationale": "Graph lacks personal data privacy risk concepts, and an isolated ethics/privacy topic cannot be represented in edge-only tuples without inventing an edge.",
+      "isolated_unrepresentable": true
+    },
+    {
+      "objective_id": "4.1.B",
+      "status": "missing",
+      "concepts": [],
+      "evidence_edges": [],
+      "rationale": "Graph lacks algorithmic bias, data quality, and incomplete/inaccurate dataset concepts, which cannot be encoded standalone without inventing edges.",
+      "isolated_unrepresentable": true
+    },
+    {
+      "objective_id": "4.1.C",
+      "status": "missing",
+      "concepts": [],
+      "evidence_edges": [],
+      "rationale": "Graph lacks dataset fitness and extrapolation scope judgment concepts.",
+      "isolated_unrepresentable": true
+    },
+    {
+      "objective_id": "4.2.A",
+      "status": "missing",
+      "concepts": [],
+      "evidence_edges": [],
+      "rationale": "Graph lacks everyday data-set representation via charts, tables, and diagrams.",
+      "isolated_unrepresentable": true
+    },
+    {
+      "objective_id": "4.3.A",
+      "status": "partial",
+      "concepts": [
+        "Arrays",
+        "Data Types",
+        "Exceptions"
+      ],
+      "evidence_edges": [
+        {
+          "subject": "Arrays",
+          "relation": "depends_on",
+          "object": "Data Types"
+        }
+      ],
+      "rationale": "Arrays covers 1D array concepts and Exceptions touches bounds failures, but fixed .length, default element values, initializer lists, and ArrayIndexOutOfBoundsException are omitted."
+    },
+    {
+      "objective_id": "4.4.A",
+      "status": "partial",
+      "concepts": [
+        "Arrays",
+        "Iteration",
+        "Loops"
+      ],
+      "evidence_edges": [
+        {
+          "subject": "Iteration",
+          "relation": "depends_on",
+          "object": "Loops"
+        }
+      ],
+      "rationale": "Arrays, Loops, and Iteration cover array traversal mechanisms, but omit Java enhanced for loop variable-copy versus mutable-element semantics."
+    },
+    {
+      "objective_id": "4.5.A",
+      "status": "partial",
+      "concepts": [
+        "Arrays",
+        "Iteration",
+        "Loops"
+      ],
+      "evidence_edges": [
+        {
+          "subject": "Iteration",
+          "relation": "depends_on",
+          "object": "Loops"
+        }
+      ],
+      "rationale": "Arrays, Loops, and Iteration support general array iteration without specifying standard algorithms (consecutive pairs, duplicates, shifts, rotations, reversal)."
+    },
+    {
+      "objective_id": "4.6.A",
+      "status": "partial",
+      "concepts": [
+        "Error Handling",
+        "Exceptions",
+        "File Handling",
+        "Loops",
+        "Program Input and Output",
+        "Strings"
+      ],
+      "evidence_edges": [
+        {
+          "subject": "File Handling",
+          "relation": "depends_on",
+          "object": "Program Input and Output"
+        },
+        {
+          "subject": "File Handling",
+          "relation": "depends_on",
+          "object": "Error Handling"
+        }
+      ],
+      "rationale": "File Handling covers reading persistent files, but omits Java File, Scanner, throws IOException, and literal String.split, while pulling in disputed Error Handling and Strings->Arrays edges.",
+      "disputes": [
+        {
+          "id": "DSP-4.6.A-strings-arrays",
+          "kind": "disputed_prerequisite",
+          "status": "unresolved",
+          "rationale": "Graph requires Arrays before Strings, whereas AP CSA teaches String literals and methods in Unit 1 (and algorithms in Unit 2) before 1D arrays in Unit 4, without treating String as an array.",
+          "edge": {
+            "subject": "Strings",
+            "relation": "depends_on",
+            "object": "Arrays"
+          }
+        },
+        {
+          "id": "DSP-4.6.A-error-handling-scope",
+          "kind": "scope_mismatch",
+          "status": "unresolved",
+          "rationale": "Graph treats general Error Handling as a prerequisite, whereas AP CSA does not teach try/catch exception handlers and covers only specific runtime exceptions and throws IOException.",
+          "edge": {
+            "subject": "Exceptions",
+            "relation": "depends_on",
+            "object": "Error Handling"
+          }
+        }
+      ]
+    },
+    {
+      "objective_id": "4.7.A",
+      "status": "missing",
+      "concepts": [],
+      "evidence_edges": [],
+      "rationale": "Graph has no Integer/Double wrapper classes, autoboxing, unboxing, or parseInt/parseDouble concepts."
+    },
+    {
+      "objective_id": "4.8.A",
+      "status": "missing",
+      "concepts": [],
+      "evidence_edges": [],
+      "rationale": "Graph has no mutable-size ArrayList<E> or list-ADT equivalent; its Generics node depends on out-of-scope Polymorphism rather than parameterized ArrayList usage.",
+      "disputes": [
+        {
+          "id": "DSP-4.8.A-generics-polymorphism",
+          "kind": "out_of_scope_dependency",
+          "status": "unresolved",
+          "rationale": "Graph requires Polymorphism (and Inheritance) before Generics, whereas AP CSA uses ArrayList<E> without teaching polymorphism or inheritance.",
+          "edge": {
+            "subject": "Generics",
+            "relation": "depends_on",
+            "object": "Polymorphism"
+          }
+        }
+      ]
+    },
+    {
+      "objective_id": "4.9.A",
+      "status": "missing",
+      "concepts": [],
+      "evidence_edges": [],
+      "rationale": "Graph has no ArrayList traversal, deletion index-shift, or ConcurrentModificationException concepts."
+    },
+    {
+      "objective_id": "4.10.A",
+      "status": "missing",
+      "concepts": [],
+      "evidence_edges": [],
+      "rationale": "Graph has no ArrayList insertion/deletion algorithms or simultaneous multi-collection traversal concepts."
+    },
+    {
+      "objective_id": "4.11.A",
+      "status": "missing",
+      "concepts": [],
+      "evidence_edges": [],
+      "rationale": "Graph models only 1D Arrays and graph-specific Adjacency Matrices, omitting rectangular 2D arrays of arrays, [row][col] access, and row/column length attributes."
+    },
+    {
+      "objective_id": "4.12.A",
+      "status": "missing",
+      "concepts": [],
+      "evidence_edges": [],
+      "rationale": "Graph omits 2D array representation and row-major versus column-major nested traversal semantics."
+    },
+    {
+      "objective_id": "4.13.A",
+      "status": "missing",
+      "concepts": [],
+      "evidence_edges": [],
+      "rationale": "Graph omits 2D array grid, row, column, and subsection algorithms."
+    },
+    {
+      "objective_id": "4.14.A",
+      "status": "partial",
+      "concepts": [
+        "Iteration",
+        "Linear Search"
+      ],
+      "evidence_edges": [
+        {
+          "subject": "Linear Search",
+          "relation": "depends_on",
+          "object": "Iteration"
+        }
+      ],
+      "rationale": "Linear Search covers sequential search on 1D structures, but omits searching ArrayList collections and row-by-row linear search in 2D arrays."
+    },
+    {
+      "objective_id": "4.15.A",
+      "status": "partial",
+      "concepts": [
+        "Arrays",
+        "Insertion Sort",
+        "Loops"
+      ],
+      "evidence_edges": [
+        {
+          "subject": "Insertion Sort",
+          "relation": "depends_on",
+          "object": "Arrays"
+        },
+        {
+          "subject": "Insertion Sort",
+          "relation": "depends_on",
+          "object": "Loops"
+        }
+      ],
+      "rationale": "Graph covers Insertion Sort on Arrays, but completely omits Selection Sort and ArrayList sorting."
+    },
+    {
+      "objective_id": "4.16.A",
+      "status": "partial",
+      "concepts": [
+        "Functions",
+        "Iteration",
+        "Recursion"
+      ],
+      "evidence_edges": [
+        {
+          "subject": "Recursion",
+          "relation": "depends_on",
+          "object": "Functions"
+        }
+      ],
+      "rationale": "Recursion covers recursive function invocation and Iteration supports equivalence, but base cases, per-call stack frame isolation, and AP CSA's exclusion of writing recursive code are omitted."
+    },
+    {
+      "objective_id": "4.17.A",
+      "status": "partial",
+      "concepts": [
+        "Arrays",
+        "Recursion",
+        "Strings",
+        "Functions"
+      ],
+      "evidence_edges": [
+        {
+          "subject": "Recursion",
+          "relation": "depends_on",
+          "object": "Functions"
+        }
+      ],
+      "rationale": "Recursion depends on Functions, and Strings and Arrays supply two data types for recursive traversal. The graph omits ArrayList and leaves the Strings-to-Arrays ordering disputed.",
+      "disputes": [
+        {
+          "id": "DSP-4.17.A-strings-arrays",
+          "kind": "disputed_prerequisite",
+          "status": "unresolved",
+          "rationale": "Graph requires Arrays before Strings, whereas AP CSA teaches String literals and methods in Unit 1 (and algorithms in Unit 2) before 1D arrays in Unit 4, without treating String as an array.",
+          "edge": {
+            "subject": "Strings",
+            "relation": "depends_on",
+            "object": "Arrays"
+          }
+        }
+      ]
+    },
+    {
+      "objective_id": "4.17.B",
+      "status": "partial",
+      "concepts": [
+        "Arrays",
+        "Binary Search",
+        "Linear Search",
+        "Recursion"
+      ],
+      "evidence_edges": [
+        {
+          "subject": "Binary Search",
+          "relation": "depends_on",
+          "object": "Arrays"
+        },
+        {
+          "subject": "Binary Search",
+          "relation": "depends_on",
+          "object": "Recursion"
+        }
+      ],
+      "rationale": "Binary Search covers recursive binary search on sorted Arrays and Linear Search exists, but iterative binary search, ArrayList search, and an efficiency comparison link between Binary Search and Linear Search are absent."
+    },
+    {
+      "objective_id": "4.17.C",
+      "status": "partial",
+      "concepts": [
+        "Arrays",
+        "Merge Sort",
+        "Recursion"
+      ],
+      "evidence_edges": [
+        {
+          "subject": "Merge Sort",
+          "relation": "depends_on",
+          "object": "Recursion"
+        },
+        {
+          "subject": "Merge Sort",
+          "relation": "depends_on",
+          "object": "Arrays"
+        }
+      ],
+      "rationale": "Merge Sort covers recursive divide-and-merge sorting on Arrays, but omits ArrayList sorting required alongside arrays in AP CSA 4.17.C."
+    }
+  ],
+  "outside_course": [
+    {
+      "concept": "AVL Trees",
+      "category": "beyond_course_scope",
+      "reason": "Unit 4 collection objectives use 1D and 2D arrays and ArrayList. AVL tree balancing requires a separate tree representation and rotations."
+    },
+    {
+      "concept": "Abstract Classes",
+      "category": "taxonomic_abstraction",
+      "reason": "Unit 3 covers writing concrete Java classes and methods. The Abstract Classes is_a Classes tuple describes a subtype relationship, and abstract class design falls beyond those class-creation objectives."
+    },
+    {
+      "concept": "Adjacency Lists",
+      "category": "beyond_course_scope",
+      "reason": "Unit 4 traverses arrays and ArrayList. Adjacency lists encode neighbors for graph algorithms, a separate use of collections."
+    },
+    {
+      "concept": "Adjacency Matrices",
+      "category": "beyond_course_scope",
+      "reason": "Objectives 4.11.A–4.13.A use 2D arrays for indexing and traversal. Adjacency matrices additionally encode graph connectivity."
+    },
+    {
+      "concept": "Backtracking",
+      "category": "beyond_course_scope",
+      "reason": "Topic 4.17 uses recursion for data traversal, binary search, and merge sort. Backtracking adds exploration and reversal of candidate choices."
+    },
+    {
+      "concept": "Balanced Trees",
+      "category": "beyond_course_scope",
+      "reason": "Unit 4 uses indexed collections. Maintaining tree balance as elements change requires a different data structure and operations."
+    },
+    {
+      "concept": "Binary Search Trees",
+      "category": "beyond_course_scope",
+      "reason": "CED 4.17.B traces binary search on an ordered collection. Binary search trees instead maintain ordering in linked tree nodes."
+    },
+    {
+      "concept": "Binary Trees",
+      "category": "beyond_course_scope",
+      "reason": "Unit 4 uses indexed arrays and ArrayList. Binary trees organize data through branches between nodes."
+    },
+    {
+      "concept": "Bitwise Operations",
+      "category": "beyond_course_scope",
+      "reason": "Topics 1.3 and 2.5 address arithmetic expressions and Boolean logic. Bit masks and shifts operate on individual bits of integer representations."
+    },
+    {
+      "concept": "Breadth First Search",
+      "category": "beyond_course_scope",
+      "reason": "CED 4.14.A and 4.17.B cover linear and binary search of collections. Breadth-first search explores graph neighbors by distance."
+    },
+    {
+      "concept": "CPU Scheduling",
+      "category": "beyond_course_scope",
+      "reason": "Units 1–3 cover Java expressions, control flow, and class design. Operating-system resource management and scheduling are outside those programming objectives."
+    },
+    {
+      "concept": "Computer Networks",
+      "category": "beyond_course_scope",
+      "reason": "Topics 1.4 and 4.6 cover reading program input and persistent text. Network protocols, addressing, and infrastructure are outside those Java I/O requirements."
+    },
+    {
+      "concept": "DNS",
+      "category": "beyond_course_scope",
+      "reason": "Topics 1.4 and 4.6 cover reading program input and persistent text. Network protocols, addressing, and infrastructure are outside those Java I/O requirements."
+    },
+    {
+      "concept": "Data Structures",
+      "category": "beyond_course_scope",
+      "reason": "Abstract data structures taxonomy beyond arrays and ArrayList is outside AP CSA."
+    },
+    {
+      "concept": "Database Indexes",
+      "category": "beyond_course_scope",
+      "reason": "Unit 4 works with arrays, ArrayList, and persistent text input (4.6.A). Database storage, queries, and administration go beyond those objectives."
+    },
+    {
+      "concept": "Database Locking",
+      "category": "beyond_course_scope",
+      "reason": "Unit 4 works with arrays, ArrayList, and persistent text input (4.6.A). Database storage, queries, and administration go beyond those objectives."
+    },
+    {
+      "concept": "Database Recovery",
+      "category": "beyond_course_scope",
+      "reason": "Unit 4 works with arrays, ArrayList, and persistent text input (4.6.A). Database storage, queries, and administration go beyond those objectives."
+    },
+    {
+      "concept": "Database Replication",
+      "category": "beyond_course_scope",
+      "reason": "Unit 4 works with arrays, ArrayList, and persistent text input (4.6.A). Database storage, queries, and administration go beyond those objectives."
+    },
+    {
+      "concept": "Database Schemas",
+      "category": "beyond_course_scope",
+      "reason": "Unit 4 works with arrays, ArrayList, and persistent text input (4.6.A). Database storage, queries, and administration go beyond those objectives."
+    },
+    {
+      "concept": "Deadlocks",
+      "category": "beyond_course_scope",
+      "reason": "Unit 2 covers control flow within one program sequence. Deadlocks require reasoning about simultaneous actors waiting for resources."
+    },
+    {
+      "concept": "Dependency Injection",
+      "category": "beyond_course_scope",
+      "reason": "Unit 3 covers fields, constructors, and methods. Selecting and supplying component implementations through dependency injection is an architectural concern beyond those skills."
+    },
+    {
+      "concept": "Depth First Search",
+      "category": "beyond_course_scope",
+      "reason": "Topic 4.17 traces recursion on course data collections. Depth-first search adds following branches and revisiting choices in a graph."
+    },
+    {
+      "concept": "Deques",
+      "category": "beyond_course_scope",
+      "reason": "Unit 4 covers indexed operations on arrays and ArrayList. Deques add queue operations at both ends."
+    },
+    {
+      "concept": "Design Patterns",
+      "category": "beyond_course_scope",
+      "reason": "Unit 3 requires routine class design using fields, constructors, and methods. Named reusable object-oriented design patterns are outside that class-design scope."
+    },
+    {
+      "concept": "Device Drivers",
+      "category": "beyond_course_scope",
+      "reason": "Units 1–3 cover Java expressions, control flow, and class design. Operating-system resource management and scheduling are outside those programming objectives."
+    },
+    {
+      "concept": "Directed Graphs",
+      "category": "beyond_course_scope",
+      "reason": "Unit 4 works with indexed arrays and ArrayList. Representing direction on edges between vertices requires a graph data model."
+    },
+    {
+      "concept": "Discrete Mathematics",
+      "category": "beyond_course_scope",
+      "reason": "Topic 2.6 covers equivalence of Boolean expressions. The node's Sets prerequisite treats broader discrete mathematics beyond that objective."
+    },
+    {
+      "concept": "Document Databases",
+      "category": "beyond_course_scope",
+      "reason": "Unit 4 works with arrays, ArrayList, and persistent text input (4.6.A). Database storage, queries, and administration go beyond those objectives."
+    },
+    {
+      "concept": "Doubly Linked Lists",
+      "category": "beyond_course_scope",
+      "reason": "Unit 4 covers 1D and 2D arrays and ArrayList. Pointer-linked nodes and link traversal belong to a separate collection representation."
+    },
+    {
+      "concept": "Dynamic Programming",
+      "category": "beyond_course_scope",
+      "reason": "Unit 4 traces traversal, search, sorting, and recursion on course collections. Dynamic programming adds caching and reuse of overlapping subproblems."
+    },
+    {
+      "concept": "Ethernet",
+      "category": "beyond_course_scope",
+      "reason": "Topics 1.4 and 4.6 cover reading program input and persistent text. Network protocols, addressing, and infrastructure are outside those Java I/O requirements."
+    },
+    {
+      "concept": "Factory Pattern",
+      "category": "beyond_course_scope",
+      "reason": "Topic 3.4 teaches writing constructors. A factory adds a separate object-creation abstraction beyond those constructor requirements."
+    },
+    {
+      "concept": "File Permissions",
+      "category": "beyond_course_scope",
+      "reason": "Units 1–3 cover Java expressions, control flow, and class design. Operating-system resource management and scheduling are outside those programming objectives."
+    },
+    {
+      "concept": "File Systems",
+      "category": "beyond_course_scope",
+      "reason": "Units 1–3 cover Java expressions, control flow, and class design. Operating-system resource management and scheduling are outside those programming objectives."
+    },
+    {
+      "concept": "Firewalls",
+      "category": "beyond_course_scope",
+      "reason": "Topics 1.4 and 4.6 cover reading program input and persistent text. Network protocols, addressing, and infrastructure are outside those Java I/O requirements."
+    },
+    {
+      "concept": "Generics",
+      "category": "excluded_by_ced",
+      "reason": "Generic type authoring and polymorphism-bound generics are outside AP CSA (4.8.A uses parameterized ArrayList<E> only)."
+    },
+    {
+      "concept": "Graphs",
+      "category": "beyond_course_scope",
+      "reason": "Unit 4 uses 1D and 2D arrays and ArrayList. Vertex and edge structure is a separate data model."
+    },
+    {
+      "concept": "Greedy Algorithms",
+      "category": "beyond_course_scope",
+      "reason": "Unit 4 prescribes collection traversal, search, and sorting tasks. Selecting locally optimal steps to solve optimization problems is a broader algorithm design topic."
+    },
+    {
+      "concept": "HTTP",
+      "category": "beyond_course_scope",
+      "reason": "Topics 1.4 and 4.6 cover reading program input and persistent text. Network protocols, addressing, and infrastructure are outside those Java I/O requirements."
+    },
+    {
+      "concept": "HTTPS",
+      "category": "beyond_course_scope",
+      "reason": "Topics 1.4 and 4.6 cover reading program input and persistent text. Network protocols, addressing, and infrastructure are outside those Java I/O requirements."
+    },
+    {
+      "concept": "Hash Functions",
+      "category": "beyond_course_scope",
+      "reason": "Unit 4 collection objectives access data by index. Hash functions compute keys for mapping values to buckets, which those objectives do not require."
+    },
+    {
+      "concept": "Hash Tables",
+      "category": "beyond_course_scope",
+      "reason": "Unit 4 specifies arrays and ArrayList as containers. Hash tables add key-based lookup and collision handling."
+    },
+    {
+      "concept": "Heap Sort",
+      "category": "excluded_by_ced",
+      "reason": "CED 4.17.C.1 explicitly excludes sorting algorithms other than selection, insertion, and merge sort."
+    },
+    {
+      "concept": "Heaps",
+      "category": "beyond_course_scope",
+      "reason": "Unit 4 sorting uses selection, insertion, and merge sort. Heaps maintain priority ordering and supply operations outside these objectives."
+    },
+    {
+      "concept": "IP Addressing",
+      "category": "beyond_course_scope",
+      "reason": "Topics 1.4 and 4.6 cover reading program input and persistent text. Network protocols, addressing, and infrastructure are outside those Java I/O requirements."
+    },
+    {
+      "concept": "Inheritance",
+      "category": "excluded_by_ced",
+      "reason": "CED 1.12.A.2 explicitly excludes designing and implementing inheritance hierarchies from Fall 2025 AP CSA."
+    },
+    {
+      "concept": "Interfaces",
+      "category": "excluded_by_ced",
+      "reason": "Unit 3 covers writing Java classes and methods. Interface declarations and implementation contracts fall beyond these class-creation objectives."
+    },
+    {
+      "concept": "Interprocess Communication",
+      "category": "beyond_course_scope",
+      "reason": "Units 1–3 cover Java expressions, control flow, and class design. Operating-system resource management and scheduling are outside those programming objectives."
+    },
+    {
+      "concept": "Isolation Levels",
+      "category": "beyond_course_scope",
+      "reason": "Unit 4 works with arrays, ArrayList, and persistent text input (4.6.A). Database storage, queries, and administration go beyond those objectives."
+    },
+    {
+      "concept": "Joins",
+      "category": "beyond_course_scope",
+      "reason": "Unit 4 works with arrays, ArrayList, and persistent text input (4.6.A). Database storage, queries, and administration go beyond those objectives."
+    },
+    {
+      "concept": "Key Value Stores",
+      "category": "beyond_course_scope",
+      "reason": "Unit 4 works with arrays, ArrayList, and persistent text input (4.6.A). Database storage, queries, and administration go beyond those objectives."
+    },
+    {
+      "concept": "Keys and Constraints",
+      "category": "beyond_course_scope",
+      "reason": "Unit 4 works with arrays, ArrayList, and persistent text input (4.6.A). Database storage, queries, and administration go beyond those objectives."
+    },
+    {
+      "concept": "Linked Lists",
+      "category": "beyond_course_scope",
+      "reason": "Unit 4 covers 1D and 2D arrays and ArrayList. Pointer-linked nodes and link traversal belong to a separate collection representation."
+    },
+    {
+      "concept": "Load Balancing",
+      "category": "beyond_course_scope",
+      "reason": "Topics 1.4 and 4.6 cover reading program input and persistent text. Network protocols, addressing, and infrastructure are outside those Java I/O requirements."
+    },
+    {
+      "concept": "Mathematical Induction",
+      "category": "beyond_course_scope",
+      "reason": "Topic 4.17 asks students to trace recursive code. Formal inductive proofs are beyond that tracing requirement."
+    },
+    {
+      "concept": "Memory Allocation",
+      "category": "beyond_course_scope",
+      "reason": "Topics 1.12–1.13 cover object references and construction in Java. Manual allocation and memory layout are outside those objectives."
+    },
+    {
+      "concept": "Minimum Spanning Trees",
+      "category": "beyond_course_scope",
+      "reason": "Unit 4 requires searching and sorting course collections. Connecting weighted graph vertices at minimum total cost is a separate optimization problem."
+    },
+    {
+      "concept": "Modules",
+      "category": "beyond_course_scope",
+      "reason": "Software module packaging is beyond AP CSA (only standard java.lang/java.util/java.io library imports appear)."
+    },
+    {
+      "concept": "Mutexes",
+      "category": "beyond_course_scope",
+      "reason": "Units 1–3 cover Java expressions, control flow, and class design. Operating-system resource management and scheduling are outside those programming objectives."
+    },
+    {
+      "concept": "Network Congestion",
+      "category": "beyond_course_scope",
+      "reason": "Topics 1.4 and 4.6 cover reading program input and persistent text. Network protocols, addressing, and infrastructure are outside those Java I/O requirements."
+    },
+    {
+      "concept": "Network Layers",
+      "category": "beyond_course_scope",
+      "reason": "Topics 1.4 and 4.6 cover reading program input and persistent text. Network protocols, addressing, and infrastructure are outside those Java I/O requirements."
+    },
+    {
+      "concept": "Network Troubleshooting",
+      "category": "beyond_course_scope",
+      "reason": "Topics 1.4 and 4.6 cover reading program input and persistent text. Network protocols, addressing, and infrastructure are outside those Java I/O requirements."
+    },
+    {
+      "concept": "Normalization",
+      "category": "beyond_course_scope",
+      "reason": "Unit 4 works with arrays, ArrayList, and persistent text input (4.6.A). Database storage, queries, and administration go beyond those objectives."
+    },
+    {
+      "concept": "Number Systems",
+      "category": "beyond_course_scope",
+      "reason": "Topic 1.5 covers numeric conversions and ranges using Java primitives. Representing and converting between numeric bases goes beyond those tasks."
+    },
+    {
+      "concept": "Observer Pattern",
+      "category": "beyond_course_scope",
+      "reason": "Unit 3 covers instance state and calls. Observer adds subscription and notification between cooperating objects."
+    },
+    {
+      "concept": "Operating Systems",
+      "category": "beyond_course_scope",
+      "reason": "Units 1–3 cover Java expressions, control flow, and class design. Operating-system resource management and scheduling are outside those programming objectives."
+    },
+    {
+      "concept": "Page Replacement",
+      "category": "beyond_course_scope",
+      "reason": "Units 1–3 cover Java expressions, control flow, and class design. Operating-system resource management and scheduling are outside those programming objectives."
+    },
+    {
+      "concept": "Paging",
+      "category": "beyond_course_scope",
+      "reason": "Units 1–3 cover Java expressions, control flow, and class design. Operating-system resource management and scheduling are outside those programming objectives."
+    },
+    {
+      "concept": "Pointers",
+      "category": "beyond_course_scope",
+      "reason": "CED 2.6.B covers Java references and object equivalence. Explicit memory addresses and address arithmetic go beyond those references."
+    },
+    {
+      "concept": "Polymorphism",
+      "category": "excluded_by_ced",
+      "reason": "CED 1.12.A.2 excludes inheritance hierarchy design and implementation. Subtype polymorphism and dynamic dispatch are beyond the required uses of classes and objects."
+    },
+    {
+      "concept": "Priority Queues",
+      "category": "beyond_course_scope",
+      "reason": "Unit 4 uses arrays and ArrayList. Priority queues introduce retrieval according to priority instead of collection index."
+    },
+    {
+      "concept": "Processes",
+      "category": "beyond_course_scope",
+      "reason": "Units 1–3 cover Java expressions, control flow, and class design. Operating-system resource management and scheduling are outside those programming objectives."
+    },
+    {
+      "concept": "Query Planning",
+      "category": "beyond_course_scope",
+      "reason": "Unit 4 works with arrays, ArrayList, and persistent text input (4.6.A). Database storage, queries, and administration go beyond those objectives."
+    },
+    {
+      "concept": "Queues",
+      "category": "beyond_course_scope",
+      "reason": "Unit 4 covers indexing and traversing course collections. First-in, first-out queue operations go beyond those requirements."
+    },
+    {
+      "concept": "Quicksort",
+      "category": "excluded_by_ced",
+      "reason": "CED 4.17.C.1 explicitly excludes sorting algorithms other than selection, insertion, and merge sort."
+    },
+    {
+      "concept": "Regular Expressions",
+      "category": "excluded_by_ced",
+      "reason": "CED 4.6.A.8 explicitly excludes special regular-expression properties from String.split."
+    },
+    {
+      "concept": "Relational Algebra",
+      "category": "beyond_course_scope",
+      "reason": "Unit 4 works with arrays, ArrayList, and persistent text input (4.6.A). Database storage, queries, and administration go beyond those objectives."
+    },
+    {
+      "concept": "Relational Databases",
+      "category": "beyond_course_scope",
+      "reason": "Unit 4 works with arrays, ArrayList, and persistent text input (4.6.A). Database storage, queries, and administration go beyond those objectives."
+    },
+    {
+      "concept": "Routing",
+      "category": "beyond_course_scope",
+      "reason": "Topics 1.4 and 4.6 cover reading program input and persistent text. Network protocols, addressing, and infrastructure are outside those Java I/O requirements."
+    },
+    {
+      "concept": "SQL",
+      "category": "beyond_course_scope",
+      "reason": "Unit 4 works with arrays, ArrayList, and persistent text input (4.6.A). Database storage, queries, and administration go beyond those objectives."
+    },
+    {
+      "concept": "Semaphores",
+      "category": "beyond_course_scope",
+      "reason": "Units 1–3 cover Java expressions, control flow, and class design. Operating-system resource management and scheduling are outside those programming objectives."
+    },
+    {
+      "concept": "Sets",
+      "category": "beyond_course_scope",
+      "reason": "Unit 4 covers arrays and ArrayList. Set membership and uniqueness form a separate collection model."
+    },
+    {
+      "concept": "Sharding",
+      "category": "beyond_course_scope",
+      "reason": "Unit 4 works with arrays, ArrayList, and persistent text input (4.6.A). Database storage, queries, and administration go beyond those objectives."
+    },
+    {
+      "concept": "Shortest Paths",
+      "category": "beyond_course_scope",
+      "reason": "Unit 4 search objectives find elements in data collections. Shortest-path algorithms optimize a route through graph edges."
+    },
+    {
+      "concept": "Singly Linked Lists",
+      "category": "beyond_course_scope",
+      "reason": "Unit 4 covers 1D and 2D arrays and ArrayList. Pointer-linked nodes and link traversal belong to a separate collection representation."
+    },
+    {
+      "concept": "Sockets",
+      "category": "beyond_course_scope",
+      "reason": "Topics 1.4 and 4.6 cover reading program input and persistent text. Network protocols, addressing, and infrastructure are outside those Java I/O requirements."
+    },
+    {
+      "concept": "Space Complexity",
+      "category": "beyond_course_scope",
+      "reason": "CED 2.12.A compares efficiency by counting executions. Asymptotic memory-use analysis goes beyond this comparison."
+    },
+    {
+      "concept": "Stacks",
+      "category": "beyond_course_scope",
+      "reason": "Unit 4 requires indexed collection operations. Last-in, first-out stack operations go beyond those objectives."
+    },
+    {
+      "concept": "Strategy Pattern",
+      "category": "beyond_course_scope",
+      "reason": "Unit 3 covers creating classes and methods. Swapping algorithm implementations behind an interface goes beyond the required class design."
+    },
+    {
+      "concept": "Subnetting",
+      "category": "beyond_course_scope",
+      "reason": "Topics 1.4 and 4.6 cover reading program input and persistent text. Network protocols, addressing, and infrastructure are outside those Java I/O requirements."
+    },
+    {
+      "concept": "Synchronization",
+      "category": "beyond_course_scope",
+      "reason": "Units 1–3 cover Java expressions, control flow, and class design. Operating-system resource management and scheduling are outside those programming objectives."
+    },
+    {
+      "concept": "System Calls",
+      "category": "beyond_course_scope",
+      "reason": "Units 1–3 cover Java expressions, control flow, and class design. Operating-system resource management and scheduling are outside those programming objectives."
+    },
+    {
+      "concept": "TCP",
+      "category": "beyond_course_scope",
+      "reason": "Topics 1.4 and 4.6 cover reading program input and persistent text. Network protocols, addressing, and infrastructure are outside those Java I/O requirements."
+    },
+    {
+      "concept": "TLS",
+      "category": "beyond_course_scope",
+      "reason": "Topics 1.4 and 4.6 cover reading program input and persistent text. Network protocols, addressing, and infrastructure are outside those Java I/O requirements."
+    },
+    {
+      "concept": "Threads",
+      "category": "beyond_course_scope",
+      "reason": "Units 1–3 cover Java expressions, control flow, and class design. Operating-system resource management and scheduling are outside those programming objectives."
+    },
+    {
+      "concept": "Time Complexity",
+      "category": "beyond_course_scope",
+      "reason": "Asymptotic time complexity notation is outside AP CSA (2.12.A covers informal statement counts only)."
+    },
+    {
+      "concept": "Topological Sorting",
+      "category": "beyond_course_scope",
+      "reason": "Unit 4 sorts values in collections. Topological ordering sorts graph vertices under dependency constraints."
+    },
+    {
+      "concept": "Transactions",
+      "category": "beyond_course_scope",
+      "reason": "Unit 4 works with arrays, ArrayList, and persistent text input (4.6.A). Database storage, queries, and administration go beyond those objectives."
+    },
+    {
+      "concept": "Trees",
+      "category": "beyond_course_scope",
+      "reason": "Unit 4 covers 1D and 2D arrays and ArrayList. Tree nodes and branches form a separate collection model."
+    },
+    {
+      "concept": "UDP",
+      "category": "beyond_course_scope",
+      "reason": "Topics 1.4 and 4.6 cover reading program input and persistent text. Network protocols, addressing, and infrastructure are outside those Java I/O requirements."
+    },
+    {
+      "concept": "Virtual Memory",
+      "category": "beyond_course_scope",
+      "reason": "Units 1–3 cover Java expressions, control flow, and class design. Operating-system resource management and scheduling are outside those programming objectives."
+    },
+    {
+      "concept": "Weighted Graphs",
+      "category": "beyond_course_scope",
+      "reason": "Unit 4 covers indexed data collections. Weighted graph connections add costs between vertices for network algorithms."
+    },
+    {
+      "concept": "Write Ahead Logging",
+      "category": "beyond_course_scope",
+      "reason": "Unit 4 works with arrays, ArrayList, and persistent text input (4.6.A). Database storage, queries, and administration go beyond those objectives."
+    }
+  ]
+}
