@@ -76,7 +76,7 @@ func call(t *testing.T, app *fiber.App, method, path, body string, headers map[s
 	return resp, data
 }
 
-func callWithError(app *fiber.App, method, path, body string, headers map[string]string) (response, string, error) {
+func callWithError(app *fiber.App, method, path, body string, headers map[string]string, options ...fiber.TestConfig) (response, string, error) {
 	req := httptest.NewRequestWithContext(context.Background(), method, path, strings.NewReader(body))
 	if body != "" {
 		req.Header.Set("Content-Type", "application/json")
@@ -84,7 +84,7 @@ func callWithError(app *fiber.App, method, path, body string, headers map[string
 	for k, v := range headers {
 		req.Header.Set(k, v)
 	}
-	resp, err := app.Test(req)
+	resp, err := app.Test(req, options...)
 	if err != nil {
 		return response{}, "", fmt.Errorf("send test request: %w", err)
 	}
@@ -114,7 +114,7 @@ func TestUnknownMethodReturnsEnvelope(t *testing.T) {
 		}
 		return id
 	}
-	assertLogs := func(t *testing.T, logs *bytes.Buffer, method, path, id string) {
+	assertLogs := func(t *testing.T, logs *bytes.Buffer, method, id string) {
 		t.Helper()
 		access, failures := 0, 0
 		decoder := json.NewDecoder(logs)
@@ -132,7 +132,7 @@ func TestUnknownMethodReturnsEnvelope(t *testing.T) {
 			switch entry.Message {
 			case "http.access":
 				access++
-				if entry.RequestID != id || entry.Method != method || entry.Path != path || entry.Status != 501 {
+				if entry.RequestID != id || entry.Method != method || entry.Path != "unmatched" || entry.Status != 501 {
 					t.Errorf("access record=%+v", entry)
 				}
 			case "request.failed":
@@ -159,7 +159,7 @@ func TestUnknownMethodReturnsEnvelope(t *testing.T) {
 				app := newTestApp(t, metricsConfig(t), nil, &logs)
 				resp, body := call(t, app, tc.method, tc.path, "", map[string]string{"X-Request-ID": clientID})
 				id := assertResponse(t, resp, body, clientID)
-				assertLogs(t, &logs, tc.method, tc.path, id)
+				assertLogs(t, &logs, tc.method, id)
 				_, body = call(t, app, "GET", "/metrics", "", nil)
 				if !strings.Contains(body, `http_server_requests_total{method="unmatched",route="unmatched",status="501"} 1`+"\n") || !strings.Contains(body, `http_server_request_duration_seconds_count{route="unmatched"} 1`+"\n") {
 					t.Errorf("missing unmatched 501 counter or duration")
@@ -183,7 +183,7 @@ func TestUnknownMethodReturnsEnvelope(t *testing.T) {
 			if err := <-done; err != nil {
 				t.Error(err)
 			}
-			assertLogs(t, &logs, "PROPFIND", "/health", "unknown-42")
+			assertLogs(t, &logs, "PROPFIND", "unknown-42")
 		})
 		req := httptest.NewRequestWithContext(context.Background(), "PROPFIND", "http://"+ln.Addr().String()+"/health", nil)
 		req.RequestURI = ""

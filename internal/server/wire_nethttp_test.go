@@ -389,9 +389,7 @@ func TestWireBodyRejectionPolicies(t *testing.T) {
 								t.Errorf("rejected request reached the planner %d times", n)
 							}
 							assertWireError(t, resp, readWireBody(t, resp.Body), tc.status, tc.code, http.StatusText(tc.status), tc.id)
-							rejectionPath := "/"
 							if tc.id != "" {
-								rejectionPath = path
 								if resp.Header.Get("X-RateLimit-Remaining") != "0" {
 									t.Errorf("trailer rejection did not consume the one-request quota: %v", resp.Header)
 								}
@@ -405,7 +403,7 @@ func TestWireBodyRejectionPolicies(t *testing.T) {
 							if resp.Header.Get("Retry-After") != "" {
 								t.Errorf("body rejection carried Retry-After=%q", resp.Header.Get("Retry-After"))
 							}
-							assertWireBodyRejectionLog(t, logs, resp.Header.Get("X-Request-ID"), rejectionPath, tc.status)
+							assertWireBodyRejectionLog(t, logs, resp.Header.Get("X-Request-ID"), tc.status)
 							other := addr.dial(t)
 							resp, body := other.exchange(t, http.MethodPost, wirePlan, wireTopicBody, wireHeaders("wire-body-retry"))
 							if tc.id != "" {
@@ -480,7 +478,7 @@ func TestWireTrailerFieldNames(t *testing.T) {
 	}
 }
 
-func assertWireBodyRejectionLog(t *testing.T, logs streamLogWriter, id, path string, status int) {
+func assertWireBodyRejectionLog(t *testing.T, logs streamLogWriter, id string, status int) {
 	t.Helper()
 	for {
 		record := receiveWire(t, logs.records, "body rejection log")
@@ -498,7 +496,7 @@ func assertWireBodyRejectionLog(t *testing.T, logs streamLogWriter, id, path str
 			t.Errorf("body rejection reported a storage failure: %s", record)
 		}
 		if entry.Message == "http.access" && entry.RequestID == id {
-			if entry.Status != status || entry.Path != path || entry.Disconnected {
+			if entry.Status != status || entry.Path != "unmatched" || entry.Disconnected {
 				t.Errorf("unexpected body rejection access record: %s", record)
 			}
 			return

@@ -194,6 +194,10 @@ func (h *httpBridge) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		}
 		h.reject(fctx, err)
 	} else {
+		if len(r.Trailer.Values("X-Internal-Token")) != 0 || len(r.Trailer.Values("Authorization")) != 0 {
+			fctx.SetUserValue(credentialTrailerKey{}, true)
+			defer fctx.RemoveUserValue(credentialTrailerKey{})
+		}
 		if r.ProtoMajor == 1 {
 			ctx, stop := socket.watchHTTP1Peer(r.Context())
 			defer stop()

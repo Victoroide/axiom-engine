@@ -22,6 +22,8 @@ type Response struct {
 	Status      int
 	Body        []byte
 	ContentType string
+	// Format is empty for records that store the original HTTP body.
+	Format string `json:",omitempty"`
 }
 
 // Reservation identifies ownership and any stored response.

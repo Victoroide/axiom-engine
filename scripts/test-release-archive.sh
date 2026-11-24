@@ -156,6 +156,13 @@ for token_variable in AXIOM_INTERNAL_TOKEN AXIOM_INTERNAL_TOKEN_PREVIOUS; do
   )
 done
 
+echo 'Checking archive smoke with inherited verified authentication'
+AXIOM_AUTH_MODE=verified AXIOM_AUTH_ISSUER=https://issuer.example \
+  AXIOM_AUTH_AUDIENCE=https://api.example AXIOM_AUTH_JWKS_URL=https://issuer.example/keys \
+  AXIOM_AUTH_ALGORITHMS=ES256 AXIOM_AUTH_TENANT_CLAIM=org AXIOM_AUTH_SCOPE_CLAIM=permissions \
+  AXIOM_AUTH_CLIENT_ID_CLAIM=client_id AXIOM_AUTH_REGISTERED_CLIENTS=registered \
+  ./scripts/release-archive-smoke.sh "$archive"
+
 if ./scripts/release-archive.sh ../invalid "$scratch/invalid" >"$scratch/invalid.log" 2>&1; then
   echo "An unsafe version was accepted" >&2
   exit 1

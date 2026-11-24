@@ -20,9 +20,12 @@ const docTemplate = `{
                 "security": [
                     {
                         "InternalToken": []
+                    },
+                    {
+                        "BearerAuth": []
                     }
                 ],
-                "description": "Generate a graph-guided study plan for known topics and a VARK profile.",
+                "description": "Generate a graph-guided study plan for known topics and a VARK profile. Verified mode requires the plan:generate scope.",
                 "consumes": [
                     "application/json"
                 ],
@@ -105,11 +108,31 @@ const docTemplate = `{
                         }
                     },
                     "401": {
-                        "description": "Unauthorized",
+                        "description": "Missing or invalid credentials",
                         "schema": {
                             "$ref": "#/definitions/domain.ErrorResponse"
                         },
                         "headers": {
+                            "WWW-Authenticate": {
+                                "type": "string",
+                                "description": "Bearer challenge in verified mode"
+                            },
+                            "X-Request-ID": {
+                                "type": "string",
+                                "description": "Resolved request correlation identifier"
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Verified access token lacks plan:generate",
+                        "schema": {
+                            "$ref": "#/definitions/domain.ErrorResponse"
+                        },
+                        "headers": {
+                            "WWW-Authenticate": {
+                                "type": "string",
+                                "description": "Bearer challenge in verified mode"
+                            },
                             "X-Request-ID": {
                                 "type": "string",
                                 "description": "Resolved request correlation identifier"
@@ -293,7 +316,7 @@ const docTemplate = `{
                         }
                     },
                     "503": {
-                        "description": "Shared storage unavailable",
+                        "description": "Temporary unavailability, shared storage failure, upstream throttling or server shutdown",
                         "schema": {
                             "$ref": "#/definitions/domain.ErrorResponse"
                         },
@@ -352,9 +375,12 @@ const docTemplate = `{
                 "security": [
                     {
                         "InternalToken": []
+                    },
+                    {
+                        "BearerAuth": []
                     }
                 ],
-                "description": "Emit topic events with topic, zero-based index of its first occurrence in failed_topics, and items_generated; plan carries the same validated response as the JSON route; error carries error, details and the equivalent HTTP status. Failed topic calls report zero items. Flush each event and a : keepalive comment every 2 seconds; cancel work after a failed client write. REQUEST_TIMEOUT bounds generation. Invalid input returns JSON before streaming starts. Optional mastered_topics uses the same validation and prerequisite exclusions as the JSON route.",
+                "description": "Emit topic events with topic, zero-based index of its first occurrence in failed_topics, and items_generated; plan carries the same validated response as the JSON route; error carries error, details and the equivalent HTTP status. Failed topic calls report zero items. Flush each event and a : keepalive comment every 2 seconds; cancel work after a failed client write. REQUEST_TIMEOUT bounds generation. Invalid input returns JSON before streaming starts. Optional mastered_topics uses the same validation and prerequisite exclusions as the JSON route.\nVerified mode requires the plan:generate scope. Credential and scope errors return JSON before streaming starts.",
                 "consumes": [
                     "application/json"
                 ],
@@ -428,11 +454,31 @@ const docTemplate = `{
                         }
                     },
                     "401": {
-                        "description": "Unauthorized",
+                        "description": "Missing or invalid credentials before streaming",
                         "schema": {
                             "$ref": "#/definitions/domain.ErrorResponse"
                         },
                         "headers": {
+                            "WWW-Authenticate": {
+                                "type": "string",
+                                "description": "Bearer challenge in verified mode"
+                            },
+                            "X-Request-ID": {
+                                "type": "string",
+                                "description": "Resolved request correlation identifier"
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Verified access token lacks plan:generate",
+                        "schema": {
+                            "$ref": "#/definitions/domain.ErrorResponse"
+                        },
+                        "headers": {
+                            "WWW-Authenticate": {
+                                "type": "string",
+                                "description": "Bearer challenge in verified mode"
+                            },
                             "X-Request-ID": {
                                 "type": "string",
                                 "description": "Resolved request correlation identifier"
@@ -634,8 +680,12 @@ const docTemplate = `{
                 "security": [
                     {
                         "InternalToken": []
+                    },
+                    {
+                        "BearerAuth": []
                     }
                 ],
+                "description": "Verified mode requires the graph:read scope for GET and HEAD.",
                 "produces": [
                     "application/json"
                 ],
@@ -678,11 +728,31 @@ const docTemplate = `{
                         }
                     },
                     "401": {
-                        "description": "Unauthorized",
+                        "description": "Missing or invalid credentials",
                         "schema": {
                             "$ref": "#/definitions/domain.ErrorResponse"
                         },
                         "headers": {
+                            "WWW-Authenticate": {
+                                "type": "string",
+                                "description": "Bearer challenge in verified mode"
+                            },
+                            "X-Request-ID": {
+                                "type": "string",
+                                "description": "Resolved request correlation identifier"
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Verified access token lacks graph:read",
+                        "schema": {
+                            "$ref": "#/definitions/domain.ErrorResponse"
+                        },
+                        "headers": {
+                            "WWW-Authenticate": {
+                                "type": "string",
+                                "description": "Bearer challenge in verified mode"
+                            },
                             "X-Request-ID": {
                                 "type": "string",
                                 "description": "Resolved request correlation identifier"
@@ -766,7 +836,7 @@ const docTemplate = `{
                         }
                     },
                     "503": {
-                        "description": "Shared storage unavailable",
+                        "description": "Shared storage unavailable or server shutdown",
                         "schema": {
                             "$ref": "#/definitions/domain.ErrorResponse"
                         },
@@ -789,8 +859,12 @@ const docTemplate = `{
                 "security": [
                     {
                         "InternalToken": []
+                    },
+                    {
+                        "BearerAuth": []
                     }
                 ],
+                "description": "Verified mode requires the graph:read scope for GET and HEAD.",
                 "produces": [
                     "application/json"
                 ],
@@ -834,11 +908,31 @@ const docTemplate = `{
                         }
                     },
                     "401": {
-                        "description": "Unauthorized",
+                        "description": "Missing or invalid credentials",
                         "schema": {
                             "$ref": "#/definitions/domain.ErrorResponse"
                         },
                         "headers": {
+                            "WWW-Authenticate": {
+                                "type": "string",
+                                "description": "Bearer challenge in verified mode"
+                            },
+                            "X-Request-ID": {
+                                "type": "string",
+                                "description": "Resolved request correlation identifier"
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Verified access token lacks graph:read",
+                        "schema": {
+                            "$ref": "#/definitions/domain.ErrorResponse"
+                        },
+                        "headers": {
+                            "WWW-Authenticate": {
+                                "type": "string",
+                                "description": "Bearer challenge in verified mode"
+                            },
                             "X-Request-ID": {
                                 "type": "string",
                                 "description": "Resolved request correlation identifier"
@@ -946,7 +1040,7 @@ const docTemplate = `{
                         }
                     },
                     "503": {
-                        "description": "Shared storage unavailable",
+                        "description": "Shared storage unavailable or server shutdown",
                         "schema": {
                             "$ref": "#/definitions/domain.ErrorResponse"
                         },
@@ -969,9 +1063,12 @@ const docTemplate = `{
                 "security": [
                     {
                         "InternalToken": []
+                    },
+                    {
+                        "BearerAuth": []
                     }
                 ],
-                "description": "Return concept nodes annotated with failed, learning, mastered or unassessed state.",
+                "description": "Return concept nodes annotated with failed, learning, mastered or unassessed state. Verified mode requires the graph:read scope for GET and HEAD.",
                 "produces": [
                     "application/json"
                 ],
@@ -1065,11 +1162,31 @@ const docTemplate = `{
                         }
                     },
                     "401": {
-                        "description": "Unauthorized",
+                        "description": "Missing or invalid credentials",
                         "schema": {
                             "$ref": "#/definitions/domain.ErrorResponse"
                         },
                         "headers": {
+                            "WWW-Authenticate": {
+                                "type": "string",
+                                "description": "Bearer challenge in verified mode"
+                            },
+                            "X-Request-ID": {
+                                "type": "string",
+                                "description": "Resolved request correlation identifier"
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Verified access token lacks graph:read",
+                        "schema": {
+                            "$ref": "#/definitions/domain.ErrorResponse"
+                        },
+                        "headers": {
+                            "WWW-Authenticate": {
+                                "type": "string",
+                                "description": "Bearer challenge in verified mode"
+                            },
                             "X-Request-ID": {
                                 "type": "string",
                                 "description": "Resolved request correlation identifier"
@@ -1177,7 +1294,7 @@ const docTemplate = `{
                         }
                     },
                     "503": {
-                        "description": "Shared storage unavailable",
+                        "description": "Shared storage unavailable or server shutdown",
                         "schema": {
                             "$ref": "#/definitions/domain.ErrorResponse"
                         },
@@ -1811,7 +1928,14 @@ const docTemplate = `{
         }
     },
     "securityDefinitions": {
+        "BearerAuth": {
+            "description": "Enter Bearer followed by a space and the signed access token for verified mode. Shared mode also accepts its internal token in this header.",
+            "type": "apiKey",
+            "name": "Authorization",
+            "in": "header"
+        },
         "InternalToken": {
+            "description": "Shared mode internal token.",
             "type": "apiKey",
             "name": "X-Internal-Token",
             "in": "header"

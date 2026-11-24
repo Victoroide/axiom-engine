@@ -5,6 +5,11 @@
 // @securityDefinitions.apikey InternalToken
 // @in header
 // @name X-Internal-Token
+// @description Shared mode internal token.
+// @securityDefinitions.apikey BearerAuth
+// @in header
+// @name Authorization
+// @description Enter Bearer followed by a space and the signed access token for verified mode. Shared mode also accepts its internal token in this header.
 
 // Package main starts the reasoning service or runs its health probe.
 package main
@@ -130,9 +135,12 @@ func runHTTP(args []string, stdout io.Writer) (err error) {
 
 func logStartup(logger *slog.Logger, cfg config.Config, g *graph.InMemoryGraph, getenv func(string) string, readFile func(string) ([]byte, error)) {
 	auth := "token"
-	if cfg.AuthDisabled {
+	switch {
+	case cfg.AuthDisabled:
 		auth = "disabled"
-	} else if cfg.InternalTokenPrevious != "" {
+	case cfg.VerifiedAuth != nil:
+		auth = "verified"
+	case cfg.InternalTokenPrevious != "":
 		auth = "token+previous"
 	}
 	source := "embedded"

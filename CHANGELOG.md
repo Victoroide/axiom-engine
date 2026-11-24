@@ -26,6 +26,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Add opt-in `AXIOM_AUTH_MODE=verified` for signed HTTP access tokens, route scopes, and JSON response replay isolated by issuer, tenant and caller.
 - Add an in-process stateless MCP Streamable HTTP handler for the July 2026 protocol.
 - Add a standalone `internal/auth` package (`auth.Verifier`) verifying `at+jwt` (`application/at+jwt`) signed access tokens (`RS256` and `ES256`) against a configured HTTPS issuer, resource audience, JWKS refresh cache, and tenant, caller, and scope claim mapping. The package is not wired into the deployed transports yet; the HTTP listener continues using shared-secret token authentication (`AXIOM_INTERNAL_TOKEN`) and the MCP server continues running over stdio.
 - Add a `plan.queue.wait` trace span for topic requests that encounter an occupied reasoning permit.

@@ -6,11 +6,13 @@ import (
 	"log/slog"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 	"time"
 
 	"github.com/gofiber/fiber/v3"
 
+	"github.com/Victoroide/axiom-engine/internal/domain"
 	"github.com/Victoroide/axiom-engine/internal/idempotency"
 )
 
@@ -53,12 +55,12 @@ func TestIdempotencyCancellationAtCommit(t *testing.T) {
 				if generated == 1 && tc.cancelBeforeCommit {
 					cancel()
 				}
-				return c.SendString("success")
+				return c.JSON(domain.PlanResponse{})
 			})
 			request := func(requestContext context.Context) (int, string) {
 				t.Helper()
 				parent = requestContext
-				req := httptest.NewRequestWithContext(requestContext, http.MethodPost, "/", nil)
+				req := httptest.NewRequestWithContext(requestContext, http.MethodPost, "/", strings.NewReader(`{}`))
 				req.Header.Set("Idempotency-Key", "key")
 				resp, err := app.Test(req)
 				if err != nil {

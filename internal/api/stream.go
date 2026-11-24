@@ -42,15 +42,19 @@ type planEvent struct {
 // handlePlanStream reports completed topics followed by a validated plan or error.
 // @Summary Stream adaptive study plan progress
 // @Description Emit topic events with topic, zero-based index of its first occurrence in failed_topics, and items_generated; plan carries the same validated response as the JSON route; error carries error, details and the equivalent HTTP status. Failed topic calls report zero items. Flush each event and a : keepalive comment every 2 seconds; cancel work after a failed client write. REQUEST_TIMEOUT bounds generation. Invalid input returns JSON before streaming starts. Optional mastered_topics uses the same validation and prerequisite exclusions as the JSON route.
+// @Description Verified mode requires the plan:generate scope. Credential and scope errors return JSON before streaming starts.
 // @ID streamAdaptivePlan
 // @Tags Adaptive Plan
 // @Accept json
 // @Produce json,text/event-stream
 // @Security InternalToken
+// @Security BearerAuth
 // @Param body body domain.AdaptivePlanRequest true "Student profile and failed concepts"
 // @Success 200 {string} string "Server-sent events: topic, then plan or error"
 // @Failure 400 {object} domain.ErrorResponse
-// @Failure 401 {object} domain.ErrorResponse
+// @Failure 401 {object} domain.ErrorResponse "Missing or invalid credentials before streaming"
+// @Failure 403 {object} domain.ErrorResponse "Verified access token lacks plan:generate"
+// @Header 401,403 {string} WWW-Authenticate "Bearer challenge in verified mode"
 // @Failure 408 {object} domain.ErrorResponse
 // @Failure 413 {object} domain.ErrorResponse
 // @Failure 415 {object} domain.ErrorResponse

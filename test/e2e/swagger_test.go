@@ -4,18 +4,27 @@ package e2e_test
 
 import (
 	"context"
+	"crypto/ecdsa"
+	"crypto/elliptic"
+	"crypto/rand"
+	"encoding/json"
 	"io"
 	"log/slog"
 	"net"
+	"net/http"
+	"net/http/httptest"
 	"os"
 	"strings"
 	"testing"
 	"time"
 
+	jose "github.com/go-jose/go-jose/v4"
 	"github.com/go-rod/rod"
 	"github.com/go-rod/rod/lib/launcher"
 	"github.com/gofiber/fiber/v3"
+	"github.com/google/uuid"
 
+	"github.com/Victoroide/axiom-engine/internal/auth"
 	"github.com/Victoroide/axiom-engine/internal/config"
 	"github.com/Victoroide/axiom-engine/internal/domain"
 	"github.com/Victoroide/axiom-engine/internal/graph"
@@ -30,15 +39,77 @@ func (planner) GenerateTopic(_ context.Context, r service.TopicRequest) ([]domai
 }
 
 func TestSwaggerTryItOut(t *testing.T) {
+	token := uuid.NewString()
 	cfg, err := config.Load(func(k string) string {
 		if k == "AXIOM_INTERNAL_TOKEN" {
-			return "e2e-internal-token-0123456789abcdef"
+			return token
 		}
 		return ""
 	})
 	if err != nil {
 		t.Fatal(err)
 	}
+	testSwaggerTryItOut(t, cfg, "InternalToken", token)
+}
+
+func TestSwaggerVerifiedTryItOut(t *testing.T) {
+	const audience = "https://api.example/swagger"
+	key, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
+	if err != nil {
+		t.Fatal(err)
+	}
+	jwk := jose.JSONWebKey{Key: key, KeyID: "swagger-key", Algorithm: "ES256", Use: "sig"}
+	keys, err := json.Marshal(jose.JSONWebKeySet{Keys: []jose.JSONWebKey{jwk.Public()}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	jwks := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		_, _ = w.Write(keys)
+	}))
+	t.Cleanup(jwks.Close)
+	issuer := jwks.URL + "/issuer"
+	verifier, err := auth.New(auth.Config{
+		Issuer: issuer, Audience: audience, JWKSURL: jwks.URL + "/keys",
+		Algorithms: []string{"ES256"}, Claims: auth.ClaimMapping{Tenant: "tenant_id"},
+		Transport: jwks.Client().Transport,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	signer, err := jose.NewSigner(jose.SigningKey{Algorithm: jose.ES256, Key: jwk}, (&jose.SignerOptions{}).WithType("at+jwt"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	payload, err := json.Marshal(map[string]any{
+		"iss": issuer, "aud": audience, "exp": time.Now().Add(5 * time.Minute).Unix(),
+		"tenant_id": "swagger-tenant", "sub": "swagger-caller", "scope": "plan:generate graph:read",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	signed, err := signer.Sign(payload)
+	if err != nil {
+		t.Fatal(err)
+	}
+	token, err := signed.CompactSerialize()
+	if err != nil {
+		t.Fatal(err)
+	}
+	cfg, err := config.Load(func(key string) string {
+		if key == "AXIOM_AUTH_DISABLED" {
+			return "true"
+		}
+		return ""
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	cfg.AuthDisabled, cfg.VerifiedAuth = false, verifier
+	testSwaggerTryItOut(t, cfg, "BearerAuth", "Bearer "+token)
+}
+
+func testSwaggerTryItOut(t *testing.T, cfg config.Config, scheme, credential string) {
+	t.Helper()
 	app := server.New(cfg, server.Dependencies{Graph: graph.NewInMemoryGraph(), Planner: planner{}, Logger: slog.New(slog.NewJSONHandler(io.Discard, nil))})
 	ln, err := (&net.ListenConfig{}).Listen(context.Background(), "tcp", "127.0.0.1:0")
 	if err != nil {
@@ -159,8 +230,9 @@ func TestSwaggerTryItOut(t *testing.T) {
 	t.Log("authorize")
 	page.MustElementR("button.authorize", "Authorize").MustClick()
 	dialog := page.MustElement(".dialog-ux").MustWaitVisible()
-	dialog.MustElement("input").MustInput("e2e-internal-token-0123456789abcdef")
-	dialog.MustElementR("button.authorize", "Authorize").MustClick()
+	form := dialog.MustElementR(".auth-container", scheme)
+	form.MustElement("input").MustInput(credential)
+	form.MustElementR("button.authorize", "^Authorize$").MustClick()
 	dialog.MustElementR("button", "^Close$").MustClick()
 	t.Log("plan authorized Try it out")
 	execute(plan, "200", "Recursion", "Polymorphism")

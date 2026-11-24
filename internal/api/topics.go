@@ -16,15 +16,19 @@ import (
 // @Tags Curriculum
 // @Produce json
 // @Security InternalToken
+// @Security BearerAuth
+// @Description Verified mode requires the graph:read scope for GET and HEAD.
 // @Param q query string false "Canonical substring of a topic name"
 // @Success 200 {object} domain.TopicsResponse
-// @Failure 401 {object} domain.ErrorResponse
+// @Failure 401 {object} domain.ErrorResponse "Missing or invalid credentials"
+// @Failure 403 {object} domain.ErrorResponse "Verified access token lacks graph:read"
+// @Header 401,403 {string} WWW-Authenticate "Bearer challenge in verified mode"
 // @Failure 408 {object} domain.ErrorResponse
 // @Failure 413 {object} domain.ErrorResponse
 // @Failure 429 {object} domain.ErrorResponse
 // @Failure 431 {object} domain.ErrorResponse
 // @Failure 500 {object} domain.ErrorResponse
-// @Failure 503 {object} domain.ErrorResponse "Shared storage unavailable"
+// @Failure 503 {object} domain.ErrorResponse "Shared storage unavailable or server shutdown"
 // @Header 503 {integer} Retry-After "Seconds to wait before retrying"
 // @Header all {string} X-Request-ID "Resolved request correlation identifier"
 // @Header 200,413 {integer} X-RateLimit-Limit "Maximum requests per rate-limit window"
@@ -42,16 +46,20 @@ func (h *Handler) handleTopics(c fiber.Ctx) error {
 // @Tags Curriculum
 // @Produce json
 // @Security InternalToken
+// @Security BearerAuth
+// @Description Verified mode requires the graph:read scope for GET and HEAD.
 // @Param topic path string true "Topic name with canonical matching"
 // @Success 200 {object} domain.TopicPathResponse
-// @Failure 401 {object} domain.ErrorResponse
+// @Failure 401 {object} domain.ErrorResponse "Missing or invalid credentials"
+// @Failure 403 {object} domain.ErrorResponse "Verified access token lacks graph:read"
+// @Header 401,403 {string} WWW-Authenticate "Bearer challenge in verified mode"
 // @Failure 408 {object} domain.ErrorResponse
 // @Failure 413 {object} domain.ErrorResponse
 // @Failure 422 {object} domain.ErrorResponse
 // @Failure 429 {object} domain.ErrorResponse
 // @Failure 431 {object} domain.ErrorResponse
 // @Failure 500 {object} domain.ErrorResponse
-// @Failure 503 {object} domain.ErrorResponse "Shared storage unavailable"
+// @Failure 503 {object} domain.ErrorResponse "Shared storage unavailable or server shutdown"
 // @Header 503 {integer} Retry-After "Seconds to wait before retrying"
 // @Header all {string} X-Request-ID "Resolved request correlation identifier"
 // @Header 200,413,422 {integer} X-RateLimit-Limit "Maximum requests per rate-limit window"

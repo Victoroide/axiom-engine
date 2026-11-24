@@ -35,29 +35,30 @@ func NewHandler(r *service.ReasoningService, curriculum *graph.Curriculum, timeo
 	return &Handler{reasoning: r, curriculum: curriculum, timeout: timeout, maxTopics: maxTopics, maxMastered: maxMastered, logger: logger}
 }
 
-// RegisterRoutes attaches the versioned API routes.
-func (h *Handler) RegisterRoutes(app *fiber.App, planMiddleware ...fiber.Handler) {
+// RegisterRoutes attaches the versioned routes with optional replay middleware.
+func (h *Handler) RegisterRoutes(app *fiber.App, replay fiber.Handler) {
 	v1 := app.Group("/api/v1")
-	handlers := make([]any, 0, len(planMiddleware)+1)
-	for _, middleware := range planMiddleware {
-		handlers = append(handlers, middleware)
+	plan := []any{h.handleAdaptivePlan}
+	if replay != nil {
+		plan = []any{replay, h.handleAdaptivePlan}
 	}
-	handlers = append(handlers, h.handleAdaptivePlan)
-	v1.Post("/adaptive-plan", handlers[0], handlers[1:]...)
-	v1.Get("/topics", h.handleTopics)
-	v1.Get("/topics/:topic/path", h.handleTopicPath)
-	v1.Post("/adaptive-plan/stream", h.handlePlanStream)
-	v1.Get("/tutor/student/:student_id/cognitive-graph", h.handleCognitiveGraph)
+	// The prefix of an operation name is its required access-token scope.
+	v1.Post("/adaptive-plan", plan[0], plan[1:]...).Name("plan:generate/json")
+	v1.Get("/topics", h.handleTopics).Name("graph:read/topics")
+	v1.Get("/topics/:topic/path", h.handleTopicPath).Name("graph:read/path")
+	v1.Post("/adaptive-plan/stream", h.handlePlanStream).Name("plan:generate/stream")
+	v1.Get("/tutor/student/:student_id/cognitive-graph", h.handleCognitiveGraph).Name("graph:read/cognitive-graph")
 }
 
 // handleAdaptivePlan generates a validated study plan.
 // @Summary Generate adaptive study plan
-// @Description Generate a graph-guided study plan for known topics and a VARK profile.
+// @Description Generate a graph-guided study plan for known topics and a VARK profile. Verified mode requires the plan:generate scope.
 // @ID generateAdaptivePlan
 // @Tags Adaptive Plan
 // @Accept json
 // @Produce json
 // @Security InternalToken
+// @Security BearerAuth
 // @Param Idempotency-Key header string false "1 to 255 visible ASCII characters; successful responses retained for 24h by default"
 // @Failure 409 {object} domain.ErrorResponse "idempotency_key_in_progress"
 // @Header 409 {integer} Retry-After "Seconds to wait before retrying"
@@ -65,7 +66,9 @@ func (h *Handler) RegisterRoutes(app *fiber.App, planMiddleware ...fiber.Handler
 // @Success 200 {object} domain.PlanResponse
 // @Header 200 {boolean} Idempotent-Replayed "True when replaying a stored response"
 // @Failure 400 {object} domain.ErrorResponse
-// @Failure 401 {object} domain.ErrorResponse
+// @Failure 401 {object} domain.ErrorResponse "Missing or invalid credentials"
+// @Failure 403 {object} domain.ErrorResponse "Verified access token lacks plan:generate"
+// @Header 401,403 {string} WWW-Authenticate "Bearer challenge in verified mode"
 // @Failure 408 {object} domain.ErrorResponse "Request not read within the 10 s read timeout"
 // @Failure 413 {object} domain.ErrorResponse
 // @Failure 415 {object} domain.ErrorResponse
@@ -77,7 +80,7 @@ func (h *Handler) RegisterRoutes(app *fiber.App, planMiddleware ...fiber.Handler
 // @Failure 504 {object} domain.ErrorResponse
 // @Failure 431 {object} domain.ErrorResponse "Request headers exceed the server limit"
 // @Failure 500 {object} domain.ErrorResponse
-// @Failure 503 {object} domain.ErrorResponse "Shared storage unavailable"
+// @Failure 503 {object} domain.ErrorResponse "Temporary unavailability, shared storage failure, upstream throttling or server shutdown"
 // @Header 503 {integer} Retry-After "Seconds to wait before retrying"
 // @Header all {string} X-Request-ID "Resolved request correlation identifier"
 // @Header 200,400,409,413,415,422,502,503,504 {integer} X-RateLimit-Limit "Maximum requests per rate-limit window"
@@ -146,25 +149,28 @@ func validationResponse(c fiber.Ctx, err *service.ValidationError) error {
 
 // handleCognitiveGraph returns a deterministic concept neighborhood.
 // @Summary Get cognitive shadow graph
-// @Description Return concept nodes annotated with failed, learning, mastered or unassessed state.
+// @Description Return concept nodes annotated with failed, learning, mastered or unassessed state. Verified mode requires the graph:read scope for GET and HEAD.
 // @ID getCognitiveGraph
 // @Tags Tutor
 // @Produce json
 // @Security InternalToken
+// @Security BearerAuth
 // @Param student_id path string true "Student identifier" example(student-42)
 // @Param topics query string true "Comma-separated failed topic names; may be repeated" example(Polymorphism,Recursion)
 // @Param mastered query []string false "Mastered topic names; may be repeated or comma-separated" collectionFormat(multi)
 // @Param target_topic query string false "Center the subgraph on one topic; must be one of topics" example(Recursion)
 // @Success 200 {object} domain.CognitiveGraphResponse
 // @Failure 400 {object} domain.ErrorResponse
-// @Failure 401 {object} domain.ErrorResponse
+// @Failure 401 {object} domain.ErrorResponse "Missing or invalid credentials"
+// @Failure 403 {object} domain.ErrorResponse "Verified access token lacks graph:read"
+// @Header 401,403 {string} WWW-Authenticate "Bearer challenge in verified mode"
 // @Failure 408 {object} domain.ErrorResponse "Request not read within the 10 s read timeout"
 // @Failure 413 {object} domain.ErrorResponse "Request body exceeds 64 KiB"
 // @Failure 422 {object} domain.ErrorResponse
 // @Failure 429 {object} domain.ErrorResponse
 // @Failure 431 {object} domain.ErrorResponse "Request headers exceed the server limit"
 // @Failure 500 {object} domain.ErrorResponse
-// @Failure 503 {object} domain.ErrorResponse "Shared storage unavailable"
+// @Failure 503 {object} domain.ErrorResponse "Shared storage unavailable or server shutdown"
 // @Header 503 {integer} Retry-After "Seconds to wait before retrying"
 // @Header all {string} X-Request-ID "Resolved request correlation identifier"
 // @Header 200,400,413,422 {integer} X-RateLimit-Limit "Maximum requests per rate-limit window"
