@@ -12,9 +12,13 @@ import (
 	"syscall"
 	"time"
 
+	"golang.org/x/sync/semaphore"
+
 	"github.com/Victoroide/axiom-engine/internal/domain"
 	"github.com/Victoroide/axiom-engine/internal/metrics"
 )
+
+const resourceLinkConcurrency = 8
 
 var (
 	errResourceLinkInvalid   = errors.New("resource link is not an allowed HTTP URL")
@@ -77,12 +81,31 @@ type resourceLinkRedirectKey struct{}
 
 type resourceLinkRedirects struct{ count int }
 
+type resourceLinkDialKey struct{}
+
+type resourceLinkDial func(*net.Dialer, string, string) (net.Conn, error)
+
+func bindResourceLinkDial(ctx context.Context, work *resourceLinkWork) resourceLinkDial {
+	return func(dialer *net.Dialer, network, address string) (net.Conn, error) {
+		if err := work.startDial(ctx); err != nil {
+			return nil, err
+		}
+		conn, err := dialResourceLink(ctx, dialer, network, address)
+		if err != nil {
+			work.finishDial()
+			return nil, err
+		}
+		return work.trackSocket(ctx, conn), nil
+	}
+}
+
 // ResourceLinkChecker checks bounded HTTP responses without cookies or credentials.
 type ResourceLinkChecker struct {
 	client  *http.Client
 	timeout time.Duration
 	policy  ResourceLinkPolicy
 	metrics *metrics.Metrics
+	permits *semaphore.Weighted
 }
 
 // NewResourceLinkChecker uses the public-only destination policy when policy is nil.
@@ -93,7 +116,8 @@ func NewResourceLinkChecker(timeout time.Duration, policy ResourceLinkPolicy, re
 	if policy == nil {
 		policy = publicResourceLinkPolicy{}
 	}
-	dialer := &net.Dialer{Timeout: timeout, Control: func(_, address string, _ syscall.RawConn) error {
+	// Keep each dial serial, including the standard library's unspecified-address fallback.
+	dialer := &net.Dialer{FallbackDelay: -1, ControlContext: func(ctx context.Context, _, address string, _ syscall.RawConn) error {
 		host, _, err := net.SplitHostPort(address)
 		if err != nil {
 			return errResourceLinkRefused
@@ -103,12 +127,27 @@ func NewResourceLinkChecker(timeout time.Duration, policy ResourceLinkPolicy, re
 			return errResourceLinkRefused
 		}
 		// The address here is the resolved address actually used for this connection.
-		return policy.ValidateAddress(ip)
+		if err := policy.ValidateAddress(ip); err != nil {
+			return err
+		}
+		return resourceLinkContextErr(ctx)
 	}}
-	checker := &ResourceLinkChecker{timeout: timeout, policy: policy, metrics: recorder}
+	dial := func(ctx context.Context, network, address string) (net.Conn, error) {
+		// The HTTP transport detaches dials from the request context for reuse.
+		// Checks disable reuse, so keep dialing and TLS within the check deadline.
+		if checkDial, ok := ctx.Value(resourceLinkDialKey{}).(resourceLinkDial); ok {
+			return checkDial(dialer, network, address)
+		}
+		return nil, errResourceLinkRefused
+	}
+	checker := &ResourceLinkChecker{
+		timeout: timeout,
+		policy:  policy,
+		metrics: recorder,
+		permits: semaphore.NewWeighted(resourceLinkConcurrency),
+	}
 	checker.client = &http.Client{
-		Timeout:   timeout,
-		Transport: &http.Transport{DialContext: dialer.DialContext, DisableKeepAlives: true, TLSHandshakeTimeout: timeout, ResponseHeaderTimeout: timeout},
+		Transport: &http.Transport{DialContext: dial, DisableKeepAlives: true},
 		CheckRedirect: func(req *http.Request, via []*http.Request) error {
 			if err := policy.ValidateURL(req.URL); err != nil {
 				return err
@@ -129,19 +168,34 @@ func NewResourceLinkChecker(timeout time.Duration, policy ResourceLinkPolicy, re
 	return checker
 }
 
-// Check returns a bounded result label for one link and records its outcome.
-func (c *ResourceLinkChecker) Check(ctx context.Context, rawURL string) (result string) {
+// Check records one link outcome within a timeout that includes permit wait.
+func (c *ResourceLinkChecker) Check(ctx context.Context, rawURL string) string {
+	ctx, cancel := context.WithTimeout(ctx, c.timeout)
+	defer cancel()
+	return c.check(ctx, rawURL)
+}
+
+func (c *ResourceLinkChecker) check(ctx context.Context, rawURL string) (result string) {
 	defer func() { c.metrics.ObserveResourceLink(result) }()
 	u, err := url.Parse(rawURL)
 	if err != nil || c.policy.ValidateURL(u) != nil {
 		return "invalid"
 	}
-	ctx, cancel := context.WithTimeout(ctx, c.timeout)
+	if err := c.permits.Acquire(ctx, 1); err != nil {
+		return "timeout"
+	}
+	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
+	work := &resourceLinkWork{release: func() { c.permits.Release(1) }}
+	defer work.endCheck()
+	ctx = context.WithValue(ctx, resourceLinkDialKey{}, bindResourceLinkDial(ctx, work))
 	ctx = context.WithValue(ctx, resourceLinkRedirectKey{}, &resourceLinkRedirects{})
 	status, err := c.request(ctx, http.MethodHead, u.String())
 	if err == nil && (status == http.StatusMethodNotAllowed || status == http.StatusNotImplemented) {
 		status, err = c.request(ctx, http.MethodGet, u.String())
+	}
+	if resourceLinkContextErr(ctx) != nil {
+		return "timeout"
 	}
 	if err != nil {
 		var networkError net.Error
@@ -150,7 +204,7 @@ func (c *ResourceLinkChecker) Check(ctx context.Context, rawURL string) (result 
 			return "invalid"
 		case errors.Is(err, errResourceLinkRedirects):
 			return "status"
-		case ctx.Err() != nil || errors.As(err, &networkError) && networkError.Timeout():
+		case errors.As(err, &networkError) && networkError.Timeout():
 			return "timeout"
 		default:
 			return "refused"
@@ -163,6 +217,9 @@ func (c *ResourceLinkChecker) Check(ctx context.Context, rawURL string) (result 
 }
 
 func (c *ResourceLinkChecker) request(ctx context.Context, method, rawURL string) (int, error) {
+	if err := resourceLinkContextErr(ctx); err != nil {
+		return 0, err
+	}
 	req, err := http.NewRequestWithContext(ctx, method, rawURL, nil)
 	if err != nil {
 		return 0, errResourceLinkInvalid
@@ -179,44 +236,59 @@ func (c *ResourceLinkChecker) request(ctx context.Context, method, rawURL string
 	return resp.StatusCode, nil
 }
 
+func resourceLinkContextErr(ctx context.Context) error {
+	if err := ctx.Err(); err != nil {
+		return err
+	}
+	// A dial can time out at the deadline before the context timer runs.
+	if deadline, ok := ctx.Deadline(); ok && !time.Now().Before(deadline) {
+		return context.DeadlineExceeded
+	}
+	return nil
+}
+
 func (c *ResourceLinkChecker) filterResources(ctx context.Context, items []domain.PlanItem) ([]domain.PlanItem, int) {
-	type resourceIndex struct{ item, resource int }
-	var resources []resourceIndex
-	for i, item := range items {
-		for j := range item.Resources {
-			resources = append(resources, resourceIndex{i, j})
+	indexes := make(map[string]int)
+	var urls []string
+	for _, item := range items {
+		for _, resource := range item.Resources {
+			if _, exists := indexes[resource.URL]; !exists {
+				indexes[resource.URL] = len(urls)
+				urls = append(urls, resource.URL)
+			}
 		}
 	}
-	if len(resources) == 0 {
+	if len(urls) == 0 {
 		return items, 0
 	}
-	passed := make([]bool, len(resources))
+	// All distinct URLs enter the queue together and retain that deadline.
+	ctx, cancel := context.WithTimeout(ctx, c.timeout)
+	defer cancel()
+	passed := make([]bool, len(urls))
 	jobs := make(chan int)
 	var workers sync.WaitGroup
-	for range min(8, len(resources)) {
+	for range min(resourceLinkConcurrency, len(urls)) {
 		workers.Go(func() {
 			for i := range jobs {
-				index := resources[i]
-				passed[i] = c.Check(ctx, items[index.item].Resources[index.resource].URL) == "ok"
+				passed[i] = c.check(ctx, urls[i]) == "ok"
 			}
 		})
 	}
-	for i := range resources {
+	for i := range urls {
 		jobs <- i
 	}
 	close(jobs)
 	workers.Wait()
 	out := make([]domain.PlanItem, len(items))
-	index, dropped := 0, 0
+	dropped := 0
 	for i, item := range items {
 		kept := make([]domain.Resource, 0, len(item.Resources))
 		for _, resource := range item.Resources {
-			if passed[index] {
+			if passed[indexes[resource.URL]] {
 				kept = append(kept, resource)
 			} else {
 				dropped++
 			}
-			index++
 		}
 		item.Resources = kept
 		out[i] = item

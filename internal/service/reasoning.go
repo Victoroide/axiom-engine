@@ -212,7 +212,7 @@ func (p *PreparedPlan) Generate(ctx context.Context, options ...PlanOption) (dom
 	unreachable := 0
 	if s.resourceLinks != nil {
 		merged, unreachable = s.resourceLinks.filterResources(ctx, merged)
-		if err := ctx.Err(); err != nil {
+		if err := resourceLinkContextErr(ctx); err != nil {
 			return domain.PlanResponse{}, err
 		}
 	}
