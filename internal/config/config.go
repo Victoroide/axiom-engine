@@ -10,6 +10,8 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/Victoroide/axiom-engine/internal/auth"
 )
 
 // HTTPListener selects the HTTP server that accepts connections.
@@ -36,6 +38,7 @@ type Config struct {
 	HTTPListener          HTTPListener
 	Port                  string
 	AuthDisabled          bool
+	VerifiedAuth          *auth.Verifier
 	InternalToken         string
 	InternalTokenPrevious string
 	CORSAllowedOrigins    []string
@@ -79,8 +82,6 @@ func defaults() Config {
 // Load parses environment values without modifying process state.
 func Load(getenv func(string) string) (Config, error) {
 	c := defaults()
-	c.InternalToken = getenv("AXIOM_INTERNAL_TOKEN")
-	c.InternalTokenPrevious = getenv("AXIOM_INTERNAL_TOKEN_PREVIOUS")
 	c.GraphFile = getenv("GRAPH_FILE")
 	switch listener := HTTPListener(getenv("HTTP_LISTENER")); listener {
 	case "":
@@ -93,7 +94,6 @@ func Load(getenv func(string) string) (Config, error) {
 		key string
 		dst *bool
 	}{
-		{"AXIOM_AUTH_DISABLED", &c.AuthDisabled},
 		{"METRICS_ENABLED", &c.MetricsEnabled},
 		{"SWAGGER_ENABLED", &c.SwaggerEnabled},
 		{"PRESERVE_DISPLAY_JOINS", &c.PreserveDisplayJoins},
@@ -118,19 +118,8 @@ func Load(getenv func(string) string) (Config, error) {
 			return Config{}, fmt.Errorf("GRAPH_RELOAD_ENABLED is supported only on Linux and macOS")
 		}
 	}
-	if c.InternalToken == "" && !c.AuthDisabled {
-		return Config{}, fmt.Errorf("AXIOM_INTERNAL_TOKEN is required unless AXIOM_AUTH_DISABLED=true")
-	}
-	for _, token := range []struct{ key, value string }{
-		{"AXIOM_INTERNAL_TOKEN", c.InternalToken},
-		{"AXIOM_INTERNAL_TOKEN_PREVIOUS", c.InternalTokenPrevious},
-	} {
-		if token.value != "" && (len(token.value) < 32 || strings.ContainsFunc(token.value, func(r rune) bool { return r < 0x21 || r > 0x7e })) {
-			return Config{}, fmt.Errorf("%s must be at least 32 visible ASCII characters without whitespace", token.key)
-		}
-	}
-	if c.InternalTokenPrevious != "" && c.InternalTokenPrevious == c.InternalToken {
-		return Config{}, fmt.Errorf("AXIOM_INTERNAL_TOKEN_PREVIOUS must differ from AXIOM_INTERNAL_TOKEN")
+	if err := loadHTTPAuth(getenv, &c); err != nil {
+		return Config{}, err
 	}
 	if v := getenv("PORT"); v != "" {
 		n, err := strconv.Atoi(v)
@@ -245,12 +234,6 @@ func Load(getenv func(string) string) (Config, error) {
 			}
 			c.CORSAllowedOrigins = append(c.CORSAllowedOrigins, origin)
 		}
-	}
-	if c.AuthDisabled && c.InternalTokenPrevious != "" {
-		return Config{}, fmt.Errorf("AXIOM_AUTH_DISABLED must be false when AXIOM_INTERNAL_TOKEN_PREVIOUS is configured")
-	}
-	if c.AuthDisabled && c.InternalToken != "" {
-		return Config{}, fmt.Errorf("AXIOM_AUTH_DISABLED must be false when AXIOM_INTERNAL_TOKEN is configured")
 	}
 	if err := loadMastery(getenv, &c); err != nil {
 		return Config{}, err

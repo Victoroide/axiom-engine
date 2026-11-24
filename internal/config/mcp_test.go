@@ -9,6 +9,12 @@ import (
 func TestLoadMCP(t *testing.T) {
 	env := map[string]string{"IDEMPOTENCY_TTL": "invalid", "IDEMPOTENCY_MAX_ENTRIES": "invalid", "REDIS_URL": "invalid", "PORT": "bad", "AXIOM_INTERNAL_TOKEN": "short", "AXIOM_INTERNAL_TOKEN_PREVIOUS": "short", "AXIOM_AUTH_DISABLED": "invalid", "CORS_ALLOWED_ORIGINS": "bad", "TRUSTED_PROXIES": "bad", "RATE_LIMIT_MAX": "bad", "RATE_LIMIT_WINDOW": "bad", "SWAGGER_ENABLED": "bad", "METRICS_ENABLED": "bad", "SHUTDOWN_DRAIN_DELAY": "bad", "SHUTDOWN_TIMEOUT": "1s", "GRAPH_FILE": "curriculum.json", "LLM_MAX_CONCURRENCY": "3"}
 	env["HTTP_LISTENER"] = "invalid"
+	for _, key := range []string{
+		"AXIOM_AUTH_MODE", "AXIOM_AUTH_ISSUER", "AXIOM_AUTH_AUDIENCE", "AXIOM_AUTH_JWKS_URL", "AXIOM_AUTH_ALGORITHMS",
+		"AXIOM_AUTH_TENANT_CLAIM", "AXIOM_AUTH_SCOPE_CLAIM", "AXIOM_AUTH_CLIENT_ID_CLAIM", "AXIOM_AUTH_REGISTERED_CLIENTS",
+	} {
+		env[key] = "invalid"
+	}
 	c, err := LoadMCP(func(key string) string { return env[key] })
 	if err != nil {
 		t.Fatal(err)

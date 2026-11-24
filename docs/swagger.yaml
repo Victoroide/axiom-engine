@@ -341,7 +341,7 @@ paths:
       consumes:
       - application/json
       description: Generate a graph-guided study plan for known topics and a VARK
-        profile.
+        profile. Verified mode requires the plan:generate scope.
       operationId: generateAdaptivePlan
       parameters:
       - description: 1 to 255 visible ASCII characters; successful responses retained
@@ -396,8 +396,22 @@ paths:
           schema:
             $ref: '#/definitions/domain.ErrorResponse'
         "401":
-          description: Unauthorized
+          description: Missing or invalid credentials
           headers:
+            WWW-Authenticate:
+              description: Bearer challenge in verified mode
+              type: string
+            X-Request-ID:
+              description: Resolved request correlation identifier
+              type: string
+          schema:
+            $ref: '#/definitions/domain.ErrorResponse'
+        "403":
+          description: Verified access token lacks plan:generate
+          headers:
+            WWW-Authenticate:
+              description: Bearer challenge in verified mode
+              type: string
             X-Request-ID:
               description: Resolved request correlation identifier
               type: string
@@ -528,7 +542,8 @@ paths:
           schema:
             $ref: '#/definitions/domain.ErrorResponse'
         "503":
-          description: Shared storage unavailable
+          description: Temporary unavailability, shared storage failure, upstream
+            throttling or server shutdown
           headers:
             Retry-After:
               description: Seconds to wait before retrying
@@ -566,6 +581,7 @@ paths:
             $ref: '#/definitions/domain.ErrorResponse'
       security:
       - InternalToken: []
+      - BearerAuth: []
       summary: Generate adaptive study plan
       tags:
       - Adaptive Plan
@@ -573,14 +589,9 @@ paths:
     post:
       consumes:
       - application/json
-      description: 'Emit topic events with topic, zero-based index of its first occurrence
-        in failed_topics, and items_generated; plan carries the same validated response
-        as the JSON route; error carries error, details and the equivalent HTTP status.
-        Failed topic calls report zero items. Flush each event and a : keepalive comment
-        every 2 seconds; cancel work after a failed client write. REQUEST_TIMEOUT
-        bounds generation. Invalid input returns JSON before streaming starts. Optional
-        mastered_topics uses the same validation and prerequisite exclusions as the
-        JSON route.'
+      description: |-
+        Emit topic events with topic, zero-based index of its first occurrence in failed_topics, and items_generated; plan carries the same validated response as the JSON route; error carries error, details and the equivalent HTTP status. Failed topic calls report zero items. Flush each event and a : keepalive comment every 2 seconds; cancel work after a failed client write. REQUEST_TIMEOUT bounds generation. Invalid input returns JSON before streaming starts. Optional mastered_topics uses the same validation and prerequisite exclusions as the JSON route.
+        Verified mode requires the plan:generate scope. Credential and scope errors return JSON before streaming starts.
       operationId: streamAdaptivePlan
       parameters:
       - description: Student profile and failed concepts
@@ -628,8 +639,22 @@ paths:
           schema:
             $ref: '#/definitions/domain.ErrorResponse'
         "401":
-          description: Unauthorized
+          description: Missing or invalid credentials before streaming
           headers:
+            WWW-Authenticate:
+              description: Bearer challenge in verified mode
+              type: string
+            X-Request-ID:
+              description: Resolved request correlation identifier
+              type: string
+          schema:
+            $ref: '#/definitions/domain.ErrorResponse'
+        "403":
+          description: Verified access token lacks plan:generate
+          headers:
+            WWW-Authenticate:
+              description: Bearer challenge in verified mode
+              type: string
             X-Request-ID:
               description: Resolved request correlation identifier
               type: string
@@ -752,6 +777,7 @@ paths:
             $ref: '#/definitions/domain.ErrorResponse'
       security:
       - InternalToken: []
+      - BearerAuth: []
       summary: Stream adaptive study plan progress
       tags:
       - Adaptive Plan
@@ -773,6 +799,7 @@ paths:
             topic: Recursion
   /api/v1/topics:
     get:
+      description: Verified mode requires the graph:read scope for GET and HEAD.
       operationId: listTopics
       parameters:
       - description: Canonical substring of a topic name
@@ -800,8 +827,22 @@ paths:
           schema:
             $ref: '#/definitions/domain.TopicsResponse'
         "401":
-          description: Unauthorized
+          description: Missing or invalid credentials
           headers:
+            WWW-Authenticate:
+              description: Bearer challenge in verified mode
+              type: string
+            X-Request-ID:
+              description: Resolved request correlation identifier
+              type: string
+          schema:
+            $ref: '#/definitions/domain.ErrorResponse'
+        "403":
+          description: Verified access token lacks graph:read
+          headers:
+            WWW-Authenticate:
+              description: Bearer challenge in verified mode
+              type: string
             X-Request-ID:
               description: Resolved request correlation identifier
               type: string
@@ -860,7 +901,7 @@ paths:
           schema:
             $ref: '#/definitions/domain.ErrorResponse'
         "503":
-          description: Shared storage unavailable
+          description: Shared storage unavailable or server shutdown
           headers:
             Retry-After:
               description: Seconds to wait before retrying
@@ -872,11 +913,13 @@ paths:
             $ref: '#/definitions/domain.ErrorResponse'
       security:
       - InternalToken: []
+      - BearerAuth: []
       summary: List curriculum topics
       tags:
       - Curriculum
   /api/v1/topics/{topic}/path:
     get:
+      description: Verified mode requires the graph:read scope for GET and HEAD.
       operationId: getTopicPath
       parameters:
       - description: Topic name with canonical matching
@@ -905,8 +948,22 @@ paths:
           schema:
             $ref: '#/definitions/domain.TopicPathResponse'
         "401":
-          description: Unauthorized
+          description: Missing or invalid credentials
           headers:
+            WWW-Authenticate:
+              description: Bearer challenge in verified mode
+              type: string
+            X-Request-ID:
+              description: Resolved request correlation identifier
+              type: string
+          schema:
+            $ref: '#/definitions/domain.ErrorResponse'
+        "403":
+          description: Verified access token lacks graph:read
+          headers:
+            WWW-Authenticate:
+              description: Bearer challenge in verified mode
+              type: string
             X-Request-ID:
               description: Resolved request correlation identifier
               type: string
@@ -982,7 +1039,7 @@ paths:
           schema:
             $ref: '#/definitions/domain.ErrorResponse'
         "503":
-          description: Shared storage unavailable
+          description: Shared storage unavailable or server shutdown
           headers:
             Retry-After:
               description: Seconds to wait before retrying
@@ -994,13 +1051,15 @@ paths:
             $ref: '#/definitions/domain.ErrorResponse'
       security:
       - InternalToken: []
+      - BearerAuth: []
       summary: Get a topic's prerequisite path
       tags:
       - Curriculum
   /api/v1/tutor/student/{student_id}/cognitive-graph:
     get:
       description: Return concept nodes annotated with failed, learning, mastered
-        or unassessed state.
+        or unassessed state. Verified mode requires the graph:read scope for GET and
+        HEAD.
       operationId: getCognitiveGraph
       parameters:
       - description: Student identifier
@@ -1065,8 +1124,22 @@ paths:
           schema:
             $ref: '#/definitions/domain.ErrorResponse'
         "401":
-          description: Unauthorized
+          description: Missing or invalid credentials
           headers:
+            WWW-Authenticate:
+              description: Bearer challenge in verified mode
+              type: string
+            X-Request-ID:
+              description: Resolved request correlation identifier
+              type: string
+          schema:
+            $ref: '#/definitions/domain.ErrorResponse'
+        "403":
+          description: Verified access token lacks graph:read
+          headers:
+            WWW-Authenticate:
+              description: Bearer challenge in verified mode
+              type: string
             X-Request-ID:
               description: Resolved request correlation identifier
               type: string
@@ -1142,7 +1215,7 @@ paths:
           schema:
             $ref: '#/definitions/domain.ErrorResponse'
         "503":
-          description: Shared storage unavailable
+          description: Shared storage unavailable or server shutdown
           headers:
             Retry-After:
               description: Seconds to wait before retrying
@@ -1154,6 +1227,7 @@ paths:
             $ref: '#/definitions/domain.ErrorResponse'
       security:
       - InternalToken: []
+      - BearerAuth: []
       summary: Get cognitive shadow graph
       tags:
       - Tutor
@@ -1318,7 +1392,14 @@ paths:
       tags:
       - System
 securityDefinitions:
+  BearerAuth:
+    description: Enter Bearer followed by a space and the signed access token for
+      verified mode. Shared mode also accepts its internal token in this header.
+    in: header
+    name: Authorization
+    type: apiKey
   InternalToken:
+    description: Shared mode internal token.
     in: header
     name: X-Internal-Token
     type: apiKey

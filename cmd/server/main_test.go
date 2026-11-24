@@ -13,6 +13,7 @@ import (
 	"net/http/httptest"
 	"os"
 	"os/exec"
+	"slices"
 	"strings"
 	"sync/atomic"
 	"syscall"
@@ -32,7 +33,23 @@ func TestRunLogsRetryErrorAsJSON(t *testing.T) {
 }
 
 func TestRunLogsPromptBudgetErrorAsJSON(t *testing.T) {
+	if os.Getenv("AXIOM_ERROR_TEST") != "1" {
+		for key, value := range map[string]string{
+			"AXIOM_AUTH_MODE": "verified", "AXIOM_AUTH_ISSUER": "https://issuer.example",
+			"AXIOM_AUTH_AUDIENCE": "https://api.example", "AXIOM_AUTH_JWKS_URL": "https://issuer.example/keys",
+			"AXIOM_AUTH_ALGORITHMS": "ES256", "AXIOM_AUTH_TENANT_CLAIM": "org",
+			"AXIOM_AUTH_SCOPE_CLAIM": "permissions", "AXIOM_AUTH_CLIENT_ID_CLAIM": "client_id",
+			"AXIOM_AUTH_REGISTERED_CLIENTS": "registered",
+			"AXIOM_INTERNAL_TOKEN_PREVIOUS": "inherited-token-0123456789abcdef",
+		} {
+			t.Setenv(key, value)
+		}
+	}
 	testRunLogsErrorAsJSON(t, "LLM_MAX_TOPIC_INPUT_BYTES", "3093", "LLM_MAX_TOPIC_INPUT_BYTES must be at least 3094 bytes")
+}
+
+func TestRunLogsAuthModeConflictAsJSON(t *testing.T) {
+	testRunLogsErrorAsJSON(t, "AXIOM_AUTH_MODE", "verified", "AXIOM_AUTH_DISABLED=true requires AXIOM_AUTH_MODE to be unset")
 }
 
 func testRunLogsErrorAsJSON(t *testing.T, key, value, want string) {
@@ -42,7 +59,7 @@ func testRunLogsErrorAsJSON(t *testing.T, key, value, want string) {
 		return
 	}
 	cmd := exec.CommandContext(t.Context(), os.Args[0], "-test.run=^"+t.Name()+"$") //nolint:gosec // Reexecute this test binary to exercise process startup.
-	cmd.Env = append(os.Environ(), "AXIOM_ERROR_TEST=1", "AXIOM_AUTH_DISABLED=true", "AXIOM_INTERNAL_TOKEN=", "PORT=8080", "AWS_MAX_ATTEMPTS=3", "AWS_RETRY_MODE=standard", "BEDROCK_REQUIRE_EXPLICIT_REGION=false", key+"="+value, "BAML_LOG=off")
+	cmd.Env = append(httpFixtureEnv(), "AXIOM_ERROR_TEST=1", "PORT=8080", "AWS_MAX_ATTEMPTS=3", "AWS_RETRY_MODE=standard", "BEDROCK_REQUIRE_EXPLICIT_REGION=false", key+"="+value, "BAML_LOG=off")
 	output, err := cmd.CombinedOutput()
 	var exitErr *exec.ExitError
 	if !errors.As(err, &exitErr) || exitErr.ExitCode() != 1 {
@@ -61,6 +78,29 @@ func testRunLogsErrorAsJSON(t *testing.T, key, value, want string) {
 	}
 }
 
+func isHTTPAuthSetting(key string) bool {
+	return strings.HasPrefix(key, "AXIOM_AUTH_") || key == "AXIOM_INTERNAL_TOKEN" || key == "AXIOM_INTERNAL_TOKEN_PREVIOUS"
+}
+
+func httpFixtureEnv() []string {
+	env := slices.DeleteFunc(os.Environ(), func(entry string) bool {
+		key, _, _ := strings.Cut(entry, "=")
+		return isHTTPAuthSetting(key)
+	})
+	return append(env, "AXIOM_AUTH_DISABLED=true")
+}
+
+func setHTTPFixtureAuth(t *testing.T) {
+	t.Helper()
+	for _, entry := range os.Environ() {
+		key, _, _ := strings.Cut(entry, "=")
+		if isHTTPAuthSetting(key) && key != "AXIOM_AUTH_DISABLED" {
+			t.Setenv(key, "")
+		}
+	}
+	t.Setenv("AXIOM_AUTH_DISABLED", "true")
+}
+
 func TestStartupRecordsPrecedeServing(t *testing.T) {
 	testSecondSignalStopsServer(t, false)
 }
@@ -74,8 +114,7 @@ func TestRunRejectsInvalidRetrySettings(t *testing.T) {
 		{"AWS_RETRY_MODE", ""}, {"AWS_RETRY_MODE", "legacy"}, {"AWS_RETRY_MODE", "bogus"},
 	} {
 		t.Run(tc.key+"="+tc.value, func(t *testing.T) {
-			t.Setenv("AXIOM_AUTH_DISABLED", "true")
-			t.Setenv("AXIOM_INTERNAL_TOKEN", "")
+			setHTTPFixtureAuth(t)
 			t.Setenv("AWS_MAX_ATTEMPTS", "3")
 			t.Setenv("AWS_RETRY_MODE", "standard")
 			t.Setenv(tc.key, tc.value)
@@ -92,8 +131,7 @@ func TestRunAcceptsRetrySettings(t *testing.T) {
 		{"unset", "unset"}, {"1", "standard"}, {"5", "adaptive"}, {"4294967295", "standard"},
 	} {
 		t.Run(tc.attempts+"/"+tc.mode, func(t *testing.T) {
-			t.Setenv("AXIOM_AUTH_DISABLED", "true")
-			t.Setenv("AXIOM_INTERNAL_TOKEN", "")
+			setHTTPFixtureAuth(t)
 			for key, value := range map[string]string{"AWS_MAX_ATTEMPTS": tc.attempts, "AWS_RETRY_MODE": tc.mode} {
 				t.Setenv(key, value)
 				if value == "unset" {
@@ -141,7 +179,7 @@ func testSecondSignalStopsServer(t *testing.T, backToBack bool) {
 		t.Fatal(err)
 	}
 	cmd := exec.CommandContext(t.Context(), os.Args[0], "-test.run=^"+t.Name()+"$") //nolint:gosec // Reexecute this test binary to exercise process signals.
-	cmd.Env = append(os.Environ(), "AXIOM_SIGNAL_TEST=1", "AXIOM_AUTH_DISABLED=true", "AXIOM_INTERNAL_TOKEN=", "PORT="+port, "SHUTDOWN_TIMEOUT="+shutdownTimeout.String(), "SHUTDOWN_DRAIN_DELAY=0s", "GRAPH_FILE=", "LOG_LEVEL=info", "AWS_MAX_ATTEMPTS=3", "AWS_RETRY_MODE=standard", "BEDROCK_REQUIRE_EXPLICIT_REGION=false")
+	cmd.Env = append(httpFixtureEnv(), "AXIOM_SIGNAL_TEST=1", "PORT="+port, "SHUTDOWN_TIMEOUT="+shutdownTimeout.String(), "SHUTDOWN_DRAIN_DELAY=0s", "GRAPH_FILE=", "LOG_LEVEL=info", "AWS_MAX_ATTEMPTS=3", "AWS_RETRY_MODE=standard", "BEDROCK_REQUIRE_EXPLICIT_REGION=false")
 	output, err := cmd.StdoutPipe()
 	if err != nil {
 		t.Fatal(err)
@@ -311,6 +349,7 @@ func TestStartupRecordOmitsSecrets(t *testing.T) {
 		{name: "token", auth: "token", graphSource: "embedded"},
 		{name: "rotation", auth: "token+previous", graphSource: "file", previous: true},
 		{name: "disabled", auth: "disabled", graphSource: "embedded", disabled: true, previous: true},
+		{name: "verified", auth: "verified", graphSource: "embedded"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			cfg := config.Config{
@@ -326,6 +365,19 @@ func TestStartupRecordOmitsSecrets(t *testing.T) {
 			}
 			if tc.previous {
 				cfg.InternalTokenPrevious = "previous-secret-0123456789abcdef-0123456789"
+			}
+			const issuer = "https://configured-issuer.example"
+			if tc.auth == "verified" {
+				env := map[string]string{
+					"AXIOM_AUTH_MODE": "verified", "AXIOM_AUTH_ISSUER": issuer,
+					"AXIOM_AUTH_AUDIENCE": "https://verified-api.example", "AXIOM_AUTH_JWKS_URL": issuer + "/keys",
+				}
+				verified, err := config.Load(func(key string) string { return env[key] })
+				if err != nil {
+					t.Fatal(err)
+				}
+				cfg.VerifiedAuth = verified.VerifiedAuth
+				cfg.InternalToken = ""
 			}
 			if tc.graphSource == "file" {
 				cfg.GraphFile = "/private/graph.json"
@@ -365,7 +417,7 @@ func TestStartupRecordOmitsSecrets(t *testing.T) {
 			if version, ok := record["baml_version"].(string); !ok || version == "" {
 				t.Errorf("missing BAML version: %v", record["baml_version"])
 			}
-			for _, secret := range []string{cfg.InternalToken, cfg.InternalTokenPrevious, "https://private.example", "10.0.0.1", "/private/graph.json"} {
+			for _, secret := range []string{cfg.InternalToken, cfg.InternalTokenPrevious, issuer, "https://verified-api.example", "https://private.example", "10.0.0.1", "/private/graph.json"} {
 				if secret != "" && strings.Contains(output.String(), secret) {
 					t.Errorf("startup output contains %q", secret)
 				}
@@ -415,8 +467,7 @@ func TestStartupWarnsWithoutRegion(t *testing.T) {
 func TestRunRejectsInvalidBAMLLog(t *testing.T) {
 	for _, value := range []string{"", " off", "none", "bogus"} {
 		t.Run("BAML_LOG="+value, func(t *testing.T) {
-			t.Setenv("AXIOM_AUTH_DISABLED", "true")
-			t.Setenv("AXIOM_INTERNAL_TOKEN", "")
+			setHTTPFixtureAuth(t)
 			t.Setenv("AWS_MAX_ATTEMPTS", "3")
 			t.Setenv("AWS_RETRY_MODE", "standard")
 			t.Setenv("BAML_LOG", value)
@@ -440,8 +491,7 @@ func TestRunRejectsInvalidBAMLLog(t *testing.T) {
 func TestOtherProvidersIgnoreAWSSettings(t *testing.T) {
 	t.Setenv("BEDROCK_REQUIRE_EXPLICIT_REGION", "true")
 	t.Setenv("AWS_REGION", "")
-	t.Setenv("AXIOM_AUTH_DISABLED", "true")
-	t.Setenv("AXIOM_INTERNAL_TOKEN", "")
+	setHTTPFixtureAuth(t)
 	t.Setenv("LLM_PROVIDER", "ollama")
 	t.Setenv("LLM_MODEL", "local-planner")
 	t.Setenv("AWS_MAX_ATTEMPTS", "invalid")
@@ -461,8 +511,7 @@ func TestOtherProvidersIgnoreAWSSettings(t *testing.T) {
 
 func TestLangSmithStartupDoesNotLogKey(t *testing.T) {
 	t.Setenv("BEDROCK_REQUIRE_EXPLICIT_REGION", "false")
-	t.Setenv("AXIOM_AUTH_DISABLED", "true")
-	t.Setenv("AXIOM_INTERNAL_TOKEN", "")
+	setHTTPFixtureAuth(t)
 	t.Setenv("LANGSMITH_TRACING", "true")
 	t.Setenv("LANGSMITH_API_KEY", "private-observability-key")
 	t.Setenv("LANGSMITH_ENDPOINT", "http://remote.example.com")
@@ -502,7 +551,7 @@ func TestTracingFlushAfterDrain(t *testing.T) {
 		t.Fatal(err)
 	}
 	cmd := exec.CommandContext(t.Context(), os.Args[0], "-test.run=^TestTracingFlushAfterDrain$") //nolint:gosec // Reexecute this test binary to exercise shutdown.
-	cmd.Env = append(os.Environ(), "AXIOM_TRACE_DRAIN_CHILD=1", "AXIOM_AUTH_DISABLED=true", "AXIOM_INTERNAL_TOKEN=", "PORT="+port, "SHUTDOWN_TIMEOUT=11s", "SHUTDOWN_DRAIN_DELAY=12s", "GRAPH_FILE=", "BAML_LOG=off", "AWS_MAX_ATTEMPTS=3", "AWS_RETRY_MODE=standard", "BEDROCK_REQUIRE_EXPLICIT_REGION=false", "TRACING_ENABLED=true", "LANGSMITH_TRACING=false", "OTEL_EXPORTER_OTLP_ENDPOINT="+receiver.URL, "OTEL_EXPORTER_OTLP_TRACES_ENDPOINT=", "OTEL_BSP_SCHEDULE_DELAY=60000")
+	cmd.Env = append(httpFixtureEnv(), "AXIOM_TRACE_DRAIN_CHILD=1", "PORT="+port, "SHUTDOWN_TIMEOUT=11s", "SHUTDOWN_DRAIN_DELAY=12s", "GRAPH_FILE=", "BAML_LOG=off", "AWS_MAX_ATTEMPTS=3", "AWS_RETRY_MODE=standard", "BEDROCK_REQUIRE_EXPLICIT_REGION=false", "TRACING_ENABLED=true", "LANGSMITH_TRACING=false", "OTEL_EXPORTER_OTLP_ENDPOINT="+receiver.URL, "OTEL_EXPORTER_OTLP_TRACES_ENDPOINT=", "OTEL_BSP_SCHEDULE_DELAY=60000")
 	output, err := cmd.StdoutPipe()
 	if err != nil {
 		t.Fatal(err)

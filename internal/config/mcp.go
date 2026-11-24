@@ -2,16 +2,20 @@ package config
 
 import (
 	"fmt"
+	"slices"
 	"time"
 )
 
 // LoadMCP loads shared runtime settings without validating HTTP-only settings.
 func LoadMCP(getenv func(string) string) (Config, error) {
 	c, err := Load(func(key string) string {
+		if slices.Contains(verifiedAuthSettings[:], key) {
+			return ""
+		}
 		switch key {
 		case "AXIOM_AUTH_DISABLED":
 			return "true"
-		case "REDIS_URL", "IDEMPOTENCY_TTL", "IDEMPOTENCY_MAX_ENTRIES", "AXIOM_INTERNAL_TOKEN", "AXIOM_INTERNAL_TOKEN_PREVIOUS", "PORT", "HTTP_LISTENER", "CORS_ALLOWED_ORIGINS", "TRUSTED_PROXIES", "RATE_LIMIT_MAX", "RATE_LIMIT_WINDOW", "SWAGGER_ENABLED", "METRICS_ENABLED", "SHUTDOWN_DRAIN_DELAY", "SHUTDOWN_TIMEOUT":
+		case "REDIS_URL", "IDEMPOTENCY_TTL", "IDEMPOTENCY_MAX_ENTRIES", "AXIOM_AUTH_MODE", "AXIOM_INTERNAL_TOKEN", "AXIOM_INTERNAL_TOKEN_PREVIOUS", "PORT", "HTTP_LISTENER", "CORS_ALLOWED_ORIGINS", "TRUSTED_PROXIES", "RATE_LIMIT_MAX", "RATE_LIMIT_WINDOW", "SWAGGER_ENABLED", "METRICS_ENABLED", "SHUTDOWN_DRAIN_DELAY", "SHUTDOWN_TIMEOUT":
 			return ""
 		default:
 			return getenv(key)

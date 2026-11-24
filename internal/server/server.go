@@ -6,7 +6,6 @@ import (
 	"crypto/sha256"
 	"crypto/subtle"
 	"errors"
-	"fmt"
 	"log/slog"
 	"net/http"
 	"net/netip"
@@ -109,20 +108,24 @@ func NewWithError(cfg config.Config, deps Dependencies) (*fiber.App, error) {
 		app.Get("/metrics", adaptor.HTTPHandler(recorder.Handler()))
 	}
 	registerAPI(app, cfg, deps, logger, recorder, shared)
-	wrapUnknownMethods(app, logger, errorHandler, recorder, cfg.Tracing.Enabled || cfg.LangSmith.Enabled)
+	wrapHTTPHandler(app, logger, errorHandler, recorder, cfg.Tracing.Enabled || cfg.LangSmith.Enabled, cfg.VerifiedAuth != nil)
 	if shared != nil {
 		app.Hooks().OnPostShutdown(func(_ error) error { _ = shared.Close(); return shared.Conn().Close() })
 	}
 	return app, nil
 }
 
-func wrapUnknownMethods(app *fiber.App, logger *slog.Logger, errorHandler fiber.ErrorHandler, recorder *metrics.Metrics, tracing bool) {
+func wrapHTTPHandler(app *fiber.App, logger *slog.Logger, errorHandler fiber.ErrorHandler, recorder *metrics.Metrics, tracing, verifiedMode bool) {
 	methods := make(map[string]struct{}, len(app.Config().RequestMethods))
 	for _, method := range app.Config().RequestMethods {
 		methods[method] = struct{}{}
 	}
 	handler := app.Server().Handler
 	app.Server().Handler = func(ctx *fasthttp.RequestCtx) {
+		if verifiedMode && nativeCredentialTrailer(&ctx.Request.Header) {
+			ctx.SetUserValue(credentialTrailerKey{}, true)
+			defer ctx.RemoveUserValue(credentialTrailerKey{})
+		}
 		if _, ok := methods[string(ctx.Method())]; ok {
 			handler(ctx)
 			return
@@ -145,7 +148,7 @@ func wrapUnknownMethods(app *fiber.App, logger *slog.Logger, errorHandler fiber.
 		if err := errorHandler(c, fiber.ErrNotImplemented); err != nil {
 			logger.ErrorContext(c.Context(), "request.failed", "request_id", id, "error_class", "internal_error")
 		}
-		observeHTTP(c, logger, recorder, start)
+		captureHTTP(c).observe(logger, recorder, start, false)
 	}
 }
 
@@ -233,11 +236,11 @@ func useMiddleware(app *fiber.App, cfg config.Config, logger *slog.Logger, error
 			}
 		}
 
+		observation := captureHTTP(c)
 		if done := api.StreamCompletion(c); done != nil {
-			observation := captureHTTP(c)
 			go func() { observation.observe(logger, recorder, start, <-done) }()
 		} else {
-			captureHTTP(c).observe(logger, recorder, start, api.ClientDisconnected(c.Context()))
+			observation.observe(logger, recorder, start, api.ClientDisconnected(c.Context()))
 		}
 		return nil
 	})
@@ -276,14 +279,13 @@ type httpObservation struct {
 	route       string
 	routeMethod string
 	method      string
-	path        string
 	ip          string
 	requestID   string
 	status      int
 }
 
 func captureHTTP(c fiber.Ctx) httpObservation {
-	observation := httpObservation{ctx: c.Context(), route: "unmatched", routeMethod: "unmatched", method: strings.Clone(c.Method()), path: strings.Clone(c.Path()), ip: strings.Clone(c.IP()), requestID: strings.Clone(c.GetRespHeader("X-Request-ID")), status: c.Response().StatusCode()}
+	observation := httpObservation{ctx: c.Context(), route: "unmatched", routeMethod: "unmatched", method: strings.Clone(c.Method()), ip: strings.Clone(c.IP()), requestID: strings.Clone(c.GetRespHeader("X-Request-ID")), status: c.Response().StatusCode()}
 	if endpoint := c.Endpoint(); endpoint != nil {
 		observation.route = endpoint.Path
 		observation.routeMethod = endpoint.Method
@@ -296,15 +298,11 @@ func (o httpObservation) observe(logger *slog.Logger, recorder *metrics.Metrics,
 	if recorder != nil {
 		recorder.ObserveHTTP(o.route, o.routeMethod, o.status, elapsed)
 	}
-	attrs := []any{"request_id", o.requestID, "method", o.method, "path", o.path, "status", o.status, "duration_ms", float64(elapsed.Microseconds()) / 1000, "ip", o.ip}
+	attrs := []any{"request_id", o.requestID, "method", o.method, "path", o.route, "status", o.status, "duration_ms", float64(elapsed.Microseconds()) / 1000, "ip", o.ip}
 	if disconnected {
 		attrs = append(attrs, "client_disconnected", true)
 	}
 	logger.InfoContext(o.ctx, "http.access", attrs...)
-}
-
-func observeHTTP(c fiber.Ctx, logger *slog.Logger, recorder *metrics.Metrics, start time.Time) {
-	captureHTTP(c).observe(logger, recorder, start, false)
 }
 
 func registerPublicRoutes(app *fiber.App, cfg config.Config) {
@@ -326,10 +324,10 @@ func registerPublicRoutes(app *fiber.App, cfg config.Config) {
 }
 
 func registerAPI(app *fiber.App, cfg config.Config, deps Dependencies, logger *slog.Logger, recorder *metrics.Metrics, shared *redisstorage.Storage) {
-	if !cfg.AuthDisabled {
-		app.Use("/api/v1", internalTokenMiddleware(tokenDigests(cfg.InternalToken, cfg.InternalTokenPrevious), logger, recorder))
-	} else {
+	if cfg.AuthDisabled {
 		logger.Warn("auth.disabled")
+	} else if cfg.VerifiedAuth == nil {
+		app.Use("/api/v1", internalTokenMiddleware(tokenDigests(cfg.InternalToken, cfg.InternalTokenPrevious), logger, recorder))
 	}
 	limitConfig := limiter.Config{Max: cfg.RateLimitMax, Expiration: cfg.RateLimitWindow, LimiterMiddleware: limiter.SlidingWindow{}, KeyGenerator: rateLimitKey, LimitReached: func(c fiber.Ctx) error {
 		return c.Status(fiber.StatusTooManyRequests).JSON(domain.ErrorResponse{Error: "rate_limit_exceeded", Details: "too many requests"})
@@ -338,7 +336,13 @@ func registerAPI(app *fiber.App, cfg config.Config, deps Dependencies, logger *s
 		limitConfig.Storage = shared
 		limitConfig.LimiterMiddleware = redisWindow{storage: shared, logger: logger}
 	}
-	app.Use("/api/v1", limiter.New(limitConfig))
+	limit := limiter.New(limitConfig)
+	verified := verifiedAccess{verifier: cfg.VerifiedAuth, limit: limit}
+	if cfg.VerifiedAuth == nil {
+		app.Use("/api/v1", limit)
+	} else {
+		app.Use("/api/v1", verified.authorize)
+	}
 	var resourceLinks *service.ResourceLinkChecker
 	if cfg.ResourceLinks.Enabled {
 		resourceLinks = service.NewResourceLinkChecker(cfg.ResourceLinks.Timeout, deps.ResourceLinkPolicy, recorder)
@@ -348,20 +352,18 @@ func registerAPI(app *fiber.App, cfg config.Config, deps Dependencies, logger *s
 		curriculum = graph.StaticCurriculum(deps.Graph)
 	}
 	reasoning := service.NewReasoningServiceWithCurriculum(curriculum, deps.Planner, service.Options{ResourceLinks: resourceLinks, PromptBudget: cfg.PromptBudget, PreserveDisplayJoins: cfg.PreserveDisplayJoins, LLMTimeout: cfg.LLMTimeout, MaxFailedTopics: cfg.MaxFailedTopics, MaxMasteredTopics: cfg.Mastery.MaxTopics, MaxConcurrency: cfg.LLMMaxConcurrency, QueueTimeout: cfg.LLMQueueTimeout, Logger: logger, Metrics: recorder})
-	var planMiddleware []fiber.Handler
+	var replay fiber.Handler
 	if cfg.Idempotency.TTL > 0 {
 		var store idempotency.Store = idempotency.NewMemory(cfg.Idempotency.TTL, cfg.Idempotency.MaxEntries)
 		if shared != nil {
 			store = idempotency.NewRedis(shared.Conn(), cfg.Idempotency.TTL, cfg.RequestTimeout+3*time.Second)
 		}
-		planMiddleware = append(planMiddleware, api.Idempotency(store, func(c fiber.Ctx) string {
-			if cfg.AuthDisabled {
-				return "anonymous"
-			}
-			return fmt.Sprintf("%x", sha256.Sum256([]byte(presentedCredential(c))))
-		}, logger))
+		replay = api.Idempotency(store, replayNamespace(cfg), logger)
 	}
-	api.NewHandler(reasoning, curriculum, cfg.RequestTimeout, cfg.MaxFailedTopics, cfg.Mastery.MaxTopics, logger).RegisterRoutes(app, planMiddleware...)
+	api.NewHandler(reasoning, curriculum, cfg.RequestTimeout, cfg.MaxFailedTopics, cfg.Mastery.MaxTopics, logger).RegisterRoutes(app, replay)
+	if cfg.VerifiedAuth != nil {
+		verified.routes = app.GetRoutes(true)
+	}
 }
 
 // healthHandler provides the legacy liveness alias.

@@ -15,6 +15,7 @@ import (
 	"os/exec"
 	"os/signal"
 	"path/filepath"
+	"slices"
 	"strings"
 	"syscall"
 	"testing"
@@ -56,7 +57,11 @@ func reloadCommand(t *testing.T, mode, path, enabled string, env ...string) *exe
 	ctx, cancel := context.WithTimeout(t.Context(), 15*time.Second)
 	t.Cleanup(cancel)
 	cmd := exec.CommandContext(ctx, os.Args[0], "-test.run=^TestGraphReloadProcessEntry$") //nolint:gosec // Run the process entry in this test binary.
-	cmd.Env = append(mcpFixtureEnv(t), graphReloadTestProcess+"="+mode, "GRAPH_RELOAD_ENABLED="+enabled, "GRAPH_FILE="+path,
+	cmd.Env = slices.DeleteFunc(mcpFixtureEnv(t), func(entry string) bool {
+		key, _, _ := strings.Cut(entry, "=")
+		return isHTTPAuthSetting(key)
+	})
+	cmd.Env = append(cmd.Env, graphReloadTestProcess+"="+mode, "GRAPH_RELOAD_ENABLED="+enabled, "GRAPH_FILE="+path,
 		"GORACE=atexit_sleep_ms=0", "AXIOM_AUTH_DISABLED=true", "AXIOM_INTERNAL_TOKEN=", "AXIOM_INTERNAL_TOKEN_PREVIOUS=", "BAML_LOG=off",
 		"LOG_LEVEL=info", "METRICS_ENABLED=true", "REDIS_URL=", "RESOURCE_LINK_CHECK=false", "RATE_LIMIT_MAX=50", "SHUTDOWN_DRAIN_DELAY=0s", "SHUTDOWN_TIMEOUT=11s",
 		"AWS_REGION=us-east-1", "AWS_RETRY_MODE=standard", "AWS_MAX_ATTEMPTS=1")

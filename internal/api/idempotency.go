@@ -3,6 +3,8 @@ package api
 import (
 	"context"
 	"crypto/sha256"
+	"encoding/json"
+	"errors"
 	"fmt"
 	"log/slog"
 	"strconv"
@@ -17,8 +19,9 @@ import (
 )
 
 const reservationTimeout = time.Second
+const replayPlanFormat = "plan-v1"
 
-// Idempotency replays successful responses within a credential scope.
+// Idempotency replays successful plan responses within an authorization namespace.
 func Idempotency(store idempotency.Store, scope func(fiber.Ctx) string, logger *slog.Logger) fiber.Handler {
 	return func(c fiber.Ctx) error {
 		values := c.Request().Header.PeekAll("Idempotency-Key")
@@ -30,10 +33,11 @@ func Idempotency(store idempotency.Store, scope func(fiber.Ctx) string, logger *
 			return c.Status(400).JSON(domain.ErrorResponse{Error: "invalid_idempotency_key", Details: "Idempotency-Key must contain 1 to 255 visible ASCII characters"})
 		}
 		key = scope(c) + ":" + key
-		fingerprint := fmt.Sprintf("%x", sha256.Sum256(c.Body()))
+		requestBody := c.Body()
+		fingerprint := fmt.Sprintf("%x", sha256.Sum256(requestBody))
 		ctx := c.Context()
 		if ctx.Err() != nil {
-			return canceledReservation(c, ctx)
+			return WriteRequestCancellation(c, ctx)
 		}
 		// Wait for the reservation result even if the peer leaves during Begin.
 		reserveCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), reservationTimeout)
@@ -55,9 +59,13 @@ func Idempotency(store idempotency.Store, scope func(fiber.Ctx) string, logger *
 		}
 		switch state {
 		case idempotency.Replay:
+			body, err := restoreReplayBody(reservation.Response, requestBody)
+			if err != nil {
+				return storageUnavailable(c, logger, "idempotency.begin")
+			}
 			c.Set("Content-Type", reservation.Response.ContentType)
 			c.Set("Idempotent-Replayed", "true")
-			return c.Status(reservation.Response.Status).Send(reservation.Response.Body)
+			return c.Status(reservation.Response.Status).Send(body)
 		case idempotency.Mismatch:
 			return c.Status(422).JSON(domain.ErrorResponse{Error: "idempotency_key_mismatch", Details: "Idempotency-Key was used with a different request body"})
 		case idempotency.InProgress:
@@ -75,7 +83,7 @@ func Idempotency(store idempotency.Store, scope func(fiber.Ctx) string, logger *
 		nextErr := c.Next()
 		if nextErr != nil || c.Response().StatusCode() != 200 || ctx.Err() != nil {
 			if nextErr == nil && c.Response().StatusCode() == 200 {
-				nextErr = canceledReservation(c, ctx)
+				nextErr = WriteRequestCancellation(c, ctx)
 			}
 			abortErr := abort()
 			settled = true
@@ -90,7 +98,11 @@ func Idempotency(store idempotency.Store, scope func(fiber.Ctx) string, logger *
 		}
 		// The cancellation check above decides whether to publish this success.
 		// A later disconnect does not interrupt publication.
-		response := idempotency.Response{Status: 200, Body: c.Response().Body(), ContentType: strings.Clone(c.GetRespHeader("Content-Type"))}
+		body, err := storeReplayBody(c.Response().Body())
+		if err != nil {
+			return storageUnavailable(c, logger, "idempotency.complete")
+		}
+		response := idempotency.Response{Status: 200, Body: body, ContentType: strings.Clone(c.GetRespHeader("Content-Type")), Format: replayPlanFormat}
 		commitCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), reservationTimeout)
 		err = store.Complete(commitCtx, key, reservation.Token, response)
 		cancel()
@@ -102,7 +114,62 @@ func Idempotency(store idempotency.Store, scope func(fiber.Ctx) string, logger *
 	}
 }
 
-func canceledReservation(c fiber.Ctx, ctx context.Context) error {
+// replayPlan contains just the generated fields. Raw messages preserve their
+// JSON encoding across replay, including fields added to items or metadata.
+type replayPlan struct {
+	Items json.RawMessage `json:"items"`
+	Meta  json.RawMessage `json:"_meta"`
+}
+
+type replayPlanIDs struct {
+	StudentID string `json:"student_id"`
+	CourseID  string `json:"course_id"`
+}
+
+func storeReplayBody(body []byte) ([]byte, error) {
+	var plan replayPlan
+	if err := plan.decode(body); err != nil {
+		return nil, err
+	}
+	return json.Marshal(plan)
+}
+
+func restoreReplayBody(stored idempotency.Response, requestBody []byte) ([]byte, error) {
+	if stored.Format == "" {
+		// Earlier records contain the original HTTP body in its entirety.
+		return stored.Body, nil
+	}
+	if stored.Format != replayPlanFormat {
+		return nil, errors.New("unsupported replay format")
+	}
+	// Begin matched the exact request bytes that the plan handler accepted.
+	// Only these two echoed fields are needed from the retry.
+	var ids replayPlanIDs
+	if err := json.Unmarshal(requestBody, &ids); err != nil {
+		return nil, err
+	}
+	var plan replayPlan
+	if err := plan.decode(stored.Body); err != nil {
+		return nil, err
+	}
+	return json.Marshal(struct {
+		replayPlanIDs
+		replayPlan
+	}{ids, plan})
+}
+
+func (plan *replayPlan) decode(body []byte) error {
+	if err := json.Unmarshal(body, plan); err != nil {
+		return err
+	}
+	if plan.Items == nil || plan.Meta == nil {
+		return errors.New("incomplete replay plan")
+	}
+	return nil
+}
+
+// WriteRequestCancellation writes the client-safe response for an ended request context.
+func WriteRequestCancellation(c fiber.Ctx, ctx context.Context) error {
 	failure := service.ClassifyError(ctx.Err(), shuttingDown(ctx))
 	if failure.RetryAfter > 0 {
 		c.Set("Retry-After", strconv.FormatInt(int64(failure.RetryAfter/time.Second), 10))

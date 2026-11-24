@@ -24,7 +24,7 @@ if [[ "${#libraries[@]}" -ne 1 ]]; then
   echo "Expected one bundled native library" >&2
   exit 1
 fi
-unset AXIOM_INTERNAL_TOKEN AXIOM_INTERNAL_TOKEN_PREVIOUS BAML_LOG
+unset "${!AXIOM_AUTH_@}" AXIOM_INTERNAL_TOKEN AXIOM_INTERNAL_TOKEN_PREVIOUS BAML_LOG
 export AXIOM_AUTH_DISABLED=true
 export BAML_LIBRARY_PATH=${libraries[0]}
 export BAML_LIBRARY_DISABLE_DOWNLOAD=true
