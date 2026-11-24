@@ -13,6 +13,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/Victoroide/axiom-engine/internal/config"
 	"github.com/Victoroide/axiom-engine/internal/domain"
 	"github.com/Victoroide/axiom-engine/internal/service"
 )
@@ -55,7 +56,11 @@ func TestWirePlanReplayAndKeepAlive(t *testing.T) {
 	if !runWireSubprocess(t) {
 		return
 	}
-	cfg := defaultConfig(t)
+	wirePlanReplayAndKeepAlive(t, defaultConfig(t))
+}
+
+func wirePlanReplayAndKeepAlive(t *testing.T, cfg config.Config) {
+	t.Helper()
 	cfg.RateLimitMax = 10
 	var calls atomic.Int32
 	addr, _, _ := startWireApp(t, cfg, func(_ context.Context, r service.TopicRequest) ([]domain.PlanItem, error) {
@@ -157,7 +162,11 @@ func TestWireRejectedRequests(t *testing.T) {
 	if !runWireSubprocess(t) {
 		return
 	}
-	cfg := defaultConfig(t)
+	wireRejectedRequests(t, defaultConfig(t))
+}
+
+func wireRejectedRequests(t *testing.T, cfg config.Config) {
+	t.Helper()
 	cfg.AuthDisabled = false
 	cfg.InternalToken = strings.Repeat("w", 32)
 	var calls atomic.Int32
@@ -175,6 +184,7 @@ func TestWireRejectedRequests(t *testing.T) {
 	}{
 		{"fixed length limit", validHeaders + "Content-Length: 65537\r\n\r\n", "payload_too_large", "Request Entity Too Large", id, http.StatusRequestEntityTooLarge},
 		{"chunked limit", validHeaders + "Transfer-Encoding: chunked\r\n\r\n8000\r\n" + chunk + "\r\n8000\r\n" + chunk + "\r\n1\r\nx\r\n0\r\n\r\n", "payload_too_large", "Request Entity Too Large", "", http.StatusRequestEntityTooLarge},
+		{"malformed chunk", validHeaders + "Transfer-Encoding: chunked\r\n\r\nZ\r\n", "bad_request", "Bad Request", "", http.StatusBadRequest},
 		{"malformed JSON", validHeaders + fixedBody("{"), "invalid_request_body", "request body must be valid JSON", id, http.StatusBadRequest},
 		{"unauthorized", "X-Request-ID: " + id + "\r\nContent-Type: application/json\r\n" + fixedBody(wireTopicBody), "unauthorized", "missing or invalid internal token", id, http.StatusUnauthorized},
 		{"unsupported media type", strings.Replace(validHeaders, "application/json", "text/plain", 1) + fixedBody(wireTopicBody), "unsupported_media_type", "Content-Type must be application/json", id, http.StatusUnsupportedMediaType},
@@ -212,20 +222,18 @@ func TestWireHeaderTimeout(t *testing.T) {
 	cfg.AuthDisabled = false
 	cfg.InternalToken = strings.Repeat("w", 32)
 	cfg.ReadTimeout = wireHeaderReadTimeout
-	addr, _, _ := startWireApp(t, cfg, func(context.Context, service.TopicRequest) ([]domain.PlanItem, error) {
+	reject := func(context.Context, service.TopicRequest) ([]domain.PlanItem, error) {
 		t.Error("incomplete header reached the planner")
 		return nil, nil
-	}, nil)
+	}
 	partial := "X-Request-ID: wire-incomplete\r\nX-Internal-Token: " + cfg.InternalToken + "\r\nContent-Type: application/json\r\nX-Incomplete: "
 	for _, path := range []string{wirePlan, wireStream} {
 		t.Run(strings.TrimPrefix(path, "/api/v1/"), func(t *testing.T) {
-			start := time.Now()
-			conn := addr.dial(t)
-			conn.sendRaw(t, path, partial)
+			conn, elapsed := sendPartialWireRequest(t, cfg, reject, path, partial)
 			resp := conn.response(t, nil)
 			assertWireError(t, resp, readWireBody(t, resp.Body), http.StatusRequestTimeout, "request_timeout", "Request Timeout", "")
-			if time.Since(start) < cfg.ReadTimeout {
-				t.Fatal("server rejected the incomplete header before the read deadline")
+			if elapsed < cfg.ReadTimeout {
+				t.Fatalf("header response arrived after %s, before the %s read deadline", elapsed, cfg.ReadTimeout)
 			}
 		})
 	}
@@ -235,7 +243,11 @@ func TestWireRateLimitSharedByPlanRoutes(t *testing.T) {
 	if !runWireSubprocess(t) {
 		return
 	}
-	cfg := defaultConfig(t)
+	wireRateLimitSharedByPlanRoutes(t, defaultConfig(t))
+}
+
+func wireRateLimitSharedByPlanRoutes(t *testing.T, cfg config.Config) {
+	t.Helper()
 	cfg.RateLimitMax = 1
 	var calls atomic.Int32
 	addr, _, _ := startWireApp(t, cfg, func(_ context.Context, r service.TopicRequest) ([]domain.PlanItem, error) {
@@ -258,8 +270,13 @@ func TestWireIdempotencyInFlightConflicts(t *testing.T) {
 	if !runWireSubprocess(t) {
 		return
 	}
+	wireIdempotencyInFlightConflicts(t, defaultConfig(t))
+}
+
+func wireIdempotencyInFlightConflicts(t *testing.T, cfg config.Config) {
+	t.Helper()
 	first := newWireCall(t)
-	addr, _, _ := startWireApp(t, defaultConfig(t), planWireCalls(map[string]*wireCall{"wire-pending": first}), nil)
+	addr, _, _ := startWireApp(t, cfg, planWireCalls(map[string]*wireCall{"wire-pending": first}), nil)
 	headers := wireHeaders("wire-pending")
 	headers.Set("Idempotency-Key", "wire-conflict")
 	original := addr.dial(t)

@@ -205,7 +205,7 @@ func assertWirePermitHeld(t *testing.T, c wireConn, id string) {
 	}
 }
 
-func assertWireAccess(t *testing.T, logs streamLogWriter, id string, status int, disconnected bool) {
+func assertWireAccess(t *testing.T, logs streamLogWriter, id string, status int, disconnected bool) time.Time {
 	t.Helper()
 	timer := time.NewTimer(wireWait)
 	defer timer.Stop()
@@ -213,10 +213,11 @@ func assertWireAccess(t *testing.T, logs streamLogWriter, id string, status int,
 		select {
 		case record := <-logs.records:
 			var entry struct {
-				Message      string `json:"msg"`
-				RequestID    string `json:"request_id"`
-				Status       int    `json:"status"`
-				Disconnected bool   `json:"client_disconnected"`
+				Time         time.Time `json:"time"`
+				Message      string    `json:"msg"`
+				RequestID    string    `json:"request_id"`
+				Status       int       `json:"status"`
+				Disconnected bool      `json:"client_disconnected"`
 			}
 			if err := json.Unmarshal(record, &entry); err != nil {
 				t.Fatal(err)
@@ -225,7 +226,7 @@ func assertWireAccess(t *testing.T, logs streamLogWriter, id string, status int,
 				if entry.Status != status || entry.Disconnected != disconnected {
 					t.Fatalf("unexpected access record: %s", record)
 				}
-				return
+				return entry.Time
 			}
 		case <-timer.C:
 			t.Fatalf("missing access record for %q", id)
@@ -237,7 +238,11 @@ func TestWireGracefulDrain(t *testing.T) {
 	if !runWireSubprocess(t) {
 		return
 	}
-	cfg := defaultConfig(t)
+	wireGracefulDrain(t, defaultConfig(t))
+}
+
+func wireGracefulDrain(t *testing.T, cfg config.Config) {
+	t.Helper()
 	cfg.ShutdownDrainDelay = time.Second
 	pending := newWireCall(t)
 	addr, stop, done := startWireApp(t, cfg, planWireCalls(map[string]*wireCall{"wire-draining": pending}), nil)
