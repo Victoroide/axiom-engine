@@ -2,12 +2,14 @@ package main
 
 import (
 	"encoding/json"
+	"errors"
 	"io"
 	"net/http"
 	"net/http/httptest"
 	"os"
 	"os/exec"
 	"path/filepath"
+	"reflect"
 	"strings"
 	"sync/atomic"
 	"testing"
@@ -38,6 +40,13 @@ func startConfiguredMCP(t *testing.T, settings map[string]string) *configuredMCP
 	for k, v := range defaults {
 		cmd.Env = append(cmd.Env, k+"="+v)
 	}
+	p := startMCPProcess(t, cmd)
+	p.initialize(t)
+	return p
+}
+
+func startMCPProcess(t *testing.T, cmd *exec.Cmd) *configuredMCP {
+	t.Helper()
 	p := &configuredMCP{cmd: cmd, output: &processRecords{protocol: true, messages: make(chan map[string]any, 32)}, logs: &processRecords{shutdown: make(chan struct{})}, exited: make(chan struct{})}
 	cmd.Stdout = p.output
 	cmd.Stderr = p.logs
@@ -51,11 +60,15 @@ func startConfiguredMCP(t *testing.T, settings map[string]string) *configuredMCP
 	}
 	go func() { p.waitErr = cmd.Wait(); close(p.exited) }()
 	t.Cleanup(func() { _ = p.input.Close(); _ = cmd.Process.Kill(); <-p.exited })
+	return p
+}
+
+func (p *configuredMCP) initialize(t *testing.T) {
+	t.Helper()
 	p.exchange(t, `{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-06-18","capabilities":{},"clientInfo":{"name":"test-client","version":"1"}}}`, 1)
 	if _, err := io.WriteString(p.input, `{"jsonrpc":"2.0","method":"notifications/initialized"}`+"\n"); err != nil {
 		t.Fatal(err)
 	}
-	return p
 }
 
 func (p *configuredMCP) exchange(t *testing.T, message string, id float64) map[string]any {
@@ -63,23 +76,31 @@ func (p *configuredMCP) exchange(t *testing.T, message string, id float64) map[s
 	if _, err := io.WriteString(p.input, message+"\n"); err != nil {
 		t.Fatal(err)
 	}
-	timer := time.NewTimer(5 * time.Second)
+	timer := time.NewTimer(mcpWaitBudget(t))
 	defer timer.Stop()
-	for {
+	var response map[string]any
+	for response == nil {
 		select {
-		case response := <-p.output.messages:
-			if response["id"] == id {
-				if response["error"] != nil {
-					t.Fatalf("protocol error=%v", response)
-				}
-				return response["result"].(map[string]any)
+		case message := <-p.output.messages:
+			if message["id"] == id {
+				response = message
 			}
 		case <-p.exited:
-			t.Fatalf("process exited: %v logs=%s", p.waitErr, p.logs.text())
+			response = p.replyAtDeadline(id)
+			if response == nil {
+				t.Fatalf("process exited: %v logs=%s", p.waitErr, p.logs.text())
+			}
 		case <-timer.C:
-			t.Fatalf("response timed out: %s", p.logs.text())
+			response = p.replyAtDeadline(id)
+			if response == nil {
+				t.Fatalf("response timed out: %s", p.logs.text())
+			}
 		}
 	}
+	if response["error"] != nil {
+		t.Fatalf("protocol error=%v", response)
+	}
+	return response["result"].(map[string]any)
 }
 
 func (p *configuredMCP) stop(t *testing.T, signal os.Signal) {
@@ -91,14 +112,84 @@ func (p *configuredMCP) stop(t *testing.T, signal os.Signal) {
 	} else {
 		_ = p.input.Close()
 	}
+	timer := time.NewTimer(mcpWaitBudget(t))
+	defer timer.Stop()
+	var err error
 	select {
 	case <-p.exited:
-		if p.waitErr != nil {
-			t.Fatalf("process=%v logs=%s", p.waitErr, p.logs.text())
+		err = p.waitErr
+	case <-timer.C:
+		var exited bool
+		exited, err = p.exitAtDeadline()
+		if !exited {
+			t.Fatalf("MCP did not stop: %s", p.logs.text())
 		}
-	case <-time.After(5 * time.Second):
-		t.Fatal("MCP did not stop")
 	}
+	if err != nil {
+		t.Fatalf("process=%v logs=%s", err, p.logs.text())
+	}
+}
+
+func mcpWaitBudget(t *testing.T) time.Duration {
+	const maxWait = 30 * time.Second
+	if deadline, ok := t.Deadline(); ok {
+		remaining := max(time.Until(deadline), 0)
+		return min(maxWait, remaining-min(time.Second, remaining/2))
+	}
+	return maxWait
+}
+
+func (p *configuredMCP) replyAtDeadline(id float64) map[string]any {
+	// The writer can still enqueue messages. Drain only those already queued.
+	for range len(p.output.messages) {
+		if response := <-p.output.messages; response["id"] == id {
+			return response
+		}
+	}
+	return nil
+}
+
+func (p *configuredMCP) exitAtDeadline() (bool, error) {
+	select {
+	case <-p.exited:
+		return true, p.waitErr
+	default:
+		return false, nil
+	}
+}
+
+func TestConfiguredMCPDeadline(t *testing.T) {
+	t.Run("buffered reply", func(t *testing.T) {
+		messages := make(chan map[string]any, 2)
+		messages <- map[string]any{"method": "notifications/message"}
+		want := map[string]any{"id": float64(2), "result": map[string]any{"ready": true}}
+		messages <- want
+		p := &configuredMCP{output: &processRecords{messages: messages}}
+		if reply := p.replyAtDeadline(2); !reflect.DeepEqual(reply, want) {
+			t.Fatalf("deadline discarded queued reply: %v", reply)
+		}
+		if reply := p.replyAtDeadline(3); reply != nil {
+			t.Fatalf("unexpected reply after draining: %v", reply)
+		}
+	})
+	t.Run("completed exit", func(t *testing.T) {
+		p := &configuredMCP{exited: make(chan struct{})}
+		if exited, _ := p.exitAtDeadline(); exited {
+			t.Fatal("deadline reported exit for a running process")
+		}
+		close(p.exited)
+		if exited, err := p.exitAtDeadline(); !exited || err != nil {
+			t.Fatalf("deadline discarded completed exit: exited=%v, error=%v", exited, err)
+		}
+	})
+	t.Run("failed exit", func(t *testing.T) {
+		want := errors.New("child exited unsuccessfully")
+		p := &configuredMCP{exited: make(chan struct{}), waitErr: want}
+		close(p.exited)
+		if exited, err := p.exitAtDeadline(); !exited || !errors.Is(err, want) {
+			t.Fatalf("deadline discarded failed exit: exited=%v, error=%v", exited, err)
+		}
+	})
 }
 
 func localPlanner(t *testing.T) (*httptest.Server, *atomic.Int64) {

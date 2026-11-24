@@ -1,0 +1,17 @@
+#!/bin/sh
+case ${BAML_LOG-off} in
+  [Oo][Ff][Ff]|[Ee][Rr][Rr][Oo][Rr]|[Ww][Aa][Rr][Nn]|[Ww][Aa][Rr][Nn][Ii][Nn][Gg]) ;;
+  *)
+    printf '%s\n' 'axiom-server-launch: BAML_LOG must be off, error, warn or warning' >&2
+    exit 1
+    ;;
+esac
+# Native diagnostics can include content from failed calls.
+export BAML_LOG=off BAML_INTERNAL_LOG=off
+unset BAML_TRACE_FILE BOUNDARY_API_KEY BOUNDARY_SECRET
+# The legacy trace exporter also accepts case variants of the credential suffix.
+legacy_keys=$(env | LC_ALL=C sed -n 's/^\(BOUNDARY_[Ss][Ee][Cc][Rr][Ee][Tt]\)=.*/\1/p') || exit 1
+for key in $legacy_keys; do
+  unset "$key"
+done
+exec "$(dirname -- "$0")/axiom-server" "$@"

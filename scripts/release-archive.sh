@@ -35,9 +35,10 @@ trap 'rm -rf "$scratch"' EXIT
 name="axiom-engine_${version}_${os}_${arch}"
 mkdir "$scratch/$name"
 cp bin/axiom-server "$scratch/$name/axiom-server"
+cp scripts/axiom-server-launch "$scratch/$name/"
 cp "bin/libbaml_cffi.$extension" "$scratch/$name/$library"
 cp LICENSE README.md "$scratch/$name/"
-chmod 755 "$scratch/$name" "$scratch/$name/axiom-server" "$scratch/$name/$library"
+chmod 755 "$scratch/$name" "$scratch/$name/axiom-server" "$scratch/$name/axiom-server-launch" "$scratch/$name/$library"
 chmod 644 "$scratch/$name/LICENSE" "$scratch/$name/README.md"
 "$tar_command" --sort=name --mtime="@$SOURCE_DATE_EPOCH" --owner=0 --group=0 --numeric-owner \
   --format=ustar -cf - -C "$scratch" "$name" | gzip -n > "$output/$name.tar.gz"

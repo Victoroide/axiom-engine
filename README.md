@@ -95,7 +95,7 @@ cosign verify ghcr.io/victoroide/axiom-engine:v1.2.3 \
 
 ### Release Archives
 
-Standalone native executable archives are attached to GitHub releases for `linux/amd64`, `linux/arm64`, and `darwin/arm64`. Each archive contains the stripped `axiom-server` binary, the verified native BAML CFFI shared library under its upstream filename (`libbaml_cffi-x86_64-unknown-linux-gnu.so`, `libbaml_cffi-aarch64-unknown-linux-gnu.so`, or `libbaml_cffi-aarch64-apple-darwin.dylib`), `LICENSE`, and `README.md`. To run an extracted archive, set `BAML_LIBRARY_PATH` to the bundled native library; see [Run an archive](docs/deployment.md#run-an-archive) for instructions.
+Standalone native executable archives are attached to GitHub releases for `linux/amd64`, `linux/arm64`, and `darwin/arm64`. Each archive contains the `axiom-server-launch` launcher, the stripped `axiom-server` binary, the verified native BAML CFFI shared library, `LICENSE`, and `README.md`.
 
 Each release attaches:
 - `axiom-engine_<version>_<os>_<arch>.tar.gz` (where `<version>` omits the leading `v`, for example `axiom-engine_1.2.3_linux_amd64.tar.gz`)
@@ -138,6 +138,29 @@ gh attestation verify axiom-engine_1.2.3_linux_amd64.tar.gz --repo Victoroide/ax
 ```
 
 For Cosign provenance verification instructions, see [docs/deployment.md](docs/deployment.md#release-archives).
+
+#### Run an extracted archive
+
+Verify the archive, extract it, and change to the extracted directory. Select the bundled native library and disable runtime library downloads.
+
+```sh
+case "$(uname -s)/$(uname -m)" in
+  Linux/x86_64) library=libbaml_cffi-x86_64-unknown-linux-gnu.so ;;
+  Linux/aarch64) library=libbaml_cffi-aarch64-unknown-linux-gnu.so ;;
+  Darwin/arm64) library=libbaml_cffi-aarch64-apple-darwin.dylib ;;
+  *) printf '%s\n' 'Unsupported archive platform' >&2; exit 1 ;;
+esac
+export BAML_LIBRARY_PATH="$PWD/$library"
+export BAML_LIBRARY_DISABLE_DOWNLOAD=true
+```
+
+For HTTP, set `AXIOM_INTERNAL_TOKEN` to a secret of at least 32 visible ASCII characters and configure credentials and settings for your provider. Then start the server.
+
+```sh
+./axiom-server-launch
+```
+
+The launcher accepts an unset `BAML_LOG` or `off`, `error`, `warn`, or `warning`, regardless of case. It starts with `BAML_LOG=off` and `BAML_INTERNAL_LOG=off` and clears `BAML_TRACE_FILE`, `BOUNDARY_API_KEY`, and `BOUNDARY_SECRET` before native initialization. Other `BAML_LOG` values fail startup. With the bundled native library, an unset `BAML_LOG` or `warning` on the raw binary activates INFO logging. Native logging can expose full prompts and responses on failed calls even at `warn`.
 
 ### Building from Source
 
@@ -412,11 +435,13 @@ curl -i "http://localhost:8080/api/v1/topics/Polymorphism/path" \
 
 ### Model Context Protocol (MCP) Stdio Server
 
-Run the server locally over standard input and output (`stdio`) for MCP-compatible clients:
+From an extracted archive, load the bundled library using the [archive setup](#run-an-extracted-archive) and start the server over standard input and output (`stdio`):
 
 ```sh
-axiom-server mcp
+./axiom-server-launch mcp
 ```
+
+For a source build, copy `scripts/axiom-server-launch` beside the built `axiom-server`, configure the native library, and run the launcher from that directory.
 
 Exposes `generate_study_plan`, `get_cognitive_graph`, `list_topics`, and `get_topic_path` tools over JSON-RPC.
 
