@@ -37,7 +37,7 @@ func NewStreamableHTTPHandler(cfg config.Config, g *graph.InMemoryGraph, planner
 	s := newServer(cfg, g, planner, logger, version, mcp.ServerOptions{
 		SupportedProtocolVersions: []string{streamableProtocolVersion},
 		Capabilities:              &mcp.ServerCapabilities{Tools: &mcp.ToolCapabilities{}},
-	})
+	}, nil)
 	return streamableHTTPHandler(s, logger, cfg.WriteTimeout, jsonResponse)
 }
 

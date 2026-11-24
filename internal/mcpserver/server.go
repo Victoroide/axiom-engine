@@ -45,15 +45,15 @@ type TopicPathInput struct {
 
 // New constructs tools backed by the same bounded pipeline as the HTTP API.
 func New(cfg config.Config, g *graph.InMemoryGraph, planner service.Planner, logger *slog.Logger, version string) *mcp.Server {
-	return newServer(cfg, g, planner, logger, version, mcp.ServerOptions{})
+	return newServer(cfg, g, planner, logger, version, mcp.ServerOptions{}, nil)
 }
 
-func newServer(cfg config.Config, g *graph.InMemoryGraph, planner service.Planner, logger *slog.Logger, version string, options mcp.ServerOptions) *mcp.Server {
+func newServer(cfg config.Config, g *graph.InMemoryGraph, planner service.Planner, logger *slog.Logger, version string, options mcp.ServerOptions, policy service.ResourceLinkPolicy) *mcp.Server {
 	options.Logger = logger
 	s := mcp.NewServer(&mcp.Implementation{Name: "axiom-engine", Version: version}, &options)
 	var resourceLinks *service.ResourceLinkChecker
 	if cfg.ResourceLinks.Enabled {
-		resourceLinks = service.NewResourceLinkChecker(cfg.ResourceLinks.Timeout, nil, nil)
+		resourceLinks = service.NewResourceLinkChecker(cfg.ResourceLinks.Timeout, policy, nil)
 	}
 	reasoning := service.NewReasoningService(g, planner, service.Options{ResourceLinks: resourceLinks, PromptBudget: cfg.PromptBudget, PreserveDisplayJoins: cfg.PreserveDisplayJoins, MaxMasteredTopics: cfg.Mastery.MaxTopics, LLMTimeout: cfg.LLMTimeout, MaxFailedTopics: cfg.MaxFailedTopics, MaxConcurrency: cfg.LLMMaxConcurrency, QueueTimeout: cfg.LLMQueueTimeout, Logger: logger})
 	mcp.AddTool(s, &mcp.Tool{Name: "generate_study_plan", Description: "Generate a study plan for failed curriculum topics"}, func(ctx context.Context, _ *mcp.CallToolRequest, in PlanInput) (*mcp.CallToolResult, domain.PlanResponse, error) {

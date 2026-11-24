@@ -3,6 +3,9 @@ package mcpserver
 import (
 	"context"
 	"encoding/json"
+	"fmt"
+	"io"
+	"log/slog"
 	"slices"
 	"strings"
 	"testing"
@@ -13,6 +16,7 @@ import (
 	"github.com/Victoroide/axiom-engine/internal/domain"
 	"github.com/Victoroide/axiom-engine/internal/graph"
 	"github.com/Victoroide/axiom-engine/internal/service"
+	"github.com/Victoroide/axiom-engine/test/resourcelinkfixture"
 )
 
 func masteryConfig(t *testing.T) config.Config {
@@ -161,21 +165,77 @@ func TestMasteredToolValidation(t *testing.T) {
 }
 
 func TestPlanToolUsesResourceLinkPolicy(t *testing.T) {
-	cfg := masteryConfig(t)
-	cfg.ResourceLinks.Enabled = true
-	client := sessionWithConfig(t, cfg, func(_ context.Context, req service.TopicRequest) ([]domain.PlanItem, error) {
-		return []domain.PlanItem{{Topic: req.Topic, Resources: []domain.Resource{{Title: "Private", URL: "http://127.0.0.1/private", ResourceType: "video"}}}}, nil
-	})
-	result, err := client.CallTool(t.Context(), &mcp.CallToolParams{Name: "generate_study_plan", Arguments: map[string]any{"failed_topics": []string{"Recursion"}, "vark_profile": "visual"}})
-	if err != nil {
-		t.Fatal(err)
-	}
-	data, _ := json.Marshal(result.StructuredContent)
-	var got domain.PlanResponse
-	if err := json.Unmarshal(data, &got); err != nil {
-		t.Fatal(err)
-	}
-	if result.IsError || len(got.Items) != 1 || len(got.Items[0].Resources) != 0 || got.Meta.ResourcesUnreachable != 1 {
-		t.Fatalf("plan=%s", data)
+	for _, tc := range []struct {
+		name          string
+		enabled       bool
+		empty         bool
+		defaultPolicy bool
+		kept          int
+		dropped       int
+		wantChecks    int32
+	}{
+		{name: "disabled", kept: 2},
+		{name: "enabled", enabled: true, dropped: 2, wantChecks: 1},
+		{name: "default-policy", enabled: true, defaultPolicy: true, dropped: 1},
+		{name: "empty", enabled: true, empty: true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			fixture := resourcelinkfixture.New(t)
+			cfg := masteryConfig(t)
+			cfg.ResourceLinks.Enabled = tc.enabled
+			planner := plannerFunc(func(_ context.Context, req service.TopicRequest) ([]domain.PlanItem, error) {
+				item := domain.PlanItem{Topic: req.Topic}
+				if !tc.empty {
+					item.Resources = fixture.Resources()
+				}
+				if tc.defaultPolicy {
+					item.Resources = item.Resources[:1]
+				}
+				return []domain.PlanItem{item}, nil
+			})
+			logger := slog.New(slog.NewJSONHandler(io.Discard, nil))
+			g := graph.NewInMemoryGraph()
+			var s *mcp.Server
+			if tc.defaultPolicy {
+				s = New(cfg, g, planner, logger, "test-version")
+			} else {
+				s = newServer(cfg, g, planner, logger, "test-version", mcp.ServerOptions{}, fixture)
+			}
+			client := connectTestClient(t, s)
+			result, err := client.CallTool(t.Context(), &mcp.CallToolParams{Name: "generate_study_plan", Arguments: PlanInput{FailedTopics: []string{"Recursion"}, VARKProfile: "visual"}})
+			if err != nil {
+				t.Fatal(err)
+			}
+			data, err := json.Marshal(result.StructuredContent)
+			if err != nil {
+				t.Fatal(err)
+			}
+			var got domain.PlanResponse
+			if err := json.Unmarshal(data, &got); err != nil {
+				t.Fatal(err)
+			}
+			if result.IsError || len(got.Items) != 1 || got.Items[0].Topic != "Recursion" || got.Items[0].Resources == nil || len(got.Items[0].Resources) != tc.kept || got.Meta.ResourcesUnreachable != tc.dropped {
+				t.Fatalf("plan=%s", data)
+			}
+			if fixture.Hits() != tc.wantChecks {
+				t.Errorf("outbound requests=%d, want %d", fixture.Hits(), tc.wantChecks)
+			}
+			if !tc.enabled {
+				if len(result.Content) != 1 {
+					t.Fatalf("content=%v", result.Content)
+				}
+				content, ok := result.Content[0].(*mcp.TextContent)
+				if !ok {
+					t.Fatalf("content=%T", result.Content[0])
+				}
+				stable := resourcelinkfixture.NormalizePlanLatency(content.Text)
+				want := fmt.Sprintf(`{"_meta":{"items_after_validation":1,"items_dropped":0,"items_generated":1,"llm_latency_ms":0,"subgraph_tuples":3,"topics_processed":1,"total_latency_ms":0},`+
+					`"course_id":"","items":[{"explanation":"","prerequisite_chain":["Functions"],"priority":1,"resources":[`+
+					`{"resource_type":"video","title":"First","url":%[1]q},{"resource_type":"diagram","title":"Second","url":%[1]q}],"topic":"Recursion"}],"student_id":""}`, fixture.URL)
+				if stable != want {
+					t.Errorf("disabled response=%s\nwant=%s", stable, want)
+				}
+			}
+		})
 	}
 }
