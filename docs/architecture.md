@@ -180,7 +180,7 @@ The reasoning service enforces deadlines autonomously:
 
 ### Circuit Breaker Settings
 
-A single circuit breaker is instantiated with name `"llm"` in `internal/service/reasoning.go` and shared across topics and callers within each service instance because model provider availability and throttling affect the common backend:
+Each process has one circuit breaker for its configured backend. The `"llm"` breaker in `internal/service/reasoning.go` is shared across topics and callers in that process:
 - **Consecutive Failures Threshold (`ReadyToTrip`)**: Trips to the Open state after 3 consecutive failures (`c.ConsecutiveFailures >= 3`).
 - **Open Duration (`Timeout`)**: Stays Open for `15s` before transitioning to Half-Open.
 - **Half-Open Concurrency (`MaxRequests`)**: Permits 2 trial requests in Half-Open state.
@@ -212,7 +212,7 @@ Classified errors wrap `service.ErrUpstream` via `fmt.Errorf("%w: %w", class, er
 
 ## Observability
 
-The service uses an isolated, private Prometheus registry instantiated per application instance (`internal/metrics/metrics.go`). When metrics are disabled (`METRICS_ENABLED=false`, see [configuration](configuration.md)), collectors are not allocated and no metrics overhead is incurred.
+The service uses an isolated, private Prometheus registry instantiated per application instance (`internal/metrics/metrics.go`). When metrics are disabled (`METRICS_ENABLED=false`, see [configuration](configuration.md)), the service skips allocation of collectors and per-call metric state.
 
 HTTP request metrics match only registered route templates rather than raw request paths, preventing label cardinality explosion from unknown or malformed paths. Requests rejected by authentication or rate limiting are still counted under their registered route template. Metrics never record raw URLs, query parameters, authorization tokens, learner identifiers, or error messages as labels.
 
@@ -224,6 +224,7 @@ The following Prometheus metrics are exposed:
 - `axiom_llm_calls_total{outcome}`: Counter recording dispatched upstream planner calls by classified outcome. Fixed outcomes are `ok`, `throttled`, `unavailable`, `rejected`, `invalid_output`, `deadline`, `canceled`, and `error`. Missing usable output for a requested topic is recorded as `invalid_output`. Queue rejections and calls blocked by an open circuit breaker do not dispatch upstream calls and are excluded from these counts.
 - `axiom_llm_duration_seconds{outcome}`: Histogram recording dispatched upstream call duration in seconds until completion or enforced deadline cancellation. Buckets are `0.05, 0.1, 0.25, 0.5, 1, 2, 4, 8, 12, 16, 20, 30` seconds.
 - `axiom_llm_inflight`: Gauge tracking upstream calls currently executing, including calls executing past their response deadline. Concurrency semaphore permits remain occupied until execution finishes.
+- `axiom_llm_inflight_after_cancel`: Unlabeled gauge tracking dispatched planner calls still running locally after the service stops waiting because their call context ended. A call leaves this gauge when it returns or unwinds after a panic.
 - `axiom_llm_queue_wait_seconds`: Histogram measuring admission wait duration for an available concurrency slot, including canceled and timed-out waits. Buckets are `0.001, 0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1, 2, 5` seconds.
 - `axiom_llm_queue_timeouts_total`: Counter recording concurrency queue waits that exhausted `LLM_QUEUE_TIMEOUT`, excluding parent cancellation or request deadline expiration.
 - `axiom_plan_prompt_budget_rejections_total` counts HTTP plan requests rejected before dispatch for exceeding the curriculum prompt budget. It has no labels.

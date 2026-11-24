@@ -20,6 +20,7 @@ import (
 
 	"github.com/Victoroide/axiom-engine/internal/domain"
 	"github.com/Victoroide/axiom-engine/internal/graph"
+	"github.com/Victoroide/axiom-engine/internal/metrics"
 )
 
 type plannerFunc func(context.Context, TopicRequest) ([]domain.PlanItem, error)
@@ -688,7 +689,7 @@ func TestConcurrentPlannerPanicsReleasePermits(t *testing.T) {
 				panic(errors.New(marker))
 			}
 			return []domain.PlanItem{{Topic: req.Topic}}, nil
-		}), Options{MaxConcurrency: limit, LLMTimeout: time.Second, MaxFailedTopics: 10, Logger: slog.New(slog.NewJSONHandler(&logs, nil))})
+		}), Options{MaxConcurrency: limit, LLMTimeout: time.Second, MaxFailedTopics: 10, Logger: slog.New(slog.NewJSONHandler(&logs, nil)), Metrics: metrics.New()})
 		ctx, cancel := context.WithCancel(t.Context())
 		defer cancel()
 		canceled := make(chan error, 1)
@@ -711,6 +712,7 @@ func TestConcurrentPlannerPanicsReleasePermits(t *testing.T) {
 		if err := <-canceled; !errors.Is(err, context.Canceled) {
 			t.Fatalf("canceled request returned %v", err)
 		}
+		assertPlannerOccupancy(t, svc.metrics, limit, 1)
 		if svc.slots.TryAcquire(1) {
 			svc.slots.Release(1)
 			t.Fatal("canceled request released its permit while the planner was still running")
@@ -734,6 +736,7 @@ func TestConcurrentPlannerPanicsReleasePermits(t *testing.T) {
 			t.Fatalf("queued unrelated request returned %v", err)
 		}
 		synctest.Wait()
+		assertPlannerOccupancy(t, svc.metrics, 0, 0)
 		if !svc.slots.TryAcquire(limit) {
 			t.Fatal("planner calls leaked permits")
 		}

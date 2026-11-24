@@ -5,7 +5,43 @@ import (
 	"sync"
 	"testing"
 	"time"
+
+	dto "github.com/prometheus/client_model/go"
 )
+
+func TestPlannerCallCompletionOrder(t *testing.T) {
+	assertOccupancy := func(t *testing.T, m *Metrics, wantInflight, wantAfterCancel float64) {
+		t.Helper()
+		var inflight, afterCancel dto.Metric
+		if err := m.inflight.Write(&inflight); err != nil {
+			t.Fatal(err)
+		}
+		if err := m.afterCancel.Write(&afterCancel); err != nil {
+			t.Fatal(err)
+		}
+		if gotInflight, gotAfterCancel := inflight.GetGauge().GetValue(), afterCancel.GetGauge().GetValue(); gotInflight != wantInflight || gotAfterCancel != wantAfterCancel {
+			t.Fatalf("planner occupancy = (%g, %g), want (%g, %g)", gotInflight, gotAfterCancel, wantInflight, wantAfterCancel)
+		}
+	}
+	t.Run("cancellation first", func(t *testing.T) {
+		m := New()
+		call := m.StartCall()
+		assertOccupancy(t, m, 1, 0)
+		call.WaitCanceled()
+		assertOccupancy(t, m, 1, 1)
+		call.Finish()
+		assertOccupancy(t, m, 0, 0)
+	})
+	t.Run("completion first", func(t *testing.T) {
+		m := New()
+		call := m.StartCall()
+		assertOccupancy(t, m, 1, 0)
+		call.Finish()
+		assertOccupancy(t, m, 0, 0)
+		call.WaitCanceled()
+		assertOccupancy(t, m, 0, 0)
+	})
+}
 
 func TestConcurrentObservations(t *testing.T) {
 	m := New()
@@ -13,10 +49,11 @@ func TestConcurrentObservations(t *testing.T) {
 	for range 20 {
 		calls.Go(func() {
 			for range 50 {
-				m.StartCall()
+				call := m.StartCall()
+				call.WaitCanceled()
 				m.ObserveLLM("ok", time.Millisecond)
 				m.ObserveQueueWait(time.Millisecond, false)
-				m.FinishCall()
+				call.Finish()
 				if _, err := m.registry.Gather(); err != nil {
 					t.Error(err)
 				}
@@ -36,9 +73,9 @@ func TestConcurrentObservations(t *testing.T) {
 					t.Fatalf("calls=%v", metric.GetCounter().GetValue())
 				}
 			}
-		case "axiom_llm_inflight":
+		case "axiom_llm_inflight", "axiom_llm_inflight_after_cancel":
 			if got := family.GetMetric()[0].GetGauge().GetValue(); got != 0 {
-				t.Fatalf("inflight=%v", got)
+				t.Fatalf("%s=%v", family.GetName(), got)
 			}
 		}
 	}

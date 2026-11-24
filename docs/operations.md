@@ -6,7 +6,7 @@ This guide covers operational monitoring, diagnosis, and incident response proce
 
 ## Circuit Breaker Trips
 
-AxiomEngine wraps calls to Amazon Bedrock with an in-memory circuit breaker (`gobreaker`). After three consecutive failed calls the breaker trips from `Closed` to `Open`. Failures that count: throttling (429, `ThrottlingException`, `ModelNotReadyException`), `LLM_TIMEOUT` deadlines, 408, 5xx and transport errors, and credential failures (`Unspecified error code: 2`).
+Each process has one in-memory circuit breaker (`gobreaker`) for its configured backend, shared by all topics and callers. After three consecutive failed calls the breaker trips from `Closed` to `Open`. Failures that count include throttling (429, `ThrottlingException`, `ModelNotReadyException`), `LLM_TIMEOUT` deadlines, 408, 5xx and transport errors, and credential failures (`Unspecified error code: 2`).
 
 ### Symptoms and Behavior
 
@@ -76,19 +76,25 @@ AxiomEngine limits concurrent planner calls in each HTTP or stdio MCP process us
 - The JSON plan route returns HTTP 503 `service_unavailable` with `Retry-After: 1`.
 - An active SSE stream keeps HTTP 200 and reports the queue failure in a terminal `error` event with `error` set to `service_unavailable` and `status` set to `503`. The `Retry-After` header applies to the JSON route.
 - The stdio MCP plan tool sets `isError` to `true` and returns `error` set to `service_unavailable` and `details` in structured content.
-- After dispatch, a deadline or cancellation can end the service's wait while the planner is still running. The slot stays occupied until the planner returns or unwinds after a panic. In HTTP mode, `axiom_llm_inflight` includes calls that outlast their response deadline.
+- After dispatch, a deadline or cancellation can end the service's wait while the planner is still running. The slot stays occupied until the planner returns or unwinds after a panic. Ending the wait early can save the client time. The provider may continue processing and charge for the work. Use provider telemetry and billing records to assess that work and its cost.
 
 ### Telemetry Signals
 
-- **Metric**: `axiom_llm_queue_wait_seconds` histogram observes wait durations before slot acquisition.
-- **Metric**: `axiom_llm_inflight` gauge reaches `LLM_MAX_CONCURRENCY`.
-- **Metric**: `http_server_requests_total{route="/api/v1/adaptive-plan",status="503"}` increments.
+- `axiom_llm_queue_wait_seconds` records wait durations. `axiom_llm_queue_timeouts_total` counts waits that exhaust the queue deadline.
+- `axiom_llm_inflight` counts local planner calls occupying slots. `axiom_llm_inflight_after_cancel` counts the subset still running after cancellation or a deadline, without labels.
+- `http_server_requests_total{route="/api/v1/adaptive-plan",status="503"}` increments for unavailable responses.
 
 ### Diagnostic and Mitigation Steps
 
-1. Compare `axiom_llm_inflight` against `LLM_MAX_CONCURRENCY`. If concurrency is continuously pegged at the maximum, the service has reached its provisioned LLM throughput limit.
-2. Check `axiom_llm_duration_seconds` to confirm if upstream Bedrock latency has increased, causing concurrency slots to be held longer.
-3. Increase `LLM_MAX_CONCURRENCY` if AWS Bedrock quotas allow additional concurrent executions, or scale out replicas horizontally behind an API gateway.
+1. Compare `axiom_llm_inflight` against `LLM_MAX_CONCURRENCY`. If the gauge stays at the limit, check `axiom_llm_inflight_after_cancel` to see how many slots are still occupied after callers stopped waiting.
+2. Check queue wait and timeout metrics alongside `axiom_circuit_breaker_state`. Queue timeouts indicate admission pressure. An open breaker rejects work after it acquires a slot.
+3. Check provider latency and quotas before increasing local limits or adding replicas.
+
+### Replica concurrency budget
+
+Add the `LLM_MAX_CONCURRENCY` limits of all running HTTP and stdio MCP processes to get the fleet's local planner concurrency ceiling. Two processes with limits of 2 and 3 can admit five calls at once. Provision shared provider capacity for those five calls plus any additional replicas active during a rolling update. Allow for the expected provider request and token rates, including retries.
+
+To enforce a lower fleet-wide ceiling, use a shared outbound gateway that limits planner calls across processes through upstream completion, or a provider quota that enforces concurrent calls. One inbound plan request can fan out into multiple planner calls.
 
 ---
 
@@ -305,7 +311,7 @@ With `METRICS_ENABLED=true`, `/metrics` exposes the series listed in [Observabil
 - `axiom_circuit_breaker_state` is `2` when open. Topics acquire a concurrency permit before checking the breaker. See [Circuit Breaker Trips](#circuit-breaker-trips).
 - `axiom_llm_calls_total{outcome="throttled"}` and `{outcome="unavailable"}`: upstream throttling and availability failures.
 - `axiom_plan_prompt_budget_rejections_total` counts HTTP adaptive-plan requests rejected before dispatch for exceeding the curriculum prompt budget. The counter has no labels.
-- `axiom_llm_inflight` against `LLM_MAX_CONCURRENCY`, with `axiom_llm_queue_wait_seconds` and `axiom_llm_queue_timeouts_total`: queue pressure.
+- `axiom_llm_inflight` and `axiom_llm_inflight_after_cancel` show occupied local slots. `axiom_llm_queue_wait_seconds` and `axiom_llm_queue_timeouts_total` show admission pressure.
 - `http_server_requests_total{route="/api/v1/adaptive-plan",status="503"}`: unavailable responses seen by clients.
 - `axiom_auth_previous_token_total`: callers still using the previous token during a rotation.
 - `axiom_resource_links_checked_total{result="ok|status|timeout|refused|invalid"}` counts outbound link checks in HTTP mode. `RESOURCE_LINK_CHECK=true` enables checks for both HTTP plan routes and the stdio MCP `generate_study_plan` tool. Each check can add latency up to `RESOURCE_LINK_TIMEOUT` (default `3s`), within the overall `REQUEST_TIMEOUT`. A failed link drops the resource and increments `_meta.resources_unreachable`. If link checking exhausts the request deadline, HTTP reports `gateway_timeout` and MCP returns a tool error.

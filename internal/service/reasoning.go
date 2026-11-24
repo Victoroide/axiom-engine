@@ -250,11 +250,11 @@ func (s *ReasoningService) generateTopic(ctx context.Context, req TopicRequest) 
 		err   error
 	}
 	results := make(chan result, 1)
-	s.metrics.StartCall()
+	call := s.metrics.StartCall()
 	go func() {
 		got := func() (r result) {
 			defer s.slots.Release(1)
-			defer s.metrics.FinishCall()
+			defer call.Finish()
 			// This goroutine is outside the HTTP recover middleware, so an
 			// unrecovered panic would stop the whole process.
 			defer func() {
@@ -270,6 +270,7 @@ func (s *ReasoningService) generateTopic(ctx context.Context, req TopicRequest) 
 	}()
 	select {
 	case <-ctx.Done():
+		call.WaitCanceled()
 		return nil, ctx.Err()
 	case got := <-results:
 		if ctx.Err() != nil {
