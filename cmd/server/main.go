@@ -14,15 +14,11 @@ import (
 	"fmt"
 	"io"
 	"log/slog"
-	"net"
 	"os"
 	"os/signal"
 	"runtime/debug"
-	"strings"
 	"syscall"
 	"time"
-
-	"github.com/gofiber/fiber/v3"
 
 	"github.com/Victoroide/axiom-engine/internal/config"
 	"github.com/Victoroide/axiom-engine/internal/graph"
@@ -94,10 +90,6 @@ func runHTTP(args []string, stdout io.Writer) (err error) {
 	if err != nil {
 		return err
 	}
-	app.Hooks().OnListen(func(data fiber.ListenData) error {
-		logger.Info("server.listening", "address", net.JoinHostPort(strings.Trim(data.Host, "[]"), data.Port))
-		return nil
-	})
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	signals := make(chan os.Signal, 2)

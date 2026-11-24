@@ -94,7 +94,12 @@ func (h *Handler) handlePlanStream(c fiber.Ctx) error {
 	c.Response().ImmediateHeaderFlush = true
 	stream := fasthttp.NewStreamReader(func(w *bufio.Writer) {
 		disconnected := false
-		defer func() { cancel(); done <- disconnected; close(done); close(finished) }()
+		defer func() {
+			cancel()
+			done <- disconnected || ClientDisconnected(parent)
+			close(done)
+			close(finished)
+		}()
 		if err := writeKeepalive(w); err != nil {
 			disconnected = true
 			return
@@ -112,7 +117,7 @@ func (h *Handler) handlePlanStream(c fiber.Ctx) error {
 			}
 			event := planEvent{name: "plan", payload: plan}
 			if err != nil {
-				failure := h.classifyPipelineError(ctx, requestID, err, parent.Err() != nil)
+				failure := h.classifyPipelineError(ctx, requestID, err, shuttingDown(parent))
 				event = planEvent{name: "error", payload: domain.PlanStreamError{ErrorResponse: failure.envelope, Status: failure.status}}
 			}
 			events <- event

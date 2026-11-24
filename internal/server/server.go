@@ -94,6 +94,7 @@ func NewWithError(cfg config.Config, deps Dependencies) (*fiber.App, error) {
 	}
 	errorHandler := newErrorHandler(logger)
 	app := newApp(cfg, errorHandler)
+	app.State().Set(listenerSettingsKey, listenerSettings{mode: cfg.HTTPListener, logger: logger})
 	app.State().Set(traceSettingsKey, traceSettings{capture: cfg.Tracing.CaptureContent, langsmith: cfg.LangSmith.Enabled})
 	app.State().Set(drainStateKey, &drainState{delay: cfg.ShutdownDrainDelay})
 	useMiddleware(app, cfg, logger, errorHandler, recorder)
@@ -123,9 +124,7 @@ func wrapUnknownMethods(app *fiber.App, logger *slog.Logger, errorHandler fiber.
 		start := time.Now()
 		c := app.AcquireCtx(ctx)
 		defer app.ReleaseCtx(c)
-		if base, ok := fiber.GetState[context.Context](app.State(), requestContextKey); ok {
-			c.SetContext(base)
-		}
+		setRequestContext(c)
 		id := c.Get("X-Request-ID")
 		if !clientRequestIDPattern.MatchString(id) {
 			id = uuid.NewString()
@@ -206,9 +205,7 @@ func newApp(cfg config.Config, errorHandler fiber.ErrorHandler) *fiber.App {
 
 func useMiddleware(app *fiber.App, cfg config.Config, logger *slog.Logger, errorHandler fiber.ErrorHandler, recorder *metrics.Metrics) {
 	app.Use(func(c fiber.Ctx) error {
-		if base, ok := fiber.GetState[context.Context](app.State(), requestContextKey); ok {
-			c.SetContext(base)
-		}
+		setRequestContext(c)
 		return c.Next()
 	})
 	app.Use(func(c fiber.Ctx) error {
@@ -234,7 +231,7 @@ func useMiddleware(app *fiber.App, cfg config.Config, logger *slog.Logger, error
 			observation := captureHTTP(c)
 			go func() { observation.observe(logger, recorder, start, <-done) }()
 		} else {
-			observeHTTP(c, logger, recorder, start)
+			captureHTTP(c).observe(logger, recorder, start, api.ClientDisconnected(c.Context()))
 		}
 		return nil
 	})
@@ -244,6 +241,27 @@ func useMiddleware(app *fiber.App, cfg config.Config, logger *slog.Logger, error
 	app.Use(helmet.New(securityHeaders))
 	if len(cfg.CORSAllowedOrigins) > 0 {
 		app.Use(cors.New(cors.Config{AllowOrigins: cfg.CORSAllowedOrigins, AllowMethods: []string{"GET", "POST", "HEAD", "OPTIONS"}, AllowHeaders: []string{"Origin", "Content-Type", "Accept", "Authorization", "X-Internal-Token", "X-Request-ID", "Idempotency-Key"}, ExposeHeaders: []string{"X-Request-ID", "Idempotent-Replayed"}, MaxAge: 3600}))
+	}
+}
+
+type bridgedRequest interface {
+	requestContext() context.Context
+	requestRejection() int
+}
+
+func bridgeRequest(c fiber.Ctx) bridgedRequest {
+	peer, _ := c.RequestCtx().Conn().(bridgedRequest)
+	return peer
+}
+
+func setRequestContext(c fiber.Ctx) {
+	if peer := bridgeRequest(c); peer != nil {
+		c.SetContext(peer.requestContext())
+		if status := peer.requestRejection(); status != 0 {
+			c.Status(status)
+		}
+	} else if base, ok := fiber.GetState[context.Context](c.App().State(), requestContextKey); ok {
+		c.SetContext(base)
 	}
 }
 
@@ -394,6 +412,9 @@ func newErrorHandler(logger *slog.Logger) fiber.ErrorHandler {
 		var fiberErr *fiber.Error
 		if errors.As(err, &fiberErr) {
 			status = fiberErr.Code
+		}
+		if peer := bridgeRequest(c); peer != nil && peer.requestRejection() != 0 {
+			status = peer.requestRejection()
 		}
 		code := strings.ReplaceAll(strings.ToLower(http.StatusText(status)), " ", "_")
 		message := http.StatusText(status)

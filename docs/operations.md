@@ -268,7 +268,7 @@ During runtime, exporter failures invoke an internal error handler that emits a 
 {"level":"WARN","msg":"tracing.export_failed","error_class":"trace_export_failed"}
 ```
 
-On process termination, the trace provider is shut down within the remaining graceful shutdown budget (signal time + `SHUTDOWN_DRAIN_DELAY` + `SHUTDOWN_TIMEOUT`). Pending spans are flushed after the listener closes and Fiber drains connections. Export workers may report final batch failures through `tracing.export_failed`. If the shutdown callback reports an error or panics, `tracing.flush_failed` carries the fixed classification. Panics in either diagnostic write are contained.
+On process termination, the trace provider is shut down within the remaining graceful shutdown budget (signal time + `SHUTDOWN_DRAIN_DELAY` + `SHUTDOWN_TIMEOUT`). Pending spans are flushed after listener shutdown and connection draining. Export workers may report final batch failures through `tracing.export_failed`. If the shutdown callback reports an error or panics, `tracing.flush_failed` carries the fixed classification. Panics in either diagnostic write are contained.
 
 ```json
 {"level":"ERROR","msg":"tracing.flush_failed","error_class":"trace_export_failed"}
@@ -289,7 +289,7 @@ Invocations to Amazon Bedrock incur operational costs based on input and output 
 ### Operational Cost Factors
 
 - **Non-Idempotent Inferences**: Requests omitting `Idempotency-Key` or retried after failure trigger fresh model inferences and generate additional token consumption. Callers should supply an `Idempotency-Key` on retryable requests to replay cached responses without incurring model token costs.
-- The non-streaming route (`POST /api/v1/adaptive-plan`) continues reasoning after a **client disconnect** until the work completes or its deadline expires. The streaming route (`POST /api/v1/adaptive-plan/stream`) cancels the pipeline on a failed write or flush. Keepalives every 2 seconds help detect the disconnect. Dispatched calls release slots when the planner returns or unwinds after a panic. See [Queue Saturation](#queue-saturation).
+- With `HTTP_LISTENER=net-http`, a peer closing an HTTP/1 connection or resetting an HTTP/2 stream cancels queued and running reasoning for that request. With the default Fiber listener, JSON reasoning runs to completion or its deadline after a disconnect. SSE cancels on a failed write or flush, with keepalives every two seconds. In both modes a dispatched call holds its permit until the planner returns or unwinds after a panic. See [Queue Saturation](#queue-saturation).
 - **Concurrency Caps**: Configure `LLM_MAX_CONCURRENCY` to control maximum parallel model invocations and prevent traffic spikes from generating unbounded token usage.
 - `LLM_TIMEOUT` and `REQUEST_TIMEOUT` end the service's wait for a result. If the provider continues processing the call, its tokens may still be billed.
 
@@ -297,10 +297,12 @@ Invocations to Amazon Bedrock incur operational costs based on input and output 
 
 ## Access Logs and Disconnect Monitoring
 
-Every HTTP request produces an `http.access` structured log record. For streaming requests (`POST /api/v1/adaptive-plan/stream`), access records are emitted when the stream ends and measure the full connection duration:
+Requests that reach the application produce an `http.access` structured log record. Streaming access records are emitted when the stream ends.
 - `duration_ms`: Total stream duration in milliseconds from initial request reception until stream termination.
-- `client_disconnected`: Boolean attribute present and set to `true` when a stream terminates after a failed client write or keepalive flush.
+- `client_disconnected` is true when the opt-in listener observes peer cancellation or an SSE write or flush fails. For HTTP/1 it can record a TCP write-half close while the client still reads the response. A server body read timeout records its 408 status without the disconnect field.
 - `http_server_request_duration_seconds`: Histogram metric records the full stream duration for streaming routes.
+
+The opt-in HTTP/1 server can reject requests before application logging or request ID assignment. Examples include plain-text 400 or 431 for malformed or oversized headers, plain-text 400 for chunked declarations of `Content-Length`, `Trailer`, or `Transfer-Encoding`, an empty 417 for an unsupported `Expect` value, and a connection close for an incomplete header at the read deadline. Clients and ingress logs can observe those failures. When a prohibited trailer declaration reaches application error handling, the response is JSON 400 with a generated request ID and the access record shows path `/`. Quota remains available for the next valid request. Application body read errors use the JSON envelope. A failed payload read leaves quota available. A rejection in the trailer block after the body retains the request ID, runs the normal quota checks, and records the application status in the access log. Check the `listener` field on `server.listening` when comparing responses. To switch back, set `HTTP_LISTENER=fiber` and restart the service. Test disconnect propagation through the deployment's proxy because buffering can delay or prevent it. See [HTTP Listener](configuration.md#http-listener).
 
 ---
 

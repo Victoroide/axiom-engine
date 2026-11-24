@@ -251,6 +251,7 @@ The service is configured using environment variables. The table below lists the
 | `LLM_MODEL` | `amazon.nova-micro-v1:0` (`aws-bedrock`) | Model identifier passed to the provider. Required for providers other than `aws-bedrock`. |
 | `LLM_BASE_URL` | `""` (`http://localhost:11434/v1` for `ollama`) | Custom API base URL for `openai`, `ollama`, or `openai-generic`. Required for `openai-generic`. |
 | `REQUEST_TIMEOUT` | `20s` | Maximum deadline for servicing incoming HTTP reasoning requests. |
+| `HTTP_LISTENER` | `fiber` | Set to `net-http` to propagate HTTP/1 disconnects and HTTP/2 stream resets to reasoning. |
 | `LLM_TIMEOUT` | `15s` | Maximum wait for an individual planner result after dispatch. |
 | `LLM_MAX_CONCURRENCY` | `16` | Maximum simultaneous in-flight provider calls across the process. |
 | `RATE_LIMIT_MAX` | `50` | Maximum requests allowed from a client IP within `RATE_LIMIT_WINDOW`. |
@@ -468,7 +469,7 @@ For client configuration examples, tool schemas, and container execution details
 ## Limitations
 
 - **In-Memory Rate Limiting**: When `REDIS_URL` is unset, rate limiting operates per replica in memory, keyed by client IP (masked to `/64` for IPv6). Setting `REDIS_URL` shares rate-limit budgets and plan idempotency records across all replicas. For multi-tenant platform limits and per-tenant quotas, gateway enforcement remains recommended.
-- **Client Disconnects on Non-Streaming Requests**: On the non-streaming route (`POST /api/v1/adaptive-plan`), client HTTP disconnects do not cancel in-flight model reasoning; execution continues until `REQUEST_TIMEOUT` expires. The streaming route (`POST /api/v1/adaptive-plan/stream`) detects client disconnects through two-second keepalives and cancels in-flight reasoning promptly.
+- **Client disconnects**. With the default Fiber listener, JSON reasoning continues after a peer closes the connection until work finishes or a deadline expires. SSE detects failed writes with two-second keepalives. Set `HTTP_LISTENER=net-http` to cancel reasoning on HTTP/1 connection close or HTTP/2 stream reset. On Linux and macOS, HTTP/1 cancellation also works with pipelined requests waiting. A client that closes only its write side may still receive the canceled request's HTTP 408 response. See the [listener configuration](docs/configuration.md#http-listener).
 - **Single Shared Secret**: Authentication relies on a single shared secret without caller identity or per-tenant authorization. Fine-grained authorization, per-caller rate limiting, and multi-tenant isolation belong at the platform or gateway tier.
 - **Native Library Initialization**: The BAML CFFI dynamic library is loaded during package initialization before `main` executes; missing or mismatched libraries panic directly to `stderr` in plain text prior to structured JSON logger initialization.
 - **Bedrock Region Resolution and Caching**: When using `LLM_PROVIDER=aws-bedrock`, AWS regions resolved dynamically from IMDS cannot be confirmed at startup, and the first resolved region is cached by BAML for the lifetime of the process. Non-Bedrock providers do not perform region resolution.
@@ -481,7 +482,6 @@ For diagnostic procedures and operational troubleshooting, refer to the [Operati
 
 ## Roadmap
 
-- Cancellation propagation for non-streaming HTTP requests when clients disconnect.
 - Per-tenant authentication and caller identity verification.
 - Dynamic curriculum knowledge graph updates without service restarts.
 - Authenticated remote access to the Model Context Protocol server over Streamable HTTP.

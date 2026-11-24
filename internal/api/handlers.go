@@ -101,6 +101,9 @@ func (h *Handler) handleAdaptivePlan(c fiber.Ctx) error {
 	if err != nil {
 		return h.writePipelineError(c, ctx, err)
 	}
+	if err := ctx.Err(); err != nil {
+		return h.writePipelineError(c, ctx, err)
+	}
 	telemetry.CaptureJSON(ctx, "output.value", plan.Items)
 	return c.JSON(plan)
 }
@@ -112,7 +115,7 @@ type pipelineFailure struct {
 }
 
 func (h *Handler) writePipelineError(c fiber.Ctx, ctx context.Context, err error) error {
-	failure := h.classifyPipelineError(ctx, requestid.FromContext(c), err, errors.Is(c.Context().Err(), context.Canceled))
+	failure := h.classifyPipelineError(ctx, requestid.FromContext(c), err, shuttingDown(ctx))
 	if failure.retrySeconds > 0 {
 		c.Set("Retry-After", strconv.FormatInt(failure.retrySeconds, 10))
 	}

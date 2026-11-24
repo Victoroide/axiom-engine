@@ -47,12 +47,15 @@ func TestMemoryOwnershipAndResponseCopies(t *testing.T) {
 		t.Fatal(err)
 	}
 	current, _, _ := store.Begin(ctx, "key", "body")
+	if err := store.Abort(ctx, "key", old.Token); err != nil {
+		t.Fatal(err)
+	}
 	if err := store.Complete(ctx, "key", old.Token, Response{Status: 200}); err != nil {
 		t.Fatal(err)
 	}
 	_, state, _ := store.Begin(ctx, "key", "body")
 	if state != InProgress {
-		t.Fatal("stale owner completed a newer reservation")
+		t.Fatal("stale owner removed or completed a newer reservation")
 	}
 	body := []byte("ok")
 	if err := store.Complete(ctx, "key", current.Token, Response{Status: 200, Body: body}); err != nil {

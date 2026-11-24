@@ -108,6 +108,8 @@ The `details` field provides context when available and is omitted when empty. U
 
 404, 405 and 501 can occur on any path. Swagger 2.0 attaches responses only to declared operations, so these three appear here but not in `docs/swagger.yaml`.
 
+The opt-in HTTP/1 listener can reject headers before the application runs. Native outcomes include plain-text 400 and 431, an empty 417 for an unsupported `Expect` value, and a connection close when incomplete headers reach the read deadline. Body read errors use the application JSON envelope. See [HTTP Listener](configuration.md#http-listener).
+
 ---
 
 ## Endpoints
@@ -269,6 +271,8 @@ Generates a personalized, prerequisite-ordered study plan for a student based on
 - **503 Service Unavailable**: Shared rate limit or idempotency storage unavailable (`service_unavailable`, `Retry-After: 1`), upstream circuit breaker open, concurrency limit reached, upstream throttling, or server shutdown.
 - **504 Gateway Timeout**: Request exceeded pipeline deadline.
 
+With `HTTP_LISTENER=net-http`, the server cancels reasoning when it observes an HTTP/1 connection close or an HTTP/2 stream reset. On Linux and macOS the server also detects an HTTP/1 close with pipelined requests waiting. A caller that closes only the TCP write side may still read HTTP 408 with `request_timeout` and details `request canceled`. The commit point for an idempotent success is the final cancellation check after a validated HTTP 200 has been prepared. Cancellation observed before that check releases the pending reservation. After the check, the server attempts publication with a one-second storage context, so a successful commit can be replayed even if the original caller disconnected before receiving it. Cleanup can release only the pending reservation owned by that request.
+
 #### Response Contract
 
 Adaptive plan items and recommended learning resources adhere to an output validation and sanitization policy:
@@ -393,7 +397,7 @@ Streams real-time adaptive study plan generation progress using Server-Sent Even
   - `X-Accel-Buffering: no`
   - `X-Request-ID` and rate-limit headers (`X-RateLimit-Limit`, `X-RateLimit-Remaining`, `X-RateLimit-Reset`)
 - **Keepalive Comments**: An initial `: keepalive` SSE comment is sent immediately upon connection open, and periodic keepalive comments are sent every 2 seconds thereafter while awaiting reasoning events. Each comment and event frame is flushed immediately.
-- **Cancellation on Disconnect**: Closing the response stream (for example, when the client drops the TCP connection, closes the reader, or fails a write/flush) cancels the reasoning pipeline immediately. In-flight per-topic model calls are aborted and their concurrency slots are released as soon as the downstream planner returns. Disconnection is detected in approximately 2 seconds on TCP reset and approximately 4 seconds on normal connection closure via 2-second keepalive cycles. The access log records `client_disconnected: true`.
+- The opt-in listener cancels the pipeline on an HTTP/1 close or HTTP/2 reset. Either listener cancels on a failed stream write or flush. With Fiber, the two-second keepalive helps surface failed writes. An in-flight call releases its concurrency permit when the planner returns. The access log records `client_disconnected: true`.
 - **Timeout**: The pipeline execution is bounded by `REQUEST_TIMEOUT` (default `20s`), matching the JSON route.
 
 #### Event Format

@@ -1,16 +1,22 @@
 package api
 
 import (
+	"context"
 	"crypto/sha256"
 	"fmt"
 	"log/slog"
+	"strconv"
 	"strings"
+	"time"
 
 	"github.com/gofiber/fiber/v3"
 
 	"github.com/Victoroide/axiom-engine/internal/domain"
 	"github.com/Victoroide/axiom-engine/internal/idempotency"
+	"github.com/Victoroide/axiom-engine/internal/service"
 )
+
+const reservationTimeout = time.Second
 
 // Idempotency replays successful responses within a credential scope.
 func Idempotency(store idempotency.Store, scope func(fiber.Ctx) string, logger *slog.Logger) fiber.Handler {
@@ -25,8 +31,26 @@ func Idempotency(store idempotency.Store, scope func(fiber.Ctx) string, logger *
 		}
 		key = scope(c) + ":" + key
 		fingerprint := fmt.Sprintf("%x", sha256.Sum256(c.Body()))
-		reservation, state, err := store.Begin(c.Context(), key, fingerprint)
+		ctx := c.Context()
+		if ctx.Err() != nil {
+			return canceledReservation(c, ctx)
+		}
+		// Wait for the reservation result even if the peer leaves during Begin.
+		reserveCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), reservationTimeout)
+		reservation, state, err := store.Begin(reserveCtx, key, fingerprint)
+		cancel()
+		abort := func() error {
+			cleanupCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), reservationTimeout)
+			defer cancel()
+			return store.Abort(cleanupCtx, key, reservation.Token)
+		}
 		if err != nil {
+			if reservation.Token != "" {
+				// Redis may have applied Begin before the transport failed.
+				if err := abort(); err != nil {
+					logger.ErrorContext(ctx, "storage.failed", "operation", "idempotency.abort")
+				}
+			}
 			return storageUnavailable(c, logger, "idempotency.begin")
 		}
 		switch state {
@@ -43,31 +67,47 @@ func Idempotency(store idempotency.Store, scope func(fiber.Ctx) string, logger *
 		settled := false
 		defer func() {
 			if !settled {
-				if err := store.Abort(c.Context(), key, reservation.Token); err != nil {
-					logger.ErrorContext(c.Context(), "storage.failed", "operation", "idempotency.abort")
+				if err := abort(); err != nil {
+					logger.ErrorContext(ctx, "storage.failed", "operation", "idempotency.abort")
 				}
 			}
 		}()
 		nextErr := c.Next()
-		if nextErr != nil || c.Response().StatusCode() != 200 {
-			abortErr := store.Abort(c.Context(), key, reservation.Token)
+		if nextErr != nil || c.Response().StatusCode() != 200 || ctx.Err() != nil {
+			if nextErr == nil && c.Response().StatusCode() == 200 {
+				nextErr = canceledReservation(c, ctx)
+			}
+			abortErr := abort()
 			settled = true
 			if abortErr != nil {
+				if ctx.Err() != nil {
+					logger.ErrorContext(ctx, "storage.failed", "operation", "idempotency.abort")
+					return nextErr
+				}
 				return storageUnavailable(c, logger, "idempotency.abort")
 			}
 			return nextErr
 		}
+		// The cancellation check above decides whether to publish this success.
+		// A later disconnect does not interrupt publication.
 		response := idempotency.Response{Status: 200, Body: c.Response().Body(), ContentType: strings.Clone(c.GetRespHeader("Content-Type"))}
-		if err := store.Complete(c.Context(), key, reservation.Token, response); err != nil {
-			if abortErr := store.Abort(c.Context(), key, reservation.Token); abortErr != nil {
-				logger.ErrorContext(c.Context(), "storage.failed", "operation", "idempotency.abort")
-			}
-			settled = true
+		commitCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), reservationTimeout)
+		err = store.Complete(commitCtx, key, reservation.Token, response)
+		cancel()
+		if err != nil {
 			return storageUnavailable(c, logger, "idempotency.complete")
 		}
 		settled = true
 		return nil
 	}
+}
+
+func canceledReservation(c fiber.Ctx, ctx context.Context) error {
+	failure := service.ClassifyError(ctx.Err(), shuttingDown(ctx))
+	if failure.RetryAfter > 0 {
+		c.Set("Retry-After", strconv.FormatInt(int64(failure.RetryAfter/time.Second), 10))
+	}
+	return c.Status(failure.Status).JSON(failure.Response)
 }
 
 func storageUnavailable(c fiber.Ctx, logger *slog.Logger, operation string) error {

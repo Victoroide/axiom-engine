@@ -311,7 +311,7 @@ The `instance_metadata` field reports `disabled` when `AWS_EC2_METADATA_DISABLED
 2. `server.listening`: emitted after the TCP socket binds:
 
 ```json
-{"level":"INFO","msg":"server.listening","address":"[::]:8080"}
+{"level":"INFO","msg":"server.listening","address":"[::]:8080","listener":"fiber"}
 ```
 
 Every HTTP request produces an `http.access` log record containing:
@@ -321,7 +321,7 @@ Every HTTP request produces an `http.access` log record containing:
 - `status`: HTTP response status code.
 - `duration_ms`: processing duration in milliseconds (for streaming routes, measures the full connection duration until stream close).
 - `ip`: client IP address resolved according to proxy configuration.
-- `client_disconnected`: boolean attribute present and set to `true` on streaming routes when the connection ends due to a failed write or flush.
+- `client_disconnected` is true when the opt-in listener observes peer cancellation or an SSE write or flush fails.
 
 A recovered HTTP handler panic emits `panic.recovered` and returns HTTP 500 `internal_error`. A recovered planner panic emits `planner.panic`. Each recovery emits one `ERROR` record with `error_class="internal_error"`, the HTTP or MCP `request_id`, and `trace_id` and `span_id` when available. Standard JSON lines for these records are at most 1024 bytes including the newline. The `request_id` is capped at 128 bytes, the recovered value is omitted, and the record contains zero stack frames.
 
