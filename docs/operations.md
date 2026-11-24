@@ -138,10 +138,21 @@ The BAML CFFI dynamic library (`libbaml_cffi.so` on Linux, `libbaml_cffi.dylib` 
 
 ### Diagnostic and Mitigation Steps
 
-1. Inspect process `stderr` logs for initialization panics referencing `libbaml_cffi`.
-2. Ensure the container or environment sets `BAML_LIBRARY_PATH` to the absolute path of the native library (for example, `/app/libbaml_cffi.so` in runtime containers).
-3. Ensure `BAML_LIBRARY_DISABLE_DOWNLOAD=true` is set to prevent unverified dynamic library downloads at runtime.
-4. In local development, run `make native-baml`. It downloads the pinned library when `bin/` has none and checks its SHA-256 against the Dockerfile pin. If the check fails, delete the file and run it again. `make baml-check` only checks that the generator, Go module and Dockerfile versions agree.
+Set `BAML_LIBRARY_PATH` to the absolute path of the native library, such as `/app/libbaml_cffi.so` in the runtime image. Set `BAML_LIBRARY_DISABLE_DOWNLOAD=true` to prevent runtime library downloads. Build with `BAML_DIAGNOSTIC=1` to include `axiom-baml-check`, then run it as the service user. It checks for a readable regular file, the expected shared-library format and CPU architecture, and the SHA-256 digest pinned for the bundled BAML version. It resolves symlinks and accepts libraries up to 256 MiB. It opens the file read-only, accesses no network, and leaves stdout free for the service protocol. [Run the diagnostic before startup](deployment.md#check-the-native-library-before-startup).
+
+On Linux, use an absolute path or an explicit relative path such as `./libbaml_cffi.so`. The Linux loader searches its library paths for a name without a slash, so the standalone diagnostic rejects bare names.
+
+The executable emits one JSON line on stderr with `status`, `reason`, `platform`, and `baml_version`. The line omits the path and credential values.
+
+| Exit code | `status` | `reason` |
+| --- | --- | --- |
+| `0` | `ok` | `verified` |
+| `1` | `error` | `missing_file`, `not_regular_file`, `unreadable_file`, `file_too_large`, `invalid_header`, `platform_mismatch`, or `digest_mismatch` |
+| `2` | `error` | `path_not_set`, `path_requires_slash` (Linux), `invalid_arguments`, `unsupported_platform`, or `invalid_build_pin` |
+
+The diagnostic verifies file bytes without loading the library. A missing transitive shared library, unresolved symbol, incompatible system ABI, or loader policy such as a `noexec` mount may still cause a startup failure. Inspect the server's native stderr for `libbaml_cffi` initialization errors. Run `make release-archive-smoke` against a built archive or `make container-smoke` against a built runtime image to exercise real native startup and shutdown. Pass `BAML_DIAGNOSTIC=1` to `container-smoke` for an image built with the diagnostic.
+
+In local development, `make native-baml` downloads the pinned library when `bin/` has none and verifies its SHA-256 against the Dockerfile pin. If verification fails, delete the file and rerun the target. `make baml-check` checks that the generator, Go module and Dockerfile versions agree. `make build-baml-check` builds the standalone diagnostic for a supported release platform.
 
 Use `axiom-server-launch` for extracted archives. It disables the public and internal BAML loggers and clears the native trace file and upload settings. If you enable native diagnostics on a direct binary launch, use synthetic input because those diagnostics can contain prompts and responses. [Run an archive](deployment.md#run-an-archive).
 

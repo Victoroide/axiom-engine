@@ -1,7 +1,10 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+python3 -I ./scripts/test-container-smoke-verifiers.py
+
 image=${1:-axiom-engine:local}
+include_diagnostic=${2:-0}
 prefix="axiom-smoke-check-$$"
 check_dir=$(mktemp -d)
 cleanup() {
@@ -12,7 +15,7 @@ trap cleanup EXIT
 
 expect_rejection() {
   local variant=$1 message=$2
-  if /bin/bash ./scripts/container-smoke.sh "$prefix-$variant" > "$check_dir/output" 2>&1; then
+  if /bin/bash ./scripts/container-smoke.sh "$prefix-$variant" "$include_diagnostic" > "$check_dir/output" 2>&1; then
     cat "$check_dir/output" >&2
     printf 'Expected %s image to fail\n' "$variant" >&2
     exit 1

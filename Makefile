@@ -12,14 +12,25 @@ export BAML_LIBRARY_PATH := $(BIN_DIR)/libbaml_cffi.$(BAML_LIB_EXT)
 export BAML_LIBRARY_DISABLE_DOWNLOAD := true
 export BAML_LOG ?= off
 IMAGE ?= axiom-engine:local
+BAML_DIAGNOSTIC ?= 0
 VULN_FLAGS ?=
 FUZZTIME ?= 30s
 RELEASE_VERSION ?= dev
 RELEASE_DIR ?= $(BIN_DIR)/release
 SOURCE_DATE_EPOCH ?= $(shell git log -1 --format=%ct)
 
+ifeq ($(BAML_DIAGNOSTIC),1)
+BAML_CHECK_TARGET := build-baml-check
+RUNTIME_TARGET := runtime-with-baml-check
+else ifeq ($(BAML_DIAGNOSTIC),0)
+BAML_CHECK_TARGET :=
+RUNTIME_TARGET := runtime
+else
+$(error BAML_DIAGNOSTIC must be 0 or 1)
+endif
+
 .PHONY: diagrams diagrams-check help generate swagger build run test cover test-e2e fuzz lint vuln fmt tidy-check generate-check toolchain-check docker-build container-smoke container-smoke-test clean tools-baml baml-check native-baml
-.PHONY: release-archive release-archive-smoke release-archive-test
+.PHONY: build-baml-check release-archive release-archive-smoke release-archive-test
 
 help: ## List available targets
 	@awk 'BEGIN {FS = ":.*## "} /^[a-zA-Z0-9_-]+:.*## / {printf "  %-18s %s\n", $$1, $$2}' $(MAKEFILE_LIST)
@@ -76,17 +87,32 @@ swagger: ## Regenerate the Swagger specification and embedded docs
 	go tool -modfile=tools/go.mod swag init -g cmd/server/main.go -o docs --parseInternal
 	gofmt -w docs/docs.go
 
-build: ## Build the stripped service binary with CGO
+build: $(BAML_CHECK_TARGET) ## Build the stripped service binary with CGO
 	@mkdir -p "$(BIN_DIR)"
 	CGO_ENABLED=1 go build -trimpath -ldflags='-s -w' -o "$(BIN_DIR)/axiom-server" ./cmd/server
 
-release-archive: native-baml build ## Package the binary and verified native library for this host
-	SOURCE_DATE_EPOCH="$(SOURCE_DATE_EPOCH)" ./scripts/release-archive.sh "$(RELEASE_VERSION)" "$(RELEASE_DIR)"
+build-baml-check: baml-check ## Build the standalone diagnostic for this release platform
+	@mkdir -p "$(BIN_DIR)"
+	@set -eu; \
+	case "$(BAML_HOST_OS)/$(BAML_HOST_ARCH)" in \
+	  linux/amd64) pin=AMD64 ;; \
+	  linux/arm64) pin=ARM64 ;; \
+	  darwin/arm64) pin=DARWIN_ARM64 ;; \
+	  *) echo "Unsupported release platform: $(BAML_HOST_OS)/$(BAML_HOST_ARCH)" >&2; exit 1 ;; \
+	esac; \
+	checksum="$$(sed -n "s/^ARG BAML_LIB_SHA256_$${pin}=//p" Dockerfile)"; \
+	test "$${#checksum}" = 64; \
+	CGO_ENABLED=0 GOOS=$(BAML_HOST_OS) GOARCH=$(BAML_HOST_ARCH) go build -trimpath \
+	  -ldflags="-s -w -X main.libraryVersion=$(BAML_LIB_VERSION) -X main.librarySHA256=$$checksum" \
+	  -o "$(BIN_DIR)/axiom-baml-check" ./cmd/axiom-baml-check
+
+release-archive: native-baml build ## Package the service and verified native library for this host
+	SOURCE_DATE_EPOCH="$(SOURCE_DATE_EPOCH)" ./scripts/release-archive.sh "$(RELEASE_VERSION)" "$(RELEASE_DIR)" "$(BAML_DIAGNOSTIC)"
 
 release-archive-smoke: ## Check an extracted archive's liveness and clean shutdown
 	./scripts/release-archive-smoke.sh "$(RELEASE_DIR)/axiom-engine_$(RELEASE_VERSION)_$(BAML_HOST_OS)_$(BAML_HOST_ARCH).tar.gz"
 
-release-archive-test: native-baml build ## Check archive contents, repeatability and runtime behavior
+release-archive-test: native-baml build build-baml-check ## Check archive contents, repeatability and runtime behavior
 	./scripts/test-release-archive.sh
 
 run: native-baml ## Run the service using the current environment
@@ -140,13 +166,13 @@ generate-check: generate swagger ## Fail if committed generated code is stale
 	@test -z "$$(git ls-files --others --exclude-standard -- baml_client docs)"
 
 docker-build: ## Build the non-root runtime image
-	docker build --target runtime --build-arg BAML_VERSION=$(BAML_VERSION) -t $(IMAGE) .
+	docker build --target $(RUNTIME_TARGET) --build-arg BAML_VERSION=$(BAML_VERSION) -t $(IMAGE) .
 
 container-smoke: ## Check runtime responses, log privacy and shutdown
-	./scripts/container-smoke.sh "$(IMAGE)"
+	./scripts/container-smoke.sh "$(IMAGE)" "$(BAML_DIAGNOSTIC)"
 
 container-smoke-test: ## Verify rejection of unsafe runtime images
-	./scripts/test-container-smoke.sh "$(IMAGE)"
+	./scripts/test-container-smoke.sh "$(IMAGE)" "$(BAML_DIAGNOSTIC)"
 
 clean: ## Remove local binaries and coverage artifacts
 	rm -rf "$(BIN_DIR)" coverage.out coverage.html

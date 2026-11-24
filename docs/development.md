@@ -66,7 +66,8 @@ Run `make help` to inspect available Makefile targets:
 | `diagrams-check` | Check diagram geometry, sources and generated SVGs. |
 | `swagger` | Regenerate the Swagger specification and embedded docs. |
 | `build` | Build the stripped service binary with CGO. |
-| `release-archive` | Package the binary and verified native library for this host. |
+| `build-baml-check` | Build the standalone diagnostic for this release platform. |
+| `release-archive` | Package the service and verified native library for this host. |
 | `release-archive-smoke` | Check an extracted archive's liveness and clean shutdown. |
 | `release-archive-test` | Check archive contents, repeatability and runtime behavior. |
 | `run` | Run the service using the current environment. |
@@ -409,7 +410,9 @@ To test an existing container image, pass the `IMAGE` variable:
 make container-smoke IMAGE=axiom-ci
 ```
 
-The smoke test performs the following steps:
+Pass `BAML_DIAGNOSTIC=1` to both `docker-build` and `container-smoke` to build and test the image with the standalone diagnostic. This selects the Dockerfile's `runtime-with-baml-check` target. The smoke test runs the diagnostic with the bundled library and a missing path in a read-only container without network access.
+
+For both image variants, the smoke test checks that the server entrypoint is the container's main process, that `/app` contains the expected files and modes, and that the `mcp` argument produces a newline-delimited JSON-RPC response on stdout. The native service checks perform the following steps.
 1. Compiles the local fake Bedrock command `test/fakebedrock/cmd/fakebedrock`.
 2. Starts a local HTTP stub in `ok` response mode on an ephemeral port, serving Amazon Bedrock Converse routes.
 3. Launches the runtime container image with `--read-only`, `--tmpfs /tmp`, host-gateway routing (`--add-host host.docker.internal:host-gateway`), an ephemeral published port mapped to 8080, and configured dummy AWS credentials pointing `AWS_ENDPOINT_URL` to the local stub.
@@ -431,11 +434,13 @@ Every failed check stops the script with `container smoke: <reason>`. `make cont
 
 Release archive targets build, package, and test standalone distribution archives containing `axiom-server-launch`, `axiom-server`, the pinned native BAML CFFI library, `LICENSE`, and `README.md`.
 
-- `make release-archive`: builds the service binary and verified native library, then packages them into a deterministic `.tar.gz` archive. GNU tar is required (`brew install gnu-tar` on macOS).
+- `make release-archive` builds the service, verifies the native library, and creates a deterministic `.tar.gz` archive. GNU tar is required (`brew install gnu-tar` on macOS).
 - `make release-archive-smoke` clears inherited internal tokens and `BAML_LOG`, starts the launcher, checks `/livez` with `./axiom-server-launch healthcheck`, and verifies exit status 0 on `SIGTERM`.
-- `make release-archive-test` checks archive contents, repeatable packaging, and the bundled offline setup. It exercises launch from an installation path with spaces, native log privacy on successful and failed calls, rejected logging levels, stdio framing, argument and signal forwarding, and startup diagnostics. It also checks invalid versions, non-numeric timestamps, and missing native libraries.
+- `make release-archive-test` checks the default members and modes, repeatable packaging, and the bundled offline setup. It builds the opt-in archive and verifies that it adds the diagnostic with mode `0755`. The diagnostic verifies the bundled library and reports a digest mismatch for a one-byte change. The suite exercises launch from an installation path with spaces, native log privacy on successful and failed calls, rejected logging levels, stdio framing, and argument and signal forwarding. It also checks invalid versions, non-numeric timestamps, and missing native libraries.
+- `CGO_ENABLED=0 go test ./cmd/axiom-baml-check` runs the diagnostic unit suite with fixtures for each release platform.
 
 Packaging settings:
+- `BAML_DIAGNOSTIC` defaults to `0`. Set it to `1` when building the service, archive, or image to build `axiom-baml-check` with CGO disabled and include it in the selected package. The option is used only during build and testing.
 - `RELEASE_VERSION`: archive version string (default: `dev`).
 - `RELEASE_DIR`: destination directory for archives (default: `$(BIN_DIR)/release`).
 - `SOURCE_DATE_EPOCH`: archive entry timestamp (defaults to HEAD commit timestamp via `git log -1 --format=%ct`).
