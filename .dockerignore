@@ -20,7 +20,13 @@ test
 **/*_test.go
 *.md
 scripts
-tools
+tools/*
+!tools/go.mod
+!tools/go.sum
+!tools/native-inventory
+tools/native-inventory/*
+!tools/native-inventory/main.go
+!tools/native-inventory/oci.go
 LICENSE
 Makefile
 docker-compose.yml

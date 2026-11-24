@@ -62,6 +62,14 @@ RUN --mount=type=cache,target=/root/.cache/go-build \
       -ldflags="-s -w -X main.libraryVersion=$BAML_LIB_VERSION -X main.librarySHA256=$checksum" \
       -o /out/axiom-baml-check ./cmd/axiom-baml-check
 
+FROM builder AS native-inventory
+ARG TARGETARCH
+WORKDIR /src/tools
+COPY --from=native /out/libbaml_cffi.so /out/libbaml_cffi.so
+RUN --mount=type=cache,target=/root/.cache/go-build \
+    --mount=type=cache,target=/go/pkg/mod \
+    go run ./native-inventory -target "linux/$TARGETARCH" write /out/libbaml_cffi.so > /out/baml-native.cdx.json
+
 FROM gcr.io/distroless/cc-debian13:nonroot@sha256:532c7a94f9e96ba9db75eb9388f4227751131c7cb0a411d1a8521af4096135de AS runtime-base
 
 ARG VERSION=dev
@@ -92,5 +100,8 @@ ENTRYPOINT ["/app/axiom-server"]
 
 FROM runtime-base AS runtime-with-baml-check
 COPY --from=baml-check /out/axiom-baml-check /app/axiom-baml-check
+
+FROM runtime-base AS runtime-inventory
+COPY --from=native-inventory /out/baml-native.cdx.json /app/baml-native.cdx.json
 
 FROM runtime-base AS runtime
