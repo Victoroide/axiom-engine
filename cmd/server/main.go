@@ -139,7 +139,11 @@ func logStartup(logger *slog.Logger, cfg config.Config, g *graph.InMemoryGraph, 
 	}
 	regionSource := ""
 	if cfg.LLM.Provider == "aws-bedrock" {
-		regionSource = config.AWSRegionSource(getenv, readFile)
+		if cfg.LLM.BedrockRegion != "" {
+			regionSource = "AWS_REGION"
+		} else {
+			regionSource = config.AWSRegionSource(getenv, readFile)
+		}
 	}
 	logger.Info("server.started",
 		"port", cfg.Port, "auth", auth,

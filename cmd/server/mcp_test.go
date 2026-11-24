@@ -9,7 +9,6 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -20,7 +19,6 @@ import (
 
 func TestMCPProcess(t *testing.T) {
 	dir := t.TempDir()
-	binary := filepath.Join(dir, "axiom-server")
 	graphFile := filepath.Join(dir, "graph.json")
 	graphData, err := os.ReadFile("../../internal/graph/seed.json")
 	if err != nil {
@@ -38,16 +36,12 @@ func TestMCPProcess(t *testing.T) {
 		handler.ServeHTTP(w, r)
 	}))
 	defer backend.Close()
-	build := exec.CommandContext(t.Context(), "go", "build", "-o", binary, ".") //nolint:gosec // Build the server in a fresh test directory.
-	if out, err := build.CombinedOutput(); err != nil {
-		t.Fatalf("build: %v: %s", err, out)
-	}
 	ctx, cancel := context.WithTimeout(t.Context(), 15*time.Second)
 	defer cancel()
-	cmd := exec.CommandContext(ctx, binary, "mcp") //nolint:gosec // Execute the server built by this test.
-	cmd.Env = append(mcpFixtureEnv(t), "AXIOM_INTERNAL_TOKEN=", "AXIOM_INTERNAL_TOKEN_PREVIOUS=", "AXIOM_AUTH_DISABLED=invalid", "PORT=invalid", "RATE_LIMIT_MAX=invalid", "BAML_LOG=off",
+	env := append(mcpFixtureEnv(t), "AXIOM_INTERNAL_TOKEN=", "AXIOM_INTERNAL_TOKEN_PREVIOUS=", "AXIOM_AUTH_DISABLED=invalid", "PORT=invalid", "RATE_LIMIT_MAX=invalid", "BAML_LOG=off",
 		"GRAPH_FILE="+graphFile, "AWS_ENDPOINT_URL="+backend.URL, "AWS_ENDPOINT_URL_BEDROCK_RUNTIME="+backend.URL,
 		"AWS_ACCESS_KEY_ID=dummy", "AWS_SECRET_ACCESS_KEY=dummy", "AWS_SESSION_TOKEN=", "AWS_REGION=us-east-1", "AWS_DEFAULT_REGION=us-east-1", "AWS_EC2_METADATA_DISABLED=true", "AWS_IGNORE_CONFIGURED_ENDPOINT_URLS=false", "AWS_RETRY_MODE=standard", "AWS_MAX_ATTEMPTS=1")
+	cmd := serverCommand(ctx, env, "mcp")
 	stdin, err := cmd.StdinPipe()
 	if err != nil {
 		t.Fatal(err)

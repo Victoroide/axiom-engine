@@ -10,7 +10,6 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"os/exec"
-	"path/filepath"
 	"strings"
 	"sync"
 	"syscall"
@@ -63,11 +62,6 @@ func (r *processRecords) Write(p []byte) (int, error) {
 func (r *processRecords) text() string { r.mu.Lock(); defer r.mu.Unlock(); return r.data.String() }
 
 func TestMCPShutdownProcess(t *testing.T) {
-	binary := filepath.Join(t.TempDir(), "axiom-server")
-	build := exec.CommandContext(t.Context(), "go", "build", "-o", binary, ".") //nolint:gosec // Build the server in a fresh test directory.
-	if out, err := build.CombinedOutput(); err != nil {
-		t.Fatalf("build: %v: %s", err, out)
-	}
 	for _, tc := range []struct {
 		name                    string
 		signal                  syscall.Signal
@@ -98,10 +92,10 @@ func TestMCPShutdownProcess(t *testing.T) {
 			defer release()
 			ctx, cancel := context.WithTimeout(t.Context(), 8*time.Second)
 			defer cancel()
-			cmd := exec.CommandContext(ctx, binary, "mcp") //nolint:gosec // Execute the server built by this test.
-			cmd.Env = append(mcpFixtureEnv(t), "BAML_LOG=off", "AXIOM_INTERNAL_TOKEN=", "AXIOM_INTERNAL_TOKEN_PREVIOUS=", "AXIOM_AUTH_DISABLED=invalid", "GRAPH_FILE=",
+			env := append(mcpFixtureEnv(t), "BAML_LOG=off", "AXIOM_INTERNAL_TOKEN=", "AXIOM_INTERNAL_TOKEN_PREVIOUS=", "AXIOM_AUTH_DISABLED=invalid", "GRAPH_FILE=",
 				"AWS_ACCESS_KEY_ID=dummy", "AWS_SECRET_ACCESS_KEY=dummy", "AWS_SESSION_TOKEN=", "AWS_PROFILE=", "AWS_REGION=us-east-1", "AWS_DEFAULT_REGION=us-east-1", "AWS_EC2_METADATA_DISABLED=true", "AWS_RETRY_MODE=standard", "AWS_MAX_ATTEMPTS=1", "AWS_IGNORE_CONFIGURED_ENDPOINT_URLS=false",
 				"AWS_ENDPOINT_URL="+backend.URL, "AWS_ENDPOINT_URL_BEDROCK_RUNTIME="+backend.URL, "SHUTDOWN_TIMEOUT="+tc.budget.String(), "REQUEST_TIMEOUT=5s", "LLM_TIMEOUT=3s", "LLM_QUEUE_TIMEOUT=50ms")
+			cmd := serverCommand(ctx, env, "mcp")
 			stdout := &processRecords{protocol: true, messages: make(chan map[string]any, 32)}
 			stderr := &processRecords{shutdown: make(chan struct{})}
 			cmd.Stdout = stdout

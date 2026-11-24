@@ -101,6 +101,9 @@ func clientOptions(cfg config.LLM) map[string]any {
 	reason := "length"
 	switch cfg.Provider {
 	case "aws-bedrock":
+		if cfg.BedrockRegion != "" {
+			opts["region"] = cfg.BedrockRegion
+		}
 		opts["inference_configuration"] = map[string]any{"max_tokens": config.PlannerOutputTokens, "temperature": 0.1}
 		reason = "max_tokens"
 	case "google-ai":

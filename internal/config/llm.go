@@ -8,10 +8,11 @@ import (
 
 // LLM selects the provider and generation model used by the planner.
 type LLM struct {
-	Provider string
-	Model    string
-	BaseURL  string
-	APIKey   string `json:"-"`
+	Provider      string
+	Model         string
+	BaseURL       string
+	APIKey        string `json:"-"`
+	BedrockRegion string `json:",omitempty"`
 }
 
 // DefaultLLM returns the planner settings used when no selection is provided.
@@ -27,6 +28,11 @@ func loadLLM(getenv func(string) string, c *Config) error {
 	key := ""
 	switch p {
 	case "aws-bedrock":
+		region, err := explicitBedrockRegion(getenv)
+		if err != nil {
+			return err
+		}
+		l.BedrockRegion = region
 		if l.Model == "" {
 			l.Model = defaults.Model
 		}

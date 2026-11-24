@@ -42,7 +42,7 @@ func testRunLogsErrorAsJSON(t *testing.T, key, value, want string) {
 		return
 	}
 	cmd := exec.CommandContext(t.Context(), os.Args[0], "-test.run=^"+t.Name()+"$") //nolint:gosec // Reexecute this test binary to exercise process startup.
-	cmd.Env = append(os.Environ(), "AXIOM_ERROR_TEST=1", "AXIOM_AUTH_DISABLED=true", "AXIOM_INTERNAL_TOKEN=", "PORT=8080", "AWS_MAX_ATTEMPTS=3", "AWS_RETRY_MODE=standard", key+"="+value, "BAML_LOG=off")
+	cmd.Env = append(os.Environ(), "AXIOM_ERROR_TEST=1", "AXIOM_AUTH_DISABLED=true", "AXIOM_INTERNAL_TOKEN=", "PORT=8080", "AWS_MAX_ATTEMPTS=3", "AWS_RETRY_MODE=standard", "BEDROCK_REQUIRE_EXPLICIT_REGION=false", key+"="+value, "BAML_LOG=off")
 	output, err := cmd.CombinedOutput()
 	var exitErr *exec.ExitError
 	if !errors.As(err, &exitErr) || exitErr.ExitCode() != 1 {
@@ -66,6 +66,7 @@ func TestStartupRecordsPrecedeServing(t *testing.T) {
 }
 
 func TestRunRejectsInvalidRetrySettings(t *testing.T) {
+	t.Setenv("BEDROCK_REQUIRE_EXPLICIT_REGION", "false")
 	for _, tc := range []struct{ key, value string }{
 		{"AWS_MAX_ATTEMPTS", ""}, {"AWS_MAX_ATTEMPTS", "abc"}, {"AWS_MAX_ATTEMPTS", "0"},
 		{"AWS_MAX_ATTEMPTS", "-1"}, {"AWS_MAX_ATTEMPTS", "1.5"}, {"AWS_MAX_ATTEMPTS", " 3"},
@@ -86,6 +87,7 @@ func TestRunRejectsInvalidRetrySettings(t *testing.T) {
 }
 
 func TestRunAcceptsRetrySettings(t *testing.T) {
+	t.Setenv("BEDROCK_REQUIRE_EXPLICIT_REGION", "false")
 	for _, tc := range []struct{ attempts, mode string }{
 		{"unset", "unset"}, {"1", "standard"}, {"5", "adaptive"}, {"4294967295", "standard"},
 	} {
@@ -139,7 +141,7 @@ func testSecondSignalStopsServer(t *testing.T, backToBack bool) {
 		t.Fatal(err)
 	}
 	cmd := exec.CommandContext(t.Context(), os.Args[0], "-test.run=^"+t.Name()+"$") //nolint:gosec // Reexecute this test binary to exercise process signals.
-	cmd.Env = append(os.Environ(), "AXIOM_SIGNAL_TEST=1", "AXIOM_AUTH_DISABLED=true", "AXIOM_INTERNAL_TOKEN=", "PORT="+port, "SHUTDOWN_TIMEOUT="+shutdownTimeout.String(), "SHUTDOWN_DRAIN_DELAY=0s", "GRAPH_FILE=", "LOG_LEVEL=info", "AWS_MAX_ATTEMPTS=3", "AWS_RETRY_MODE=standard")
+	cmd.Env = append(os.Environ(), "AXIOM_SIGNAL_TEST=1", "AXIOM_AUTH_DISABLED=true", "AXIOM_INTERNAL_TOKEN=", "PORT="+port, "SHUTDOWN_TIMEOUT="+shutdownTimeout.String(), "SHUTDOWN_DRAIN_DELAY=0s", "GRAPH_FILE=", "LOG_LEVEL=info", "AWS_MAX_ATTEMPTS=3", "AWS_RETRY_MODE=standard", "BEDROCK_REQUIRE_EXPLICIT_REGION=false")
 	output, err := cmd.StdoutPipe()
 	if err != nil {
 		t.Fatal(err)
@@ -436,6 +438,8 @@ func TestRunRejectsInvalidBAMLLog(t *testing.T) {
 }
 
 func TestOtherProvidersIgnoreAWSSettings(t *testing.T) {
+	t.Setenv("BEDROCK_REQUIRE_EXPLICIT_REGION", "true")
+	t.Setenv("AWS_REGION", "")
 	t.Setenv("AXIOM_AUTH_DISABLED", "true")
 	t.Setenv("AXIOM_INTERNAL_TOKEN", "")
 	t.Setenv("LLM_PROVIDER", "ollama")
@@ -456,6 +460,7 @@ func TestOtherProvidersIgnoreAWSSettings(t *testing.T) {
 }
 
 func TestLangSmithStartupDoesNotLogKey(t *testing.T) {
+	t.Setenv("BEDROCK_REQUIRE_EXPLICIT_REGION", "false")
 	t.Setenv("AXIOM_AUTH_DISABLED", "true")
 	t.Setenv("AXIOM_INTERNAL_TOKEN", "")
 	t.Setenv("LANGSMITH_TRACING", "true")
@@ -497,7 +502,7 @@ func TestTracingFlushAfterDrain(t *testing.T) {
 		t.Fatal(err)
 	}
 	cmd := exec.CommandContext(t.Context(), os.Args[0], "-test.run=^TestTracingFlushAfterDrain$") //nolint:gosec // Reexecute this test binary to exercise shutdown.
-	cmd.Env = append(os.Environ(), "AXIOM_TRACE_DRAIN_CHILD=1", "AXIOM_AUTH_DISABLED=true", "AXIOM_INTERNAL_TOKEN=", "PORT="+port, "SHUTDOWN_TIMEOUT=11s", "SHUTDOWN_DRAIN_DELAY=12s", "GRAPH_FILE=", "BAML_LOG=off", "AWS_MAX_ATTEMPTS=3", "AWS_RETRY_MODE=standard", "TRACING_ENABLED=true", "LANGSMITH_TRACING=false", "OTEL_EXPORTER_OTLP_ENDPOINT="+receiver.URL, "OTEL_EXPORTER_OTLP_TRACES_ENDPOINT=", "OTEL_BSP_SCHEDULE_DELAY=60000")
+	cmd.Env = append(os.Environ(), "AXIOM_TRACE_DRAIN_CHILD=1", "AXIOM_AUTH_DISABLED=true", "AXIOM_INTERNAL_TOKEN=", "PORT="+port, "SHUTDOWN_TIMEOUT=11s", "SHUTDOWN_DRAIN_DELAY=12s", "GRAPH_FILE=", "BAML_LOG=off", "AWS_MAX_ATTEMPTS=3", "AWS_RETRY_MODE=standard", "BEDROCK_REQUIRE_EXPLICIT_REGION=false", "TRACING_ENABLED=true", "LANGSMITH_TRACING=false", "OTEL_EXPORTER_OTLP_ENDPOINT="+receiver.URL, "OTEL_EXPORTER_OTLP_TRACES_ENDPOINT=", "OTEL_BSP_SCHEDULE_DELAY=60000")
 	output, err := cmd.StdoutPipe()
 	if err != nil {
 		t.Fatal(err)

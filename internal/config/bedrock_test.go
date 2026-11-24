@@ -2,8 +2,91 @@ package config
 
 import (
 	"os"
+	"path/filepath"
+	"strings"
 	"testing"
 )
+
+func TestBedrockRegionConfiguration(t *testing.T) {
+	profile := filepath.Join(t.TempDir(), "config")
+	if err := os.WriteFile(profile, []byte("[profile local]\nregion = eu-west-2\n"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	for _, loader := range []struct {
+		name string
+		load func(func(string) string) (Config, error)
+	}{{"HTTP", Load}, {"MCP", LoadMCP}} {
+		t.Run(loader.name, func(t *testing.T) {
+			for _, tc := range []struct {
+				name, strict, want string
+				env                map[string]string
+			}{
+				{name: "default leaves an unset region to the SDK"},
+				{name: "default leaves a configured region to the SDK", env: map[string]string{"AWS_REGION": "us-west-2"}},
+				{name: "off leaves a malformed region to the SDK", strict: "false", env: map[string]string{"AWS_REGION": "Bad Region"}},
+				{name: "invalid switch", strict: "yes", want: "BEDROCK_REQUIRE_EXPLICIT_REGION"},
+				{name: "unset", strict: "true", want: "AWS_REGION"},
+				{name: "empty", strict: "true", env: map[string]string{"AWS_REGION": ""}, want: "AWS_REGION"},
+				{name: "blank with alternate", strict: "true", env: map[string]string{"AWS_REGION": " \t", "AWS_DEFAULT_REGION": "us-west-2"}, want: "AWS_REGION"},
+				{name: "alternate only", strict: "true", env: map[string]string{"AWS_DEFAULT_REGION": "us-west-2"}, want: "AWS_REGION"},
+				{name: "profile only", strict: "true", env: map[string]string{"AWS_CONFIG_FILE": profile, "AWS_PROFILE": "local"}, want: "AWS_REGION"},
+				{name: "profile miss", strict: "true", env: map[string]string{"AWS_CONFIG_FILE": profile, "AWS_PROFILE": "missing"}, want: "AWS_REGION"},
+				{name: "IMDS only", strict: "true", env: map[string]string{"AWS_EC2_METADATA_DISABLED": "false"}, want: "AWS_REGION"},
+				{name: "IMDS disabled", strict: "true", env: map[string]string{"AWS_EC2_METADATA_DISABLED": "true"}, want: "AWS_REGION"},
+				{name: "explicit", strict: "true", env: map[string]string{"AWS_REGION": "us-west-2"}},
+				{name: "explicit with conflicting sources", strict: "true", env: map[string]string{"AWS_REGION": "us-gov-west-1", "AWS_DEFAULT_REGION": "us-west-2", "AWS_CONFIG_FILE": profile, "AWS_PROFILE": "local"}},
+				{name: "China partition", strict: "true", env: map[string]string{"AWS_REGION": "cn-north-1"}},
+				{name: "new partition", strict: "true", env: map[string]string{"AWS_REGION": "eusc-de-east-1"}},
+				{name: "future partition", strict: "true", env: map[string]string{"AWS_REGION": "new-partition-location-12"}},
+				{name: "maximum length", strict: "true", env: map[string]string{"AWS_REGION": strings.Repeat("a", 56) + "-east-1"}},
+			} {
+				t.Run(tc.name, func(t *testing.T) {
+					getenv := func(key string) string {
+						switch key {
+						case "AXIOM_AUTH_DISABLED":
+							return "true"
+						case "BEDROCK_REQUIRE_EXPLICIT_REGION":
+							return tc.strict
+						default:
+							return tc.env[key]
+						}
+					}
+					cfg, err := loader.load(getenv)
+					if tc.want != "" {
+						if err == nil || !strings.HasPrefix(err.Error(), tc.want+" ") {
+							t.Fatalf("expected %s configuration error, got %v", tc.want, err)
+						}
+						return
+					}
+					if err != nil {
+						t.Fatal(err)
+					}
+					if tc.strict != "true" && cfg.LLM != DefaultLLM() {
+						t.Fatalf("default planner settings changed: %+v", cfg.LLM)
+					}
+					if tc.strict == "true" && cfg.LLM.BedrockRegion != tc.env["AWS_REGION"] {
+						t.Fatalf("validated region = %q, want %q", cfg.LLM.BedrockRegion, tc.env["AWS_REGION"])
+					}
+				})
+			}
+		})
+	}
+}
+
+func TestBedrockRegionRejectsMalformedIdentifiers(t *testing.T) {
+	for _, region := range []string{
+		" us-east-1", "us-east-1\n", "us-east\t-1", "US-East-1", "us_east_1", "us--east-1", "us-east-x",
+		"us-east-1.example.com", "https://us-east-1", "us-east-1/other", "\x00us-east-1", "eu-öst-1", strings.Repeat("a", 60) + "-east-1",
+	} {
+		t.Run(region, func(t *testing.T) {
+			env := map[string]string{"AXIOM_AUTH_DISABLED": "true", "BEDROCK_REQUIRE_EXPLICIT_REGION": "true", "AWS_REGION": region}
+			_, err := Load(func(key string) string { return env[key] })
+			if err == nil || !strings.HasPrefix(err.Error(), "AWS_REGION ") || strings.Contains(err.Error(), region) {
+				t.Fatalf("expected AWS_REGION error without its value, got %v", err)
+			}
+		})
+	}
+}
 
 func TestRegionSource(t *testing.T) {
 	for _, tc := range []struct {

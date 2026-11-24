@@ -3,9 +3,35 @@ package config
 import (
 	"fmt"
 	"path/filepath"
+	"regexp"
 	"strconv"
 	"strings"
 )
+
+var awsRegionID = regexp.MustCompile(`^[a-z][a-z0-9]*(?:-[a-z][a-z0-9]*)+-[0-9]+$`)
+
+// ValidAWSRegion checks the identifier shape and DNS label length.
+func ValidAWSRegion(region string) bool {
+	return len(region) <= 63 && awsRegionID.MatchString(region)
+}
+
+func explicitBedrockRegion(getenv func(string) string) (string, error) {
+	switch getenv("BEDROCK_REQUIRE_EXPLICIT_REGION") {
+	case "", "false":
+		return "", nil
+	case "true":
+		region := getenv("AWS_REGION")
+		if strings.TrimSpace(region) == "" {
+			return "", fmt.Errorf("AWS_REGION is required when BEDROCK_REQUIRE_EXPLICIT_REGION=true")
+		}
+		if !ValidAWSRegion(region) {
+			return "", fmt.Errorf("AWS_REGION must be a lowercase, hyphenated region identifier ending in a number")
+		}
+		return region, nil
+	default:
+		return "", fmt.Errorf("BEDROCK_REQUIRE_EXPLICIT_REGION must be true or false")
+	}
+}
 
 // ValidateAWSRetry checks the Bedrock SDK retry settings before native calls begin.
 func ValidateAWSRetry(lookupEnv func(string) (string, bool)) error {
