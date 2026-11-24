@@ -210,7 +210,7 @@ make diagrams-check  # run the checks and fail on missing or stale output
 
 ## Access token verifier
 
-`internal/auth` is a standalone Go package. Create one `auth.Verifier` per issuer and resource audience with `auth.New`, and reuse it across requests. Supply the exact issuer, audience, HTTPS JWKS URL and a signing algorithm allowlist (`RS256`, `ES256`, or both) through trusted configuration. The deployed HTTP listener uses shared-secret authentication and the MCP listener runs over stdio.
+`internal/auth` verifies access tokens. Verified HTTP mode constructs one `auth.Verifier` at configuration load and reuses it across requests. It takes the exact issuer, resource audience, HTTPS JWKS URL and signing algorithm allowlist from the operator. Stdio MCP uses its launching process as the trust boundary. [Verified HTTP authentication](configuration.md#verified-http-authentication)
 
 Map the issuer's tenant and scope claims in `auth.ClaimMapping`. The scope mapping defaults to `scope`. Subject mode uses `sub` as the caller. Client mode requires a mapped client claim and an explicit registry of up to 256 client IDs. If the token also contains `sub`, its value must equal the client ID in client mode. Tenant and caller IDs are case-sensitive strings of 1–128 visible ASCII bytes. Configure the issuer to supply stable, issuer-controlled identifiers.
 
@@ -221,6 +221,8 @@ Key fetches use the configured URL directly and discard redirects. The verifier 
 `Verify` returns the issuer, tenant and caller through `Principal` accessors for authorization. The verifier emits no logs or telemetry, and its errors omit token and claim values. Formatting a principal directly with `%v`, `%+v` and `%#v` redacts its fields, and JSON marshaling omits them. Keep enclosing authorization state out of logs. [Go formatting rules](https://pkg.go.dev/fmt#hdr-Printing)
 
 Run the signed-token and key refresh tests with `go test -race ./internal/auth/...`. With Go and the dependencies installed, the suite runs offline using local TLS fixtures.
+
+The HTTP replay suite runs with memory and miniredis by default. Set `AXIOM_TEST_REDIS_URL` to a dedicated test Redis instance when running `make test` to exercise the same cases across replicas on Redis.
 
 ## Test layers
 

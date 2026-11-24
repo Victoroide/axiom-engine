@@ -12,9 +12,10 @@ This document is the authoritative reference for all environment variables suppo
 |---|---|---|---|---|
 | `PORT` | Integer | `8080` | `1` to `65535` | TCP port on which the HTTP server listens. Configured in `internal/config/config.go`. |
 | `HTTP_LISTENER` | Enum | `fiber` | `fiber` or `net-http` | Selects the HTTP listener. An unset or empty value uses Fiber. |
-| `AXIOM_AUTH_DISABLED` | Boolean | `false` | `true` or `false` | When `true`, disables token authentication on `/api/v1/*` routes and logs a startup warning `auth.disabled`. Must be `false` when `AXIOM_INTERNAL_TOKEN` or `AXIOM_INTERNAL_TOKEN_PREVIOUS` is configured; configuring either simultaneously fails startup. When `false`, `AXIOM_INTERNAL_TOKEN` is required. Configured in `internal/config/config.go`. |
-| `AXIOM_INTERNAL_TOKEN` | String | `""` (unset) | At least 32 visible ASCII characters (`0x21`–`0x7E`) without whitespace | Shared secret token required in `X-Internal-Token` or `Authorization: Bearer` on `/api/v1/*` routes. Required at startup unless `AXIOM_AUTH_DISABLED=true`; configuring both simultaneously fails startup. Non-empty tokens must satisfy length and character rules even when authentication is disabled. Tokens are not trimmed. Configured in `internal/config/config.go`. |
-| `AXIOM_INTERNAL_TOKEN_PREVIOUS` | String | `""` (unset) | At least 32 visible ASCII characters (`0x21`–`0x7E`) without whitespace; must differ from `AXIOM_INTERNAL_TOKEN` | Optional previous secret token accepted in `X-Internal-Token` or `Authorization: Bearer` on `/api/v1/*` routes to support zero-downtime rotation (see [Token rotation](deployment.md#token-rotation)). Requires authentication to be enabled; must be empty when `AXIOM_AUTH_DISABLED=true`. Configured in `internal/config/config.go`. |
+| `AXIOM_AUTH_MODE` | String | Unset | `shared` or `verified` | Selects shared-token or [verified access-token authentication](#verified-http-authentication). An unset mode defaults to shared unless `AXIOM_AUTH_DISABLED=true`. |
+| `AXIOM_AUTH_DISABLED` | Boolean | `false` | `true` or `false` | With `true`, the API accepts requests without authentication and logs `auth.disabled` at startup. Leave the mode, both shared tokens and all verified-mode settings unset. |
+| `AXIOM_INTERNAL_TOKEN` | String | Unset | At least 32 visible ASCII characters (`0x21`–`0x7E`) | Required verbatim in shared mode. Callers send it in `X-Internal-Token` or `Authorization: Bearer`. |
+| `AXIOM_INTERNAL_TOKEN_PREVIOUS` | String | Unset | Same format as the current token, with a different value | Optional second credential for [shared-token rotation](deployment.md#token-rotation). |
 | `CORS_ALLOWED_ORIGINS` | String | `""` (unset) | `*` alone, or comma-separated list of `http://` or `https://` URLs | Configures allowed origins for cross-origin requests. URLs must not include paths, query parameters, or fragments. When unset or empty, CORS middleware is disabled. Configured in `internal/config/config.go`. |
 | `RATE_LIMIT_MAX` | Integer | `50` | Positive integer (`> 0`) | Maximum number of authenticated `/api/v1` requests (every request when `AXIOM_AUTH_DISABLED=true`) allowed from a client IP within `RATE_LIMIT_WINDOW`. When `REDIS_URL` is unset, budgets are held in memory per process replica and are never shared across instances; IPv6 addresses in the same `/64` subnet share a single bucket (see [Rate Limiting](api.md#rate-limiting)). When `REDIS_URL` is configured, request quotas are tracked in Redis and shared across replicas. Exceeding requests receive HTTP 429 `rate_limit_exceeded`. Configured in `internal/config/config.go`. |
 | `RATE_LIMIT_WINDOW` | Duration | `1m` | Positive Go duration string (e.g. `30s`, `1m`, `5m`) | Sliding window duration for IP rate limiting. When `REDIS_URL` is configured, Redis whole-second sliding windows enforce this duration across all replicas; when `REDIS_URL` is unset, an in-memory sliding window is evaluated per process replica. Configured in `internal/config/config.go`. |
@@ -73,6 +74,23 @@ This document is the authoritative reference for all environment variables suppo
 | `BAML_LIBRARY_DISABLE_DOWNLOAD` | Boolean | `false` (`true` in container) | `true` or `false` | When true, prevents the BAML runtime from attempting to download shared libraries from the internet at runtime. Set in `Dockerfile`. |
 
 ---
+
+## Verified HTTP authentication
+
+Set `AXIOM_AUTH_MODE=verified` to validate signed bearer access tokens before IP rate limiting or JSON replay. Leave both shared secrets unset. The HTTP server validates all settings before binding. The variables below require verified mode.
+
+| Variable | Default | Accepted value |
+|---|---|---|
+| `AXIOM_AUTH_ISSUER` | Required | One exact HTTPS issuer URL. The token's `iss` must match it verbatim. |
+| `AXIOM_AUTH_AUDIENCE` | Required | One explicit API resource audience. The token must name this value in `aud`. |
+| `AXIOM_AUTH_JWKS_URL` | Required | One HTTPS key set URL. The server fetches keys from this URL and rejects redirects. |
+| `AXIOM_AUTH_ALGORITHMS` | `RS256` | A comma-separated subset of `RS256` and `ES256`. Each algorithm may appear once. |
+| `AXIOM_AUTH_TENANT_CLAIM` | `tenant_id` | Top-level claim containing the stable tenant identifier. |
+| `AXIOM_AUTH_SCOPE_CLAIM` | `scope` | Top-level claim containing a space-delimited string of case-sensitive scopes. |
+| `AXIOM_AUTH_CLIENT_ID_CLAIM` | Unset | Optional top-level claim containing the stable caller identifier. Requires a registered-client list. |
+| `AXIOM_AUTH_REGISTERED_CLIENTS` | Unset | Comma-separated allowlist of up to 256 distinct client IDs. Requires a client ID claim. |
+
+By default the caller is the `sub` claim. With the optional client mapping, the mapped ID must appear in the allowlist and any supplied `sub` must equal that ID. Claim mappings must be distinct and cannot reuse reserved token claims such as `sub`, `iss` or `aud`. Tenant and caller IDs are case-sensitive strings of 1 to 128 visible ASCII bytes. The [API reference](api.md#verified-mode) lists the required scopes.
 
 ## Curriculum prompt budget
 
@@ -148,6 +166,8 @@ Span content recording is controlled by `TRACING_CAPTURE_CONTENT`:
 
 Both listeners return the application JSON envelope for an oversized body (413) or a body read timeout (408). A payload read failure discards request metadata and leaves quota available. A declared length over the limit or a rejected HTTP/1 chunk trailer retains the parsed headers and follows the normal quota policy. Both listeners return 400 for malformed trailers and for received trailer fields that Fiber disallows. Oversized and stalled trailers return 431 and 408 respectively.
 
+In verified mode, a parser rejection with intact headers charges the IP budget only when the method and path identify a protected operation and the credential grants its scope. The parser status still determines the response.
+
 A prohibited trailer name in an initial HTTP/1 `Trailer` header is rejected before the body is read. When the declaration reaches application error handling, the response is JSON 400 with a generated request ID and quota remains available. Fiber also uses the application envelope for malformed or oversized HTTP headers and incomplete headers that time out. The opt-in HTTP/1 server handles some failures before dispatch. Its native behavior includes plain-text 400 or 431 for malformed or oversized headers, plain-text 400 for chunked declarations of `Content-Length`, `Trailer`, and `Transfer-Encoding`, an empty 417 for an unsupported `Expect` value, and a connection close at the incomplete-header deadline. Those pre-handler outcomes have no application request ID. HTTP/2 framing errors follow the HTTP/2 protocol.
 
 ## Derived Transport Timeouts
@@ -218,7 +238,7 @@ When started with `axiom-server mcp`, the server runs in Model Context Protocol 
 In MCP mode, runtime settings are loaded via `internal/config/mcp.go`:
 - **Shared configuration**: `GRAPH_FILE`, `GRAPH_RELOAD_ENABLED`, `LOG_LEVEL`, `REQUEST_TIMEOUT`, `LLM_TIMEOUT`, `LLM_QUEUE_TIMEOUT`, `LLM_MAX_CONCURRENCY`, `MAX_FAILED_TOPICS`, `MAX_MASTERED_TOPICS`, `PRESERVE_DISPLAY_JOINS`, `RESOURCE_LINK_CHECK`, `RESOURCE_LINK_TIMEOUT`, and `SHUTDOWN_TIMEOUT` retain their standard default values and bounds.
 - **Shutdown timeout**: `SHUTDOWN_TIMEOUT` also bounds MCP shutdown, defaulting to `max(REQUEST_TIMEOUT + 5s, 11s)` (`25s`). Admitted tool calls drain within this timeout before remaining work is canceled and the transport is closed. If explicitly configured, it must be a positive Go duration; unlike HTTP mode, the `11s` HTTP minimum is not enforced because there is no HTTP listener or connection draining.
-- MCP ignores HTTP-only settings even when their values would fail HTTP startup validation. These settings include `HTTP_LISTENER`, `REDIS_URL`, `IDEMPOTENCY_TTL`, `IDEMPOTENCY_MAX_ENTRIES`, `PORT`, `AXIOM_AUTH_DISABLED`, `AXIOM_INTERNAL_TOKEN`, `AXIOM_INTERNAL_TOKEN_PREVIOUS`, `CORS_ALLOWED_ORIGINS`, `TRUSTED_PROXIES`, `RATE_LIMIT_MAX`, `RATE_LIMIT_WINDOW`, `METRICS_ENABLED`, `SWAGGER_ENABLED`, and `SHUTDOWN_DRAIN_DELAY`.
+- MCP ignores HTTP-only settings even when their values would fail HTTP startup validation. These include [HTTP authentication settings](#verified-http-authentication), `HTTP_LISTENER`, `REDIS_URL`, `IDEMPOTENCY_TTL`, `IDEMPOTENCY_MAX_ENTRIES`, `PORT`, `CORS_ALLOWED_ORIGINS`, `TRUSTED_PROXIES`, `RATE_LIMIT_MAX`, `RATE_LIMIT_WINDOW`, `METRICS_ENABLED`, `SWAGGER_ENABLED`, and `SHUTDOWN_DRAIN_DELAY`.
 - **Provider selection**: `LLM_PROVIDER`, `LLM_MODEL`, `LLM_BASE_URL` and provider API keys have the same validation and defaults as HTTP; the selected client registry is shared by all plan tools. Startup records on stderr include `llm_provider` and `llm_model`.
 - **Validation**. Bedrock uses the same explicit region setting and AWS retry validation as HTTP. BAML logging (`BAML_LOG`) is always validated.
 - **Tracing**: `TRACING_ENABLED` and standard `OTEL_*` settings apply to MCP tool-call spans. EOF and signal shutdown flush the provider; signal shutdown uses the remaining `SHUTDOWN_TIMEOUT` after tool draining and transport closure.

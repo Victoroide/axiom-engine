@@ -33,20 +33,19 @@ Remediation timing depends on severity and operational considerations. Critical 
 ### Service token authentication
 
 - Every `/api/v1` route requires authentication by default. Public routes (`/livez`, `/readyz`, `/health`, `/swagger/*` (when `SWAGGER_ENABLED=true`, the default), and, when `METRICS_ENABLED=true`, `/metrics`) bypass token authentication.
-- Callers may authenticate using the `X-Internal-Token` header or an `Authorization: Bearer <token>` header (scheme matching is case-insensitive).
-- Token validation computes the SHA-256 digest of the provided token and compares it with the digest of every configured token (`AXIOM_INTERNAL_TOKEN` and, during rotation, `AXIOM_INTERNAL_TOKEN_PREVIOUS`) using `crypto/subtle.ConstantTimeCompare`, without an early exit, to prevent timing side channels.
-- Service startup fails closed if `AXIOM_INTERNAL_TOKEN` is unset or empty, unless `AXIOM_AUTH_DISABLED=true` is explicitly configured; configuring both simultaneously fails startup (see [configuration reference](docs/configuration.md)). When disabled, the server logs a startup warning `auth.disabled`.
-- Configured tokens must satisfy the format and length requirements defined in the [configuration reference](docs/configuration.md); the startup error message does not expose the token value.
+- In shared mode, callers use `X-Internal-Token` or `Authorization: Bearer <token>`. The server compares the credential's SHA-256 digest against every configured shared token in constant time, including the optional previous token.
+- In verified mode, the server accepts a single Bearer credential and checks its signature, access-token type, issuer, resource audience, time claims and configured identity claims against operator configuration. It checks the required route scope before IP limiting or replay. [Verified mode](docs/api.md#verified-mode)
+- The HTTP server validates its mode and credentials before binding. Shared mode requires a current token. Verified mode requires valid issuer settings and empty shared-token settings. To disable authentication, set `AXIOM_AUTH_DISABLED=true` and leave the mode and all credential settings unset. [Configuration reference](docs/configuration.md#verified-http-authentication)
 
 ### Deployment requirements
 
-- Provision an internal token before starting the service. Generate high-entropy secrets using `openssl rand -hex 32`. The configuration loader enforces character and minimum length rules, not entropy. Keep authentication enabled for all exposed deployments.
+- Keep authentication enabled for exposed deployments. In shared mode, provision a high-entropy secret using `openssl rand -hex 32`. In verified mode, provision issuer-signed access tokens with the API resource audience and the scopes each client needs.
 - Docker Compose publishes the HTTP service port exclusively to loopback (`127.0.0.1:8080:8080`) by default.
 
 ### Deployment assumptions
 
-- **Authentication model**: AxiomEngine uses a single shared secret (`AXIOM_INTERNAL_TOKEN`) to authenticate callers. The service does not identify individual callers, issue session tokens, or enforce per-tenant access control. The service stores and looks up no per-student data. Fine-grained authorization, caller identity verification, and multi-tenant segmentation belong at the network gateway or service mesh tier (for example, mTLS or API gateway policy).
-- **Network protection**: Inbound authentication executes before rate limiting: unauthenticated requests receive HTTP 401 without consuming rate-limit tokens. To prevent volumetric resource exhaustion from unauthenticated clients, production deployments must enforce network-level DDoS mitigation, edge firewall filtering, or gateway rate limiting in front of AxiomEngine.
+- **Authorization boundary**. Shared credentials grant the same access to all holders. Verified mode uses signed tenant and caller claims to isolate replay and uses exact scopes to authorize operations. The calling platform decides which learners a caller may act for and enforces any tenant quotas.
+- **Network protection**. Requests rejected for credentials or scopes consume no application rate-limit budget. Production deployments must enforce edge firewall filtering, gateway rate limiting or other network-level DDoS mitigation.
 - **Trusted operator inputs**: The knowledge graph specified by `GRAPH_FILE` is trusted operator input. While topic identifiers are constrained to bounded, printable, and addressable strings, graph relation text directly populates LLM prompt context. Operators must verify graph file integrity and control access to configuration assets.
 
 ### Input validation and prompt injection defenses
@@ -70,11 +69,12 @@ Remediation timing depends on severity and operational considerations. Critical 
 
 - Learner identifiers (`student_id` and `course_id`) remain within the service boundary and are never transmitted to upstream model providers. When supplied, they are validated against format constraints and echoed in the HTTP response directly from the incoming request payload.
 - Learner identifiers are excluded from BAML per-topic arguments, Bedrock prompt instructions, and upstream output schemas. Upstream model requests receive only the graph context, target topic, topological prerequisite order, and VARK learning style profile (see [Prompt Inputs](docs/architecture.md#prompt-inputs)).
+- Verified HTTP identities and bearer tokens stay within the authorization boundary. Verified replay uses a versioned SHA-256 digest over the length-framed issuer, tenant and caller. New replay records omit echoed learner and course identifiers. Access logs use route templates in every authentication mode.
 
 ### Rate limiting and network boundaries
 
 - The HTTP sliding-window limiter restricts `/api/v1` traffic per client IP. `RATE_LIMIT_MAX` defaults to 50 requests and `RATE_LIMIT_WINDOW` defaults to 1 minute. IPv6 clients share a bucket by `/64` and IPv4-mapped IPv6 addresses use the IPv4 bucket. Counters live in memory per replica when `REDIS_URL` is unset. Replicas configured with the same Redis database share those counters. If Redis fails to supply a rate-limit decision, the request receives HTTP 503 `service_unavailable` with `Retry-After: 1` before reaching the handler.
-- When HTTP authentication is enabled, requests with a missing or invalid token receive HTTP 401 before the limiter. `/livez`, `/readyz`, `/health`, Swagger when enabled, and `/metrics` when enabled also bypass the limiter. Stdio MCP uses the launching process as its trust boundary and bypasses HTTP IP quotas.
+- The server returns HTTP 401 for missing or invalid credentials and HTTP 403 for insufficient verified scopes before the limiter. Public probes, enabled Swagger and metrics, and allowed CORS preflight bypass the limiter. Stdio MCP uses the launching process as its trust boundary.
 - Proxy headers (`X-Forwarded-For`) are trusted only when connections originate from addresses listed in `TRUSTED_PROXIES`. Untrusted clients cannot bypass rate limiting by spoofing proxy headers.
 - Inbound HTTP transport is bounded by server timeouts: ReadTimeout (10s), IdleTimeout (1m), and WriteTimeout (`REQUEST_TIMEOUT + 10s`, default 30s).
 - `REQUEST_TIMEOUT` (default `20s`) bounds the request's pipeline wait. `LLM_TIMEOUT` (default `15s`) bounds the wait for an individual planner result and must fit within `REQUEST_TIMEOUT`. After dispatch, the planner keeps its process-local concurrency permit until it returns or unwinds after a panic, even after cancellation or a deadline ends the wait.

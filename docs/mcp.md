@@ -20,7 +20,7 @@ For a source build, copy `scripts/axiom-server-launch` beside the built `axiom-s
 - **Standard Output (`stdout`)**: Dedicated exclusively to JSON-RPC protocol frames.
 - **Standard Error (`stderr`)**: Dedicated to structured JSON logging via `log/slog`.
 - **Implementation Identification**: Server name `axiom-engine`. Version is determined from runtime build information (`debug.ReadBuildInfo()`), defaulting to `dev` for local unversioned builds.
-- **Trust Boundary**: `AXIOM_INTERNAL_TOKEN` is not evaluated in MCP mode. The process launching `axiom-server` serves as the trust boundary.
+- **Trust boundary**. The process launching `axiom-server mcp` serves as the trust boundary. Stdio ignores HTTP authentication settings.
 - **Backend Services**: Tool calls use the bounded reasoning pipeline and curriculum graph implementation shared with the HTTP API. The MCP process shares its own concurrency limits and circuit breaker across tool calls. With `GRAPH_RELOAD_ENABLED=true`, a `SIGHUP` to that process activates a validated replacement for subsequent tool calls. Reload records go to stderr. [Curriculum rollout](operations.md#curriculum-rollout)
 
 ### Shutdown Lifecycle

@@ -172,9 +172,11 @@ Use `axiom-server-launch` for extracted archives. It disables the public and int
 
 ---
 
-## Token Rotation
+## HTTP authentication
 
-For procedures to rotate internal service tokens (`AXIOM_INTERNAL_TOKEN`) without service downtime using `AXIOM_INTERNAL_TOKEN_PREVIOUS`, refer to [Deployment: Token rotation](deployment.md#token-rotation).
+Use the startup record's `auth` field to confirm the HTTP mode. Shared mode reports `token` or `token+previous`. Verified mode reports `verified`. [Shared-token rotation](deployment.md#token-rotation) · [Verified access tokens](deployment.md#verified-access-tokens)
+
+For a verified HTTP 401, check that the client sends one Bearer header, that the issuer and audience match the configured values, and that the key ID, signing algorithm and expiration are valid. Confirm the service can reach the configured key set over HTTPS. A 403 indicates a verified access token that lacks the operation's required scope. [Route scopes](api.md#verified-mode)
 
 ---
 
@@ -227,6 +229,8 @@ When at least one exporter is configured, the structured JSON logger wraps every
 ```json
 {"time":"2026-11-06T18:03:00.123456-04:00","level":"INFO","msg":"http.access","request_id":"req-abc123","method":"POST","path":"/api/v1/adaptive-plan","status":200,"duration_ms":342,"ip":"127.0.0.1","trace_id":"4bf92f3577b34da6a3ce929d0e0e4736","span_id":"00f067aa0ba902b7"}
 ```
+
+In every authentication mode, `http.access` records the registered route template in `path` and uses `unmatched` when routing could not select an endpoint. The template keeps learner path parameters out of the access log.
 
 ### LangSmith Integration
 
@@ -327,7 +331,7 @@ Requests that reach the application produce an `http.access` structured log reco
 - `client_disconnected` is true when the opt-in listener observes peer cancellation or an SSE write or flush fails. For HTTP/1 it can record a TCP write-half close while the client still reads the response. A server body read timeout records its 408 status without the disconnect field.
 - `http_server_request_duration_seconds`: Histogram metric records the full stream duration for streaming routes.
 
-The opt-in HTTP/1 server can reject requests before application logging or request ID assignment. Examples include plain-text 400 or 431 for malformed or oversized headers, plain-text 400 for chunked declarations of `Content-Length`, `Trailer`, or `Transfer-Encoding`, an empty 417 for an unsupported `Expect` value, and a connection close for an incomplete header at the read deadline. Clients and ingress logs can observe those failures. When a prohibited trailer declaration reaches application error handling, the response is JSON 400 with a generated request ID and the access record shows path `/`. Quota remains available for the next valid request. Application body read errors use the JSON envelope. A failed payload read leaves quota available. A rejection in the trailer block after the body retains the request ID, runs the normal quota checks, and records the application status in the access log. Check the `listener` field on `server.listening` when comparing responses. To switch back, set `HTTP_LISTENER=fiber` and restart the service. Test disconnect propagation through the deployment's proxy because buffering can delay or prevent it. See [HTTP Listener](configuration.md#http-listener).
+The opt-in HTTP/1 server can reject requests before application logging or request ID assignment. Examples include plain-text 400 or 431 for malformed or oversized headers, plain-text 400 for chunked declarations of `Content-Length`, `Trailer`, or `Transfer-Encoding`, an empty 417 for an unsupported `Expect` value, and a connection close for an incomplete header at the read deadline. Clients and ingress logs can observe those failures. When a prohibited trailer declaration reaches application error handling, the response is JSON 400 with a generated request ID and the access record shows path `unmatched`. Quota remains available for the next valid request. Application body read errors use the JSON envelope. A failed payload read leaves quota available. A rejection in the trailer block after the body retains the request ID, runs the normal quota checks, and records the application status in the access log. Check the `listener` field on `server.listening` when comparing responses. To switch back, set `HTTP_LISTENER=fiber` and restart the service. Test disconnect propagation through the deployment's proxy because buffering can delay or prevent it. See [HTTP Listener](configuration.md#http-listener).
 
 ---
 

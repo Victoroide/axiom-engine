@@ -16,6 +16,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Add `BAML_DIAGNOSTIC=1` to bundle `axiom-baml-check` in custom release archives and images for offline verification before startup.
 - Add `BEDROCK_REQUIRE_EXPLICIT_REGION=true` to require a valid `AWS_REGION` at HTTP and MCP startup and use it for every Bedrock request.
 - Reload a local curriculum on `SIGHUP` with `GRAPH_RELOAD_ENABLED=true`. In-flight HTTP and MCP calls finish on their pinned revision, and a failed replacement keeps the last valid curriculum serving.
+- Add opt-in `AXIOM_AUTH_MODE=verified` for signed HTTP access tokens, route scopes, and JSON response replay isolated by issuer, tenant and caller.
 
 ## [0.1.1] - 2026-11-24
 
@@ -26,7 +27,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- Add opt-in `AXIOM_AUTH_MODE=verified` for signed HTTP access tokens, route scopes, and JSON response replay isolated by issuer, tenant and caller.
 - Add an in-process stateless MCP Streamable HTTP handler for the July 2026 protocol.
 - Add a standalone `internal/auth` package (`auth.Verifier`) verifying `at+jwt` (`application/at+jwt`) signed access tokens (`RS256` and `ES256`) against a configured HTTPS issuer, resource audience, JWKS refresh cache, and tenant, caller, and scope claim mapping. The package is not wired into the deployed transports yet; the HTTP listener continues using shared-secret token authentication (`AXIOM_INTERNAL_TOKEN`) and the MCP server continues running over stdio.
 - Add a `plan.queue.wait` trace span for topic requests that encounter an occupied reasoning permit.
