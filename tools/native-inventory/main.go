@@ -5,6 +5,7 @@ import (
 	"archive/tar"
 	"bytes"
 	"compress/gzip"
+	"context"
 	"crypto/sha256"
 	"encoding/json"
 	"errors"
@@ -75,6 +76,10 @@ func (a asset) inventory(library io.Reader) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
+	return a.inventoryForDigest(digest)
+}
+
+func (a asset) inventoryForDigest(digest string) ([]byte, error) {
 	if digest != a.checksum {
 		return nil, fmt.Errorf("native library SHA-256 for %s: got %s, expected %s", a.target, digest, a.checksum)
 	}
@@ -275,6 +280,7 @@ func run(arguments []string, stdout io.Writer) error {
 	target := flags.String("target", "", "release target (OS/architecture)")
 	schemaDir := flags.String("schema-dir", "", "directory containing the CycloneDX schemas")
 	digest := flags.String("archive-sha256", "", "expected SHA-256 of the release archive")
+	ociDigest := flags.String("oci-digest", "", "expected OCI index or manifest digest")
 	if err := flags.Parse(arguments); err != nil {
 		return err
 	}
@@ -302,8 +308,27 @@ func run(arguments []string, stdout io.Writer) error {
 		return verifySchema(*schemaDir, actual)
 	case len(args) == 2 && args[0] == "verify-archive" && *schemaDir != "" && *digest != "":
 		return verifyArchive(*dockerfile, *target, args[1], *digest, *schemaDir)
+	case len(args) == 2 && (args[0] == "verify-oci" || args[0] == "verify-registry") && *schemaDir != "":
+		if !ociDigestPattern.MatchString(*ociDigest) {
+			return errors.New("expected a SHA-256 OCI digest")
+		}
+		a, err := pinnedAsset(*dockerfile, *target)
+		if err != nil {
+			return err
+		}
+		var manifest string
+		if args[0] == "verify-oci" {
+			manifest, err = verifyOCIExport(a, args[1], *ociDigest, *schemaDir)
+		} else {
+			manifest, err = verifyRegistryImage(context.Background(), a, args[1], *ociDigest, *schemaDir)
+		}
+		if err != nil {
+			return err
+		}
+		_, err = fmt.Fprintln(stdout, manifest)
+		return err
 	default:
-		return errors.New("usage: native-inventory [flags] write LIBRARY | verify LIBRARY INVENTORY | verify-archive ARCHIVE")
+		return errors.New("usage: native-inventory [flags] write LIBRARY | verify LIBRARY INVENTORY | verify-archive ARCHIVE | verify-oci OCI_EXPORT | verify-registry REPOSITORY")
 	}
 }
 
