@@ -196,17 +196,17 @@ BAML configures no application-level retry policy; retries are owned exclusively
 The service classifies upstream model failures from Boundary ML (BAML) into typed sentinel errors in `internal/llm/classify.go`. Each sentinel error is defined in `internal/service/errors.go` and wraps `service.ErrUpstream`:
 
 - `service.ErrThrottled`: Upstream rate limiting or capacity exhaustion (HTTP status code 429 or `ThrottlingException`).
-- `service.ErrUpstreamUnavailable`: Server-side failures (HTTP 5xx status codes), dispatch or transport drop errors (`DispatchFailure`, connection reset, connection refused), client code 2, or timeouts (`TimeoutError`, HTTP 408).
-- `service.ErrUpstreamRejected`: Upstream client-side rejections other than throttling (HTTP 4xx status codes like 400, 401, 403, 404, 424, or SDK exceptions like `AccessDeniedException` or `ValidationException`). BAML formats upstream HTTP 400 errors as `InvalidAuthentication (401)`.
-- `service.ErrInvalidOutput`: Unusable model output, including malformed 2xx payloads, parsing errors (`Parsing error:`), schema validation errors (`Validation error:`, `ValidationError`), response truncation (`Finish reason error:` from `max_tokens` deny list), or missing study items for requested topics.
+- `service.ErrUpstreamUnavailable`: Server-side failures (HTTP 5xx status codes), dispatch or transport drop errors (`DispatchFailure`, connection reset, connection refused), native credential-resolution failures reported as code 2, or timeouts (`TimeoutError`, HTTP 408).
+- `service.ErrUpstreamRejected`: Upstream client-side rejections other than throttling, including provider HTTP 401 authentication rejections, HTTP 403 access denials and SDK exceptions such as `AccessDeniedException` or `ValidationException`. The breaker excludes these outcomes. BAML formats upstream HTTP 400 errors as `InvalidAuthentication (401)`.
+- `service.ErrInvalidOutput`: Unusable output, including malformed 2xx payloads, Anthropic responses without text, parsing errors, token-limit finish reasons (`length`, `max_tokens`, or `MAX_TOKENS`), and missing study items for requested topics.
 
-Classified errors wrap `service.ErrUpstream` via `fmt.Errorf("%w: %w", class, err)`. This preserves the underlying error for inspection with `errors.Is`. Unrecognized errors and `AbortError` strings pass through without extra classification.
+Classified errors wrap `service.ErrUpstream` via `fmt.Errorf("%w: %w", class, err)`. This preserves the underlying error for inspection with `errors.Is`. Unrecognized provider failures use the generic upstream error envelope and the `error` trace outcome. The adapter removes native trace export credentials from planner calls. Application trace settings govern trace export for those calls.
 
 #### HTTP Status Mapping
 
 `PromptBudgetError` maps to HTTP 422 `curriculum_context_too_large` before dispatch or SSE output.
 
-`ErrUpstreamUnavailable`, `ErrUpstreamRejected` and `ErrInvalidOutput` map to HTTP 502 `bad_gateway`. `ErrThrottled` maps to HTTP 503 `service_unavailable` with details `upstream throttled` and `Retry-After: 5`. When `ErrInvalidOutput` is returned, the response details indicate `model returned no usable item`; other upstream failures return `upstream reasoning failed`. When `ctx.Err()` is present upon return from the adapter, it returns `ctx.Err()` directly, producing HTTP 504 `gateway_timeout` when execution deadlines expire. For complete error codes, status mappings, and client-facing response schemas, see the [API reference](api.md#error-codes-and-http-statuses).
+`ErrUpstreamUnavailable`, `ErrUpstreamRejected` and `ErrInvalidOutput` map to HTTP 502 `bad_gateway`. `ErrThrottled` maps to HTTP 503 `service_unavailable` with details `upstream throttled` and `Retry-After: 5`. When `ErrInvalidOutput` is returned, the response details indicate `model returned no usable item`; other upstream failures return `upstream reasoning failed`. The adapter checks the context on entry and again immediately before invoking BAML. If a dispatched call fails after its context ends, the adapter returns the context error, producing HTTP 504 `gateway_timeout` for execution deadlines. For complete error codes, status mappings, and client-facing response schemas, see the [API reference](api.md#error-codes-and-http-statuses).
 
 ---
 

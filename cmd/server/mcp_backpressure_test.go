@@ -31,7 +31,7 @@ func TestMCPShutdownWithUnreadStdout(t *testing.T) {
 	defer cancel()
 	cmd := exec.CommandContext(ctx, binary, "mcp") //nolint:gosec // Execute the server built by this test.
 	const budget = 100 * time.Millisecond
-	cmd.Env = append(os.Environ(), "BAML_LOG=off", "AXIOM_INTERNAL_TOKEN=", "AXIOM_INTERNAL_TOKEN_PREVIOUS=", "AXIOM_AUTH_DISABLED=invalid", "GRAPH_FILE=", "SHUTDOWN_TIMEOUT="+budget.String(),
+	cmd.Env = append(mcpFixtureEnv(t), "BAML_LOG=off", "AXIOM_INTERNAL_TOKEN=", "AXIOM_INTERNAL_TOKEN_PREVIOUS=", "AXIOM_AUTH_DISABLED=invalid", "GRAPH_FILE=", "SHUTDOWN_TIMEOUT="+budget.String(),
 		"AWS_ACCESS_KEY_ID=dummy", "AWS_SECRET_ACCESS_KEY=dummy", "AWS_SESSION_TOKEN=", "AWS_PROFILE=", "AWS_REGION=us-east-1", "AWS_DEFAULT_REGION=us-east-1", "AWS_EC2_METADATA_DISABLED=true", "AWS_RETRY_MODE=standard", "AWS_MAX_ATTEMPTS=1")
 	stdin, err := cmd.StdinPipe()
 	if err != nil {

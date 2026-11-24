@@ -295,9 +295,9 @@ Virtual time eliminates real wall-clock delays and timing jitter. `TestOrderingD
 
 Server, lifecycle, and real transport tests retain wall-clock execution: constructing a Fiber application inside a `synctest` bubble leaves process-wide framework loops blocked and causes bubble-exit deadlock.
 
-### Fake Bedrock contract tests
+### Native provider contract tests
 
-Contract tests in `internal/llm/adapter_contract_test.go` exercise the generated BAML client and native CFFI runtime against an in-process HTTP server provided by `test/fakebedrock`.
+The `internal/llm` contracts exercise the generated BAML client and native CFFI runtime against local Bedrock Converse, OpenAI Chat Completions, Anthropic Messages and Google AI GenerateContent fixtures. OpenAI, Ollama and openai-generic share the Chat Completions fixture. Every request uses a loopback endpoint and dummy credentials where required.
 
 Run `make native-baml` to download and verify the host library, then execute contract tests with the verified native library environment:
 
@@ -311,18 +311,15 @@ go test -race -count=1 -run Adapter ./internal/llm
 - `AWS_ENDPOINT_URL`: points to the local HTTP test server address.
 - `AWS_REGION` and `AWS_DEFAULT_REGION`: `us-east-1`.
 - `AWS_ACCESS_KEY_ID` and `AWS_SECRET_ACCESS_KEY`: `dummy`.
+- `AWS_BEARER_TOKEN_BEDROCK`: unset for the fixture so the native client signs requests with the dummy access key.
 - `AWS_SESSION_TOKEN` and `AWS_PROFILE`: empty strings.
 - `AWS_EC2_METADATA_DISABLED`: `true` to disable metadata service lookups.
-- `AWS_MAX_ATTEMPTS`: `3`.
+- `AWS_MAX_ATTEMPTS`: `1` in the provider matrix. The Bedrock retry contracts also check the three-attempt budget.
 - `AWS_RETRY_MODE`: `standard`.
 
-Tests execute serially because the BAML client reads process environment variables on each invocation. The test cases verify:
-- Item translation from Bedrock Converse responses into domain items.
-- Empty item handling from upstream responses.
-- Rejection of invalid response payloads on the initial attempt without retry loops.
-- Context deadline cancellation within the deadline plus 250 ms, verifying the fake endpoint observes client disconnection.
-- Upstream failure classification into typed sentinel errors (`ErrThrottled`, `ErrUpstreamRejected`, `ErrInvalidOutput`, `context.DeadlineExceeded`) across failure modes (`throttle`, `denied`, `garbage`, `hang`).
-- Transport failure classification into `ErrUpstreamUnavailable` when the endpoint connection is closed.
+Tests execute serially because the BAML client reads process environment variables on each invocation. The matrix checks validated items, empty output, malformed envelopes and content, token-limit finish reasons, HTTP failures and connections closed without a response. It counts attempts and checks that cancellation before dispatch, including during adapter setup, prevents inference. The deadline case checks that the caller's deadline has expired when the call returns. Both return and disconnection must occur between the deadline and 250 ms after it.
+
+The HTTP and MCP contracts check public error envelopes, circuit breaker exclusions and learner identifier omission from upstream requests. The unknown-status case verifies diagnostic omission from public errors and application spans with content capture enabled. A separate loopback receiver verifies that configured native export credentials cannot cause the adapter to send traces. The receiver also checks that a direct native call would export the diagnostic with those credentials.
 
 ### Swagger contract tests
 

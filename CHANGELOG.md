@@ -19,9 +19,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Redraw the request path, package and seed graph diagrams on a compact grid with right-angle connectors, opaque light and dark backgrounds and paced motion that is static under reduced motion. The package diagram shows a layered view without redundant arrows, the seed graph uses evenly spaced circles grouped by connected component, and the pages show the images at their natural width.
 - Make `make diagrams-check` stricter: placement files reject unknown fields, geometry, text fit and contrast are checked, stale output fails, and the diagrams must match the registered routes, package imports and seed curriculum in both directions. Application behavior is unchanged.
 
+### Fixed
+
+- Skip provider dispatch when the call context has already ended, including during adapter setup. Treat malformed completion envelopes and Anthropic responses without text as invalid output so they leave the circuit breaker state unchanged.
+
 ### Security
 
 - Ship `axiom-server-launch` in release archives with both native BAML loggers off and native trace sinks disabled. The launcher accepts `off`, `error`, `warn`, and `warning` as `BAML_LOG` input. Verbose and invalid levels fail before startup.
+- Disable native trace export for planner calls so provider diagnostics stay out of exported traces.
 - Omit recovered panic values and stacks from recovery logs and exported traces. Keep request correlation for late HTTP planner panics and MCP tool calls with tracing disabled. Contain panics in trace shutdown and exporter diagnostics.
 - Build the service and development tools with Go 1.27.4 to resolve GO-2026-6859 in the standard library.
 - Update the Debian runtime image to ship libc6 2.41-12+deb13u5 on amd64 and arm64.
