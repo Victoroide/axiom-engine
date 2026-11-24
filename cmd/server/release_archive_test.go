@@ -2,10 +2,12 @@ package main
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
+	"net"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -15,15 +17,23 @@ import (
 	"slices"
 	"strconv"
 	"strings"
+	"sync"
 	"sync/atomic"
 	"syscall"
 	"testing"
 	"time"
+
+	runtimebaml "github.com/boundaryml/baml/engine/language_client_go/pkg"
+
+	baml "github.com/Victoroide/axiom-engine/baml_client"
 )
 
 const (
-	archivePromptMarker     = "ArchivePromptCanary"
-	archiveCompletionMarker = "ArchiveCompletionCanary"
+	archivePromptMarker        = "ArchivePromptCanary"
+	archiveCompletionMarker    = "ArchiveCompletionCanary"
+	archiveTraceDrainPath      = "/archive-fixture-drained"
+	archiveTraceBackendEnv     = "AXIOM_ARCHIVE_TRACE_BACKEND"
+	legacyTraceAcknowledgement = "Legacy trace receiver acknowledged both fixture markers"
 )
 
 func TestReleaseArchiveLauncher(t *testing.T) {
@@ -40,12 +50,7 @@ func TestReleaseArchiveLauncher(t *testing.T) {
 	if err := os.WriteFile(graph, []byte(curriculum), 0600); err != nil { //nolint:gosec // The graph is a fixture in a fresh test directory.
 		t.Fatal(err)
 	}
-	var calls, proxyCalls, traceCalls atomic.Int64
-	traceSink := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		traceCalls.Add(1)
-		http.Error(w, "fixture trace sink", http.StatusBadRequest)
-	}))
-	t.Cleanup(traceSink.Close)
+	var calls, proxyCalls atomic.Int64
 	backend := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.Method == http.MethodConnect {
 			proxyCalls.Add(1)
@@ -85,7 +90,7 @@ func TestReleaseArchiveLauncher(t *testing.T) {
 		badReply         bool
 		proxyFailure     bool
 		traceFiles       bool
-		legacyUpload     bool
+		legacyTrace      bool
 		signal           syscall.Signal
 	}{
 		{name: "launcher unset", executable: "axiom-server-launch", signal: syscall.SIGTERM},
@@ -107,7 +112,7 @@ func TestReleaseArchiveLauncher(t *testing.T) {
 		{name: "launcher internal trace transport failure", executable: "axiom-server-launch", settings: []string{"BAML_INTERNAL_LOG=trace"}, proxyFailure: true, signal: syscall.SIGTERM},
 		{name: "raw internal trace transport failure", executable: "axiom-server", settings: []string{"BAML_LOG=off", "BAML_INTERNAL_LOG=trace"}, wantPrompt: true, proxyFailure: true, signal: syscall.SIGTERM},
 		{name: "launcher native trace sinks", executable: "axiom-server-launch", traceFiles: true, signal: syscall.SIGTERM},
-		{name: "raw queued legacy upload", executable: "axiom-server", legacyUpload: true, signal: syscall.SIGTERM},
+		{name: "raw native trace export disabled", executable: "axiom-server", legacyTrace: true, signal: syscall.SIGTERM},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			before := calls.Load()
@@ -123,27 +128,17 @@ func TestReleaseArchiveLauncher(t *testing.T) {
 				cmd.Env = append(cmd.Env, "LLM_PROVIDER=anthropic", "LLM_BASE_URL=", "ANTHROPIC_API_KEY=fixture", "HTTPS_PROXY="+backend.URL)
 			}
 			tracePath := filepath.Join(dir, "native trace.jsonl")
-			var legacyReceipt chan []byte
-			if tc.traceFiles {
-				cmd.Env = append(cmd.Env, "BAML_TRACE_FILE="+tracePath, "BAML_TRACE_BATCH_SIZE=1", "BOUNDARY_API_KEY=fixture", "BOUNDARY_API_URL="+traceSink.URL,
-					"BOUNDARY_PROJECT_ID=fixture", "BOUNDARY_SECRET=fixture", "BOUNDARY_SeCrEt=fixture", "BOUNDARY_BASE_URL="+traceSink.URL)
+			var traceSink *archiveTraceCollector
+			if tc.traceFiles || tc.legacyTrace {
+				traceSink = newArchiveTraceCollector(t, tc.legacyTrace)
 			}
-			if tc.legacyUpload {
-				legacyReceipt = make(chan []byte, 1)
-				receiver := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-					body, err := io.ReadAll(r.Body)
-					if err != nil {
-						t.Errorf("read legacy upload: %v", err)
-					}
-					select {
-					case legacyReceipt <- body:
-					default:
-					}
-					w.WriteHeader(http.StatusOK)
-				}))
-				t.Cleanup(receiver.Close)
+			if tc.traceFiles {
+				cmd.Env = append(cmd.Env, "BAML_TRACE_FILE="+tracePath, "BAML_TRACE_BATCH_SIZE=1", "BOUNDARY_API_KEY=fixture", "BOUNDARY_API_URL="+traceSink.server.URL,
+					"BOUNDARY_PROJECT_ID=fixture", "BOUNDARY_SECRET=fixture", "BOUNDARY_SeCrEt=fixture", "BOUNDARY_BASE_URL="+traceSink.server.URL)
+			}
+			if tc.legacyTrace {
 				cmd.Env = append(cmd.Env, "BAML_LOG=off", "BAML_INTERNAL_LOG=off",
-					"BOUNDARY_PROJECT_ID=fixture", "BOUNDARY_SeCrEt=fixture", "BOUNDARY_BASE_URL="+receiver.URL)
+					"BOUNDARY_PROJECT_ID=fixture", "BOUNDARY_SeCrEt=fixture", "BOUNDARY_BASE_URL="+traceSink.server.URL)
 			}
 			p := startMCPProcess(t, cmd)
 			p.initialize(t)
@@ -181,10 +176,23 @@ func TestReleaseArchiveLauncher(t *testing.T) {
 			if err != nil || filepath.Base(strings.TrimSpace(string(comm))) != "axiom-server" {
 				t.Fatalf("PID %s did not become axiom-server: %q (%v)", pid, comm, err)
 			}
-			if legacyReceipt != nil {
-				checkLegacyTraceUpload(t, legacyReceipt)
+			if tc.legacyTrace {
+				// Give the legacy exporter time to send a batch before stopping the server.
+				observation := time.NewTimer(min(3*time.Second, mcpWaitBudget(t)))
+				defer observation.Stop()
+				t.Setenv("BAML_LOG", "trace")
+				t.Setenv("BAML_INTERNAL_LOG", "trace")
+				checkDirectLegacyTraceUpload(t, backend.URL)
+				<-observation.C
 			}
 			p.stop(t, tc.signal)
+			if traceSink != nil {
+				ctx, cancel := context.WithTimeout(t.Context(), mcpWaitBudget(t))
+				defer cancel()
+				if err := traceSink.drain(ctx); err != nil {
+					t.Error(err)
+				}
+			}
 			stdout, stderr := p.output.text(), p.logs.text()
 			for _, marker := range []struct {
 				value string
@@ -197,9 +205,9 @@ func TestReleaseArchiveLauncher(t *testing.T) {
 			}
 			if tc.traceFiles {
 				data, err := os.ReadFile(tracePath) //nolint:gosec // Read only the fixture file in the temporary directory.
-				if !errors.Is(err, os.ErrNotExist) || traceCalls.Load() != 0 {
+				if !errors.Is(err, os.ErrNotExist) || traceSink.uploads.Load() != 0 {
 					t.Errorf("native trace output: file error=%v, prompt markers=%d, completion markers=%d, export requests=%d",
-						err, bytes.Count(data, []byte(archivePromptMarker)), bytes.Count(data, []byte(archiveCompletionMarker)), traceCalls.Load())
+						err, bytes.Count(data, []byte(archivePromptMarker)), bytes.Count(data, []byte(archiveCompletionMarker)), traceSink.uploads.Load())
 				}
 			}
 			if tc.executable == "axiom-server-launch" && (p.output.invalid != nil || p.output.pending != "") {
@@ -263,6 +271,198 @@ func TestReleaseArchiveLauncher(t *testing.T) {
 	}
 }
 
+type archiveTraceCollector struct {
+	server  *httptest.Server
+	resume  func()
+	uploads atomic.Int64
+}
+
+func newArchiveTraceCollector(t *testing.T, delayAccept bool) *archiveTraceCollector {
+	t.Helper()
+	ready := make(chan struct{})
+	collector := &archiveTraceCollector{resume: sync.OnceFunc(func() { close(ready) })}
+	collector.server = httptest.NewUnstartedServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method == http.MethodGet && r.URL.Path == archiveTraceDrainPath {
+			w.WriteHeader(http.StatusNoContent)
+			return
+		}
+		collector.uploads.Add(1)
+		http.Error(w, "fixture trace sink", http.StatusBadRequest)
+	}))
+	server := collector.server
+	server.Config.SetKeepAlivesEnabled(false)
+	server.Config.ReadTimeout = mcpWaitBudget(t)
+	closed := make(chan struct{})
+	server.Listener = &archiveTraceListener{
+		Listener: server.Listener, ready: ready, closed: closed,
+		stop: sync.OnceFunc(func() { close(closed) }),
+	}
+	if !delayAccept {
+		collector.resume()
+	}
+	server.Start()
+	t.Cleanup(server.Close)
+	return collector
+}
+
+func (c *archiveTraceCollector) drain(ctx context.Context) error {
+	c.resume()
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, c.server.URL+archiveTraceDrainPath, nil)
+	if err != nil {
+		return err
+	}
+	req.Close = true
+	resp, err := c.server.Client().Do(req)
+	if err != nil {
+		return fmt.Errorf("trace collector drain: %w", err)
+	}
+	defer func() { _ = resp.Body.Close() }()
+	if resp.StatusCode != http.StatusNoContent {
+		return fmt.Errorf("trace collector drain returned HTTP %d", resp.StatusCode)
+	}
+	if uploads := c.uploads.Load(); uploads != 0 {
+		return fmt.Errorf("archive server exported %d native traces", uploads)
+	}
+	return nil
+}
+
+// Process one request per connection in accept order so a drain request
+// waits for each connection queued before it.
+type archiveTraceListener struct {
+	net.Listener
+	ready, closed <-chan struct{}
+	previous      <-chan struct{}
+	stop          func()
+}
+
+func (l *archiveTraceListener) Accept() (net.Conn, error) {
+	select {
+	case <-l.ready:
+	case <-l.closed:
+		return nil, net.ErrClosed
+	}
+	if l.previous != nil {
+		select {
+		case <-l.previous:
+		case <-l.closed:
+			return nil, net.ErrClosed
+		}
+	}
+	conn, err := l.Listener.Accept()
+	if err != nil {
+		return nil, err
+	}
+	done := make(chan struct{})
+	l.previous = done
+	return &archiveTraceConnection{Conn: conn, finish: sync.OnceFunc(func() { close(done) })}, nil
+}
+
+func (l *archiveTraceListener) Close() error {
+	l.stop()
+	return l.Listener.Close()
+}
+
+type archiveTraceConnection struct {
+	net.Conn
+	finish func()
+}
+
+func (c *archiveTraceConnection) Close() error {
+	err := c.Conn.Close()
+	c.finish()
+	return err
+}
+
+func TestArchiveTraceCollectorDrainsQueuedExport(t *testing.T) {
+	collector := newArchiveTraceCollector(t, true)
+	ctx, cancel := context.WithTimeout(t.Context(), mcpWaitBudget(t))
+	defer cancel()
+	conn, err := (&net.Dialer{}).DialContext(ctx, "tcp", collector.server.Listener.Addr().String())
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = conn.Close() })
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, collector.server.URL+"/log/v2",
+		strings.NewReader(`{"prompt":"`+archivePromptMarker+`","completion":"`+archiveCompletionMarker+`"}`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := req.Write(conn); err != nil {
+		t.Fatal(err)
+	}
+	if uploads := collector.uploads.Load(); uploads != 0 {
+		t.Fatalf("collector accepted a connection before the drain: %d uploads", uploads)
+	}
+	if err := collector.drain(ctx); err == nil || err.Error() != "archive server exported 1 native traces" {
+		t.Fatalf("drain failed to report the queued export: %v", err)
+	}
+}
+
+func checkDirectLegacyTraceUpload(t *testing.T, backendURL string) {
+	t.Helper()
+	ctx, cancel := context.WithTimeout(t.Context(), mcpWaitBudget(t))
+	defer cancel()
+	cmd := exec.CommandContext(ctx, os.Args[0], "-test.run=^TestArchiveDirectLegacyTraceProcess$", "-test.v") //nolint:gosec // Reexecute the test binary with isolated native logging.
+	cmd.Env = []string{
+		"HOME=" + t.TempDir(), archiveTraceBackendEnv + "=" + backendURL,
+		"BAML_LIBRARY_PATH=" + os.Getenv("BAML_LIBRARY_PATH"), "BAML_LIBRARY_DISABLE_DOWNLOAD=true",
+		"BAML_LOG=off", "BAML_INTERNAL_LOG=off",
+	}
+	var stderr bytes.Buffer
+	cmd.Stderr = &stderr
+	stdout, err := cmd.Output()
+	for _, marker := range []string{archivePromptMarker, archiveCompletionMarker} {
+		if bytes.Contains(stdout, []byte(marker)) || bytes.Contains(stderr.Bytes(), []byte(marker)) {
+			t.Fatal("direct legacy trace helper printed fixture content")
+		}
+	}
+	if err != nil {
+		t.Fatalf("direct legacy trace helper failed: %v\n%s\n%s", err, stdout, &stderr)
+	}
+	if stderr.Len() != 0 {
+		t.Fatal("direct legacy trace helper wrote to stderr")
+	}
+	if !bytes.Contains(stdout, []byte(legacyTraceAcknowledgement)) {
+		t.Fatal("direct legacy trace helper did not verify its upload")
+	}
+	t.Log(legacyTraceAcknowledgement)
+}
+
+func TestArchiveDirectLegacyTraceProcess(t *testing.T) {
+	backendURL := os.Getenv(archiveTraceBackendEnv)
+	if backendURL == "" {
+		t.Skip("run through the archive launcher trace fixture")
+	}
+	receipt := make(chan []byte, 1)
+	receiver := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		body, err := io.ReadAll(r.Body)
+		if err != nil {
+			t.Errorf("read legacy upload: %v", err)
+		}
+		select {
+		case receipt <- body:
+		default:
+		}
+		w.WriteHeader(http.StatusOK)
+	}))
+	t.Cleanup(receiver.Close)
+
+	env := map[string]string{
+		"BOUNDARY_PROJECT_ID": "fixture",
+		"BOUNDARY_SeCrEt":     "fixture",
+		"BOUNDARY_BASE_URL":   receiver.URL,
+	}
+	registry := runtimebaml.NewClientRegistry()
+	registry.AddLlmClient("Fixture", "openai-generic", map[string]any{"model": "local-planner", "base_url": backendURL + "/v1"})
+	registry.SetPrimaryClient("Fixture")
+	ctx, cancel := context.WithTimeout(t.Context(), mcpWaitBudget(t))
+	defer cancel()
+	if _, err := baml.GenerateTopicPlan(ctx, nil, archivePromptMarker, nil, "visual", baml.WithClientRegistry(registry), baml.WithEnv(env)); err != nil {
+		t.Fatalf("direct native call: %v", err)
+	}
+	checkLegacyTraceUpload(t, receipt)
+}
+
 func checkLegacyTraceUpload(t *testing.T, receipt <-chan []byte) {
 	t.Helper()
 	timer := time.NewTimer(mcpWaitBudget(t))
@@ -280,5 +480,5 @@ func checkLegacyTraceUpload(t *testing.T, receipt <-chan []byte) {
 	if !bytes.Contains(body, []byte(archivePromptMarker)) || !bytes.Contains(body, []byte(archiveCompletionMarker)) {
 		t.Fatal("legacy trace upload did not contain both fixture markers")
 	}
-	t.Log("Legacy trace receiver acknowledged both fixture markers")
+	t.Log(legacyTraceAcknowledgement)
 }

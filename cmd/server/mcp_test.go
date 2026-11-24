@@ -6,6 +6,8 @@ import (
 	"context"
 	"encoding/json"
 	"io"
+	"net/http"
+	"net/http/httptest"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -27,7 +29,14 @@ func TestMCPProcess(t *testing.T) {
 	if err := os.WriteFile(graphFile, graphData, 0600); err != nil { //nolint:gosec // The destination is inside a fresh test directory.
 		t.Fatal(err)
 	}
-	backend := fakebedrock.New("ok")
+	t.Setenv("AWS_BEARER_TOKEN_BEDROCK", "ambient-mcp-bearer-fixture")
+	handler := fakebedrock.NewHandler("ok")
+	backend := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if !strings.Contains(r.Header.Get("Authorization"), "Credential=dummy/") {
+			t.Error("Converse request was not signed with the dummy credential")
+		}
+		handler.ServeHTTP(w, r)
+	}))
 	defer backend.Close()
 	build := exec.CommandContext(t.Context(), "go", "build", "-o", binary, ".") //nolint:gosec // Build the server in a fresh test directory.
 	if out, err := build.CombinedOutput(); err != nil {
@@ -36,7 +45,7 @@ func TestMCPProcess(t *testing.T) {
 	ctx, cancel := context.WithTimeout(t.Context(), 15*time.Second)
 	defer cancel()
 	cmd := exec.CommandContext(ctx, binary, "mcp") //nolint:gosec // Execute the server built by this test.
-	cmd.Env = append(os.Environ(), "AXIOM_INTERNAL_TOKEN=", "AXIOM_INTERNAL_TOKEN_PREVIOUS=", "AXIOM_AUTH_DISABLED=invalid", "PORT=invalid", "RATE_LIMIT_MAX=invalid", "BAML_LOG=off",
+	cmd.Env = append(mcpFixtureEnv(t), "AXIOM_INTERNAL_TOKEN=", "AXIOM_INTERNAL_TOKEN_PREVIOUS=", "AXIOM_AUTH_DISABLED=invalid", "PORT=invalid", "RATE_LIMIT_MAX=invalid", "BAML_LOG=off",
 		"GRAPH_FILE="+graphFile, "AWS_ENDPOINT_URL="+backend.URL, "AWS_ENDPOINT_URL_BEDROCK_RUNTIME="+backend.URL,
 		"AWS_ACCESS_KEY_ID=dummy", "AWS_SECRET_ACCESS_KEY=dummy", "AWS_SESSION_TOKEN=", "AWS_REGION=us-east-1", "AWS_DEFAULT_REGION=us-east-1", "AWS_EC2_METADATA_DISABLED=true", "AWS_IGNORE_CONFIGURED_ENDPOINT_URLS=false", "AWS_RETRY_MODE=standard", "AWS_MAX_ATTEMPTS=1")
 	stdin, err := cmd.StdinPipe()
@@ -99,8 +108,8 @@ func TestMCPProcess(t *testing.T) {
 		t.Fatalf("result=%s", data)
 	}
 	plan := exchange(`{"jsonrpc":"2.0","id":4,"method":"tools/call","params":{"name":"generate_study_plan","arguments":{"failed_topics":["Recursion"],"mastered_topics":["functions"],"vark_profile":"visual"}}}`, 4)
-	if plan["isError"] == true || backend.Count() != 1 {
-		t.Fatalf("plan=%v provider calls=%d", plan, backend.Count())
+	if plan["isError"] == true || handler.Count() != 1 {
+		t.Fatalf("plan=%v provider calls=%d", plan, handler.Count())
 	}
 	data, _ = json.Marshal(plan["structuredContent"])
 	if !strings.Contains(string(data), `"items_skipped_mastered":1`) {

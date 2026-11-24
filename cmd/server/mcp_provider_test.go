@@ -10,6 +10,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"reflect"
+	"slices"
 	"strings"
 	"sync/atomic"
 	"testing"
@@ -24,6 +25,25 @@ type configuredMCP struct {
 	waitErr      error
 }
 
+func mcpFixtureEnv(t *testing.T) []string {
+	t.Helper()
+	env := slices.DeleteFunc(os.Environ(), func(entry string) bool {
+		key, _, _ := strings.Cut(entry, "=")
+		for _, prefix := range []string{"AWS_", "BOUNDARY_", "LLM_", "LANGSMITH_", "OTEL_", "TRACING_"} {
+			if strings.HasPrefix(key, prefix) {
+				return true
+			}
+		}
+		return slices.Contains([]string{"ANTHROPIC_API_KEY", "GOOGLE_API_KEY", "OPENAI_API_KEY"}, key)
+	})
+	configFile := filepath.Join(t.TempDir(), "aws-config")
+	if err := os.WriteFile(configFile, nil, 0600); err != nil {
+		t.Fatal(err)
+	}
+	return append(env, "AWS_CONFIG_FILE="+configFile, "AWS_SHARED_CREDENTIALS_FILE="+configFile,
+		"NO_PROXY=127.0.0.1,localhost,::1", "no_proxy=127.0.0.1,localhost,::1")
+}
+
 func startConfiguredMCP(t *testing.T, settings map[string]string) *configuredMCP {
 	t.Helper()
 	binary := filepath.Join(t.TempDir(), "axiom-server")
@@ -36,7 +56,7 @@ func startConfiguredMCP(t *testing.T, settings map[string]string) *configuredMCP
 	for k, v := range settings {
 		defaults[k] = v
 	}
-	cmd.Env = os.Environ()
+	cmd.Env = mcpFixtureEnv(t)
 	for k, v := range defaults {
 		cmd.Env = append(cmd.Env, k+"="+v)
 	}

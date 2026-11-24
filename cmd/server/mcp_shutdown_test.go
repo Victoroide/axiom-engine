@@ -9,7 +9,6 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
-	"os"
 	"os/exec"
 	"path/filepath"
 	"strings"
@@ -100,7 +99,7 @@ func TestMCPShutdownProcess(t *testing.T) {
 			ctx, cancel := context.WithTimeout(t.Context(), 8*time.Second)
 			defer cancel()
 			cmd := exec.CommandContext(ctx, binary, "mcp") //nolint:gosec // Execute the server built by this test.
-			cmd.Env = append(os.Environ(), "BAML_LOG=off", "AXIOM_INTERNAL_TOKEN=", "AXIOM_INTERNAL_TOKEN_PREVIOUS=", "AXIOM_AUTH_DISABLED=invalid", "GRAPH_FILE=",
+			cmd.Env = append(mcpFixtureEnv(t), "BAML_LOG=off", "AXIOM_INTERNAL_TOKEN=", "AXIOM_INTERNAL_TOKEN_PREVIOUS=", "AXIOM_AUTH_DISABLED=invalid", "GRAPH_FILE=",
 				"AWS_ACCESS_KEY_ID=dummy", "AWS_SECRET_ACCESS_KEY=dummy", "AWS_SESSION_TOKEN=", "AWS_PROFILE=", "AWS_REGION=us-east-1", "AWS_DEFAULT_REGION=us-east-1", "AWS_EC2_METADATA_DISABLED=true", "AWS_RETRY_MODE=standard", "AWS_MAX_ATTEMPTS=1", "AWS_IGNORE_CONFIGURED_ENDPOINT_URLS=false",
 				"AWS_ENDPOINT_URL="+backend.URL, "AWS_ENDPOINT_URL_BEDROCK_RUNTIME="+backend.URL, "SHUTDOWN_TIMEOUT="+tc.budget.String(), "REQUEST_TIMEOUT=5s", "LLM_TIMEOUT=3s", "LLM_QUEUE_TIMEOUT=50ms")
 			stdout := &processRecords{protocol: true, messages: make(chan map[string]any, 32)}
