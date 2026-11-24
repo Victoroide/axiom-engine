@@ -36,7 +36,7 @@ type fakePlanner func(context.Context, service.TopicRequest) ([]domain.PlanItem,
 func (f fakePlanner) GenerateTopic(ctx context.Context, r service.TopicRequest) ([]domain.PlanItem, error) {
 	return f(ctx, r)
 }
-func defaultConfig(t *testing.T) config.Config {
+func defaultConfig(t testing.TB) config.Config {
 	t.Helper()
 	c, err := config.Load(func(k string) string {
 		if k == "AXIOM_AUTH_DISABLED" {
@@ -49,7 +49,7 @@ func defaultConfig(t *testing.T) config.Config {
 	}
 	return c
 }
-func newTestApp(t *testing.T, c config.Config, p fakePlanner, logs io.Writer) *fiber.App {
+func newTestApp(t testing.TB, c config.Config, p fakePlanner, logs io.Writer) *fiber.App {
 	t.Helper()
 	if p == nil {
 		p = func(_ context.Context, r service.TopicRequest) ([]domain.PlanItem, error) {
