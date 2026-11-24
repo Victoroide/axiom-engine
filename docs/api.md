@@ -93,6 +93,7 @@ The `details` field provides context when available and is omitted when empty. U
 | `413 Payload Too Large` | `payload_too_large` | Request body exceeds limit | Inbound payload exceeds the 64 KiB (65,536 bytes) limit |
 | `415 Unsupported Media Type` | `unsupported_media_type` | Media type not supported | Missing, malformed, unsupported charset, or non-JSON `Content-Type` header on `POST /api/v1/adaptive-plan` requests |
 | `422 Unprocessable Entity` | `validation_error` | Concept not found in knowledge graph | One or more topics in `failed_topics`, `mastered_topics`, `topics`, `mastered`, or `target_topic` do not exist, or unresolvable topic in `GET /api/v1/topics/{topic}/path` |
+| `422 Unprocessable Entity` | `curriculum_context_too_large` | Curriculum context exceeds the prompt budget | The complete neighborhood or prerequisite order exceeds an edge, entry, per-topic byte or request byte limit |
 | `422 Unprocessable Entity` | `idempotency_key_mismatch` | Idempotency key reused with different payload | The same `Idempotency-Key` was submitted with a different request body fingerprint |
 | `429 Too Many Requests` | `rate_limit_exceeded` | Client rate limit exceeded | Inbound requests exceed `RATE_LIMIT_MAX` within `RATE_LIMIT_WINDOW` |
 | `431 Request Header Fields Too Large` | `request_header_fields_too_large` | Request header fields exceed limit | Inbound request headers exceed the server header limit |
@@ -260,6 +261,7 @@ Generates a personalized, prerequisite-ordered study plan for a student based on
 - **413 Payload Too Large**: Payload exceeds 64 KiB.
 - **415 Unsupported Media Type**: Request `Content-Type` is missing, malformed, or not `application/json`.
 - **422 Unprocessable Entity**: One or more topics are not found in the knowledge graph (`validation_error`), or `Idempotency-Key` was used with a different request body (`idempotency_key_mismatch`).
+- **422 `curriculum_context_too_large`** returns `{"error":"curriculum_context_too_large","details":"curriculum context exceeds the prompt budget"}` before any topic is dispatched. See [Curriculum prompt budget](configuration.md#curriculum-prompt-budget).
 - **429 Too Many Requests**: Rate limit exceeded.
 - **431 Request Header Fields Too Large**: Inbound request headers exceed the server limit.
 - **500 Internal Server Error**: Unexpected internal failure or recovered panic.
@@ -374,7 +376,7 @@ Streams real-time adaptive study plan generation progress using Server-Sent Even
   - `X-Internal-Token: <token>` (if authentication is enabled)
 - **Validation Rules**:
   - Accepts the identical JSON payload and schema as `POST /api/v1/adaptive-plan`.
-  - All request body syntax, schema, media type, token authentication, and graph topic validation run before streaming begins. Any validation failure immediately returns the standard JSON error envelope with the corresponding status code (`400`, `401`, `413`, `415`, `422`, `429`, `503`) before headers or stream frames are sent.
+  - Request body syntax, schema, media type, authentication, topic validation and curriculum budget checks run before streaming begins. The route returns the standard JSON error envelope for these failures. Oversized curriculum context returns HTTP 422 `curriculum_context_too_large` before any event or keepalive. If the request deadline expires during preparation, the route returns HTTP 504 as JSON.
   - The endpoint operates under the same client IP rate limit budget as other `/api/v1` routes.
   - This endpoint does not support `Idempotency-Key` response replay.
 

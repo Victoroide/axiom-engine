@@ -101,6 +101,8 @@ Generates a personalized, prerequisite-ordered study plan for a student based on
   - `course_id` (string, optional): Course identifier.
 - **Output**: Structured JSON object containing `student_id`, `course_id`, `items` (ordered study items with explanation and learning resources), and `_meta` execution metadata.
 
+The tool checks the [curriculum prompt budget](configuration.md#curriculum-prompt-budget) for all topics before dispatch.
+
 ### `get_cognitive_graph`
 
 Computes a depth-1 concept neighborhood around failed topics, classifying concepts into `failed`, `learning`, `mastered`, or `unassessed` states.
@@ -142,6 +144,7 @@ Tool execution errors are returned as MCP tool errors (`isError: true` on `CallT
 
 Error classifications mirror the HTTP API status codes:
 - `validation_error`: Invalid input arguments, unsupported VARK profiles, unknown curriculum concepts, or topic limits exceeded.
+- `curriculum_context_too_large` indicates the full curriculum input exceeds the prompt budget. The tool returns `isError: true` with `{"error":"curriculum_context_too_large","details":"curriculum context exceeds the prompt budget"}` in structured and text content.
 - `service_unavailable`: Concurrency limit reached, circuit breaker open, upstream throttling, or new tool calls rejected during shutdown.
 - `gateway_timeout`: Model reasoning exceeded deadline (`REQUEST_TIMEOUT` or `LLM_TIMEOUT`).
 - `bad_gateway`: Upstream model reasoning failure or unparseable response.
