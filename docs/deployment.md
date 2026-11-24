@@ -67,18 +67,20 @@ AxiomEngine can execute planning without AWS credentials by pointing to a local 
 1. Start Ollama and pull your desired model:
 
 ```sh
-ollama pull mistral
+ollama pull mistral:v0.3
 ```
 
 2. Run AxiomEngine pointing to Ollama:
 
 ```sh
 export LLM_PROVIDER=ollama
-export LLM_MODEL=mistral
+export LLM_MODEL=mistral:v0.3
 # LLM_BASE_URL defaults to http://localhost:11434/v1
 export AXIOM_INTERNAL_TOKEN="$(openssl rand -hex 32)"
 make run
 ```
+
+The default curriculum budget for `mistral:v0.3` fits a 4,096-token context. When provisioning a different context, set `LLM_OLLAMA_CONTEXT_TOKENS` to match it. Confirm the loaded context with `ollama ps`. [Ollama context settings](https://docs.ollama.com/context-length) · [Curriculum prompt budget](configuration.md#curriculum-prompt-budget)
 
 ### Generic OpenAI-compatible endpoints
 

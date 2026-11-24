@@ -65,12 +65,20 @@ sequenceDiagram
         Handler-->>Caller: 422 Unprocessable Entity
     end
 
-    Service->>Graph: GetLocalSubgraph(failedTopics, depth=2)
+    Service->>Graph: LocalSubgraphContext(ctx, failedTopics, depth=2)
     Graph-->>Service: Return local GraphTuple triples
 
+    loop Prepare each topic
+        Service->>Graph: PrerequisiteChainContext(ctx, topic_i)
+        Graph-->>Service: Return the full prerequisite order
+        Service->>Service: Exclude mastered entries and check topic and aggregate budgets
+    end
+    break Curriculum exceeds a budget
+        Service-->>Handler: PromptBudgetError
+        Handler-->>Caller: 422 curriculum_context_too_large
+    end
+
     par Parallel per-topic fan-out via errgroup
-        Service->>Graph: GetPrerequisiteChain(topic_i)
-        Graph-->>Service: Return ordered prerequisite nodes
         Service->>Breaker: Execute(plannerCall)
         alt Circuit Open
             Breaker-->>Service: ErrOpenState / ErrTooManyRequests
@@ -107,10 +115,9 @@ sequenceDiagram
 
 1. **Request Binding and Validation**: Incoming JSON is decoded. The handler validates that `failed_topics` is non-empty and contains at most `MAX_FAILED_TOPICS` unique items, and that optional `mastered_topics` contains at most `MAX_MASTERED_TOPICS` unique items (`internal/service/validation.go`). If any topic appears in both `failed_topics` and `mastered_topics`, the request is rejected with HTTP 400 `validation_error`. `vark_profile` is checked against allowed values (`visual`, `auditory`, `read_write`, `kinesthetic`). `student_id` and `course_id` are validated against `^[A-Za-z0-9._:-]{1,128}$` when provided (`internal/service/validation.go`).
 2. **Topic Existence Verification**: All topics in `failed_topics` and `mastered_topics` are verified against the in-memory graph (`internal/service/validation.go`). If any topic is absent from the graph, execution stops immediately and returns HTTP 422 `validation_error` with the list of unknown topics.
-3. **Subgraph Extraction**: The service extracts a depth-2 bidirectional subgraph centered on the failed topics using breadth-first search (`GetLocalSubgraph` in `internal/graph/memory.go`). This context bounds the concept neighborhood provided to the LLM.
+3. **Curriculum preparation** extracts one depth-two bidirectional neighborhood for all failed topics, including edges touching depth-two nodes. It computes each topic's full prerequisite chain in post-order and removes mastered entries from the order sent upstream. The service checks the [curriculum prompt budget](configuration.md#curriculum-prompt-budget) across all prepared topic inputs before starting any call.
 4. **Parallel Topic Fan-Out**: An `errgroup.Group` spawns a goroutine for each failed topic (`internal/service/reasoning.go`). Each goroutine:
    - Acquires a permit from the process-wide weighted semaphore (`LLM_MAX_CONCURRENCY`) within `LLM_QUEUE_TIMEOUT`; if the wait expires, returns HTTP 503 `service_unavailable` with `Retry-After: 1`.
-   - Computes the topological prerequisite chain for its topic via post-order depth-first search (`GetPrerequisiteChain` in `internal/graph/memory.go`). Cyclic inputs are rejected at load time; the traversal visited set handles shared prerequisites. Mastered topics are excluded from the `prerequisite_order` passed to the model, and distinct omitted prerequisites are tracked for metadata reporting, while the complete depth-2 graph context remains available.
    - Checks the shared circuit breaker before dispatch. `LLM_TIMEOUT` bounds the wait for the planner result. See [Timeouts](#timeouts).
    - Invokes Amazon Bedrock through the BAML adapter (`internal/llm/baml.go`) using `TopicRequest` (containing graph context, target topic, prerequisite order, and VARK profile, without learner identifiers). The generated BAML function returns study items. If the model output contains no usable item for the topic, the service emits a `stage.validation` warning log with `topic` and returns `ErrInvalidOutput`, which is excluded from circuit breaker failure counts.
    - Stores the generated items directly into `plans[i]`, where `i` is the original request index. This ensures deterministic ordering regardless of goroutine completion timing. When configured with `service.WithProgress`, the service invokes the progress callback concurrently as each topic completes, delivering `domain.TopicProgress` with topic name, request index, and generated item count without leaking state across calls.
@@ -122,7 +129,7 @@ sequenceDiagram
 ### Streaming Plan Generation
 
 The streaming endpoint `POST /api/v1/adaptive-plan/stream` (`internal/api/stream.go`) exposes pipeline execution progress over Server-Sent Events (SSE):
-- **Pre-stream validation**: Uses the identical request schema, student ID, VARK profile, and knowledge-graph validation as the non-streaming JSON route (`validateRequest`). If any check fails, the handler immediately returns standard JSON error envelopes before starting the SSE stream.
+- The streaming endpoint validates and prepares the plan before starting the SSE stream. Any preparation failure returns a standard JSON error envelope. The stream dispatches the prepared inputs after its initial keepalive.
 - **Event buffer**: Request context values and strings are cloned before asynchronous execution. The stream writer buffers completed topic notifications via a bounded per-request channel sized to the number of failed topics.
 - The stream writes an initial `: keepalive` comment followed by periodic keepalives every 2 seconds. The first write or flush failure cancels the pipeline context. The service stops waiting for planner results, and each dispatched call holds its permit until the planner returns or unwinds after a panic.
 - **Final output**: Successful pipeline completion emits an `event: plan` frame carrying the validated `domain.PlanResponse` assembled through the shared merge, sanitization, and graph validation stages. Pipeline errors emit `event: error` carrying the error envelope and equivalent numeric HTTP status.
@@ -130,12 +137,12 @@ The streaming endpoint `POST /api/v1/adaptive-plan/stream` (`internal/api/stream
 ### Prompt Inputs
 
 Upstream model inference isolates learner identity from prompt construction. When `ReasoningService` executes per-topic fan-out, `TopicRequest` supplies four inputs to the BAML adapter and Bedrock:
-- `graph_context`: Subgraph concept triples (`GraphTuple[]`) centered on the target topic.
+- `graph_context` contains the shared neighborhood triples (`GraphTuple[]`) around all failed topics.
 - `target_topic`: The target failed concept being evaluated.
 - `prerequisite_order`: Topological prerequisite ordering computed from the knowledge graph, excluding mastered concepts.
 - `vark_profile`: The requested VARK learning style (`visual`, `auditory`, `read_write`, or `kinesthetic`).
 
-`TopicRequest` excludes learner identifiers (`student_id` and `course_id`), and BAML `GenerateTopicPlan` returns only `items`. Because response construction correlates `student_id` and `course_id` directly from the incoming HTTP request payload, upstream responses require neither identifier. Omitting learner identifiers upstream prevents schema validation parsing failures and HTTP 502 `bad_gateway` responses when upstream responses lack identifier fields. Mastered prerequisites are filtered out from `prerequisite_order` before model calls while `graph_context` retains the full local graph and returned items retain their complete graph prerequisite chains. External HTTP request and response schemas and status mappings remain unchanged (see [Security Policy](../SECURITY.md#data-handling)).
+`TopicRequest` excludes learner identifiers (`student_id` and `course_id`), and BAML `GenerateTopicPlan` returns only `items`. Because response construction correlates `student_id` and `course_id` directly from the incoming HTTP request payload, upstream responses require neither identifier. Omitting learner identifiers upstream prevents schema validation parsing failures and HTTP 502 `bad_gateway` responses when upstream responses lack identifier fields. Mastered prerequisites are filtered out from `prerequisite_order` before dispatch while `graph_context` retains the full local graph and returned items retain their complete graph prerequisite chains.
 
 ---
 
@@ -197,6 +204,8 @@ Classified errors wrap `service.ErrUpstream` via `fmt.Errorf("%w: %w", class, er
 
 #### HTTP Status Mapping
 
+`PromptBudgetError` maps to HTTP 422 `curriculum_context_too_large` before dispatch or SSE output.
+
 `ErrUpstreamUnavailable`, `ErrUpstreamRejected` and `ErrInvalidOutput` map to HTTP 502 `bad_gateway`. `ErrThrottled` maps to HTTP 503 `service_unavailable` with details `upstream throttled` and `Retry-After: 5`. When `ErrInvalidOutput` is returned, the response details indicate `model returned no usable item`; other upstream failures return `upstream reasoning failed`. When `ctx.Err()` is present upon return from the adapter, it returns `ctx.Err()` directly, producing HTTP 504 `gateway_timeout` when execution deadlines expire. For complete error codes, status mappings, and client-facing response schemas, see the [API reference](api.md#error-codes-and-http-statuses).
 
 ---
@@ -217,6 +226,7 @@ The following Prometheus metrics are exposed:
 - `axiom_llm_inflight`: Gauge tracking upstream calls currently executing, including calls executing past their response deadline. Concurrency semaphore permits remain occupied until execution finishes.
 - `axiom_llm_queue_wait_seconds`: Histogram measuring admission wait duration for an available concurrency slot, including canceled and timed-out waits. Buckets are `0.001, 0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1, 2, 5` seconds.
 - `axiom_llm_queue_timeouts_total`: Counter recording concurrency queue waits that exhausted `LLM_QUEUE_TIMEOUT`, excluding parent cancellation or request deadline expiration.
+- `axiom_plan_prompt_budget_rejections_total` counts HTTP plan requests rejected before dispatch for exceeding the curriculum prompt budget. It has no labels.
 - `axiom_circuit_breaker_state`: Gauge function evaluated dynamically on scrape returning current circuit breaker state: `0` (closed), `1` (half-open), `2` (open).
 - `axiom_plan_items_dropped_total{reason}`: Counter recording plan items removed during pipeline processing. Fixed `reason` labels are `duplicate` (removed during merge deduplication) and `validation` (removed because topics were unknown to the graph, outside the requested prerequisite closure, or matching a mastered topic).
 - `axiom_plan_resources_dropped_total`: Counter recording recommended study resources removed by output policy validation.

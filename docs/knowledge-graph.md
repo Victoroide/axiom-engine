@@ -149,6 +149,8 @@ The limits are inclusive. The raw byte count includes leading, embedded, and tra
 
 Cycle detection, prerequisite queries, and the longest-chain summary use iterative traversal. A chain may contain every concept in the graph, up to 19,999 prerequisite edges. Startup and `validate-graph` reject files that exceed a limit.
 
+Plan generation also checks the [curriculum prompt budget](configuration.md#curriculum-prompt-budget) against the extracted neighborhood and the prerequisite orders for the requested topics. An accepted file can produce a plan request that exceeds those limits.
+
 ### Validating a Curriculum
 
 The CLI provides a `validate-graph` subcommand to verify curriculum files without starting the HTTP or MCP server:

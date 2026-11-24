@@ -302,6 +302,7 @@ With `METRICS_ENABLED=true`, `/metrics` exposes the series listed in [Observabil
 
 - `axiom_circuit_breaker_state` is `2` when open. Topics acquire a concurrency permit before checking the breaker. See [Circuit Breaker Trips](#circuit-breaker-trips).
 - `axiom_llm_calls_total{outcome="throttled"}` and `{outcome="unavailable"}`: upstream throttling and availability failures.
+- `axiom_plan_prompt_budget_rejections_total` counts HTTP adaptive-plan requests rejected before dispatch for exceeding the curriculum prompt budget. The counter has no labels.
 - `axiom_llm_inflight` against `LLM_MAX_CONCURRENCY`, with `axiom_llm_queue_wait_seconds` and `axiom_llm_queue_timeouts_total`: queue pressure.
 - `http_server_requests_total{route="/api/v1/adaptive-plan",status="503"}`: unavailable responses seen by clients.
 - `axiom_auth_previous_token_total`: callers still using the previous token during a rotation.

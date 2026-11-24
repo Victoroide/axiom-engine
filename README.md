@@ -244,6 +244,8 @@ The service is configured using environment variables. The table below lists the
 
 For the complete list of environment variables, format constraints, and credential resolution details, see [docs/configuration.md](docs/configuration.md).
 
+HTTP and MCP adaptive plans apply a [curriculum prompt budget](docs/configuration.md#curriculum-prompt-budget) before dispatching topic calls.
+
 ## Usage
 
 ### Health Check
