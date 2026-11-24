@@ -128,6 +128,14 @@ func packageImports(root string) (map[string]bool, map[dependency]bool, error) {
 		if !entry.IsDir() {
 			return nil
 		}
+		dir, err := filepath.Rel(root, path)
+		if err != nil {
+			return err
+		}
+		// Offline evaluation packages are outside the service architecture.
+		if dir == "evaluation" {
+			return filepath.SkipDir
+		}
 		if path != root {
 			if strings.HasPrefix(entry.Name(), ".") || entry.Name() == "vendor" {
 				return filepath.SkipDir
@@ -137,10 +145,6 @@ func packageImports(root string) (map[string]bool, map[dependency]bool, error) {
 			} else if !os.IsNotExist(err) {
 				return err
 			}
-		}
-		dir, err := filepath.Rel(root, path)
-		if err != nil {
-			return err
 		}
 		parsed, err := sourceFiles(root, dir)
 		if err != nil {
