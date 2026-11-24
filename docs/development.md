@@ -465,9 +465,11 @@ Fuzz targets include:
 - `FuzzCanonical` (`internal/graph/loader_fuzz_test.go`): verifies that name canonicalization is idempotent (`Canonical(Canonical(s)) == Canonical(s)`).
 - `FuzzLoad` (`internal/config/config_fuzz_test.go`): mutates configuration keys and values through an environment lookup provider. Asserts that accepted configurations preserve timeout invariants (`0 < LLMQueueTimeout < LLMTimeout <= RequestTimeout`, `ShutdownTimeout >= 11s`, and `WriteTimeout == RequestTimeout + 10s`).
 - `FuzzStrictJSON` (`internal/api/decode_fuzz_test.go`): tests strict JSON decoding against arbitrary request bodies. Asserts that decoding never panics, error messages remain bounded within 1024 bytes, and accepted request payloads round-trip through JSON marshaling and decoding unchanged.
-- `FuzzOutputPolicy` (`internal/service/output_fuzz_test.go`): tests model output sanitation across learner VARK profiles. Asserts that retained resources have valid absolute HTTP or HTTPS URLs of at most 2048 runes with no userinfo, titles within 200 runes, explanations within 1000 runes, no control or format characters, resource types permitted for the learner profile, and at most three resources per item.
+- `FuzzOutputPolicy` (`internal/service/output_fuzz_test.go`) checks resource URLs, types, and counts in both display policies. It verifies valid UTF-8, the 200- and 1,000-code-point bounds, whitespace, and control removal. The opt-in policy also checks joiner contexts and whole-grapheme truncation.
 
 Seed corpus files in package `testdata/fuzz/` directories run as standard unit tests during `go test`. When a crasher is discovered, its reproduction corpus entry is preserved under the matching package `testdata/fuzz/<TargetName>/` directory alongside the fix.
+
+Run `./scripts/check-display-text-bench.sh` to compare both policies on 64 KiB and 128 KiB inputs. The fixtures cover a combining run, repeated joined emoji, and a stream of filtered controls. The check requires stable allocations across both input sizes, at most 16 KiB allocated per call, and at most 2.5× the median runtime when input doubles. Run it on an otherwise idle machine.
 
 #### Property tests
 
