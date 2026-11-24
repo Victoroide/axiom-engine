@@ -7,19 +7,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.1] - 2026-11-24
+
+**Upgrade considerations:**
+
+- **Startup graph limits:** `GRAPH_FILE` inputs exceeding 8 MiB (8,388,608 bytes), 50,000 input tuples (including duplicates), or 20,000 distinct concepts that were previously accepted now fail startup and `validate-graph`.
+- **Prompt-budget rejection:** Adaptive plan requests exceeding the default curriculum prompt budget (`LLM_MAX_CONTEXT_EDGES=256`, `LLM_MAX_PREREQUISITES=12`, `LLM_MAX_TOPIC_INPUT_BYTES=16384` or `4480` for Ollama at 4,096 context tokens, `LLM_MAX_REQUEST_INPUT_BYTES=131072`) are rejected before dispatch with HTTP 422 `curriculum_context_too_large` (before SSE streaming begins) or the matching MCP tool error. In `examples/graphs/computer-science.json`, 17 of 130 single-topic requests without mastered topics exceed the 12-prerequisite default. Validate custom graphs and configure prompt-budget or `LLM_OLLAMA_CONTEXT_TOKENS` settings before upgrading.
+
 ### Added
 
 - Add an in-process stateless MCP Streamable HTTP handler for the July 2026 protocol.
+- Add a standalone `internal/auth` package (`auth.Verifier`) verifying `at+jwt` (`application/at+jwt`) signed access tokens (`RS256` and `ES256`) against a configured HTTPS issuer, resource audience, JWKS refresh cache, and tenant, caller, and scope claim mapping. The package is not wired into the deployed transports yet; the HTTP listener continues using shared-secret token authentication (`AXIOM_INTERNAL_TOKEN`) and the MCP server continues running over stdio.
 - Add a `plan.queue.wait` trace span for topic requests that encounter an occupied reasoning permit.
 - Expose `axiom_llm_inflight_after_cancel` for planner calls that still occupy a local slot after cancellation or a deadline.
+- Expose the unlabeled HTTP counter `axiom_plan_prompt_budget_rejections_total` for adaptive plan requests rejected before dispatch for exceeding the curriculum prompt budget.
 - Add the opt-in `HTTP_LISTENER=net-http` setting so HTTP/1 disconnects and HTTP/2 stream resets cancel queued or running reasoning. HTTP/1 cancellation also works with pipelined requests waiting on Linux and macOS. A client that closes only its write side may still read a 408 response. Release canceled idempotency reservations while storage is available.
 
 ### Changed
 
-- Reject adaptive plans that exceed the curriculum prompt budget before dispatch. Both HTTP routes return 422 `curriculum_context_too_large`, and MCP returns the same error code in a tool error. Ollama uses a smaller default input budget for a 4,096-token context.
+- Reject adaptive plans that exceed the curriculum prompt budget before dispatch. Both HTTP routes return 422 `curriculum_context_too_large`, and MCP returns the same error code in a tool error. If the request deadline expires during `POST /api/v1/adaptive-plan/stream` preparation before streaming begins, the route returns HTTP 504 `gateway_timeout` as JSON. Ollama uses a smaller default input budget for a 4,096-token context.
 - Limit curriculum JSON at startup and in `validate-graph` to 8 MiB, 50,000 input tuples including duplicates, and 20,000 distinct concepts. Prerequisite traversal supports full chains within those limits using an explicit stack.
 - Redraw the request path, package and seed graph diagrams on a compact grid with right-angle connectors, opaque light and dark backgrounds and paced motion that is static under reduced motion. The package diagram shows a layered view without redundant arrows, the seed graph uses evenly spaced circles grouped by connected component, and the pages show the images at their natural width.
 - Make `make diagrams-check` stricter: placement files reject unknown fields, geometry, text fit and contrast are checked, stale output fails, and the diagrams must match the registered routes, package imports and seed curriculum in both directions. Application behavior is unchanged.
+- Update root, tooling, and GitHub Actions dependencies (including Fiber v3.7.0, `fasthttp` v1.79.0, `actions/setup-go` v7.1.0, and `actions/dependency-review-action` v5.0.1), align operational documentation with runtime panic recovery, permit retention, shared Redis storage, and HTTP/MCP resource-link checks, expand provider-error, cancellation, and real-socket conformance coverage alongside listener JSON latency benchmarks, and stabilize resource-link and shared Redis budget test fixtures.
 
 ### Fixed
 
@@ -150,5 +160,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Require `golang.org/x/crypto v0.58.1-0.20261009181718-2f1f834330b2`, removing the module-version finding for GO-2026-5932; the affected OpenPGP package is not imported by the service.
 - Pin the distroless runtime base to a digest that ships zlib1g 1:1.3.dfsg+really1.3.1-1+deb13u1, fixing CVE-2026-76844, CVE-2026-85091 and CVE-2026-27171.
 
-[Unreleased]: https://github.com/Victoroide/axiom-engine/compare/v0.1.0...HEAD
+[Unreleased]: https://github.com/Victoroide/axiom-engine/compare/v0.1.1...HEAD
+[0.1.1]: https://github.com/Victoroide/axiom-engine/compare/v0.1.0...v0.1.1
 [0.1.0]: https://github.com/Victoroide/axiom-engine/releases/tag/v0.1.0
