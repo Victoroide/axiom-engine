@@ -314,7 +314,7 @@ The `instance_metadata` field reports `disabled` when `AWS_EC2_METADATA_DISABLED
 {"level":"INFO","msg":"server.listening","address":"[::]:8080","listener":"fiber"}
 ```
 
-Every HTTP request produces an `http.access` log record containing:
+Requests that reach the application produce an `http.access` log record with these fields.
 - `request_id`: the client's `X-Request-ID` when it matches `^[A-Za-z0-9._:-]{1,128}$`, otherwise a generated 43-character URL-safe token. A fallback UUID is generated only for errors raised before the request-ID middleware runs.
 - `method`: HTTP method (`GET`, `POST`, `HEAD`, `OPTIONS`).
 - `path`: request route path.
