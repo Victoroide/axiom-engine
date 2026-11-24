@@ -1,0 +1,3173 @@
+{
+  "schema_version": "1.0",
+  "course": "AP Computer Science A (Effective Fall 2025, Clarifications 2026-01-29)",
+  "language": "English explanations with Java examples",
+  "seed": 20251124,
+  "dataset_kind": "synthetic_regression",
+  "calibration_cases": [
+    {
+      "id": "CAL-01",
+      "unit": 1,
+      "topic_id": "1.3",
+      "topic_title": "Expressions and Output",
+      "objective_ids": [
+        "1.3.C"
+      ],
+      "reference_fact_ids": [
+        "FACT-U1-02"
+      ],
+      "prompt_context": "Learner struggled with Java mixed int/double division (Topic 1.3) and requested visual study material.",
+      "request": {
+        "student_id": "cal-student-1",
+        "course_id": "apcsa-2025",
+        "failed_topics": [
+          "Expressions"
+        ],
+        "vark_profile": "visual"
+      },
+      "candidate_response": {
+        "student_id": "cal-student-1",
+        "course_id": "apcsa-2025",
+        "items": [
+          {
+            "topic": "Expressions",
+            "priority": 1,
+            "prerequisite_chain": [
+              "Variables",
+              "Data Types"
+            ],
+            "explanation": "Review Data Types before Expressions: dividing two ints like 7 / 2 truncates to 3, whereas (double) 7 / 2 widens to 3.5; start by tracing type rules on three expressions.",
+            "resources": [
+              {
+                "title": "Visual Trace of Java int vs double Division",
+                "url": "https://example.org/materials/093c7fab7f1a",
+                "resource_type": "diagram"
+              },
+              {
+                "title": "Step-by-Step Arithmetic Precedence Walkthrough",
+                "url": "https://example.org/materials/a3d697e77247",
+                "resource_type": "video"
+              }
+            ]
+          }
+        ],
+        "_meta": {
+          "subgraph_tuples": 2,
+          "topics_processed": 1,
+          "items_generated": 1,
+          "items_after_validation": 1,
+          "items_dropped": 0,
+          "llm_latency_ms": 12,
+          "total_latency_ms": 15
+        }
+      },
+      "resource_evidence": [
+        {
+          "item_index": 0,
+          "resource_index": 0,
+          "excerpt": "A two-panel diagram labels both operands and the resulting type. On the left, int 7 divided by int 2 gives int 3. On the right, casting 7 to double before division gives double 3.5."
+        },
+        {
+          "item_index": 0,
+          "resource_index": 1,
+          "excerpt": "The video draws a tree for 2 + 3 * 4 and evaluates the multiplication before the addition. Every operand in its examples is an int."
+        }
+      ],
+      "shipped_graph": {
+        "seed_graph_servable": false,
+        "example_graph_servable": true,
+        "target_node": "Expressions",
+        "response_graph": "example",
+        "note": "Topic 'Expressions' is served by examples/graphs/computer-science.json only (absent from internal/graph/seed.json)."
+      },
+      "scenario_tags": [
+        "calibration",
+        "acceptable_anchor"
+      ],
+      "provenance": {
+        "source_type": "synthetic_authored",
+        "author": "benchmark_fixture_author",
+        "created_date": "2026-11-24",
+        "redistribution_permission": "MIT-original-synthetic-fixture",
+        "live_capture": false,
+        "model_version_or_date": "synthetic-cal-01-2026-11-24",
+        "cost_cap_usd": 0,
+        "case_cap": 0
+      },
+      "worked_anchor": {
+        "factual_accuracy": {
+          "status": "scored",
+          "score": 2
+        },
+        "prerequisite_rationale": {
+          "status": "scored",
+          "score": 2
+        },
+        "actionable_guidance": {
+          "status": "scored",
+          "score": 2
+        },
+        "resource_summary_status": "applicable",
+        "resource_ratings": [
+          {
+            "item_index": 0,
+            "resource_index": 0,
+            "rating": {
+              "status": "scored",
+              "score": 2
+            }
+          },
+          {
+            "item_index": 0,
+            "resource_index": 1,
+            "rating": {
+              "status": "scored",
+              "score": 1
+            }
+          }
+        ],
+        "critical_error": false,
+        "critical_error_type": "none",
+        "rationale": "The explanation accurately relates numeric types to division and gives the learner an exercise. The diagram addresses both types. The precedence video helps with evaluation order but gives no examples using double."
+      }
+    },
+    {
+      "id": "CAL-02",
+      "unit": 2,
+      "topic_id": "2.6",
+      "topic_title": "Comparing Boolean Expressions",
+      "objective_ids": [
+        "2.6.A"
+      ],
+      "reference_fact_ids": [
+        "FACT-U2-03"
+      ],
+      "prompt_context": "Learner failed Comparing Boolean Expressions (De Morgan's Law, Topic 2.6) and requested read_write material.",
+      "request": {
+        "student_id": "cal-student-2",
+        "course_id": "apcsa-2025",
+        "failed_topics": [
+          "Boolean Logic"
+        ],
+        "vark_profile": "read_write"
+      },
+      "candidate_response": {
+        "student_id": "cal-student-2",
+        "course_id": "apcsa-2025",
+        "items": [
+          {
+            "topic": "Boolean Logic",
+            "priority": 1,
+            "prerequisite_chain": [
+              "Variables",
+              "Data Types",
+              "Expressions"
+            ],
+            "explanation": "By De Morgan's Law, !(a \u0026\u0026 b) simplifies directly to !a \u0026\u0026 !b because negation distributes across each variable while preserving the \u0026\u0026 operator; read the summary notes.",
+            "resources": [
+              {
+                "title": "Boolean Simplification Notes",
+                "url": "https://example.org/materials/90786cdcc2a9",
+                "resource_type": "article"
+              }
+            ]
+          }
+        ],
+        "_meta": {
+          "subgraph_tuples": 3,
+          "topics_processed": 1,
+          "items_generated": 1,
+          "items_after_validation": 1,
+          "items_dropped": 0,
+          "llm_latency_ms": 12,
+          "total_latency_ms": 15
+        }
+      },
+      "resource_evidence": [
+        {
+          "item_index": 0,
+          "resource_index": 0,
+          "excerpt": "The notes use a four-row truth table to compare !(a \u0026\u0026 b) with !a || !b, including a row where a is true and b is false."
+        }
+      ],
+      "shipped_graph": {
+        "seed_graph_servable": false,
+        "example_graph_servable": true,
+        "target_node": "Boolean Logic",
+        "response_graph": "example",
+        "note": "Topic 'Boolean Logic' is served by examples/graphs/computer-science.json only (absent from internal/graph/seed.json)."
+      },
+      "scenario_tags": [
+        "calibration",
+        "defective_anchor",
+        "plausible_false_statement",
+        "structurally_valid_wrong_answer"
+      ],
+      "provenance": {
+        "source_type": "synthetic_authored",
+        "author": "benchmark_fixture_author",
+        "created_date": "2026-11-24",
+        "redistribution_permission": "MIT-original-synthetic-fixture",
+        "live_capture": false,
+        "model_version_or_date": "synthetic-cal-02-2026-11-24",
+        "cost_cap_usd": 0,
+        "case_cap": 0
+      },
+      "worked_anchor": {
+        "factual_accuracy": {
+          "status": "scored",
+          "score": 0
+        },
+        "prerequisite_rationale": {
+          "status": "scored",
+          "score": 2
+        },
+        "actionable_guidance": {
+          "status": "scored",
+          "score": 1
+        },
+        "resource_summary_status": "applicable",
+        "resource_ratings": [
+          {
+            "item_index": 0,
+            "resource_index": 0,
+            "rating": {
+              "status": "scored",
+              "score": 2
+            }
+          }
+        ],
+        "critical_error": true,
+        "critical_error_type": "factual",
+        "rationale": "Critical factual anchor (score 0): states the opposite of De Morgan's Law (!(a \u0026\u0026 b) == !a || !b, not !a \u0026\u0026 !b). Even though JSON structure, VARK type, and prerequisite chain pass validation, the explanation teaches a false rule."
+      }
+    },
+    {
+      "id": "CAL-03",
+      "unit": 3,
+      "topic_id": "3.4",
+      "topic_title": "Constructors",
+      "objective_ids": [
+        "3.4.A"
+      ],
+      "reference_fact_ids": [
+        "FACT-U3-02"
+      ],
+      "prompt_context": "Learner struggled with writing class constructors (Topic 3.4) and requested kinesthetic practice.",
+      "request": {
+        "student_id": "cal-student-3",
+        "course_id": "apcsa-2025",
+        "failed_topics": [
+          "Constructors"
+        ],
+        "vark_profile": "kinesthetic"
+      },
+      "candidate_response": {
+        "student_id": "cal-student-3",
+        "course_id": "apcsa-2025",
+        "items": [
+          {
+            "topic": "Constructors",
+            "priority": 1,
+            "prerequisite_chain": [],
+            "explanation": "Before studying basic variables or what an object is, first master writing overloaded constructors and this-reference resolution so variables make sense later; try coding a constructor.",
+            "resources": [
+              {
+                "title": "Java Constructor Coding Lab",
+                "url": "https://example.org/materials/0493419c7048",
+                "resource_type": "lab"
+              }
+            ]
+          }
+        ],
+        "_meta": {
+          "subgraph_tuples": 1,
+          "topics_processed": 1,
+          "items_generated": 1,
+          "items_after_validation": 1,
+          "items_dropped": 0,
+          "llm_latency_ms": 12,
+          "total_latency_ms": 15
+        }
+      },
+      "resource_evidence": [
+        {
+          "item_index": 0,
+          "resource_index": 0,
+          "excerpt": "In the lab, write a Box(int height) constructor and add Box() that delegates to it. Instantiate both forms and check the stored heights."
+        }
+      ],
+      "shipped_graph": {
+        "seed_graph_servable": false,
+        "example_graph_servable": false,
+        "target_node": "Constructors",
+        "response_graph": "none",
+        "note": "Topic 'Constructors' is absent from both internal/graph/seed.json and examples/graphs/computer-science.json."
+      },
+      "scenario_tags": [
+        "calibration",
+        "defective_anchor",
+        "reversed_prerequisite"
+      ],
+      "provenance": {
+        "source_type": "synthetic_authored",
+        "author": "benchmark_fixture_author",
+        "created_date": "2026-11-24",
+        "redistribution_permission": "MIT-original-synthetic-fixture",
+        "live_capture": false,
+        "model_version_or_date": "synthetic-cal-03-2026-11-24",
+        "cost_cap_usd": 0,
+        "case_cap": 0
+      },
+      "worked_anchor": {
+        "factual_accuracy": {
+          "status": "scored",
+          "score": 2
+        },
+        "prerequisite_rationale": {
+          "status": "scored",
+          "score": 0
+        },
+        "actionable_guidance": {
+          "status": "scored",
+          "score": 1
+        },
+        "resource_summary_status": "applicable",
+        "resource_ratings": [
+          {
+            "item_index": 0,
+            "resource_index": 0,
+            "rating": {
+              "status": "scored",
+              "score": 2
+            }
+          }
+        ],
+        "critical_error": true,
+        "critical_error_type": "prerequisite",
+        "rationale": "Critical prerequisite anchor (score 0): reverses dependency direction by requiring overloaded constructors before basic variables and objects."
+      }
+    },
+    {
+      "id": "CAL-04",
+      "unit": 4,
+      "topic_id": "4.8",
+      "topic_title": "ArrayList Methods",
+      "objective_ids": [
+        "4.8.A"
+      ],
+      "reference_fact_ids": [
+        "FACT-U4-02"
+      ],
+      "prompt_context": "Learner struggled with ArrayList add/remove index shifts (Topic 4.8) and requested auditory material.",
+      "request": {
+        "student_id": "cal-student-4",
+        "course_id": "apcsa-2025",
+        "failed_topics": [
+          "ArrayList Methods"
+        ],
+        "vark_profile": "auditory"
+      },
+      "candidate_response": {
+        "student_id": "cal-student-4",
+        "course_id": "apcsa-2025",
+        "items": [
+          {
+            "topic": "ArrayList Methods",
+            "priority": 1,
+            "prerequisite_chain": [
+              "Arrays",
+              "Wrapper Classes"
+            ],
+            "explanation": "ArrayList.remove(index) shifts elements at index + 1 and above left by one and decreases size() by 1; practice tracing list indices before and after calling remove(1).",
+            "resources": [
+              {
+                "title": "Relational Database Normal Forms Podcast",
+                "url": "https://example.org/materials/286047f0cc16",
+                "resource_type": "podcast"
+              }
+            ]
+          }
+        ],
+        "_meta": {
+          "subgraph_tuples": 2,
+          "topics_processed": 1,
+          "items_generated": 1,
+          "items_after_validation": 1,
+          "items_dropped": 0,
+          "llm_latency_ms": 12,
+          "total_latency_ms": 15
+        }
+      },
+      "resource_evidence": [
+        {
+          "item_index": 0,
+          "resource_index": 0,
+          "excerpt": "The audio episode defines database functional dependencies and decomposes a customer-orders table into third normal form."
+        }
+      ],
+      "shipped_graph": {
+        "seed_graph_servable": false,
+        "example_graph_servable": false,
+        "target_node": "ArrayList Methods",
+        "response_graph": "none",
+        "note": "Topic 'ArrayList Methods' is absent from both internal/graph/seed.json and examples/graphs/computer-science.json."
+      },
+      "scenario_tags": [
+        "calibration",
+        "defective_anchor",
+        "irrelevant_resource"
+      ],
+      "provenance": {
+        "source_type": "synthetic_authored",
+        "author": "benchmark_fixture_author",
+        "created_date": "2026-11-24",
+        "redistribution_permission": "MIT-original-synthetic-fixture",
+        "live_capture": false,
+        "model_version_or_date": "synthetic-cal-04-2026-11-24",
+        "cost_cap_usd": 0,
+        "case_cap": 0
+      },
+      "worked_anchor": {
+        "factual_accuracy": {
+          "status": "scored",
+          "score": 2
+        },
+        "prerequisite_rationale": {
+          "status": "scored",
+          "score": 2
+        },
+        "actionable_guidance": {
+          "status": "scored",
+          "score": 2
+        },
+        "resource_summary_status": "applicable",
+        "resource_ratings": [
+          {
+            "item_index": 0,
+            "resource_index": 0,
+            "rating": {
+              "status": "scored",
+              "score": 0
+            }
+          }
+        ],
+        "critical_error": false,
+        "critical_error_type": "none",
+        "rationale": "Irrelevant resource anchor (resource score 0): explanation is accurate and actionable, and the resource uses a valid HTTPS URL and VARK type 'podcast', but its content covers SQL normal forms instead of Java ArrayList."
+      }
+    },
+    {
+      "id": "CAL-05",
+      "unit": 1,
+      "topic_id": "1.15",
+      "topic_title": "String Manipulation",
+      "objective_ids": [
+        "1.15.B"
+      ],
+      "reference_fact_ids": [
+        "FACT-U1-06"
+      ],
+      "prompt_context": "Learner missed String.substring(from, to) bounds (Topic 1.15) and requested read_write material; no links returned.",
+      "request": {
+        "student_id": "cal-student-5",
+        "course_id": "apcsa-2025",
+        "failed_topics": [
+          "Strings"
+        ],
+        "vark_profile": "read_write"
+      },
+      "candidate_response": {
+        "student_id": "cal-student-5",
+        "course_id": "apcsa-2025",
+        "items": [
+          {
+            "topic": "Strings",
+            "priority": 1,
+            "prerequisite_chain": [
+              "Variables",
+              "Data Types",
+              "Arrays"
+            ],
+            "explanation": "Because String indices run 0 to length() - 1, substring(from, to) includes index from and stops at to - 1 without mutating the original String; hand-trace s.substring(1, 4) on \"axiom\".",
+            "resources": []
+          }
+        ],
+        "_meta": {
+          "subgraph_tuples": 3,
+          "topics_processed": 1,
+          "items_generated": 1,
+          "items_after_validation": 1,
+          "items_dropped": 0,
+          "llm_latency_ms": 12,
+          "total_latency_ms": 15
+        }
+      },
+      "shipped_graph": {
+        "seed_graph_servable": false,
+        "example_graph_servable": true,
+        "target_node": "Strings",
+        "response_graph": "example",
+        "note": "Topic 'Strings' is served by examples/graphs/computer-science.json only (absent from internal/graph/seed.json)."
+      },
+      "scenario_tags": [
+        "calibration",
+        "empty_resources"
+      ],
+      "provenance": {
+        "source_type": "synthetic_authored",
+        "author": "benchmark_fixture_author",
+        "created_date": "2026-11-24",
+        "redistribution_permission": "MIT-original-synthetic-fixture",
+        "live_capture": false,
+        "model_version_or_date": "synthetic-cal-05-2026-11-24",
+        "cost_cap_usd": 0,
+        "case_cap": 0
+      },
+      "worked_anchor": {
+        "factual_accuracy": {
+          "status": "scored",
+          "score": 2
+        },
+        "prerequisite_rationale": {
+          "status": "scored",
+          "score": 2
+        },
+        "actionable_guidance": {
+          "status": "scored",
+          "score": 2
+        },
+        "resource_summary_status": "na",
+        "resource_ratings": [],
+        "critical_error": false,
+        "critical_error_type": "none",
+        "rationale": "Empty resource N/A anchor: an empty resources array passes the wire contract cleanly; raters record resource relevance as N/A rather than 0."
+      }
+    },
+    {
+      "id": "CAL-06",
+      "unit": 4,
+      "topic_id": "4.6",
+      "topic_title": "Using Text Files",
+      "objective_ids": [
+        "4.6.A"
+      ],
+      "reference_fact_ids": [
+        "FACT-U4-07"
+      ],
+      "prompt_context": "Prompt asks whether local wrapper FileInputHelper.parseCustomRecord() matches AP CS A Scanner rules, without supplying FileInputHelper source code.",
+      "request": {
+        "student_id": "cal-student-6",
+        "course_id": "apcsa-2025",
+        "failed_topics": [
+          "File Handling"
+        ],
+        "vark_profile": "visual"
+      },
+      "candidate_response": {
+        "student_id": "cal-student-6",
+        "course_id": "apcsa-2025",
+        "items": [
+          {
+            "topic": "File Handling",
+            "priority": 1,
+            "prerequisite_chain": [
+              "Variables",
+              "Data Types",
+              "Program Input and Output",
+              "Expressions",
+              "Boolean Logic",
+              "Control Flow",
+              "Error Handling"
+            ],
+            "explanation": "FileInputHelper.parseCustomRecord() always trims blank lines and converts tokens automatically without IOException; review your classroom packet for its exact signature.",
+            "resources": [
+              {
+                "title": "FileInputHelper Call Diagram",
+                "url": "https://example.org/materials/be26a258d7a0",
+                "resource_type": "diagram"
+              }
+            ]
+          }
+        ],
+        "_meta": {
+          "subgraph_tuples": 3,
+          "topics_processed": 1,
+          "items_generated": 1,
+          "items_after_validation": 1,
+          "items_dropped": 0,
+          "llm_latency_ms": 12,
+          "total_latency_ms": 15
+        }
+      },
+      "resource_evidence": [
+        {
+          "item_index": 0,
+          "resource_index": 0,
+          "unavailable_reason": "The classroom diagram was referenced but no copy or description was supplied."
+        }
+      ],
+      "shipped_graph": {
+        "seed_graph_servable": false,
+        "example_graph_servable": true,
+        "target_node": "File Handling",
+        "response_graph": "example",
+        "note": "Topic 'File Handling' is served by examples/graphs/computer-science.json only (absent from internal/graph/seed.json)."
+      },
+      "scenario_tags": [
+        "calibration",
+        "missing_evidence"
+      ],
+      "provenance": {
+        "source_type": "synthetic_authored",
+        "author": "benchmark_fixture_author",
+        "created_date": "2026-11-24",
+        "redistribution_permission": "MIT-original-synthetic-fixture",
+        "live_capture": false,
+        "model_version_or_date": "synthetic-cal-06-2026-11-24",
+        "cost_cap_usd": 0,
+        "case_cap": 0
+      },
+      "worked_anchor": {
+        "factual_accuracy": {
+          "status": "abstain",
+          "reason": "Referenced class FileInputHelper is absent from the prompt and CED; cannot verify its behavior."
+        },
+        "prerequisite_rationale": {
+          "status": "abstain",
+          "reason": "Insufficient context to evaluate helper prerequisites without source code."
+        },
+        "actionable_guidance": {
+          "status": "scored",
+          "score": 1
+        },
+        "resource_summary_status": "applicable",
+        "resource_ratings": [
+          {
+            "item_index": 0,
+            "resource_index": 0,
+            "rating": {
+              "status": "abstain",
+              "reason": "The diagram was not provided, so its content and relevance cannot be verified."
+            }
+          }
+        ],
+        "critical_error": false,
+        "critical_error_type": "none",
+        "rationale": "Abstain on the custom class behavior, its prerequisites, and the linked diagram because the source and diagram are unavailable. The advice to consult the packet gives a direction without a concrete verification step."
+      }
+    }
+  ],
+  "evaluation_cases": [
+    {
+      "id": "EVAL-U1-01",
+      "unit": 1,
+      "topic_id": "1.2",
+      "topic_title": "Variables and Data Types",
+      "objective_ids": [
+        "1.2.A",
+        "1.2.B"
+      ],
+      "reference_fact_ids": [
+        "FACT-U1-01"
+      ],
+      "prompt_context": "Learner confused Java primitive types (int, double, boolean) with reference variables and requested visual guidance.",
+      "request": {
+        "student_id": "eval-eval-u1-01",
+        "course_id": "apcsa-2025",
+        "failed_topics": [
+          "Variables"
+        ],
+        "vark_profile": "visual"
+      },
+      "candidate_response": {
+        "student_id": "eval-eval-u1-01",
+        "course_id": "apcsa-2025",
+        "items": [
+          {
+            "topic": "Variables",
+            "priority": 1,
+            "prerequisite_chain": [],
+            "explanation": "Variables hold either primitive values (int, double, boolean in AP CS A) or object references. Classify each field in a sample class as primitive or reference and trace assignments.",
+            "resources": [
+              {
+                "title": "Primitive vs Reference Memory Diagram",
+                "url": "https://example.org/materials/5fd7a044794a",
+                "resource_type": "diagram"
+              },
+              {
+                "title": "Java Primitive Data Types Walkthrough",
+                "url": "https://example.org/materials/31a3c96e3832",
+                "resource_type": "video"
+              }
+            ]
+          }
+        ],
+        "_meta": {
+          "subgraph_tuples": 1,
+          "topics_processed": 1,
+          "items_generated": 1,
+          "items_after_validation": 1,
+          "items_dropped": 0,
+          "llm_latency_ms": 12,
+          "total_latency_ms": 15
+        }
+      },
+      "resource_evidence": [
+        {
+          "item_index": 0,
+          "resource_index": 0,
+          "excerpt": "The diagram shows one int variable holding 7 and two reference variables pointing at the same Box. It labels copies of the value and reference with distinct arrows."
+        },
+        {
+          "item_index": 0,
+          "resource_index": 1,
+          "excerpt": "The video colors int, double, and boolean declarations, then animates assignments of 7, 2.5, and true to the corresponding variables."
+        }
+      ],
+      "shipped_graph": {
+        "seed_graph_servable": true,
+        "example_graph_servable": true,
+        "target_node": "Variables",
+        "response_graph": "example",
+        "note": "Topic 'Variables' is served by both internal/graph/seed.json and examples/graphs/computer-science.json."
+      },
+      "scenario_tags": [
+        "acceptable_anchor"
+      ],
+      "origin": {
+        "provider": "synthetic-provider-a",
+        "model": "synth-model-1",
+        "variant": "baseline-v1",
+        "seeded_critical_error": false,
+        "seeded_critical_type": "none",
+        "defect_note": "Acceptable Unit 1 anchor."
+      },
+      "provenance": {
+        "source_type": "synthetic_authored",
+        "author": "benchmark_fixture_author",
+        "created_date": "2026-11-24",
+        "redistribution_permission": "MIT-original-synthetic-fixture",
+        "live_capture": false,
+        "model_version_or_date": "synthetic-eval-u1-01-2026-11-24",
+        "cost_cap_usd": 0,
+        "case_cap": 0
+      }
+    },
+    {
+      "id": "EVAL-U1-02",
+      "unit": 1,
+      "topic_id": "1.3",
+      "topic_title": "Expressions and Output",
+      "objective_ids": [
+        "1.3.C"
+      ],
+      "reference_fact_ids": [
+        "FACT-U1-02"
+      ],
+      "prompt_context": "Learner evaluated mixed int and double arithmetic expressions incorrectly and requested kinesthetic practice.",
+      "request": {
+        "student_id": "eval-eval-u1-02",
+        "course_id": "apcsa-2025",
+        "failed_topics": [
+          "Expressions"
+        ],
+        "vark_profile": "kinesthetic"
+      },
+      "candidate_response": {
+        "student_id": "eval-eval-u1-02",
+        "course_id": "apcsa-2025",
+        "items": [
+          {
+            "topic": "Expressions",
+            "priority": 1,
+            "prerequisite_chain": [
+              "Variables",
+              "Data Types"
+            ],
+            "explanation": "Start from Data Types before Expressions. In Java, 1 / 2 * 4.0 evaluates to 2.0 because multiplication and division widen the whole expression to double automatically; run five tracing drills.",
+            "resources": [
+              {
+                "title": "Arithmetic Precedence Java Practice",
+                "url": "https://example.org/materials/d7932a59d730",
+                "resource_type": "exercise"
+              }
+            ]
+          }
+        ],
+        "_meta": {
+          "subgraph_tuples": 2,
+          "topics_processed": 1,
+          "items_generated": 1,
+          "items_after_validation": 1,
+          "items_dropped": 0,
+          "llm_latency_ms": 12,
+          "total_latency_ms": 15
+        }
+      },
+      "resource_evidence": [
+        {
+          "item_index": 0,
+          "resource_index": 0,
+          "excerpt": "Predict and run 1 / 2 * 4.0, 1 / 2.0 * 4, and (double)(1 / 2). Record the type and value after each operator."
+        }
+      ],
+      "shipped_graph": {
+        "seed_graph_servable": false,
+        "example_graph_servable": true,
+        "target_node": "Expressions",
+        "response_graph": "example",
+        "note": "Topic 'Expressions' is served by examples/graphs/computer-science.json only (absent from internal/graph/seed.json)."
+      },
+      "scenario_tags": [
+        "plausible_false_statement",
+        "structurally_valid_wrong_answer"
+      ],
+      "origin": {
+        "provider": "synthetic-provider-a",
+        "model": "synth-model-1",
+        "variant": "baseline-v1",
+        "seeded_critical_error": true,
+        "seeded_critical_type": "factual",
+        "defect_note": "Structurally valid wrong answer: 1 / 2 evaluates left-to-right as int 0, so 1 / 2 * 4.0 == 0.0, not 2.0."
+      },
+      "provenance": {
+        "source_type": "synthetic_authored",
+        "author": "benchmark_fixture_author",
+        "created_date": "2026-11-24",
+        "redistribution_permission": "MIT-original-synthetic-fixture",
+        "live_capture": false,
+        "model_version_or_date": "synthetic-eval-u1-02-2026-11-24",
+        "cost_cap_usd": 0,
+        "case_cap": 0
+      }
+    },
+    {
+      "id": "EVAL-U1-03",
+      "unit": 1,
+      "topic_id": "1.5",
+      "topic_title": "Casting and Range of Variables",
+      "objective_ids": [
+        "1.5.A",
+        "1.5.B",
+        "1.5.C"
+      ],
+      "reference_fact_ids": [
+        "FACT-U1-03"
+      ],
+      "prompt_context": "When does an int wrap around, and where should I put a double cast if I want a fractional quotient?",
+      "request": {
+        "student_id": "eval-eval-u1-03",
+        "course_id": "apcsa-2025",
+        "failed_topics": [
+          "Data Types"
+        ],
+        "vark_profile": "read_write"
+      },
+      "candidate_response": {
+        "student_id": "eval-eval-u1-03",
+        "course_id": "apcsa-2025",
+        "items": [
+          {
+            "topic": "Data Types",
+            "priority": 1,
+            "prerequisite_chain": [
+              "Variables"
+            ],
+            "explanation": "A Java int has a fixed 32-bit signed range from Integer.MIN_VALUE to Integer.MAX_VALUE. Adding 1 to Integer.MAX_VALUE wraps to Integer.MIN_VALUE without an exception. Start by predicting the values of Integer.MAX_VALUE - 1, Integer.MAX_VALUE, and Integer.MAX_VALUE + 1, then print each expression and compare it with your prediction. Next trace 7 / 2, (double) 7 / 2, and (double) (7 / 2). The first calculation divides two int operands and yields 3. In the second, one operand is already a double, so the quotient is 3.5. In the third, the int division happens inside the parentheses first and the cast turns the result into 3.0. Write down each operand's type before you run the code. To see that double arithmetic can still round, print 0.1 + 0.2 beside 0.3. Both decimal inputs are approximated in binary. Finish by explaining which operation overflowed, which operation discarded the fractional part, and which operation rounded a floating-point result. Try subtracting 1 from Integer.MIN_VALUE.",
+            "resources": [
+              {
+                "title": "A Guide to Java Integer Ranges, Signed Overflow, and Explicit Casting: Worked Examples for Tracing Mixed Arithmetic Expressions and Comparing the Results of Integer and Floating-Point Division in Java",
+                "url": "https://example.org/materials/36e106d58fe9?v=-vp4SSuUfZi-WLY_1Ms1nj579GPgUR-pBBUYEy5A0jWY54y8MI--mSzhg2IjyRhogiMmKDZ0iV-ElQ1Xs62X5VZTGV-djyz13AF2grxsw294IGObIKRpJSm_JhIyWfmfJ36domcMT9TLIZTdy9pg10Ba6g62nBLh1QN3l7x1E1oJ8sHwziJUnZXxzS7KoMfiCI12LNn7lNwxcVjuYk2lZdH27gHGQHbrRN2ea9GaMA6GJbh4w2g_c760GbfNAE_WxiNPzT2UwuIP4d_yPibAgjhwfFSdhFiZ7ol_KjGb_ZvOwzsUROTocBDyNYvhDFPu0n1Fr80DAu1aTAhr7bg5SvUdIZn7aAeHA4h0ZqzL8HK844BBzo0uQAllMz4BdbdZltXDjQeW_IrtzPousjsDsiiBd1bVP1PMwOCpNj70_R49URSw8GjaNen-kpyeA_2j4IUUOAjiogWvSiKXhy7QgZeLDNEkuk3Vgw5j3t2A3Z5ah9Np5HJYVNqnzAS6E-doaiXSDfAfGnp5E1TlqNJi7U7z4CK2L3fR6lp--R-fcQRw-i-WWCh3-BVbLaowEDmWv9scJUXfszyxpAcMdsge3lS8sf3c9LgyywsI5iHEBjj-vaM0cd_v1GOTYoSKHyl63SqYyKA0i4nKg34OsP4VJcAGHX090Z0slENiMETbhaMIGY17AbHMyadnvcAp9Y6hVa-EDCVw-e9nSIfBBKuga2kbNj2O6CenZm9FvHl1fS7t9oqhp3fdt1Ki_CNa1nAFNKeb0Qq3hzqf8y42XV2j_v_c0C3KfkVb3YSYIg9PKhXNdi5X05M6_12c9wIClGEi6IspGeRJsJ-nVnQfOMbPnNyDY_3b8pvIJu77Rhh6xEMIDQvqierXLvs7uUHbxdV6J9vs3vugp-tsGazzhnZq-cdtQ2N6L0dJXty5xRqUrMbwmcyVsf2-PhSKO97wSIWbjqQxpKh-mLc9a62-HErSloE183OHaI-_dY4suPxXmbswQt2Ck8Wt9MOezR8KI3Y4lkAc8c9SwzRG0lTx9RRdpTMAalAyRM3ChKjvGsUT4KOo2oKEbmnGvJJuZJhz1zcfxfACN4yxpVBJtYge2uLgK0CBrepdvEN7MLlG_yC77Of216Md-E6xH0vR6-UFCOvzoNDbYfjdLIXgxJlbyO7N_lDK7Mp9ZpVcr-Ujc1h8h9b0ZrjhS_ZXI3Z0pFZjdZFudS_W3XFMXwXFykVhoc4yWA8YFBCwwys5rNZHMROe8k0W8-l9yy_h8fn4xuHn0z0tDwF1B5EjzABwFHp-IOFUOcXP5Vuhf9-xypNwR_u3QnzfF9K-9SjGpDi-VYTwwxFer1TrM0SEtlC1rze5Y4uufokvIz3bWZnSfrVg0bezjCkE8Dmjz8ZKWpNw3zqu3oM2whT4ht1KmKZA4YS9Mz1aIgGBK77CxEWlGXwjZj1qDMH_K-bUMMgIMYxaF_5wE77ctJHFCmsF_CFrO6jT1pN9-vuUbpdDIBj7tr2_O93xEmliia5gTqQPgmo0rKUWU_-s0u8jTP7n3nEMX1v0Szcp3bTMVcZ1YfLlq62dsKNwdoxiivhMZpTQ6R3u16x2NCr65Q3ZMr-oy1vtJL42sECEaVL7-i3UYZszVNP362ioMHAAsem_WuT3Dob-u8jBSuodqtR5GjY_gPsSlONtkQafqVudFwYCO3UwWk2vgl-tPvdU7EGL5Eqb5PjVhIFrvkT7BkWKG4lFu6B7x1bEysoQo2a2K0gIt2QAxKQ2UR0X17fhfyqPFAHWxHFZ9L44WhCTAuIHPq3w_I8TcsPSvZuQSuu4UIU9WOQMl7xk91mPqsrDgn92nRbR4q6GeKLp1ezJVaPjMl6Y_KWWULp3Z79yGd9VPg5-RGwxqRi60wmX652WrG-V8zGux_TEy1SSDLeG9ZaJuSI8FwswTCfRDUIzj2L2CJB-ynV6Z43a5mdxMCVeHKILu7ByHvEnoP8wE9IX_Xb_zNd6ILpDnya7IyV",
+                "resource_type": "article"
+              },
+              {
+                "title": "AP CS A Primitive Range Textbook Section",
+                "url": "https://example.org/materials/4a1d6b3a2f17",
+                "resource_type": "textbook"
+              },
+              {
+                "title": "Java Integer Limits Documentation Summary",
+                "url": "https://example.org/materials/c3625c2c4af8",
+                "resource_type": "documentation"
+              }
+            ]
+          }
+        ],
+        "_meta": {
+          "subgraph_tuples": 1,
+          "topics_processed": 1,
+          "items_generated": 1,
+          "items_after_validation": 1,
+          "items_dropped": 0,
+          "llm_latency_ms": 12,
+          "total_latency_ms": 15
+        }
+      },
+      "resource_evidence": [
+        {
+          "item_index": 0,
+          "resource_index": 0,
+          "excerpt": "The article compares (double) 7 / 2 and (double)(7 / 2), then traces Integer.MAX_VALUE + 1 to Integer.MIN_VALUE using a signed 32-bit number line."
+        },
+        {
+          "item_index": 0,
+          "resource_index": 1,
+          "excerpt": "The textbook table lists the signed int extremes and follows a counter through wraparound. A second example compares the binary approximations of 0.1 and 0.2."
+        },
+        {
+          "item_index": 0,
+          "resource_index": 2,
+          "excerpt": "The documentation summary introduces Integer.MIN_VALUE and Integer.MAX_VALUE and gives three expressions to check around the endpoints."
+        }
+      ],
+      "shipped_graph": {
+        "seed_graph_servable": false,
+        "example_graph_servable": true,
+        "target_node": "Data Types",
+        "response_graph": "example",
+        "note": "Topic 'Data Types' is served by examples/graphs/computer-science.json only (absent from internal/graph/seed.json)."
+      },
+      "scenario_tags": [
+        "service_limits",
+        "acceptable_anchor"
+      ],
+      "origin": {
+        "provider": "synthetic-provider-a",
+        "model": "synth-model-1",
+        "variant": "limit-v1",
+        "seeded_critical_error": false,
+        "seeded_critical_type": "none",
+        "defect_note": "Service boundary fixture: 1000-rune explanation, 200-rune title, 2048-char URL, 3 resources."
+      },
+      "provenance": {
+        "source_type": "synthetic_authored",
+        "author": "benchmark_fixture_author",
+        "created_date": "2026-11-24",
+        "redistribution_permission": "MIT-original-synthetic-fixture",
+        "live_capture": false,
+        "model_version_or_date": "synthetic-eval-u1-03-2026-11-24",
+        "cost_cap_usd": 0,
+        "case_cap": 0
+      }
+    },
+    {
+      "id": "EVAL-U1-04",
+      "unit": 1,
+      "topic_id": "1.11",
+      "topic_title": "Math Class",
+      "objective_ids": [
+        "1.11.A"
+      ],
+      "reference_fact_ids": [
+        "FACT-U1-04"
+      ],
+      "prompt_context": "How can I use Math.random() to simulate rolling a six-sided die? I'd like to hear the steps.",
+      "request": {
+        "student_id": "eval-eval-u1-04",
+        "course_id": "apcsa-2025",
+        "failed_topics": [
+          "Math.random Range"
+        ],
+        "vark_profile": "auditory"
+      },
+      "candidate_response": {
+        "student_id": "eval-eval-u1-04",
+        "course_id": "apcsa-2025",
+        "items": [
+          {
+            "topic": "Math.random Range",
+            "priority": 1,
+            "prerequisite_chain": [
+              "Variables",
+              "Data Types",
+              "Expressions"
+            ],
+            "explanation": "Math.random() returns a double in [0.0, 1.0). Wrap the scaled product in parentheses before casting: (int)(Math.random() * 6) + 1 generates 1 through 6 inclusive.",
+            "resources": []
+          }
+        ],
+        "_meta": {
+          "subgraph_tuples": 3,
+          "topics_processed": 1,
+          "items_generated": 1,
+          "items_after_validation": 1,
+          "items_dropped": 0,
+          "llm_latency_ms": 12,
+          "total_latency_ms": 15
+        }
+      },
+      "shipped_graph": {
+        "seed_graph_servable": false,
+        "example_graph_servable": false,
+        "target_node": "Math.random Range",
+        "response_graph": "none",
+        "note": "Topic 'Math.random Range' is absent from both internal/graph/seed.json and examples/graphs/computer-science.json."
+      },
+      "scenario_tags": [
+        "empty_resources",
+        "acceptable_anchor"
+      ],
+      "origin": {
+        "provider": "synthetic-provider-b",
+        "model": "synth-model-2",
+        "variant": "compact-v1",
+        "seeded_critical_error": false,
+        "seeded_critical_type": "none",
+        "defect_note": "Empty resources array passes wire contract; resource relevance is N/A."
+      },
+      "provenance": {
+        "source_type": "synthetic_authored",
+        "author": "benchmark_fixture_author",
+        "created_date": "2026-11-24",
+        "redistribution_permission": "MIT-original-synthetic-fixture",
+        "live_capture": false,
+        "model_version_or_date": "synthetic-eval-u1-04-2026-11-24",
+        "cost_cap_usd": 0,
+        "case_cap": 0
+      }
+    },
+    {
+      "id": "EVAL-U1-05",
+      "unit": 1,
+      "topic_id": "1.13",
+      "topic_title": "Object Creation and Storage (Instantiation)",
+      "objective_ids": [
+        "1.13.B",
+        "1.13.C"
+      ],
+      "reference_fact_ids": [
+        "FACT-U1-05"
+      ],
+      "prompt_context": "Learner struggled with object instantiation using new and null references under visual preference.",
+      "request": {
+        "student_id": "eval-eval-u1-05",
+        "course_id": "apcsa-2025",
+        "failed_topics": [
+          "Objects"
+        ],
+        "vark_profile": "visual"
+      },
+      "candidate_response": {
+        "student_id": "eval-eval-u1-05",
+        "course_id": "apcsa-2025",
+        "items": [
+          {
+            "topic": "Objects",
+            "priority": 1,
+            "prerequisite_chain": [
+              "Variables"
+            ],
+            "explanation": "Master polymorphism and abstract interface dispatch first as prerequisites before learning how new allocates an object or assigning null to a reference variable.",
+            "resources": [
+              {
+                "title": "Object Instantiation Diagram",
+                "url": "https://example.org/materials/d32813f4532c",
+                "resource_type": "diagram"
+              }
+            ]
+          }
+        ],
+        "_meta": {
+          "subgraph_tuples": 1,
+          "topics_processed": 1,
+          "items_generated": 1,
+          "items_after_validation": 1,
+          "items_dropped": 0,
+          "llm_latency_ms": 12,
+          "total_latency_ms": 15
+        }
+      },
+      "resource_evidence": [
+        {
+          "item_index": 0,
+          "resource_index": 0,
+          "excerpt": "A diagram traces Box b = null, followed by b = new Box(3). It draws the reference separately from the Box and shows its initialized field."
+        }
+      ],
+      "shipped_graph": {
+        "seed_graph_servable": true,
+        "example_graph_servable": true,
+        "target_node": "Objects",
+        "response_graph": "example",
+        "note": "Topic 'Objects' is served by both internal/graph/seed.json and examples/graphs/computer-science.json."
+      },
+      "scenario_tags": [
+        "reversed_prerequisite",
+        "structurally_valid_wrong_answer"
+      ],
+      "origin": {
+        "provider": "synthetic-provider-b",
+        "model": "synth-model-2",
+        "variant": "prereq-invert",
+        "seeded_critical_error": true,
+        "seeded_critical_type": "prerequisite",
+        "defect_note": "Reversed prerequisite and out-of-scope requirement: places polymorphism before object creation."
+      },
+      "provenance": {
+        "source_type": "synthetic_authored",
+        "author": "benchmark_fixture_author",
+        "created_date": "2026-11-24",
+        "redistribution_permission": "MIT-original-synthetic-fixture",
+        "live_capture": false,
+        "model_version_or_date": "synthetic-eval-u1-05-2026-11-24",
+        "cost_cap_usd": 0,
+        "case_cap": 0
+      }
+    },
+    {
+      "id": "EVAL-U1-06",
+      "unit": 1,
+      "topic_id": "1.15",
+      "topic_title": "String Manipulation",
+      "objective_ids": [
+        "1.15.A",
+        "1.15.B"
+      ],
+      "reference_fact_ids": [
+        "FACT-U1-06"
+      ],
+      "prompt_context": "Can you help me with Strings? I got some questions wrong on the last worksheet.",
+      "request": {
+        "student_id": "eval-eval-u1-06",
+        "course_id": "apcsa-2025",
+        "failed_topics": [
+          "Strings"
+        ],
+        "vark_profile": "read_write"
+      },
+      "candidate_response": {
+        "student_id": "eval-eval-u1-06",
+        "course_id": "apcsa-2025",
+        "items": [
+          {
+            "topic": "Strings",
+            "priority": 1,
+            "prerequisite_chain": [
+              "Variables",
+              "Data Types",
+              "Arrays"
+            ],
+            "explanation": "Strings are sequences of characters in java.lang; review String methods and verify whether your errors involve substring end indices, immutability, or compareTo signs.",
+            "resources": [
+              {
+                "title": "Java String Immutability and Methods Guide",
+                "url": "https://example.org/materials/aa901b5df1c8",
+                "resource_type": "article"
+              }
+            ]
+          }
+        ],
+        "_meta": {
+          "subgraph_tuples": 3,
+          "topics_processed": 1,
+          "items_generated": 1,
+          "items_after_validation": 1,
+          "items_dropped": 0,
+          "llm_latency_ms": 12,
+          "total_latency_ms": 15
+        }
+      },
+      "resource_evidence": [
+        {
+          "item_index": 0,
+          "resource_index": 0,
+          "excerpt": "The guide traces substring(1, 3) on 'code', shows an unchanged original after concatenation, and gives two examples where compareTo's sign indicates order."
+        }
+      ],
+      "shipped_graph": {
+        "seed_graph_servable": false,
+        "example_graph_servable": true,
+        "target_node": "Strings",
+        "response_graph": "example",
+        "note": "Topic 'Strings' is served by examples/graphs/computer-science.json only (absent from internal/graph/seed.json)."
+      },
+      "scenario_tags": [
+        "ambiguous_prompt"
+      ],
+      "origin": {
+        "provider": "synthetic-provider-c",
+        "model": "synth-model-3",
+        "variant": "ambig-v1",
+        "seeded_critical_error": false,
+        "seeded_critical_type": "none",
+        "defect_note": "Ambiguous prompt case: prompt lacks diagnostic focus; response stays general (partial guidance)."
+      },
+      "provenance": {
+        "source_type": "synthetic_authored",
+        "author": "benchmark_fixture_author",
+        "created_date": "2026-11-24",
+        "redistribution_permission": "MIT-original-synthetic-fixture",
+        "live_capture": false,
+        "model_version_or_date": "synthetic-eval-u1-06-2026-11-24",
+        "cost_cap_usd": 0,
+        "case_cap": 0
+      }
+    },
+    {
+      "id": "EVAL-U1-07",
+      "unit": 1,
+      "topic_id": "1.4",
+      "topic_title": "Assignment Statements and Input",
+      "objective_ids": [
+        "1.4.A",
+        "1.8.A"
+      ],
+      "reference_fact_ids": [
+        "FACT-U1-07"
+      ],
+      "prompt_context": "Learner missed variable initialization and precondition rules under kinesthetic preference.",
+      "request": {
+        "student_id": "eval-eval-u1-07",
+        "course_id": "apcsa-2025",
+        "failed_topics": [
+          "Program Input and Output"
+        ],
+        "vark_profile": "kinesthetic"
+      },
+      "candidate_response": {
+        "student_id": "eval-eval-u1-07",
+        "course_id": "apcsa-2025",
+        "items": [
+          {
+            "topic": "Program Input and Output",
+            "priority": 1,
+            "prerequisite_chain": [
+              "Variables",
+              "Data Types"
+            ],
+            "explanation": "Initialize local variables with compatible types before reading them, and verify documented preconditions at call sites because Java methods are not required to check them.",
+            "resources": [
+              {
+                "title": "Working with Grids",
+                "url": "https://example.org/materials/6ac6b325e89d",
+                "resource_type": "coding-challenge"
+              }
+            ]
+          }
+        ],
+        "_meta": {
+          "subgraph_tuples": 2,
+          "topics_processed": 1,
+          "items_generated": 1,
+          "items_after_validation": 1,
+          "items_dropped": 0,
+          "llm_latency_ms": 12,
+          "total_latency_ms": 15
+        }
+      },
+      "resource_evidence": [
+        {
+          "item_index": 0,
+          "resource_index": 0,
+          "excerpt": "This browser activity asks learners to set grid-template-columns and move visual cards through CSS grid cells."
+        }
+      ],
+      "shipped_graph": {
+        "seed_graph_servable": false,
+        "example_graph_servable": true,
+        "target_node": "Program Input and Output",
+        "response_graph": "example",
+        "note": "Topic 'Program Input and Output' is served by examples/graphs/computer-science.json only (absent from internal/graph/seed.json)."
+      },
+      "scenario_tags": [
+        "irrelevant_resource"
+      ],
+      "origin": {
+        "provider": "synthetic-provider-c",
+        "model": "synth-model-3",
+        "variant": "link-mismatch",
+        "seeded_critical_error": false,
+        "seeded_critical_type": "none",
+        "defect_note": "Irrelevant resource: valid coding-challenge URL and VARK match, but teaches CSS Grid instead of Java input/preconditions."
+      },
+      "provenance": {
+        "source_type": "synthetic_authored",
+        "author": "benchmark_fixture_author",
+        "created_date": "2026-11-24",
+        "redistribution_permission": "MIT-original-synthetic-fixture",
+        "live_capture": false,
+        "model_version_or_date": "synthetic-eval-u1-07-2026-11-24",
+        "cost_cap_usd": 0,
+        "case_cap": 0
+      }
+    },
+    {
+      "id": "EVAL-U2-01",
+      "unit": 2,
+      "topic_id": "2.2",
+      "topic_title": "Boolean Expressions",
+      "objective_ids": [
+        "2.2.A",
+        "2.6.B"
+      ],
+      "reference_fact_ids": [
+        "FACT-U2-01"
+      ],
+      "prompt_context": "Learner missed String equality comparisons under read_write preference.",
+      "request": {
+        "student_id": "eval-eval-u2-01",
+        "course_id": "apcsa-2025",
+        "failed_topics": [
+          "Boolean Logic"
+        ],
+        "vark_profile": "read_write"
+      },
+      "candidate_response": {
+        "student_id": "eval-eval-u2-01",
+        "course_id": "apcsa-2025",
+        "items": [
+          {
+            "topic": "Boolean Logic",
+            "priority": 1,
+            "prerequisite_chain": [
+              "Variables",
+              "Data Types",
+              "Expressions"
+            ],
+            "explanation": "In Java, new String(\"abc\") == new String(\"abc\") evaluates to true because == checks whether two String objects contain identical characters; reserve equals for custom classes.",
+            "resources": [
+              {
+                "title": "Java Relational Operators Reference",
+                "url": "https://example.org/materials/0abd34bbbb29",
+                "resource_type": "article"
+              }
+            ]
+          }
+        ],
+        "_meta": {
+          "subgraph_tuples": 3,
+          "topics_processed": 1,
+          "items_generated": 1,
+          "items_after_validation": 1,
+          "items_dropped": 0,
+          "llm_latency_ms": 12,
+          "total_latency_ms": 15
+        }
+      },
+      "resource_evidence": [
+        {
+          "item_index": 0,
+          "resource_index": 0,
+          "excerpt": "The article separates primitive value comparisons from reference identity, with paired examples using == and equals on distinct String objects."
+        }
+      ],
+      "shipped_graph": {
+        "seed_graph_servable": false,
+        "example_graph_servable": true,
+        "target_node": "Boolean Logic",
+        "response_graph": "example",
+        "note": "Topic 'Boolean Logic' is served by examples/graphs/computer-science.json only (absent from internal/graph/seed.json)."
+      },
+      "scenario_tags": [
+        "plausible_false_statement",
+        "structurally_valid_wrong_answer"
+      ],
+      "origin": {
+        "provider": "synthetic-provider-a",
+        "model": "synth-model-1",
+        "variant": "baseline-v1",
+        "seeded_critical_error": true,
+        "seeded_critical_type": "factual",
+        "defect_note": "Structurally valid wrong answer: == compares object references (false for distinct new String instances), not characters."
+      },
+      "provenance": {
+        "source_type": "synthetic_authored",
+        "author": "benchmark_fixture_author",
+        "created_date": "2026-11-24",
+        "redistribution_permission": "MIT-original-synthetic-fixture",
+        "live_capture": false,
+        "model_version_or_date": "synthetic-eval-u2-01-2026-11-24",
+        "cost_cap_usd": 0,
+        "case_cap": 0
+      }
+    },
+    {
+      "id": "EVAL-U2-02",
+      "unit": 2,
+      "topic_id": "2.5",
+      "topic_title": "Compound Boolean Expressions",
+      "objective_ids": [
+        "2.5.A"
+      ],
+      "reference_fact_ids": [
+        "FACT-U2-02"
+      ],
+      "prompt_context": "Learner missed logical operator precedence and short-circuit evaluation under visual preference.",
+      "request": {
+        "student_id": "eval-eval-u2-02",
+        "course_id": "apcsa-2025",
+        "failed_topics": [
+          "Boolean Logic"
+        ],
+        "vark_profile": "visual"
+      },
+      "candidate_response": {
+        "student_id": "eval-eval-u2-02",
+        "course_id": "apcsa-2025",
+        "items": [
+          {
+            "topic": "Boolean Logic",
+            "priority": 1,
+            "prerequisite_chain": [
+              "Variables",
+              "Data Types",
+              "Expressions"
+            ],
+            "explanation": "Java evaluates ! before \u0026\u0026 and \u0026\u0026 before ||; with \u0026\u0026, if the left side is false, the right side is skipped. Build a truth table for (x != 0) \u0026\u0026 (10 / x \u003e 1) starting at x = 0.",
+            "resources": [
+              {
+                "title": "Operator Precedence and Short-Circuit Flowchart",
+                "url": "https://example.org/materials/d96a11dd7409",
+                "resource_type": "infographic"
+              },
+              {
+                "title": "Tracing Compound Boolean Expressions",
+                "url": "https://example.org/materials/df265f3dc3c9",
+                "resource_type": "video"
+              }
+            ]
+          }
+        ],
+        "_meta": {
+          "subgraph_tuples": 3,
+          "topics_processed": 1,
+          "items_generated": 1,
+          "items_after_validation": 1,
+          "items_dropped": 0,
+          "llm_latency_ms": 12,
+          "total_latency_ms": 15
+        }
+      },
+      "resource_evidence": [
+        {
+          "item_index": 0,
+          "resource_index": 0,
+          "excerpt": "The flowchart traces the left guard of (x != 0) \u0026\u0026 (10 / x \u003e 1). It takes a branch around the division when x is zero."
+        },
+        {
+          "item_index": 0,
+          "resource_index": 1,
+          "excerpt": "The video steps through one truth-table row at a time, highlighting parentheses and each evaluated operand. It pauses for predictions when the second operand can be skipped."
+        }
+      ],
+      "shipped_graph": {
+        "seed_graph_servable": false,
+        "example_graph_servable": true,
+        "target_node": "Boolean Logic",
+        "response_graph": "example",
+        "note": "Topic 'Boolean Logic' is served by examples/graphs/computer-science.json only (absent from internal/graph/seed.json)."
+      },
+      "scenario_tags": [
+        "acceptable_anchor"
+      ],
+      "origin": {
+        "provider": "synthetic-provider-a",
+        "model": "synth-model-1",
+        "variant": "baseline-v1",
+        "seeded_critical_error": false,
+        "seeded_critical_type": "none",
+        "defect_note": "Acceptable Unit 2 anchor covering 2.5.A precedence and short-circuiting."
+      },
+      "provenance": {
+        "source_type": "synthetic_authored",
+        "author": "benchmark_fixture_author",
+        "created_date": "2026-11-24",
+        "redistribution_permission": "MIT-original-synthetic-fixture",
+        "live_capture": false,
+        "model_version_or_date": "synthetic-eval-u2-02-2026-11-24",
+        "cost_cap_usd": 0,
+        "case_cap": 0
+      }
+    },
+    {
+      "id": "EVAL-U2-03",
+      "unit": 2,
+      "topic_id": "2.6",
+      "topic_title": "Comparing Boolean Expressions",
+      "objective_ids": [
+        "2.6.A"
+      ],
+      "reference_fact_ids": [
+        "FACT-U2-03"
+      ],
+      "prompt_context": "Learner confused De Morgan's Law negations under auditory preference.",
+      "request": {
+        "student_id": "eval-eval-u2-03",
+        "course_id": "apcsa-2025",
+        "failed_topics": [
+          "Control Flow"
+        ],
+        "vark_profile": "auditory"
+      },
+      "candidate_response": {
+        "student_id": "eval-eval-u2-03",
+        "course_id": "apcsa-2025",
+        "items": [
+          {
+            "topic": "Control Flow",
+            "priority": 1,
+            "prerequisite_chain": [
+              "Variables",
+              "Data Types",
+              "Expressions",
+              "Boolean Logic"
+            ],
+            "explanation": "De Morgan's Law pairs negation with operator flipping: !(a || b) equals !a \u0026\u0026 !b, and !(a \u0026\u0026 b) equals !a || !b; test all four boolean pairs in a truth table.",
+            "resources": [
+              {
+                "title": "Tracing a Sequence",
+                "url": "https://example.org/materials/c218606813c6",
+                "resource_type": "lecture"
+              }
+            ]
+          }
+        ],
+        "_meta": {
+          "subgraph_tuples": 4,
+          "topics_processed": 1,
+          "items_generated": 1,
+          "items_after_validation": 1,
+          "items_dropped": 0,
+          "llm_latency_ms": 12,
+          "total_latency_ms": 15
+        }
+      },
+      "resource_evidence": [
+        {
+          "item_index": 0,
+          "resource_index": 0,
+          "excerpt": "The audio lesson describes frame headers, stream IDs, and scheduling HTTP/2 frames from multiple streams on one connection."
+        }
+      ],
+      "shipped_graph": {
+        "seed_graph_servable": false,
+        "example_graph_servable": true,
+        "target_node": "Control Flow",
+        "response_graph": "example",
+        "note": "Topic 'Control Flow' is served by examples/graphs/computer-science.json only (absent from internal/graph/seed.json)."
+      },
+      "scenario_tags": [
+        "irrelevant_resource"
+      ],
+      "origin": {
+        "provider": "synthetic-provider-b",
+        "model": "synth-model-2",
+        "variant": "link-mismatch",
+        "seeded_critical_error": false,
+        "seeded_critical_type": "none",
+        "defect_note": "Irrelevant resource: valid lecture matching auditory profile, but covers HTTP/2 instead of De Morgan's Law."
+      },
+      "provenance": {
+        "source_type": "synthetic_authored",
+        "author": "benchmark_fixture_author",
+        "created_date": "2026-11-24",
+        "redistribution_permission": "MIT-original-synthetic-fixture",
+        "live_capture": false,
+        "model_version_or_date": "synthetic-eval-u2-03-2026-11-24",
+        "cost_cap_usd": 0,
+        "case_cap": 0
+      }
+    },
+    {
+      "id": "EVAL-U2-04",
+      "unit": 2,
+      "topic_id": "2.4",
+      "topic_title": "Nested if Statements",
+      "objective_ids": [
+        "2.4.A"
+      ],
+      "reference_fact_ids": [
+        "FACT-U2-04"
+      ],
+      "prompt_context": "Learner struggled with nested if and multiway if-else-if branching under kinesthetic preference.",
+      "request": {
+        "student_id": "eval-eval-u2-04",
+        "course_id": "apcsa-2025",
+        "failed_topics": [
+          "Control Flow"
+        ],
+        "vark_profile": "kinesthetic"
+      },
+      "candidate_response": {
+        "student_id": "eval-eval-u2-04",
+        "course_id": "apcsa-2025",
+        "items": [
+          {
+            "topic": "Control Flow",
+            "priority": 1,
+            "prerequisite_chain": [
+              "Variables",
+              "Data Types",
+              "Expressions",
+              "Boolean Logic"
+            ],
+            "explanation": "Before attempting if-else-if branching, you must first master nested while and for loops because selection branches depend on loop invariants.",
+            "resources": [
+              {
+                "title": "Nested Conditional Trace Lab",
+                "url": "https://example.org/materials/828c79a3adce",
+                "resource_type": "lab"
+              }
+            ]
+          }
+        ],
+        "_meta": {
+          "subgraph_tuples": 4,
+          "topics_processed": 1,
+          "items_generated": 1,
+          "items_after_validation": 1,
+          "items_dropped": 0,
+          "llm_latency_ms": 12,
+          "total_latency_ms": 15
+        }
+      },
+      "resource_evidence": [
+        {
+          "item_index": 0,
+          "resource_index": 0,
+          "excerpt": "Run nested if and if-else-if examples with scores 59, 60, and 90. Record each condition evaluated and whether the inner statement runs."
+        }
+      ],
+      "shipped_graph": {
+        "seed_graph_servable": false,
+        "example_graph_servable": true,
+        "target_node": "Control Flow",
+        "response_graph": "example",
+        "note": "Topic 'Control Flow' is served by examples/graphs/computer-science.json only (absent from internal/graph/seed.json)."
+      },
+      "scenario_tags": [
+        "reversed_prerequisite",
+        "structurally_valid_wrong_answer"
+      ],
+      "origin": {
+        "provider": "synthetic-provider-b",
+        "model": "synth-model-2",
+        "variant": "prereq-invert",
+        "seeded_critical_error": true,
+        "seeded_critical_type": "prerequisite",
+        "defect_note": "Reversed prerequisite: places iteration before selection statements."
+      },
+      "provenance": {
+        "source_type": "synthetic_authored",
+        "author": "benchmark_fixture_author",
+        "created_date": "2026-11-24",
+        "redistribution_permission": "MIT-original-synthetic-fixture",
+        "live_capture": false,
+        "model_version_or_date": "synthetic-eval-u2-04-2026-11-24",
+        "cost_cap_usd": 0,
+        "case_cap": 0
+      }
+    },
+    {
+      "id": "EVAL-U2-05",
+      "unit": 2,
+      "topic_id": "2.7",
+      "topic_title": "while Loops",
+      "objective_ids": [
+        "2.7.A",
+        "2.7.B"
+      ],
+      "reference_fact_ids": [
+        "FACT-U2-05"
+      ],
+      "prompt_context": "Sometimes my while loop runs one time too many, and sometimes it never runs. How do I trace the guard?",
+      "request": {
+        "student_id": "eval-eval-u2-05",
+        "course_id": "apcsa-2025",
+        "failed_topics": [
+          "Loops"
+        ],
+        "vark_profile": "visual"
+      },
+      "candidate_response": {
+        "student_id": "eval-eval-u2-05",
+        "course_id": "apcsa-2025",
+        "items": [
+          {
+            "topic": "Loops",
+            "priority": 1,
+            "prerequisite_chain": [
+              "Variables",
+              "Data Types",
+              "Expressions",
+              "Boolean Logic",
+              "Control Flow"
+            ],
+            "explanation": "A while loop evaluates its guard before every iteration; if the guard starts false, the body runs zero times. Trace boundary iterations (start, n-1, n) to eliminate off-by-one bugs.",
+            "resources": []
+          }
+        ],
+        "_meta": {
+          "subgraph_tuples": 5,
+          "topics_processed": 1,
+          "items_generated": 1,
+          "items_after_validation": 1,
+          "items_dropped": 0,
+          "llm_latency_ms": 12,
+          "total_latency_ms": 15
+        }
+      },
+      "shipped_graph": {
+        "seed_graph_servable": false,
+        "example_graph_servable": true,
+        "target_node": "Loops",
+        "response_graph": "example",
+        "note": "Topic 'Loops' is served by examples/graphs/computer-science.json only (absent from internal/graph/seed.json)."
+      },
+      "scenario_tags": [
+        "empty_resources",
+        "acceptable_anchor"
+      ],
+      "origin": {
+        "provider": "synthetic-provider-a",
+        "model": "synth-model-1",
+        "variant": "compact-v1",
+        "seeded_critical_error": false,
+        "seeded_critical_type": "none",
+        "defect_note": "Valid empty resources array with accurate while-loop trace guidance."
+      },
+      "provenance": {
+        "source_type": "synthetic_authored",
+        "author": "benchmark_fixture_author",
+        "created_date": "2026-11-24",
+        "redistribution_permission": "MIT-original-synthetic-fixture",
+        "live_capture": false,
+        "model_version_or_date": "synthetic-eval-u2-05-2026-11-24",
+        "cost_cap_usd": 0,
+        "case_cap": 0
+      }
+    },
+    {
+      "id": "EVAL-U2-06",
+      "unit": 2,
+      "topic_id": "2.8",
+      "topic_title": "for Loops",
+      "objective_ids": [
+        "2.8.A",
+        "2.9.A"
+      ],
+      "reference_fact_ids": [
+        "FACT-U2-06"
+      ],
+      "prompt_context": "Does myLabLoop(n) in Worksheet 2B print 10 when I give it 5?",
+      "request": {
+        "student_id": "eval-eval-u2-06",
+        "course_id": "apcsa-2025",
+        "failed_topics": [
+          "Iteration"
+        ],
+        "vark_profile": "read_write"
+      },
+      "candidate_response": {
+        "student_id": "eval-eval-u2-06",
+        "course_id": "apcsa-2025",
+        "items": [
+          {
+            "topic": "Iteration",
+            "priority": 1,
+            "prerequisite_chain": [
+              "Variables",
+              "Data Types",
+              "Expressions",
+              "Boolean Logic",
+              "Control Flow",
+              "Loops"
+            ],
+            "explanation": "Worksheet 2B's myLabLoop(n) always executes n - 1 times and prints 10 when n is 5; review the worksheet answer sheet.",
+            "resources": []
+          }
+        ],
+        "_meta": {
+          "subgraph_tuples": 6,
+          "topics_processed": 1,
+          "items_generated": 1,
+          "items_after_validation": 1,
+          "items_dropped": 0,
+          "llm_latency_ms": 12,
+          "total_latency_ms": 15
+        }
+      },
+      "shipped_graph": {
+        "seed_graph_servable": false,
+        "example_graph_servable": true,
+        "target_node": "Iteration",
+        "response_graph": "example",
+        "note": "Topic 'Iteration' is served by examples/graphs/computer-science.json only (absent from internal/graph/seed.json)."
+      },
+      "scenario_tags": [
+        "missing_evidence",
+        "empty_resources"
+      ],
+      "origin": {
+        "provider": "synthetic-provider-c",
+        "model": "synth-model-3",
+        "variant": "missing-ev",
+        "seeded_critical_error": false,
+        "seeded_critical_type": "none",
+        "defect_note": "Missing evidence: referenced code myLabLoop(n) is absent from prompt context, requiring rater abstention."
+      },
+      "provenance": {
+        "source_type": "synthetic_authored",
+        "author": "benchmark_fixture_author",
+        "created_date": "2026-11-24",
+        "redistribution_permission": "MIT-original-synthetic-fixture",
+        "live_capture": false,
+        "model_version_or_date": "synthetic-eval-u2-06-2026-11-24",
+        "cost_cap_usd": 0,
+        "case_cap": 0
+      }
+    },
+    {
+      "id": "EVAL-U2-07",
+      "unit": 2,
+      "topic_id": "2.10",
+      "topic_title": "Implementing String Algorithms",
+      "objective_ids": [
+        "2.10.A",
+        "2.11.A",
+        "2.12.A"
+      ],
+      "reference_fact_ids": [
+        "FACT-U2-07"
+      ],
+      "prompt_context": "Can I get an audio explanation of the loops from our last assignment?",
+      "request": {
+        "student_id": "eval-eval-u2-07",
+        "course_id": "apcsa-2025",
+        "failed_topics": [
+          "Loops"
+        ],
+        "vark_profile": "auditory"
+      },
+      "candidate_response": {
+        "student_id": "eval-eval-u2-07",
+        "course_id": "apcsa-2025",
+        "items": [
+          {
+            "topic": "Loops",
+            "priority": 1,
+            "prerequisite_chain": [
+              "Variables",
+              "Data Types",
+              "Expressions",
+              "Boolean Logic",
+              "Control Flow"
+            ],
+            "explanation": "Loop algorithms depend on problem structure: reversing a String visits each character once, whereas nested loops multiply inner counts by outer counts; identify which pattern applies first.",
+            "resources": [
+              {
+                "title": "Tracing Loop Execution Counts Audio Course",
+                "url": "https://example.org/materials/1783824bd7ea",
+                "resource_type": "audio-course"
+              }
+            ]
+          }
+        ],
+        "_meta": {
+          "subgraph_tuples": 5,
+          "topics_processed": 1,
+          "items_generated": 1,
+          "items_after_validation": 1,
+          "items_dropped": 0,
+          "llm_latency_ms": 12,
+          "total_latency_ms": 15
+        }
+      },
+      "resource_evidence": [
+        {
+          "item_index": 0,
+          "resource_index": 0,
+          "excerpt": "The narration counts executions of a two-level loop with outer bound 3 and inner bound 4, then checks the count with a second example. It uses no String operations."
+        }
+      ],
+      "shipped_graph": {
+        "seed_graph_servable": false,
+        "example_graph_servable": true,
+        "target_node": "Loops",
+        "response_graph": "example",
+        "note": "Topic 'Loops' is served by examples/graphs/computer-science.json only (absent from internal/graph/seed.json)."
+      },
+      "scenario_tags": [
+        "ambiguous_prompt"
+      ],
+      "origin": {
+        "provider": "synthetic-provider-c",
+        "model": "synth-model-3",
+        "variant": "ambig-v1",
+        "seeded_critical_error": false,
+        "seeded_critical_type": "none",
+        "defect_note": "Ambiguous prompt: prompt does not distinguish single-pass string loop from nested iteration."
+      },
+      "provenance": {
+        "source_type": "synthetic_authored",
+        "author": "benchmark_fixture_author",
+        "created_date": "2026-11-24",
+        "redistribution_permission": "MIT-original-synthetic-fixture",
+        "live_capture": false,
+        "model_version_or_date": "synthetic-eval-u2-07-2026-11-24",
+        "cost_cap_usd": 0,
+        "case_cap": 0
+      }
+    },
+    {
+      "id": "EVAL-U3-01",
+      "unit": 3,
+      "topic_id": "3.3",
+      "topic_title": "Anatomy of a Class",
+      "objective_ids": [
+        "3.3.A"
+      ],
+      "reference_fact_ids": [
+        "FACT-U3-01"
+      ],
+      "prompt_context": "Learner confused public vs private visibility on classes, instance variables, and constructors under visual preference.",
+      "request": {
+        "student_id": "eval-eval-u3-01",
+        "course_id": "apcsa-2025",
+        "failed_topics": [
+          "Classes"
+        ],
+        "vark_profile": "visual"
+      },
+      "candidate_response": {
+        "student_id": "eval-eval-u3-01",
+        "course_id": "apcsa-2025",
+        "items": [
+          {
+            "topic": "Classes",
+            "priority": 1,
+            "prerequisite_chain": [
+              "Variables",
+              "Objects"
+            ],
+            "explanation": "Build Classes after understanding Variables and Objects. Mark classes and constructors public, encapsulate instance fields as private, and expose behavior via public methods.",
+            "resources": [
+              {
+                "title": "Class Encapsulation Access Diagram",
+                "url": "https://example.org/materials/905fbadec7a8",
+                "resource_type": "diagram"
+              },
+              {
+                "title": "Public vs Private Visibility Video",
+                "url": "https://example.org/materials/e4a9b8df32a4",
+                "resource_type": "video"
+              }
+            ]
+          }
+        ],
+        "_meta": {
+          "subgraph_tuples": 2,
+          "topics_processed": 1,
+          "items_generated": 1,
+          "items_after_validation": 1,
+          "items_dropped": 0,
+          "llm_latency_ms": 12,
+          "total_latency_ms": 15
+        }
+      },
+      "resource_evidence": [
+        {
+          "item_index": 0,
+          "resource_index": 0,
+          "excerpt": "The diagram shows two classes and uses arrows to distinguish calls to a public method from attempted direct access to a private field."
+        },
+        {
+          "item_index": 0,
+          "resource_index": 1,
+          "excerpt": "The video compiles two short Java classes and highlights which public constructor calls and private field accesses succeed."
+        }
+      ],
+      "shipped_graph": {
+        "seed_graph_servable": true,
+        "example_graph_servable": true,
+        "target_node": "Classes",
+        "response_graph": "example",
+        "note": "Topic 'Classes' is served by both internal/graph/seed.json and examples/graphs/computer-science.json."
+      },
+      "scenario_tags": [
+        "acceptable_anchor"
+      ],
+      "origin": {
+        "provider": "synthetic-provider-a",
+        "model": "synth-model-1",
+        "variant": "baseline-v1",
+        "seeded_critical_error": false,
+        "seeded_critical_type": "none",
+        "defect_note": "Acceptable Unit 3 anchor."
+      },
+      "provenance": {
+        "source_type": "synthetic_authored",
+        "author": "benchmark_fixture_author",
+        "created_date": "2026-11-24",
+        "redistribution_permission": "MIT-original-synthetic-fixture",
+        "live_capture": false,
+        "model_version_or_date": "synthetic-eval-u3-01-2026-11-24",
+        "cost_cap_usd": 0,
+        "case_cap": 0
+      }
+    },
+    {
+      "id": "EVAL-U3-02",
+      "unit": 3,
+      "topic_id": "3.3",
+      "topic_title": "Anatomy of a Class",
+      "objective_ids": [
+        "3.3.A",
+        "3.5.A"
+      ],
+      "reference_fact_ids": [
+        "FACT-U3-01"
+      ],
+      "prompt_context": "Learner struggled with private fields inside accessor and comparison methods under kinesthetic preference.",
+      "request": {
+        "student_id": "eval-eval-u3-02",
+        "course_id": "apcsa-2025",
+        "failed_topics": [
+          "Encapsulation"
+        ],
+        "vark_profile": "kinesthetic"
+      },
+      "candidate_response": {
+        "student_id": "eval-eval-u3-02",
+        "course_id": "apcsa-2025",
+        "items": [
+          {
+            "topic": "Encapsulation",
+            "priority": 1,
+            "prerequisite_chain": [
+              "Variables",
+              "Objects",
+              "Classes"
+            ],
+            "explanation": "Declaring an instance variable private prevents methods inside the same class from reading another instance parameter's field directly, so a Box method cannot read other.value.",
+            "resources": [
+              {
+                "title": "Encapsulation Refactoring Exercise",
+                "url": "https://example.org/materials/361d5e104712",
+                "resource_type": "exercise"
+              }
+            ]
+          }
+        ],
+        "_meta": {
+          "subgraph_tuples": 3,
+          "topics_processed": 1,
+          "items_generated": 1,
+          "items_after_validation": 1,
+          "items_dropped": 0,
+          "llm_latency_ms": 12,
+          "total_latency_ms": 15
+        }
+      },
+      "resource_evidence": [
+        {
+          "item_index": 0,
+          "resource_index": 0,
+          "excerpt": "Replace public fields in Box with private fields and an accessor. Implement a same-class comparison against another Box and test equal and unequal values."
+        }
+      ],
+      "shipped_graph": {
+        "seed_graph_servable": false,
+        "example_graph_servable": true,
+        "target_node": "Encapsulation",
+        "response_graph": "example",
+        "note": "Topic 'Encapsulation' is served by examples/graphs/computer-science.json only (absent from internal/graph/seed.json)."
+      },
+      "scenario_tags": [
+        "plausible_false_statement",
+        "structurally_valid_wrong_answer"
+      ],
+      "origin": {
+        "provider": "synthetic-provider-a",
+        "model": "synth-model-1",
+        "variant": "baseline-v1",
+        "seeded_critical_error": true,
+        "seeded_critical_type": "factual",
+        "defect_note": "Structurally valid wrong answer: private restricts access to the declaring class, so methods CAN read other.field when other has the same class type (CED 3.6.A.3)."
+      },
+      "provenance": {
+        "source_type": "synthetic_authored",
+        "author": "benchmark_fixture_author",
+        "created_date": "2026-11-24",
+        "redistribution_permission": "MIT-original-synthetic-fixture",
+        "live_capture": false,
+        "model_version_or_date": "synthetic-eval-u3-02-2026-11-24",
+        "cost_cap_usd": 0,
+        "case_cap": 0
+      }
+    },
+    {
+      "id": "EVAL-U3-03",
+      "unit": 3,
+      "topic_id": "3.4",
+      "topic_title": "Constructors",
+      "objective_ids": [
+        "3.4.A"
+      ],
+      "reference_fact_ids": [
+        "FACT-U3-02"
+      ],
+      "prompt_context": "After I added a constructor that takes an argument, why did new ClassName() stop working?",
+      "request": {
+        "student_id": "eval-eval-u3-03",
+        "course_id": "apcsa-2025",
+        "failed_topics": [
+          "Constructors"
+        ],
+        "vark_profile": "auditory"
+      },
+      "candidate_response": {
+        "student_id": "eval-eval-u3-03",
+        "course_id": "apcsa-2025",
+        "items": [
+          {
+            "topic": "Constructors",
+            "priority": 1,
+            "prerequisite_chain": [
+              "Variables",
+              "Objects",
+              "Classes"
+            ],
+            "explanation": "Java generates a default no-parameter constructor only when zero constructors are declared; if you add a parameterized constructor, explicitly add a no-arg constructor if callers need new ClassName().",
+            "resources": []
+          }
+        ],
+        "_meta": {
+          "subgraph_tuples": 3,
+          "topics_processed": 1,
+          "items_generated": 1,
+          "items_after_validation": 1,
+          "items_dropped": 0,
+          "llm_latency_ms": 12,
+          "total_latency_ms": 15
+        }
+      },
+      "shipped_graph": {
+        "seed_graph_servable": false,
+        "example_graph_servable": false,
+        "target_node": "Constructors",
+        "response_graph": "none",
+        "note": "Topic 'Constructors' is absent from both internal/graph/seed.json and examples/graphs/computer-science.json."
+      },
+      "scenario_tags": [
+        "empty_resources",
+        "acceptable_anchor"
+      ],
+      "origin": {
+        "provider": "synthetic-provider-b",
+        "model": "synth-model-2",
+        "variant": "compact-v1",
+        "seeded_critical_error": false,
+        "seeded_critical_type": "none",
+        "defect_note": "Valid empty resources with accurate constructor default rule."
+      },
+      "provenance": {
+        "source_type": "synthetic_authored",
+        "author": "benchmark_fixture_author",
+        "created_date": "2026-11-24",
+        "redistribution_permission": "MIT-original-synthetic-fixture",
+        "live_capture": false,
+        "model_version_or_date": "synthetic-eval-u3-03-2026-11-24",
+        "cost_cap_usd": 0,
+        "case_cap": 0
+      }
+    },
+    {
+      "id": "EVAL-U3-04",
+      "unit": 3,
+      "topic_id": "3.6",
+      "topic_title": "Methods: Passing and Returning References of an Object",
+      "objective_ids": [
+        "3.6.A"
+      ],
+      "reference_fact_ids": [
+        "FACT-U3-03"
+      ],
+      "prompt_context": "Learner confused mutating a passed object with reassigning the parameter variable under read_write preference.",
+      "request": {
+        "student_id": "eval-eval-u3-04",
+        "course_id": "apcsa-2025",
+        "failed_topics": [
+          "Classes"
+        ],
+        "vark_profile": "read_write"
+      },
+      "candidate_response": {
+        "student_id": "eval-eval-u3-04",
+        "course_id": "apcsa-2025",
+        "items": [
+          {
+            "topic": "Classes",
+            "priority": 1,
+            "prerequisite_chain": [
+              "Variables",
+              "Objects"
+            ],
+            "explanation": "Java passes objects by reference, so executing param = new Widget(0) inside a method updates the caller's original variable to point at the newly constructed Widget.",
+            "resources": [
+              {
+                "title": "Object Parameter Passing Textbook Chapter",
+                "url": "https://example.org/materials/bf98d7afe79c",
+                "resource_type": "textbook"
+              }
+            ]
+          }
+        ],
+        "_meta": {
+          "subgraph_tuples": 2,
+          "topics_processed": 1,
+          "items_generated": 1,
+          "items_after_validation": 1,
+          "items_dropped": 0,
+          "llm_latency_ms": 12,
+          "total_latency_ms": 15
+        }
+      },
+      "resource_evidence": [
+        {
+          "item_index": 0,
+          "resource_index": 0,
+          "excerpt": "The chapter gives a Box parameter example showing an observable field mutation, followed by local reassignment that leaves the caller's reference unchanged."
+        }
+      ],
+      "shipped_graph": {
+        "seed_graph_servable": true,
+        "example_graph_servable": true,
+        "target_node": "Classes",
+        "response_graph": "example",
+        "note": "Topic 'Classes' is served by both internal/graph/seed.json and examples/graphs/computer-science.json."
+      },
+      "scenario_tags": [
+        "plausible_false_statement",
+        "structurally_valid_wrong_answer"
+      ],
+      "origin": {
+        "provider": "synthetic-provider-a",
+        "model": "synth-model-1",
+        "variant": "baseline-v1",
+        "seeded_critical_error": true,
+        "seeded_critical_type": "factual",
+        "defect_note": "Structurally valid wrong answer: Java passes copies of object references by value; reassigning the parameter does NOT rebind the caller's variable."
+      },
+      "provenance": {
+        "source_type": "synthetic_authored",
+        "author": "benchmark_fixture_author",
+        "created_date": "2026-11-24",
+        "redistribution_permission": "MIT-original-synthetic-fixture",
+        "live_capture": false,
+        "model_version_or_date": "synthetic-eval-u3-04-2026-11-24",
+        "cost_cap_usd": 0,
+        "case_cap": 0
+      }
+    },
+    {
+      "id": "EVAL-U3-05",
+      "unit": 3,
+      "topic_id": "3.7",
+      "topic_title": "Class Variables and Methods",
+      "objective_ids": [
+        "3.7.A",
+        "3.7.B",
+        "3.9.A"
+      ],
+      "reference_fact_ids": [
+        "FACT-U3-04"
+      ],
+      "prompt_context": "Learner mixed up static class methods with instance methods and the this keyword under visual preference.",
+      "request": {
+        "student_id": "eval-eval-u3-05",
+        "course_id": "apcsa-2025",
+        "failed_topics": [
+          "Static Class Members"
+        ],
+        "vark_profile": "visual"
+      },
+      "candidate_response": {
+        "student_id": "eval-eval-u3-05",
+        "course_id": "apcsa-2025",
+        "items": [
+          {
+            "topic": "Static Class Members",
+            "priority": 1,
+            "prerequisite_chain": [
+              "Variables",
+              "Objects",
+              "Classes"
+            ],
+            "explanation": "Learn overriding static methods in subclasses and calling this inside static helpers first, because instance mutator methods depend on static inheritance.",
+            "resources": [
+              {
+                "title": "Static vs Instance Memory Model",
+                "url": "https://example.org/materials/6cd86e2fc994",
+                "resource_type": "diagram"
+              }
+            ]
+          }
+        ],
+        "_meta": {
+          "subgraph_tuples": 3,
+          "topics_processed": 1,
+          "items_generated": 1,
+          "items_after_validation": 1,
+          "items_dropped": 0,
+          "llm_latency_ms": 12,
+          "total_latency_ms": 15
+        }
+      },
+      "resource_evidence": [
+        {
+          "item_index": 0,
+          "resource_index": 0,
+          "excerpt": "A diagram shows one shared static counter beside two objects with independent fields. Call arrows distinguish a static helper from a method operating on the receiver."
+        }
+      ],
+      "shipped_graph": {
+        "seed_graph_servable": false,
+        "example_graph_servable": false,
+        "target_node": "Static Class Members",
+        "response_graph": "none",
+        "note": "Topic 'Static Class Members' is absent from both internal/graph/seed.json and examples/graphs/computer-science.json."
+      },
+      "scenario_tags": [
+        "reversed_prerequisite",
+        "plausible_false_statement"
+      ],
+      "origin": {
+        "provider": "synthetic-provider-b",
+        "model": "synth-model-2",
+        "variant": "prereq-invert",
+        "seeded_critical_error": true,
+        "seeded_critical_type": "both",
+        "defect_note": "Both critical prerequisite reversal and false claim (static methods have no this reference and static inheritance is out of scope)."
+      },
+      "provenance": {
+        "source_type": "synthetic_authored",
+        "author": "benchmark_fixture_author",
+        "created_date": "2026-11-24",
+        "redistribution_permission": "MIT-original-synthetic-fixture",
+        "live_capture": false,
+        "model_version_or_date": "synthetic-eval-u3-05-2026-11-24",
+        "cost_cap_usd": 0,
+        "case_cap": 0
+      }
+    },
+    {
+      "id": "EVAL-U3-06",
+      "unit": 3,
+      "topic_id": "3.8",
+      "topic_title": "Scope and Access",
+      "objective_ids": [
+        "3.8.A"
+      ],
+      "reference_fact_ids": [
+        "FACT-U3-05"
+      ],
+      "prompt_context": "Learner had parameter shadowing bugs inside constructors under kinesthetic preference.",
+      "request": {
+        "student_id": "eval-eval-u3-06",
+        "course_id": "apcsa-2025",
+        "failed_topics": [
+          "Scope"
+        ],
+        "vark_profile": "kinesthetic"
+      },
+      "candidate_response": {
+        "student_id": "eval-eval-u3-06",
+        "course_id": "apcsa-2025",
+        "items": [
+          {
+            "topic": "Scope",
+            "priority": 1,
+            "prerequisite_chain": [
+              "Variables",
+              "Data Types",
+              "Expressions",
+              "Boolean Logic",
+              "Control Flow",
+              "Functions"
+            ],
+            "explanation": "When a constructor parameter shares an instance variable's name, the unqualified name refers to the local parameter; use this.field = param to avoid a no-op self-assignment.",
+            "resources": [
+              {
+                "title": "Connections and Scope",
+                "url": "https://example.org/materials/c97eeb2c4294",
+                "resource_type": "lab"
+              }
+            ]
+          }
+        ],
+        "_meta": {
+          "subgraph_tuples": 6,
+          "topics_processed": 1,
+          "items_generated": 1,
+          "items_after_validation": 1,
+          "items_dropped": 0,
+          "llm_latency_ms": 12,
+          "total_latency_ms": 15
+        }
+      },
+      "resource_evidence": [
+        {
+          "item_index": 0,
+          "resource_index": 0,
+          "excerpt": "The lab starts two containers, attaches them to a Docker bridge, and uses ping and a routing table to trace reachability."
+        }
+      ],
+      "shipped_graph": {
+        "seed_graph_servable": false,
+        "example_graph_servable": true,
+        "target_node": "Scope",
+        "response_graph": "example",
+        "note": "Topic 'Scope' is served by examples/graphs/computer-science.json only (absent from internal/graph/seed.json)."
+      },
+      "scenario_tags": [
+        "irrelevant_resource"
+      ],
+      "origin": {
+        "provider": "synthetic-provider-c",
+        "model": "synth-model-3",
+        "variant": "link-mismatch",
+        "seeded_critical_error": false,
+        "seeded_critical_type": "none",
+        "defect_note": "Irrelevant resource: valid lab URL and kinesthetic type, but covers Docker networking instead of Java scope."
+      },
+      "provenance": {
+        "source_type": "synthetic_authored",
+        "author": "benchmark_fixture_author",
+        "created_date": "2026-11-24",
+        "redistribution_permission": "MIT-original-synthetic-fixture",
+        "live_capture": false,
+        "model_version_or_date": "synthetic-eval-u3-06-2026-11-24",
+        "cost_cap_usd": 0,
+        "case_cap": 0
+      }
+    },
+    {
+      "id": "EVAL-U3-07",
+      "unit": 3,
+      "topic_id": "3.9",
+      "topic_title": "this Keyword",
+      "objective_ids": [
+        "3.9.A"
+      ],
+      "reference_fact_ids": [
+        "FACT-U3-05"
+      ],
+      "prompt_context": "Did I put this(...) in the right place in CoursePacket3 Exercise 4?",
+      "request": {
+        "student_id": "eval-eval-u3-07",
+        "course_id": "apcsa-2025",
+        "failed_topics": [
+          "this Keyword"
+        ],
+        "vark_profile": "auditory"
+      },
+      "candidate_response": {
+        "student_id": "eval-eval-u3-07",
+        "course_id": "apcsa-2025",
+        "items": [
+          {
+            "topic": "this Keyword",
+            "priority": 1,
+            "prerequisite_chain": [
+              "Variables",
+              "Objects",
+              "Classes"
+            ],
+            "explanation": "According to CoursePacket3 Exercise 4, calling this() at the end of a constructor initializes shared defaults cleanly; listen to the review checklist.",
+            "resources": []
+          }
+        ],
+        "_meta": {
+          "subgraph_tuples": 3,
+          "topics_processed": 1,
+          "items_generated": 1,
+          "items_after_validation": 1,
+          "items_dropped": 0,
+          "llm_latency_ms": 12,
+          "total_latency_ms": 15
+        }
+      },
+      "shipped_graph": {
+        "seed_graph_servable": false,
+        "example_graph_servable": false,
+        "target_node": "this Keyword",
+        "response_graph": "none",
+        "note": "Topic 'this Keyword' is absent from both internal/graph/seed.json and examples/graphs/computer-science.json."
+      },
+      "scenario_tags": [
+        "missing_evidence",
+        "empty_resources"
+      ],
+      "origin": {
+        "provider": "synthetic-provider-c",
+        "model": "synth-model-3",
+        "variant": "missing-ev",
+        "seeded_critical_error": false,
+        "seeded_critical_type": "none",
+        "defect_note": "Missing evidence: external packet exercise is not supplied, and this() must be evaluated cautiously; rater must abstain on missing code."
+      },
+      "provenance": {
+        "source_type": "synthetic_authored",
+        "author": "benchmark_fixture_author",
+        "created_date": "2026-11-24",
+        "redistribution_permission": "MIT-original-synthetic-fixture",
+        "live_capture": false,
+        "model_version_or_date": "synthetic-eval-u3-07-2026-11-24",
+        "cost_cap_usd": 0,
+        "case_cap": 0
+      }
+    },
+    {
+      "id": "EVAL-U4-01",
+      "unit": 4,
+      "topic_id": "4.3",
+      "topic_title": "Array Creation and Access",
+      "objective_ids": [
+        "4.3.A",
+        "4.4.A"
+      ],
+      "reference_fact_ids": [
+        "FACT-U4-01"
+      ],
+      "prompt_context": "Learner hit off-by-one ArrayIndexOutOfBoundsException errors on 1D arrays under kinesthetic preference.",
+      "request": {
+        "student_id": "eval-eval-u4-01",
+        "course_id": "apcsa-2025",
+        "failed_topics": [
+          "Arrays"
+        ],
+        "vark_profile": "kinesthetic"
+      },
+      "candidate_response": {
+        "student_id": "eval-eval-u4-01",
+        "course_id": "apcsa-2025",
+        "items": [
+          {
+            "topic": "Arrays",
+            "priority": 1,
+            "prerequisite_chain": [
+              "Variables",
+              "Data Types"
+            ],
+            "explanation": "Arrays have fixed length accessed via arr.length (without parentheses), with valid indices 0 through arr.length - 1. Write a boundary-check loop accessing the first and last element.",
+            "resources": [
+              {
+                "title": "1D Array Bounds Tracing Exercise",
+                "url": "https://example.org/materials/5167177b524d",
+                "resource_type": "exercise"
+              },
+              {
+                "title": "Array Traversal Coding Challenge",
+                "url": "https://example.org/materials/7c50ecf6e894",
+                "resource_type": "coding-challenge"
+              }
+            ]
+          }
+        ],
+        "_meta": {
+          "subgraph_tuples": 2,
+          "topics_processed": 1,
+          "items_generated": 1,
+          "items_after_validation": 1,
+          "items_dropped": 0,
+          "llm_latency_ms": 12,
+          "total_latency_ms": 15
+        }
+      },
+      "resource_evidence": [
+        {
+          "item_index": 0,
+          "resource_index": 0,
+          "excerpt": "Run array reads at indices -1, 0, length - 1, and length for a three-element array and record which reads succeed."
+        },
+        {
+          "item_index": 0,
+          "resource_index": 1,
+          "excerpt": "Implement a traversal over an int array using i \u003c values.length and test empty, one-element, and three-element inputs."
+        }
+      ],
+      "shipped_graph": {
+        "seed_graph_servable": true,
+        "example_graph_servable": true,
+        "target_node": "Arrays",
+        "response_graph": "example",
+        "note": "Topic 'Arrays' is served by both internal/graph/seed.json and examples/graphs/computer-science.json."
+      },
+      "scenario_tags": [
+        "acceptable_anchor"
+      ],
+      "origin": {
+        "provider": "synthetic-provider-a",
+        "model": "synth-model-1",
+        "variant": "baseline-v1",
+        "seeded_critical_error": false,
+        "seeded_critical_type": "none",
+        "defect_note": "Acceptable Unit 4 anchor covering 4.3.A and 4.4.A."
+      },
+      "provenance": {
+        "source_type": "synthetic_authored",
+        "author": "benchmark_fixture_author",
+        "created_date": "2026-11-24",
+        "redistribution_permission": "MIT-original-synthetic-fixture",
+        "live_capture": false,
+        "model_version_or_date": "synthetic-eval-u4-01-2026-11-24",
+        "cost_cap_usd": 0,
+        "case_cap": 0
+      }
+    },
+    {
+      "id": "EVAL-U4-02",
+      "unit": 4,
+      "topic_id": "4.9",
+      "topic_title": "ArrayList Traversals",
+      "objective_ids": [
+        "4.7.A",
+        "4.8.A",
+        "4.9.A"
+      ],
+      "reference_fact_ids": [
+        "FACT-U4-02"
+      ],
+      "prompt_context": "Learner attempted removing matching elements from an ArrayList during traversal under read_write preference.",
+      "request": {
+        "student_id": "eval-eval-u4-02",
+        "course_id": "apcsa-2025",
+        "failed_topics": [
+          "ArrayList Traversals"
+        ],
+        "vark_profile": "read_write"
+      },
+      "candidate_response": {
+        "student_id": "eval-eval-u4-02",
+        "course_id": "apcsa-2025",
+        "items": [
+          {
+            "topic": "ArrayList Traversals",
+            "priority": 1,
+            "prerequisite_chain": [
+              "Arrays",
+              "Wrapper Classes",
+              "ArrayList Methods"
+            ],
+            "explanation": "To delete all matching elements from an ArrayList, either run a standard forward loop i = 0; i \u003c list.size(); i++ calling list.remove(i) or use an enhanced for (String s : list) loop calling list.remove(s).",
+            "resources": [
+              {
+                "title": "Java ArrayList Official Guide",
+                "url": "https://example.org/materials/0af862cebb2e",
+                "resource_type": "documentation"
+              }
+            ]
+          }
+        ],
+        "_meta": {
+          "subgraph_tuples": 3,
+          "topics_processed": 1,
+          "items_generated": 1,
+          "items_after_validation": 1,
+          "items_dropped": 0,
+          "llm_latency_ms": 12,
+          "total_latency_ms": 15
+        }
+      },
+      "resource_evidence": [
+        {
+          "item_index": 0,
+          "resource_index": 0,
+          "excerpt": "The guide traces how remove(index) shifts following entries left. It walks a backward index loop over adjacent matches and warns against structural modification during enhanced for."
+        }
+      ],
+      "shipped_graph": {
+        "seed_graph_servable": false,
+        "example_graph_servable": false,
+        "target_node": "ArrayList Traversals",
+        "response_graph": "none",
+        "note": "Topic 'ArrayList Traversals' is absent from both internal/graph/seed.json and examples/graphs/computer-science.json."
+      },
+      "scenario_tags": [
+        "plausible_false_statement",
+        "structurally_valid_wrong_answer"
+      ],
+      "origin": {
+        "provider": "synthetic-provider-a",
+        "model": "synth-model-1",
+        "variant": "baseline-v1",
+        "seeded_critical_error": true,
+        "seeded_critical_type": "factual",
+        "defect_note": "Structurally valid wrong answer: forward i++ skips adjacent matches after shift, and enhanced for throws ConcurrentModificationException."
+      },
+      "provenance": {
+        "source_type": "synthetic_authored",
+        "author": "benchmark_fixture_author",
+        "created_date": "2026-11-24",
+        "redistribution_permission": "MIT-original-synthetic-fixture",
+        "live_capture": false,
+        "model_version_or_date": "synthetic-eval-u4-02-2026-11-24",
+        "cost_cap_usd": 0,
+        "case_cap": 0
+      }
+    },
+    {
+      "id": "EVAL-U4-03",
+      "unit": 4,
+      "topic_id": "4.11",
+      "topic_title": "2D Array Creation and Access",
+      "objective_ids": [
+        "4.11.A",
+        "4.12.A"
+      ],
+      "reference_fact_ids": [
+        "FACT-U4-03"
+      ],
+      "prompt_context": "Could you show me how to traverse a two-dimensional array in Java?",
+      "request": {
+        "student_id": "eval-eval-u4-03",
+        "course_id": "apcsa-2025",
+        "failed_topics": [
+          "2D Arrays"
+        ],
+        "vark_profile": "visual"
+      },
+      "candidate_response": {
+        "student_id": "eval-eval-u4-03",
+        "course_id": "apcsa-2025",
+        "items": [
+          {
+            "topic": "2D Arrays",
+            "priority": 1,
+            "prerequisite_chain": [
+              "Arrays"
+            ],
+            "explanation": "2D arrays are arrays of row arrays where grid.length is row count and grid[0].length is column count. Check whether your task uses row-major order, column-major order, or index-based element updates.",
+            "resources": [
+              {
+                "title": "Row-Major vs Column-Major 2D Grid Diagram",
+                "url": "https://example.org/materials/0633345524f5",
+                "resource_type": "diagram"
+              }
+            ]
+          }
+        ],
+        "_meta": {
+          "subgraph_tuples": 1,
+          "topics_processed": 1,
+          "items_generated": 1,
+          "items_after_validation": 1,
+          "items_dropped": 0,
+          "llm_latency_ms": 12,
+          "total_latency_ms": 15
+        }
+      },
+      "resource_evidence": [
+        {
+          "item_index": 0,
+          "resource_index": 0,
+          "excerpt": "The diagram draws a 2-by-3 array. Arrows first visit all columns of each row, then show the alternate order that visits all rows within each column."
+        }
+      ],
+      "shipped_graph": {
+        "seed_graph_servable": false,
+        "example_graph_servable": false,
+        "target_node": "2D Arrays",
+        "response_graph": "none",
+        "note": "Topic '2D Arrays' is absent from both internal/graph/seed.json and examples/graphs/computer-science.json."
+      },
+      "scenario_tags": [
+        "ambiguous_prompt"
+      ],
+      "origin": {
+        "provider": "synthetic-provider-b",
+        "model": "synth-model-2",
+        "variant": "ambig-v1",
+        "seeded_critical_error": false,
+        "seeded_critical_type": "none",
+        "defect_note": "Ambiguous prompt: prompt leaves traversal order and mutation intent open."
+      },
+      "provenance": {
+        "source_type": "synthetic_authored",
+        "author": "benchmark_fixture_author",
+        "created_date": "2026-11-24",
+        "redistribution_permission": "MIT-original-synthetic-fixture",
+        "live_capture": false,
+        "model_version_or_date": "synthetic-eval-u4-03-2026-11-24",
+        "cost_cap_usd": 0,
+        "case_cap": 0
+      }
+    },
+    {
+      "id": "EVAL-U4-04",
+      "unit": 4,
+      "topic_id": "4.17",
+      "topic_title": "Recursive Searching and Sorting",
+      "objective_ids": [
+        "4.14.A",
+        "4.17.B"
+      ],
+      "reference_fact_ids": [
+        "FACT-U4-04"
+      ],
+      "prompt_context": "Learner struggled with Binary Search preconditions and prerequisites under auditory preference.",
+      "request": {
+        "student_id": "eval-eval-u4-04",
+        "course_id": "apcsa-2025",
+        "failed_topics": [
+          "Binary Search"
+        ],
+        "vark_profile": "auditory"
+      },
+      "candidate_response": {
+        "student_id": "eval-eval-u4-04",
+        "course_id": "apcsa-2025",
+        "items": [
+          {
+            "topic": "Binary Search",
+            "priority": 1,
+            "prerequisite_chain": [
+              "Variables",
+              "Data Types",
+              "Arrays",
+              "Expressions",
+              "Boolean Logic",
+              "Control Flow",
+              "Functions",
+              "Recursion"
+            ],
+            "explanation": "Study Binary Search before Arrays or sorting algorithms; binary search works reliably on any unsorted array as long as its length is an even integer.",
+            "resources": [
+              {
+                "title": "Binary Search Midpoint Podcast",
+                "url": "https://example.org/materials/89a94714a7ab",
+                "resource_type": "podcast"
+              }
+            ]
+          }
+        ],
+        "_meta": {
+          "subgraph_tuples": 1,
+          "topics_processed": 1,
+          "items_generated": 1,
+          "items_after_validation": 1,
+          "items_dropped": 0,
+          "llm_latency_ms": 12,
+          "total_latency_ms": 15
+        }
+      },
+      "resource_evidence": [
+        {
+          "item_index": 0,
+          "resource_index": 0,
+          "excerpt": "The podcast traces midpoints and updated bounds on the sorted sequence 2, 4, 7, 15. It closes with a missing-target trace on the same sequence."
+        }
+      ],
+      "shipped_graph": {
+        "seed_graph_servable": true,
+        "example_graph_servable": true,
+        "target_node": "Binary Search",
+        "response_graph": "example",
+        "note": "Topic 'Binary Search' is served by both internal/graph/seed.json and examples/graphs/computer-science.json."
+      },
+      "scenario_tags": [
+        "reversed_prerequisite",
+        "plausible_false_statement",
+        "structurally_valid_wrong_answer"
+      ],
+      "origin": {
+        "provider": "synthetic-provider-b",
+        "model": "synth-model-2",
+        "variant": "prereq-invert",
+        "seeded_critical_error": true,
+        "seeded_critical_type": "both",
+        "defect_note": "Structurally valid wrong answer: reverses Arrays -\u003e Binary Search prerequisite and falsely claims unsorted even-length arrays work."
+      },
+      "provenance": {
+        "source_type": "synthetic_authored",
+        "author": "benchmark_fixture_author",
+        "created_date": "2026-11-24",
+        "redistribution_permission": "MIT-original-synthetic-fixture",
+        "live_capture": false,
+        "model_version_or_date": "synthetic-eval-u4-04-2026-11-24",
+        "cost_cap_usd": 0,
+        "case_cap": 0
+      }
+    },
+    {
+      "id": "EVAL-U4-05",
+      "unit": 4,
+      "topic_id": "4.17",
+      "topic_title": "Recursive Searching and Sorting",
+      "objective_ids": [
+        "4.15.A",
+        "4.17.C"
+      ],
+      "reference_fact_ids": [
+        "FACT-U4-05"
+      ],
+      "prompt_context": "I've already studied functions. How can I practice comparing merge sort with the iterative sorts?",
+      "request": {
+        "student_id": "eval-eval-u4-05",
+        "course_id": "apcsa-2025",
+        "failed_topics": [
+          "Merge Sort"
+        ],
+        "mastered_topics": [
+          "Functions"
+        ],
+        "vark_profile": "kinesthetic"
+      },
+      "candidate_response": {
+        "student_id": "eval-eval-u4-05",
+        "course_id": "apcsa-2025",
+        "items": [
+          {
+            "topic": "Merge Sort",
+            "priority": 1,
+            "prerequisite_chain": [
+              "Variables",
+              "Data Types",
+              "Expressions",
+              "Boolean Logic",
+              "Control Flow",
+              "Functions",
+              "Recursion",
+              "Arrays"
+            ],
+            "explanation": "Compare iterative selection/insertion sorts with recursive Merge Sort: Merge Sort halves the array recursively down to one-element subarrays and merges sorted halves back together. Hand-trace [8, 3, 5, 1].",
+            "resources": []
+          }
+        ],
+        "_meta": {
+          "subgraph_tuples": 2,
+          "topics_processed": 1,
+          "items_generated": 1,
+          "items_after_validation": 1,
+          "items_dropped": 0,
+          "llm_latency_ms": 12,
+          "total_latency_ms": 15
+        }
+      },
+      "shipped_graph": {
+        "seed_graph_servable": true,
+        "example_graph_servable": true,
+        "target_node": "Merge Sort",
+        "response_graph": "example",
+        "note": "Topic 'Merge Sort' is served by both internal/graph/seed.json and examples/graphs/computer-science.json."
+      },
+      "scenario_tags": [
+        "empty_resources",
+        "acceptable_anchor"
+      ],
+      "origin": {
+        "provider": "synthetic-provider-a",
+        "model": "synth-model-1",
+        "variant": "compact-v1",
+        "seeded_critical_error": false,
+        "seeded_critical_type": "none",
+        "defect_note": "Acceptable anchor with mastered_topics=['Functions'] and valid empty resources array."
+      },
+      "provenance": {
+        "source_type": "synthetic_authored",
+        "author": "benchmark_fixture_author",
+        "created_date": "2026-11-24",
+        "redistribution_permission": "MIT-original-synthetic-fixture",
+        "live_capture": false,
+        "model_version_or_date": "synthetic-eval-u4-05-2026-11-24",
+        "cost_cap_usd": 0,
+        "case_cap": 0
+      }
+    },
+    {
+      "id": "EVAL-U4-06",
+      "unit": 4,
+      "topic_id": "4.16",
+      "topic_title": "Recursion",
+      "objective_ids": [
+        "4.16.A"
+      ],
+      "reference_fact_ids": [
+        "FACT-U4-06"
+      ],
+      "prompt_context": "Learner struggled to trace recursive call frames and base cases under read_write preference.",
+      "request": {
+        "student_id": "eval-eval-u4-06",
+        "course_id": "apcsa-2025",
+        "failed_topics": [
+          "Recursion"
+        ],
+        "vark_profile": "read_write"
+      },
+      "candidate_response": {
+        "student_id": "eval-eval-u4-06",
+        "course_id": "apcsa-2025",
+        "items": [
+          {
+            "topic": "Recursion",
+            "priority": 1,
+            "prerequisite_chain": [
+              "Variables",
+              "Data Types",
+              "Expressions",
+              "Boolean Logic",
+              "Control Flow",
+              "Functions"
+            ],
+            "explanation": "Every recursive method requires a halting base case and recursive progress; each call frame maintains independent local variables and parameters. Trace fact(4) frame by frame on paper.",
+            "resources": [
+              {
+                "title": "A Recursive Walkthrough",
+                "url": "https://example.org/materials/c2a1333a372c",
+                "resource_type": "documentation"
+              }
+            ]
+          }
+        ],
+        "_meta": {
+          "subgraph_tuples": 1,
+          "topics_processed": 1,
+          "items_generated": 1,
+          "items_after_validation": 1,
+          "items_dropped": 0,
+          "llm_latency_ms": 12,
+          "total_latency_ms": 15
+        }
+      },
+      "resource_evidence": [
+        {
+          "item_index": 0,
+          "resource_index": 0,
+          "excerpt": "The chapter builds a PostgreSQL WITH RECURSIVE query for parent and child rows, using a non-recursive term and UNION ALL."
+        }
+      ],
+      "shipped_graph": {
+        "seed_graph_servable": true,
+        "example_graph_servable": true,
+        "target_node": "Recursion",
+        "response_graph": "example",
+        "note": "Topic 'Recursion' is served by both internal/graph/seed.json and examples/graphs/computer-science.json."
+      },
+      "scenario_tags": [
+        "irrelevant_resource"
+      ],
+      "origin": {
+        "provider": "synthetic-provider-c",
+        "model": "synth-model-3",
+        "variant": "link-mismatch",
+        "seeded_critical_error": false,
+        "seeded_critical_type": "none",
+        "defect_note": "Irrelevant resource: valid documentation URL and read_write type, but covers SQL CTEs instead of Java recursion."
+      },
+      "provenance": {
+        "source_type": "synthetic_authored",
+        "author": "benchmark_fixture_author",
+        "created_date": "2026-11-24",
+        "redistribution_permission": "MIT-original-synthetic-fixture",
+        "live_capture": false,
+        "model_version_or_date": "synthetic-eval-u4-06-2026-11-24",
+        "cost_cap_usd": 0,
+        "case_cap": 0
+      }
+    },
+    {
+      "id": "EVAL-U4-07",
+      "unit": 4,
+      "topic_id": "4.6",
+      "topic_title": "Using Text Files",
+      "objective_ids": [
+        "4.6.A"
+      ],
+      "reference_fact_ids": [
+        "FACT-U4-07"
+      ],
+      "prompt_context": "Can I see how to set up File and Scanner to read a text file and handle a file that won't open?",
+      "request": {
+        "student_id": "eval-eval-u4-07",
+        "course_id": "apcsa-2025",
+        "failed_topics": [
+          "File Handling"
+        ],
+        "vark_profile": "visual"
+      },
+      "candidate_response": {
+        "student_id": "eval-eval-u4-07",
+        "course_id": "apcsa-2025",
+        "items": [
+          {
+            "topic": "File Handling",
+            "priority": 1,
+            "prerequisite_chain": [
+              "Variables",
+              "Data Types",
+              "Program Input and Output",
+              "Expressions",
+              "Boolean Logic",
+              "Control Flow",
+              "Error Handling"
+            ],
+            "explanation": "Import java.io.File and java.io.IOException, instantiate Scanner(new File(path)) in a method declaring throws IOException, loop with hasNext(), and call close(). Note CED excludes tracing mixed nextLine calls.",
+            "resources": [
+              {
+                "title": "File and Scanner Lifecycle Diagram",
+                "url": "https://example.org/materials/0e7eb5c3f3b2",
+                "resource_type": "diagram"
+              },
+              {
+                "title": "Reading Text Files in Java Video",
+                "url": "https://example.org/materials/1280619e7596",
+                "resource_type": "video"
+              }
+            ]
+          }
+        ],
+        "_meta": {
+          "subgraph_tuples": 7,
+          "topics_processed": 1,
+          "items_generated": 1,
+          "items_after_validation": 1,
+          "items_dropped": 0,
+          "llm_latency_ms": 12,
+          "total_latency_ms": 15
+        }
+      },
+      "resource_evidence": [
+        {
+          "item_index": 0,
+          "resource_index": 0,
+          "excerpt": "The diagram connects a pathname to a File and shows a Scanner reading successive tokens, with separate branches for a missing file and for closing after reading."
+        },
+        {
+          "item_index": 0,
+          "resource_index": 1,
+          "excerpt": "The video highlights the java.io.File and java.util.Scanner imports, handles a missing input file, then walks a token loop and closes the scanner."
+        }
+      ],
+      "shipped_graph": {
+        "seed_graph_servable": false,
+        "example_graph_servable": true,
+        "target_node": "File Handling",
+        "response_graph": "example",
+        "note": "Topic 'File Handling' is served by examples/graphs/computer-science.json only (absent from internal/graph/seed.json)."
+      },
+      "scenario_tags": [
+        "acceptable_anchor"
+      ],
+      "origin": {
+        "provider": "synthetic-provider-c",
+        "model": "synth-model-3",
+        "variant": "baseline-v1",
+        "seeded_critical_error": false,
+        "seeded_critical_type": "none",
+        "defect_note": "Acceptable Unit 4 anchor covering 4.6.A and Jan 2026 / Fall 2025 CED exclusion scope."
+      },
+      "provenance": {
+        "source_type": "synthetic_authored",
+        "author": "benchmark_fixture_author",
+        "created_date": "2026-11-24",
+        "redistribution_permission": "MIT-original-synthetic-fixture",
+        "live_capture": false,
+        "model_version_or_date": "synthetic-eval-u4-07-2026-11-24",
+        "cost_cap_usd": 0,
+        "case_cap": 0
+      }
+    }
+  ]
+}

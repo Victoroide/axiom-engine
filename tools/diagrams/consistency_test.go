@@ -197,3 +197,32 @@ func testFonts(t *testing.T) *fontSet {
 	}
 	return f
 }
+
+func TestEvaluationPackagesExcludedFromServiceDiagram(t *testing.T) {
+	root := t.TempDir()
+	for _, dir := range []string{"cmd/server", "internal/known", "evaluation", "evaluation/quality", "evaluation/curriculum"} {
+		writeFixture(t, root, dir+"/code.go", []byte("package example\n"))
+	}
+	writeFixture(t, root, "cmd/server/imports.go", []byte(`package example
+import (
+	_ "github.com/Victoroide/axiom-engine/evaluation/quality"
+	_ "github.com/Victoroide/axiom-engine/internal/known"
+)
+`))
+	writeFixture(t, root, "evaluation/curriculum/imports.go", []byte(`package example
+import _ "github.com/Victoroide/axiom-engine/internal/known"
+`))
+	_, imports, err := packageImports(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, pkg := range []string{"evaluation", "evaluation/quality", "evaluation/curriculum"} {
+		if !excludedPackage(pkg) {
+			t.Fatalf("package %q was not excluded", pkg)
+		}
+	}
+	wantImports := map[dependency]bool{{From: "cmd/server", To: "internal/known"}: true}
+	if !maps.Equal(imports, wantImports) {
+		t.Fatalf("diagram imports = %v, want %v", imports, wantImports)
+	}
+}
