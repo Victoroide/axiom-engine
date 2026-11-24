@@ -1,0 +1,1399 @@
+{
+  "schema_version": "1.0",
+  "course": "AP Computer Science A (Effective Fall 2025, Clarifications 2026-01-29)",
+  "packet_seed": 20251124,
+  "rater_slot": "rater_a",
+  "rater_qualification": "",
+  "qualification_attested": false,
+  "calibration_completed": false,
+  "locked": false,
+  "dataset_kind": "unmeasured_blank",
+  "instructions_note": "Use the packet rubric and finish calibration first. Rate independently, then lock the sheet. Use the supplied offline resource evidence and provisional course references. Record a reason for every abstention and an explicit true or false for every critical judgment.",
+  "rows": [
+    {
+      "response_id": "resp-aa4bf6029a3b",
+      "presentation_order": 1,
+      "prompt_context": "Learner hit off-by-one ArrayIndexOutOfBoundsException errors on 1D arrays under kinesthetic preference.",
+      "vark_profile": "kinesthetic",
+      "failed_topics": [
+        "Arrays"
+      ],
+      "items": [
+        {
+          "topic": "Arrays",
+          "priority": 1,
+          "prerequisite_chain": [
+            "Variables",
+            "Data Types"
+          ],
+          "explanation": "Arrays have fixed length accessed via arr.length (without parentheses), with valid indices 0 through arr.length - 1. Write a boundary-check loop accessing the first and last element.",
+          "resources": [
+            {
+              "title": "1D Array Bounds Tracing Exercise",
+              "url": "https://example.org/materials/5167177b524d",
+              "resource_type": "exercise"
+            },
+            {
+              "title": "Array Traversal Coding Challenge",
+              "url": "https://example.org/materials/7c50ecf6e894",
+              "resource_type": "coding-challenge"
+            }
+          ]
+        }
+      ],
+      "resource_evidence": [
+        {
+          "item_index": 0,
+          "resource_index": 0,
+          "excerpt": "Run array reads at indices -1, 0, length - 1, and length for a three-element array and record which reads succeed."
+        },
+        {
+          "item_index": 0,
+          "resource_index": 1,
+          "excerpt": "Implement a traversal over an int array using i \u003c values.length and test empty, one-element, and three-element inputs."
+        }
+      ],
+      "reference_locators": [
+        {
+          "document": "CED-2025",
+          "section": "Unit 4: Data Collections, Topic 4.3: Array Creation and Access",
+          "page_locator": "CED p. 102 (PDF p. 109)",
+          "url": "https://apcentral.collegeboard.org/media/pdf/ap-computer-science-a-course-and-exam-description.pdf#page=109"
+        },
+        {
+          "document": "CED-2025",
+          "section": "Unit 4: Data Collections, Topic 4.4: Array Traversals",
+          "page_locator": "CED p. 103 (PDF p. 110)",
+          "url": "https://apcentral.collegeboard.org/media/pdf/ap-computer-science-a-course-and-exam-description.pdf#page=110"
+        }
+      ],
+      "rating": null
+    },
+    {
+      "response_id": "resp-117bc37bce05",
+      "presentation_order": 2,
+      "prompt_context": "Learner evaluated mixed int and double arithmetic expressions incorrectly and requested kinesthetic practice.",
+      "vark_profile": "kinesthetic",
+      "failed_topics": [
+        "Expressions"
+      ],
+      "items": [
+        {
+          "topic": "Expressions",
+          "priority": 1,
+          "prerequisite_chain": [
+            "Variables",
+            "Data Types"
+          ],
+          "explanation": "Start from Data Types before Expressions. In Java, 1 / 2 * 4.0 evaluates to 2.0 because multiplication and division widen the whole expression to double automatically; run five tracing drills.",
+          "resources": [
+            {
+              "title": "Arithmetic Precedence Java Practice",
+              "url": "https://example.org/materials/d7932a59d730",
+              "resource_type": "exercise"
+            }
+          ]
+        }
+      ],
+      "resource_evidence": [
+        {
+          "item_index": 0,
+          "resource_index": 0,
+          "excerpt": "Predict and run 1 / 2 * 4.0, 1 / 2.0 * 4, and (double)(1 / 2). Record the type and value after each operator."
+        }
+      ],
+      "reference_locators": [
+        {
+          "document": "CED-2025",
+          "section": "Unit 1: Using Objects and Methods, Topic 1.3: Expressions and Output",
+          "page_locator": "CED p. 33 (PDF p. 40)",
+          "url": "https://apcentral.collegeboard.org/media/pdf/ap-computer-science-a-course-and-exam-description.pdf#page=40"
+        }
+      ],
+      "rating": null
+    },
+    {
+      "response_id": "resp-75a130e33039",
+      "presentation_order": 3,
+      "prompt_context": "Learner attempted removing matching elements from an ArrayList during traversal under read_write preference.",
+      "vark_profile": "read_write",
+      "failed_topics": [
+        "ArrayList Traversals"
+      ],
+      "items": [
+        {
+          "topic": "ArrayList Traversals",
+          "priority": 1,
+          "prerequisite_chain": [
+            "Arrays",
+            "Wrapper Classes",
+            "ArrayList Methods"
+          ],
+          "explanation": "To delete all matching elements from an ArrayList, either run a standard forward loop i = 0; i \u003c list.size(); i++ calling list.remove(i) or use an enhanced for (String s : list) loop calling list.remove(s).",
+          "resources": [
+            {
+              "title": "Java ArrayList Official Guide",
+              "url": "https://example.org/materials/0af862cebb2e",
+              "resource_type": "documentation"
+            }
+          ]
+        }
+      ],
+      "resource_evidence": [
+        {
+          "item_index": 0,
+          "resource_index": 0,
+          "excerpt": "The guide traces how remove(index) shifts following entries left. It walks a backward index loop over adjacent matches and warns against structural modification during enhanced for."
+        }
+      ],
+      "reference_locators": [
+        {
+          "document": "CED-2025",
+          "section": "Unit 4: Data Collections, Topic 4.7: Wrapper Classes",
+          "page_locator": "CED p. 108 (PDF p. 115)",
+          "url": "https://apcentral.collegeboard.org/media/pdf/ap-computer-science-a-course-and-exam-description.pdf#page=115"
+        },
+        {
+          "document": "CED-2025",
+          "section": "Unit 4: Data Collections, Topic 4.8: ArrayList Methods",
+          "page_locator": "CED p. 110 (PDF p. 117)",
+          "url": "https://apcentral.collegeboard.org/media/pdf/ap-computer-science-a-course-and-exam-description.pdf#page=117"
+        },
+        {
+          "document": "CED-2025",
+          "section": "Unit 4: Data Collections, Topic 4.9: ArrayList Traversals",
+          "page_locator": "CED p. 112 (PDF p. 119)",
+          "url": "https://apcentral.collegeboard.org/media/pdf/ap-computer-science-a-course-and-exam-description.pdf#page=119"
+        }
+      ],
+      "rating": null
+    },
+    {
+      "response_id": "resp-1e50b4ada71c",
+      "presentation_order": 4,
+      "prompt_context": "Did I put this(...) in the right place in CoursePacket3 Exercise 4?",
+      "vark_profile": "auditory",
+      "failed_topics": [
+        "this Keyword"
+      ],
+      "items": [
+        {
+          "topic": "this Keyword",
+          "priority": 1,
+          "prerequisite_chain": [
+            "Variables",
+            "Objects",
+            "Classes"
+          ],
+          "explanation": "According to CoursePacket3 Exercise 4, calling this() at the end of a constructor initializes shared defaults cleanly; listen to the review checklist.",
+          "resources": []
+        }
+      ],
+      "reference_locators": [
+        {
+          "document": "CED-2025",
+          "section": "Unit 3: Class Creation, Topic 3.8: Scope and Access",
+          "page_locator": "CED p. 89 (PDF p. 96)",
+          "url": "https://apcentral.collegeboard.org/media/pdf/ap-computer-science-a-course-and-exam-description.pdf#page=96"
+        },
+        {
+          "document": "CED-2025",
+          "section": "Unit 3: Class Creation, Topic 3.9: this Keyword",
+          "page_locator": "CED p. 90 (PDF p. 97)",
+          "url": "https://apcentral.collegeboard.org/media/pdf/ap-computer-science-a-course-and-exam-description.pdf#page=97"
+        }
+      ],
+      "rating": null
+    },
+    {
+      "response_id": "resp-5456b58de4d0",
+      "presentation_order": 5,
+      "prompt_context": "Learner confused Java primitive types (int, double, boolean) with reference variables and requested visual guidance.",
+      "vark_profile": "visual",
+      "failed_topics": [
+        "Variables"
+      ],
+      "items": [
+        {
+          "topic": "Variables",
+          "priority": 1,
+          "prerequisite_chain": [],
+          "explanation": "Variables hold either primitive values (int, double, boolean in AP CS A) or object references. Classify each field in a sample class as primitive or reference and trace assignments.",
+          "resources": [
+            {
+              "title": "Primitive vs Reference Memory Diagram",
+              "url": "https://example.org/materials/5fd7a044794a",
+              "resource_type": "diagram"
+            },
+            {
+              "title": "Java Primitive Data Types Walkthrough",
+              "url": "https://example.org/materials/31a3c96e3832",
+              "resource_type": "video"
+            }
+          ]
+        }
+      ],
+      "resource_evidence": [
+        {
+          "item_index": 0,
+          "resource_index": 0,
+          "excerpt": "The diagram shows one int variable holding 7 and two reference variables pointing at the same Box. It labels copies of the value and reference with distinct arrows."
+        },
+        {
+          "item_index": 0,
+          "resource_index": 1,
+          "excerpt": "The video colors int, double, and boolean declarations, then animates assignments of 7, 2.5, and true to the corresponding variables."
+        }
+      ],
+      "reference_locators": [
+        {
+          "document": "CED-2025",
+          "section": "Unit 1: Using Objects and Methods, Topic 1.2: Variables and Data Types",
+          "page_locator": "CED p. 32 (PDF p. 39)",
+          "url": "https://apcentral.collegeboard.org/media/pdf/ap-computer-science-a-course-and-exam-description.pdf#page=39"
+        }
+      ],
+      "rating": null
+    },
+    {
+      "response_id": "resp-2893256dc5f6",
+      "presentation_order": 6,
+      "prompt_context": "How can I use Math.random() to simulate rolling a six-sided die? I'd like to hear the steps.",
+      "vark_profile": "auditory",
+      "failed_topics": [
+        "Math.random Range"
+      ],
+      "items": [
+        {
+          "topic": "Math.random Range",
+          "priority": 1,
+          "prerequisite_chain": [
+            "Variables",
+            "Data Types",
+            "Expressions"
+          ],
+          "explanation": "Math.random() returns a double in [0.0, 1.0). Wrap the scaled product in parentheses before casting: (int)(Math.random() * 6) + 1 generates 1 through 6 inclusive.",
+          "resources": []
+        }
+      ],
+      "reference_locators": [
+        {
+          "document": "CED-2025",
+          "section": "Topic 1.11: Math Class, 1.11.A.1–3 (random range, arithmetic and casting)",
+          "page_locator": "CED p. 44 (PDF p. 51)",
+          "url": "https://apcentral.collegeboard.org/media/pdf/ap-computer-science-a-course-and-exam-description.pdf#page=51"
+        },
+        {
+          "document": "CED-2025",
+          "section": "Topic 1.5: Casting and Range of Variables, 1.5.B.1–3 (int range and overflow)",
+          "page_locator": "CED pp. 36–37 (PDF pp. 43–44)",
+          "url": "https://apcentral.collegeboard.org/media/pdf/ap-computer-science-a-course-and-exam-description.pdf#page=43"
+        }
+      ],
+      "rating": null
+    },
+    {
+      "response_id": "resp-2a078db8ca1a",
+      "presentation_order": 7,
+      "prompt_context": "After I added a constructor that takes an argument, why did new ClassName() stop working?",
+      "vark_profile": "auditory",
+      "failed_topics": [
+        "Constructors"
+      ],
+      "items": [
+        {
+          "topic": "Constructors",
+          "priority": 1,
+          "prerequisite_chain": [
+            "Variables",
+            "Objects",
+            "Classes"
+          ],
+          "explanation": "Java generates a default no-parameter constructor only when zero constructors are declared; if you add a parameterized constructor, explicitly add a no-arg constructor if callers need new ClassName().",
+          "resources": []
+        }
+      ],
+      "reference_locators": [
+        {
+          "document": "CED-2025",
+          "section": "Unit 3: Class Creation, Topic 3.4: Constructors",
+          "page_locator": "CED p. 84 (PDF p. 91)",
+          "url": "https://apcentral.collegeboard.org/media/pdf/ap-computer-science-a-course-and-exam-description.pdf#page=91"
+        }
+      ],
+      "rating": null
+    },
+    {
+      "response_id": "resp-9a529fb8cb2c",
+      "presentation_order": 8,
+      "prompt_context": "Could you show me how to traverse a two-dimensional array in Java?",
+      "vark_profile": "visual",
+      "failed_topics": [
+        "2D Arrays"
+      ],
+      "items": [
+        {
+          "topic": "2D Arrays",
+          "priority": 1,
+          "prerequisite_chain": [
+            "Arrays"
+          ],
+          "explanation": "2D arrays are arrays of row arrays where grid.length is row count and grid[0].length is column count. Check whether your task uses row-major order, column-major order, or index-based element updates.",
+          "resources": [
+            {
+              "title": "Row-Major vs Column-Major 2D Grid Diagram",
+              "url": "https://example.org/materials/0633345524f5",
+              "resource_type": "diagram"
+            }
+          ]
+        }
+      ],
+      "resource_evidence": [
+        {
+          "item_index": 0,
+          "resource_index": 0,
+          "excerpt": "The diagram draws a 2-by-3 array. Arrows first visit all columns of each row, then show the alternate order that visits all rows within each column."
+        }
+      ],
+      "reference_locators": [
+        {
+          "document": "CED-2025",
+          "section": "Unit 4: Data Collections, Topic 4.11: 2D Array Creation and Access",
+          "page_locator": "CED p. 114 (PDF p. 121)",
+          "url": "https://apcentral.collegeboard.org/media/pdf/ap-computer-science-a-course-and-exam-description.pdf#page=121"
+        },
+        {
+          "document": "CED-2025",
+          "section": "Unit 4: Data Collections, Topic 4.12: 2D Array Traversals",
+          "page_locator": "CED p. 116 (PDF p. 123)",
+          "url": "https://apcentral.collegeboard.org/media/pdf/ap-computer-science-a-course-and-exam-description.pdf#page=123"
+        }
+      ],
+      "rating": null
+    },
+    {
+      "response_id": "resp-d9e57b9ef677",
+      "presentation_order": 9,
+      "prompt_context": "Learner missed logical operator precedence and short-circuit evaluation under visual preference.",
+      "vark_profile": "visual",
+      "failed_topics": [
+        "Boolean Logic"
+      ],
+      "items": [
+        {
+          "topic": "Boolean Logic",
+          "priority": 1,
+          "prerequisite_chain": [
+            "Variables",
+            "Data Types",
+            "Expressions"
+          ],
+          "explanation": "Java evaluates ! before \u0026\u0026 and \u0026\u0026 before ||; with \u0026\u0026, if the left side is false, the right side is skipped. Build a truth table for (x != 0) \u0026\u0026 (10 / x \u003e 1) starting at x = 0.",
+          "resources": [
+            {
+              "title": "Operator Precedence and Short-Circuit Flowchart",
+              "url": "https://example.org/materials/d96a11dd7409",
+              "resource_type": "infographic"
+            },
+            {
+              "title": "Tracing Compound Boolean Expressions",
+              "url": "https://example.org/materials/df265f3dc3c9",
+              "resource_type": "video"
+            }
+          ]
+        }
+      ],
+      "resource_evidence": [
+        {
+          "item_index": 0,
+          "resource_index": 0,
+          "excerpt": "The flowchart traces the left guard of (x != 0) \u0026\u0026 (10 / x \u003e 1). It takes a branch around the division when x is zero."
+        },
+        {
+          "item_index": 0,
+          "resource_index": 1,
+          "excerpt": "The video steps through one truth-table row at a time, highlighting parentheses and each evaluated operand. It pauses for predictions when the second operand can be skipped."
+        }
+      ],
+      "reference_locators": [
+        {
+          "document": "CED-2025",
+          "section": "Unit 2: Selection and Iteration, Topic 2.5: Compound Boolean Expressions",
+          "page_locator": "CED p. 65 (PDF p. 72)",
+          "url": "https://apcentral.collegeboard.org/media/pdf/ap-computer-science-a-course-and-exam-description.pdf#page=72"
+        }
+      ],
+      "rating": null
+    },
+    {
+      "response_id": "resp-724d0cd4c3dd",
+      "presentation_order": 10,
+      "prompt_context": "Sometimes my while loop runs one time too many, and sometimes it never runs. How do I trace the guard?",
+      "vark_profile": "visual",
+      "failed_topics": [
+        "Loops"
+      ],
+      "items": [
+        {
+          "topic": "Loops",
+          "priority": 1,
+          "prerequisite_chain": [
+            "Variables",
+            "Data Types",
+            "Expressions",
+            "Boolean Logic",
+            "Control Flow"
+          ],
+          "explanation": "A while loop evaluates its guard before every iteration; if the guard starts false, the body runs zero times. Trace boundary iterations (start, n-1, n) to eliminate off-by-one bugs.",
+          "resources": []
+        }
+      ],
+      "reference_locators": [
+        {
+          "document": "CED-2025",
+          "section": "Unit 2: Selection and Iteration, Topic 2.7: while Loops",
+          "page_locator": "CED p. 67 (PDF p. 74)",
+          "url": "https://apcentral.collegeboard.org/media/pdf/ap-computer-science-a-course-and-exam-description.pdf#page=74"
+        }
+      ],
+      "rating": null
+    },
+    {
+      "response_id": "resp-c6d3ae0c80f4",
+      "presentation_order": 11,
+      "prompt_context": "Can you help me with Strings? I got some questions wrong on the last worksheet.",
+      "vark_profile": "read_write",
+      "failed_topics": [
+        "Strings"
+      ],
+      "items": [
+        {
+          "topic": "Strings",
+          "priority": 1,
+          "prerequisite_chain": [
+            "Variables",
+            "Data Types",
+            "Arrays"
+          ],
+          "explanation": "Strings are sequences of characters in java.lang; review String methods and verify whether your errors involve substring end indices, immutability, or compareTo signs.",
+          "resources": [
+            {
+              "title": "Java String Immutability and Methods Guide",
+              "url": "https://example.org/materials/aa901b5df1c8",
+              "resource_type": "article"
+            }
+          ]
+        }
+      ],
+      "resource_evidence": [
+        {
+          "item_index": 0,
+          "resource_index": 0,
+          "excerpt": "The guide traces substring(1, 3) on 'code', shows an unchanged original after concatenation, and gives two examples where compareTo's sign indicates order."
+        }
+      ],
+      "reference_locators": [
+        {
+          "document": "CED-2025",
+          "section": "Unit 1: Using Objects and Methods, Topic 1.15: String Manipulation",
+          "page_locator": "CED p. 49 (PDF p. 56)",
+          "url": "https://apcentral.collegeboard.org/media/pdf/ap-computer-science-a-course-and-exam-description.pdf#page=56"
+        },
+        {
+          "document": "CED-2025",
+          "section": "Unit 1: Using Objects and Methods, Topic 1.15: String Manipulation",
+          "page_locator": "CED p. 50 (PDF p. 57)",
+          "url": "https://apcentral.collegeboard.org/media/pdf/ap-computer-science-a-course-and-exam-description.pdf#page=57"
+        }
+      ],
+      "rating": null
+    },
+    {
+      "response_id": "resp-c5876efd070d",
+      "presentation_order": 12,
+      "prompt_context": "Can I get an audio explanation of the loops from our last assignment?",
+      "vark_profile": "auditory",
+      "failed_topics": [
+        "Loops"
+      ],
+      "items": [
+        {
+          "topic": "Loops",
+          "priority": 1,
+          "prerequisite_chain": [
+            "Variables",
+            "Data Types",
+            "Expressions",
+            "Boolean Logic",
+            "Control Flow"
+          ],
+          "explanation": "Loop algorithms depend on problem structure: reversing a String visits each character once, whereas nested loops multiply inner counts by outer counts; identify which pattern applies first.",
+          "resources": [
+            {
+              "title": "Tracing Loop Execution Counts Audio Course",
+              "url": "https://example.org/materials/1783824bd7ea",
+              "resource_type": "audio-course"
+            }
+          ]
+        }
+      ],
+      "resource_evidence": [
+        {
+          "item_index": 0,
+          "resource_index": 0,
+          "excerpt": "The narration counts executions of a two-level loop with outer bound 3 and inner bound 4, then checks the count with a second example. It uses no String operations."
+        }
+      ],
+      "reference_locators": [
+        {
+          "document": "CED-2025",
+          "section": "Unit 2: Selection and Iteration, Topic 2.10: Implementing String Algorithms",
+          "page_locator": "CED p. 70 (PDF p. 77)",
+          "url": "https://apcentral.collegeboard.org/media/pdf/ap-computer-science-a-course-and-exam-description.pdf#page=77"
+        },
+        {
+          "document": "CED-2025",
+          "section": "Unit 2: Selection and Iteration, Topic 2.11: Nested Iteration",
+          "page_locator": "CED p. 71 (PDF p. 78)",
+          "url": "https://apcentral.collegeboard.org/media/pdf/ap-computer-science-a-course-and-exam-description.pdf#page=78"
+        },
+        {
+          "document": "CED-2025",
+          "section": "Unit 2: Selection and Iteration, Topic 2.12: Informal Run-Time Analysis",
+          "page_locator": "CED p. 72 (PDF p. 79)",
+          "url": "https://apcentral.collegeboard.org/media/pdf/ap-computer-science-a-course-and-exam-description.pdf#page=79"
+        }
+      ],
+      "rating": null
+    },
+    {
+      "response_id": "resp-f8ff6eb2ba75",
+      "presentation_order": 13,
+      "prompt_context": "Learner struggled to trace recursive call frames and base cases under read_write preference.",
+      "vark_profile": "read_write",
+      "failed_topics": [
+        "Recursion"
+      ],
+      "items": [
+        {
+          "topic": "Recursion",
+          "priority": 1,
+          "prerequisite_chain": [
+            "Variables",
+            "Data Types",
+            "Expressions",
+            "Boolean Logic",
+            "Control Flow",
+            "Functions"
+          ],
+          "explanation": "Every recursive method requires a halting base case and recursive progress; each call frame maintains independent local variables and parameters. Trace fact(4) frame by frame on paper.",
+          "resources": [
+            {
+              "title": "A Recursive Walkthrough",
+              "url": "https://example.org/materials/c2a1333a372c",
+              "resource_type": "documentation"
+            }
+          ]
+        }
+      ],
+      "resource_evidence": [
+        {
+          "item_index": 0,
+          "resource_index": 0,
+          "excerpt": "The chapter builds a PostgreSQL WITH RECURSIVE query for parent and child rows, using a non-recursive term and UNION ALL."
+        }
+      ],
+      "reference_locators": [
+        {
+          "document": "CED-2025",
+          "section": "Unit 4: Data Collections, Topic 4.16: Recursion",
+          "page_locator": "CED p. 120 (PDF p. 127)",
+          "url": "https://apcentral.collegeboard.org/media/pdf/ap-computer-science-a-course-and-exam-description.pdf#page=127"
+        }
+      ],
+      "rating": null
+    },
+    {
+      "response_id": "resp-108c320063cd",
+      "presentation_order": 14,
+      "prompt_context": "When does an int wrap around, and where should I put a double cast if I want a fractional quotient?",
+      "vark_profile": "read_write",
+      "failed_topics": [
+        "Data Types"
+      ],
+      "items": [
+        {
+          "topic": "Data Types",
+          "priority": 1,
+          "prerequisite_chain": [
+            "Variables"
+          ],
+          "explanation": "A Java int has a fixed 32-bit signed range from Integer.MIN_VALUE to Integer.MAX_VALUE. Adding 1 to Integer.MAX_VALUE wraps to Integer.MIN_VALUE without an exception. Start by predicting the values of Integer.MAX_VALUE - 1, Integer.MAX_VALUE, and Integer.MAX_VALUE + 1, then print each expression and compare it with your prediction. Next trace 7 / 2, (double) 7 / 2, and (double) (7 / 2). The first calculation divides two int operands and yields 3. In the second, one operand is already a double, so the quotient is 3.5. In the third, the int division happens inside the parentheses first and the cast turns the result into 3.0. Write down each operand's type before you run the code. To see that double arithmetic can still round, print 0.1 + 0.2 beside 0.3. Both decimal inputs are approximated in binary. Finish by explaining which operation overflowed, which operation discarded the fractional part, and which operation rounded a floating-point result. Try subtracting 1 from Integer.MIN_VALUE.",
+          "resources": [
+            {
+              "title": "A Guide to Java Integer Ranges, Signed Overflow, and Explicit Casting: Worked Examples for Tracing Mixed Arithmetic Expressions and Comparing the Results of Integer and Floating-Point Division in Java",
+              "url": "https://example.org/materials/36e106d58fe9?v=-vp4SSuUfZi-WLY_1Ms1nj579GPgUR-pBBUYEy5A0jWY54y8MI--mSzhg2IjyRhogiMmKDZ0iV-ElQ1Xs62X5VZTGV-djyz13AF2grxsw294IGObIKRpJSm_JhIyWfmfJ36domcMT9TLIZTdy9pg10Ba6g62nBLh1QN3l7x1E1oJ8sHwziJUnZXxzS7KoMfiCI12LNn7lNwxcVjuYk2lZdH27gHGQHbrRN2ea9GaMA6GJbh4w2g_c760GbfNAE_WxiNPzT2UwuIP4d_yPibAgjhwfFSdhFiZ7ol_KjGb_ZvOwzsUROTocBDyNYvhDFPu0n1Fr80DAu1aTAhr7bg5SvUdIZn7aAeHA4h0ZqzL8HK844BBzo0uQAllMz4BdbdZltXDjQeW_IrtzPousjsDsiiBd1bVP1PMwOCpNj70_R49URSw8GjaNen-kpyeA_2j4IUUOAjiogWvSiKXhy7QgZeLDNEkuk3Vgw5j3t2A3Z5ah9Np5HJYVNqnzAS6E-doaiXSDfAfGnp5E1TlqNJi7U7z4CK2L3fR6lp--R-fcQRw-i-WWCh3-BVbLaowEDmWv9scJUXfszyxpAcMdsge3lS8sf3c9LgyywsI5iHEBjj-vaM0cd_v1GOTYoSKHyl63SqYyKA0i4nKg34OsP4VJcAGHX090Z0slENiMETbhaMIGY17AbHMyadnvcAp9Y6hVa-EDCVw-e9nSIfBBKuga2kbNj2O6CenZm9FvHl1fS7t9oqhp3fdt1Ki_CNa1nAFNKeb0Qq3hzqf8y42XV2j_v_c0C3KfkVb3YSYIg9PKhXNdi5X05M6_12c9wIClGEi6IspGeRJsJ-nVnQfOMbPnNyDY_3b8pvIJu77Rhh6xEMIDQvqierXLvs7uUHbxdV6J9vs3vugp-tsGazzhnZq-cdtQ2N6L0dJXty5xRqUrMbwmcyVsf2-PhSKO97wSIWbjqQxpKh-mLc9a62-HErSloE183OHaI-_dY4suPxXmbswQt2Ck8Wt9MOezR8KI3Y4lkAc8c9SwzRG0lTx9RRdpTMAalAyRM3ChKjvGsUT4KOo2oKEbmnGvJJuZJhz1zcfxfACN4yxpVBJtYge2uLgK0CBrepdvEN7MLlG_yC77Of216Md-E6xH0vR6-UFCOvzoNDbYfjdLIXgxJlbyO7N_lDK7Mp9ZpVcr-Ujc1h8h9b0ZrjhS_ZXI3Z0pFZjdZFudS_W3XFMXwXFykVhoc4yWA8YFBCwwys5rNZHMROe8k0W8-l9yy_h8fn4xuHn0z0tDwF1B5EjzABwFHp-IOFUOcXP5Vuhf9-xypNwR_u3QnzfF9K-9SjGpDi-VYTwwxFer1TrM0SEtlC1rze5Y4uufokvIz3bWZnSfrVg0bezjCkE8Dmjz8ZKWpNw3zqu3oM2whT4ht1KmKZA4YS9Mz1aIgGBK77CxEWlGXwjZj1qDMH_K-bUMMgIMYxaF_5wE77ctJHFCmsF_CFrO6jT1pN9-vuUbpdDIBj7tr2_O93xEmliia5gTqQPgmo0rKUWU_-s0u8jTP7n3nEMX1v0Szcp3bTMVcZ1YfLlq62dsKNwdoxiivhMZpTQ6R3u16x2NCr65Q3ZMr-oy1vtJL42sECEaVL7-i3UYZszVNP362ioMHAAsem_WuT3Dob-u8jBSuodqtR5GjY_gPsSlONtkQafqVudFwYCO3UwWk2vgl-tPvdU7EGL5Eqb5PjVhIFrvkT7BkWKG4lFu6B7x1bEysoQo2a2K0gIt2QAxKQ2UR0X17fhfyqPFAHWxHFZ9L44WhCTAuIHPq3w_I8TcsPSvZuQSuu4UIU9WOQMl7xk91mPqsrDgn92nRbR4q6GeKLp1ezJVaPjMl6Y_KWWULp3Z79yGd9VPg5-RGwxqRi60wmX652WrG-V8zGux_TEy1SSDLeG9ZaJuSI8FwswTCfRDUIzj2L2CJB-ynV6Z43a5mdxMCVeHKILu7ByHvEnoP8wE9IX_Xb_zNd6ILpDnya7IyV",
+              "resource_type": "article"
+            },
+            {
+              "title": "AP CS A Primitive Range Textbook Section",
+              "url": "https://example.org/materials/4a1d6b3a2f17",
+              "resource_type": "textbook"
+            },
+            {
+              "title": "Java Integer Limits Documentation Summary",
+              "url": "https://example.org/materials/c3625c2c4af8",
+              "resource_type": "documentation"
+            }
+          ]
+        }
+      ],
+      "resource_evidence": [
+        {
+          "item_index": 0,
+          "resource_index": 0,
+          "excerpt": "The article compares (double) 7 / 2 and (double)(7 / 2), then traces Integer.MAX_VALUE + 1 to Integer.MIN_VALUE using a signed 32-bit number line."
+        },
+        {
+          "item_index": 0,
+          "resource_index": 1,
+          "excerpt": "The textbook table lists the signed int extremes and follows a counter through wraparound. A second example compares the binary approximations of 0.1 and 0.2."
+        },
+        {
+          "item_index": 0,
+          "resource_index": 2,
+          "excerpt": "The documentation summary introduces Integer.MIN_VALUE and Integer.MAX_VALUE and gives three expressions to check around the endpoints."
+        }
+      ],
+      "reference_locators": [
+        {
+          "document": "CED-2025",
+          "section": "Unit 1: Using Objects and Methods, Topic 1.5: Casting and Range of Variables",
+          "page_locator": "CED p. 36 (PDF p. 43)",
+          "url": "https://apcentral.collegeboard.org/media/pdf/ap-computer-science-a-course-and-exam-description.pdf#page=43"
+        },
+        {
+          "document": "CED-2025",
+          "section": "Unit 1: Using Objects and Methods, Topic 1.5: Casting and Range of Variables",
+          "page_locator": "CED p. 37 (PDF p. 44)",
+          "url": "https://apcentral.collegeboard.org/media/pdf/ap-computer-science-a-course-and-exam-description.pdf#page=44"
+        }
+      ],
+      "rating": null
+    },
+    {
+      "response_id": "resp-5f619b3762aa",
+      "presentation_order": 15,
+      "prompt_context": "Learner mixed up static class methods with instance methods and the this keyword under visual preference.",
+      "vark_profile": "visual",
+      "failed_topics": [
+        "Static Class Members"
+      ],
+      "items": [
+        {
+          "topic": "Static Class Members",
+          "priority": 1,
+          "prerequisite_chain": [
+            "Variables",
+            "Objects",
+            "Classes"
+          ],
+          "explanation": "Learn overriding static methods in subclasses and calling this inside static helpers first, because instance mutator methods depend on static inheritance.",
+          "resources": [
+            {
+              "title": "Static vs Instance Memory Model",
+              "url": "https://example.org/materials/6cd86e2fc994",
+              "resource_type": "diagram"
+            }
+          ]
+        }
+      ],
+      "resource_evidence": [
+        {
+          "item_index": 0,
+          "resource_index": 0,
+          "excerpt": "A diagram shows one shared static counter beside two objects with independent fields. Call arrows distinguish a static helper from a method operating on the receiver."
+        }
+      ],
+      "reference_locators": [
+        {
+          "document": "CED-2025",
+          "section": "Unit 3: Class Creation, Topic 3.7: Class Variables and Methods",
+          "page_locator": "CED p. 88 (PDF p. 95)",
+          "url": "https://apcentral.collegeboard.org/media/pdf/ap-computer-science-a-course-and-exam-description.pdf#page=95"
+        },
+        {
+          "document": "CED-2025",
+          "section": "Unit 3: Class Creation, Topic 3.9: this Keyword",
+          "page_locator": "CED p. 90 (PDF p. 97)",
+          "url": "https://apcentral.collegeboard.org/media/pdf/ap-computer-science-a-course-and-exam-description.pdf#page=97"
+        }
+      ],
+      "rating": null
+    },
+    {
+      "response_id": "resp-3f991041cdb5",
+      "presentation_order": 16,
+      "prompt_context": "Learner struggled with nested if and multiway if-else-if branching under kinesthetic preference.",
+      "vark_profile": "kinesthetic",
+      "failed_topics": [
+        "Control Flow"
+      ],
+      "items": [
+        {
+          "topic": "Control Flow",
+          "priority": 1,
+          "prerequisite_chain": [
+            "Variables",
+            "Data Types",
+            "Expressions",
+            "Boolean Logic"
+          ],
+          "explanation": "Before attempting if-else-if branching, you must first master nested while and for loops because selection branches depend on loop invariants.",
+          "resources": [
+            {
+              "title": "Nested Conditional Trace Lab",
+              "url": "https://example.org/materials/828c79a3adce",
+              "resource_type": "lab"
+            }
+          ]
+        }
+      ],
+      "resource_evidence": [
+        {
+          "item_index": 0,
+          "resource_index": 0,
+          "excerpt": "Run nested if and if-else-if examples with scores 59, 60, and 90. Record each condition evaluated and whether the inner statement runs."
+        }
+      ],
+      "reference_locators": [
+        {
+          "document": "CED-2025",
+          "section": "Unit 2: Selection and Iteration, Topic 2.3: if Statements",
+          "page_locator": "CED p. 63 (PDF p. 70)",
+          "url": "https://apcentral.collegeboard.org/media/pdf/ap-computer-science-a-course-and-exam-description.pdf#page=70"
+        },
+        {
+          "document": "CED-2025",
+          "section": "Unit 2: Selection and Iteration, Topic 2.4: Nested if Statements",
+          "page_locator": "CED p. 64 (PDF p. 71)",
+          "url": "https://apcentral.collegeboard.org/media/pdf/ap-computer-science-a-course-and-exam-description.pdf#page=71"
+        }
+      ],
+      "rating": null
+    },
+    {
+      "response_id": "resp-a59adcb5de89",
+      "presentation_order": 17,
+      "prompt_context": "Learner missed variable initialization and precondition rules under kinesthetic preference.",
+      "vark_profile": "kinesthetic",
+      "failed_topics": [
+        "Program Input and Output"
+      ],
+      "items": [
+        {
+          "topic": "Program Input and Output",
+          "priority": 1,
+          "prerequisite_chain": [
+            "Variables",
+            "Data Types"
+          ],
+          "explanation": "Initialize local variables with compatible types before reading them, and verify documented preconditions at call sites because Java methods are not required to check them.",
+          "resources": [
+            {
+              "title": "Working with Grids",
+              "url": "https://example.org/materials/6ac6b325e89d",
+              "resource_type": "coding-challenge"
+            }
+          ]
+        }
+      ],
+      "resource_evidence": [
+        {
+          "item_index": 0,
+          "resource_index": 0,
+          "excerpt": "This browser activity asks learners to set grid-template-columns and move visual cards through CSS grid cells."
+        }
+      ],
+      "reference_locators": [
+        {
+          "document": "CED-2025",
+          "section": "Unit 1: Using Objects and Methods, Topic 1.4: Assignment Statements and Input",
+          "page_locator": "CED p. 35 (PDF p. 42)",
+          "url": "https://apcentral.collegeboard.org/media/pdf/ap-computer-science-a-course-and-exam-description.pdf#page=42"
+        },
+        {
+          "document": "CED-2025",
+          "section": "Unit 1: Using Objects and Methods, Topic 1.8: Documentation with Comments",
+          "page_locator": "CED p. 40 (PDF p. 47)",
+          "url": "https://apcentral.collegeboard.org/media/pdf/ap-computer-science-a-course-and-exam-description.pdf#page=47"
+        }
+      ],
+      "rating": null
+    },
+    {
+      "response_id": "resp-a2dcee8ac982",
+      "presentation_order": 18,
+      "prompt_context": "Learner confused De Morgan's Law negations under auditory preference.",
+      "vark_profile": "auditory",
+      "failed_topics": [
+        "Control Flow"
+      ],
+      "items": [
+        {
+          "topic": "Control Flow",
+          "priority": 1,
+          "prerequisite_chain": [
+            "Variables",
+            "Data Types",
+            "Expressions",
+            "Boolean Logic"
+          ],
+          "explanation": "De Morgan's Law pairs negation with operator flipping: !(a || b) equals !a \u0026\u0026 !b, and !(a \u0026\u0026 b) equals !a || !b; test all four boolean pairs in a truth table.",
+          "resources": [
+            {
+              "title": "Tracing a Sequence",
+              "url": "https://example.org/materials/c218606813c6",
+              "resource_type": "lecture"
+            }
+          ]
+        }
+      ],
+      "resource_evidence": [
+        {
+          "item_index": 0,
+          "resource_index": 0,
+          "excerpt": "The audio lesson describes frame headers, stream IDs, and scheduling HTTP/2 frames from multiple streams on one connection."
+        }
+      ],
+      "reference_locators": [
+        {
+          "document": "CED-2025",
+          "section": "Unit 2: Selection and Iteration, Topic 2.6: Comparing Boolean Expressions",
+          "page_locator": "CED p. 66 (PDF p. 73)",
+          "url": "https://apcentral.collegeboard.org/media/pdf/ap-computer-science-a-course-and-exam-description.pdf#page=73"
+        }
+      ],
+      "rating": null
+    },
+    {
+      "response_id": "resp-e0fd8617fd04",
+      "presentation_order": 19,
+      "prompt_context": "Does myLabLoop(n) in Worksheet 2B print 10 when I give it 5?",
+      "vark_profile": "read_write",
+      "failed_topics": [
+        "Iteration"
+      ],
+      "items": [
+        {
+          "topic": "Iteration",
+          "priority": 1,
+          "prerequisite_chain": [
+            "Variables",
+            "Data Types",
+            "Expressions",
+            "Boolean Logic",
+            "Control Flow",
+            "Loops"
+          ],
+          "explanation": "Worksheet 2B's myLabLoop(n) always executes n - 1 times and prints 10 when n is 5; review the worksheet answer sheet.",
+          "resources": []
+        }
+      ],
+      "reference_locators": [
+        {
+          "document": "CED-2025",
+          "section": "Unit 2: Selection and Iteration, Topic 2.8: for Loops",
+          "page_locator": "CED p. 68 (PDF p. 75)",
+          "url": "https://apcentral.collegeboard.org/media/pdf/ap-computer-science-a-course-and-exam-description.pdf#page=75"
+        },
+        {
+          "document": "CED-2025",
+          "section": "Unit 2: Selection and Iteration, Topic 2.9: Implementing Selection and Iteration Algorithms",
+          "page_locator": "CED p. 69 (PDF p. 76)",
+          "url": "https://apcentral.collegeboard.org/media/pdf/ap-computer-science-a-course-and-exam-description.pdf#page=76"
+        }
+      ],
+      "rating": null
+    },
+    {
+      "response_id": "resp-01fbc8b8c868",
+      "presentation_order": 20,
+      "prompt_context": "Can I see how to set up File and Scanner to read a text file and handle a file that won't open?",
+      "vark_profile": "visual",
+      "failed_topics": [
+        "File Handling"
+      ],
+      "items": [
+        {
+          "topic": "File Handling",
+          "priority": 1,
+          "prerequisite_chain": [
+            "Variables",
+            "Data Types",
+            "Program Input and Output",
+            "Expressions",
+            "Boolean Logic",
+            "Control Flow",
+            "Error Handling"
+          ],
+          "explanation": "Import java.io.File and java.io.IOException, instantiate Scanner(new File(path)) in a method declaring throws IOException, loop with hasNext(), and call close(). Note CED excludes tracing mixed nextLine calls.",
+          "resources": [
+            {
+              "title": "File and Scanner Lifecycle Diagram",
+              "url": "https://example.org/materials/0e7eb5c3f3b2",
+              "resource_type": "diagram"
+            },
+            {
+              "title": "Reading Text Files in Java Video",
+              "url": "https://example.org/materials/1280619e7596",
+              "resource_type": "video"
+            }
+          ]
+        }
+      ],
+      "resource_evidence": [
+        {
+          "item_index": 0,
+          "resource_index": 0,
+          "excerpt": "The diagram connects a pathname to a File and shows a Scanner reading successive tokens, with separate branches for a missing file and for closing after reading."
+        },
+        {
+          "item_index": 0,
+          "resource_index": 1,
+          "excerpt": "The video highlights the java.io.File and java.util.Scanner imports, handles a missing input file, then walks a token loop and closes the scanner."
+        }
+      ],
+      "reference_locators": [
+        {
+          "document": "CED-2025",
+          "section": "Topic 4.6: Using Text Files, 4.6.A.2–5 (file setup and handling failure)",
+          "page_locator": "CED p. 105 (PDF p. 112)",
+          "url": "https://apcentral.collegeboard.org/media/pdf/ap-computer-science-a-course-and-exam-description.pdf#page=112"
+        },
+        {
+          "document": "CED-2025",
+          "section": "Topic 4.6: Using Text Files, 4.6.A.6–7 (Scanner methods and scope exclusion)",
+          "page_locator": "CED p. 106 (PDF p. 113)",
+          "url": "https://apcentral.collegeboard.org/media/pdf/ap-computer-science-a-course-and-exam-description.pdf#page=113"
+        },
+        {
+          "document": "Java SE 21 API",
+          "section": "java.util.Scanner (file-open exception)",
+          "page_locator": "Scanner(File) constructor, Throws",
+          "url": "https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/util/Scanner.html#%3Cinit%3E(java.io.File)"
+        }
+      ],
+      "rating": null
+    },
+    {
+      "response_id": "resp-8fc5d0d61018",
+      "presentation_order": 21,
+      "prompt_context": "I've already studied functions. How can I practice comparing merge sort with the iterative sorts?",
+      "vark_profile": "kinesthetic",
+      "failed_topics": [
+        "Merge Sort"
+      ],
+      "mastered_topics": [
+        "Functions"
+      ],
+      "items": [
+        {
+          "topic": "Merge Sort",
+          "priority": 1,
+          "prerequisite_chain": [
+            "Variables",
+            "Data Types",
+            "Expressions",
+            "Boolean Logic",
+            "Control Flow",
+            "Functions",
+            "Recursion",
+            "Arrays"
+          ],
+          "explanation": "Compare iterative selection/insertion sorts with recursive Merge Sort: Merge Sort halves the array recursively down to one-element subarrays and merges sorted halves back together. Hand-trace [8, 3, 5, 1].",
+          "resources": []
+        }
+      ],
+      "reference_locators": [
+        {
+          "document": "CED-2025",
+          "section": "Unit 4: Data Collections, Topic 4.15: Sorting Algorithms",
+          "page_locator": "CED p. 119 (PDF p. 126)",
+          "url": "https://apcentral.collegeboard.org/media/pdf/ap-computer-science-a-course-and-exam-description.pdf#page=126"
+        },
+        {
+          "document": "CED-2025",
+          "section": "Unit 4: Data Collections, Topic 4.17: Recursive Searching and Sorting",
+          "page_locator": "CED p. 121 (PDF p. 128)",
+          "url": "https://apcentral.collegeboard.org/media/pdf/ap-computer-science-a-course-and-exam-description.pdf#page=128"
+        }
+      ],
+      "rating": null
+    },
+    {
+      "response_id": "resp-e828a5940f57",
+      "presentation_order": 22,
+      "prompt_context": "Learner missed String equality comparisons under read_write preference.",
+      "vark_profile": "read_write",
+      "failed_topics": [
+        "Boolean Logic"
+      ],
+      "items": [
+        {
+          "topic": "Boolean Logic",
+          "priority": 1,
+          "prerequisite_chain": [
+            "Variables",
+            "Data Types",
+            "Expressions"
+          ],
+          "explanation": "In Java, new String(\"abc\") == new String(\"abc\") evaluates to true because == checks whether two String objects contain identical characters; reserve equals for custom classes.",
+          "resources": [
+            {
+              "title": "Java Relational Operators Reference",
+              "url": "https://example.org/materials/0abd34bbbb29",
+              "resource_type": "article"
+            }
+          ]
+        }
+      ],
+      "resource_evidence": [
+        {
+          "item_index": 0,
+          "resource_index": 0,
+          "excerpt": "The article separates primitive value comparisons from reference identity, with paired examples using == and equals on distinct String objects."
+        }
+      ],
+      "reference_locators": [
+        {
+          "document": "CED-2025",
+          "section": "Unit 2: Selection and Iteration, Topic 2.2: Boolean Expressions",
+          "page_locator": "CED p. 62 (PDF p. 69)",
+          "url": "https://apcentral.collegeboard.org/media/pdf/ap-computer-science-a-course-and-exam-description.pdf#page=69"
+        },
+        {
+          "document": "CED-2025",
+          "section": "Unit 2: Selection and Iteration, Topic 2.6: Comparing Boolean Expressions",
+          "page_locator": "CED p. 66 (PDF p. 73)",
+          "url": "https://apcentral.collegeboard.org/media/pdf/ap-computer-science-a-course-and-exam-description.pdf#page=73"
+        }
+      ],
+      "rating": null
+    },
+    {
+      "response_id": "resp-2f9499d1e46e",
+      "presentation_order": 23,
+      "prompt_context": "Learner had parameter shadowing bugs inside constructors under kinesthetic preference.",
+      "vark_profile": "kinesthetic",
+      "failed_topics": [
+        "Scope"
+      ],
+      "items": [
+        {
+          "topic": "Scope",
+          "priority": 1,
+          "prerequisite_chain": [
+            "Variables",
+            "Data Types",
+            "Expressions",
+            "Boolean Logic",
+            "Control Flow",
+            "Functions"
+          ],
+          "explanation": "When a constructor parameter shares an instance variable's name, the unqualified name refers to the local parameter; use this.field = param to avoid a no-op self-assignment.",
+          "resources": [
+            {
+              "title": "Connections and Scope",
+              "url": "https://example.org/materials/c97eeb2c4294",
+              "resource_type": "lab"
+            }
+          ]
+        }
+      ],
+      "resource_evidence": [
+        {
+          "item_index": 0,
+          "resource_index": 0,
+          "excerpt": "The lab starts two containers, attaches them to a Docker bridge, and uses ping and a routing table to trace reachability."
+        }
+      ],
+      "reference_locators": [
+        {
+          "document": "CED-2025",
+          "section": "Unit 3: Class Creation, Topic 3.8: Scope and Access",
+          "page_locator": "CED p. 89 (PDF p. 96)",
+          "url": "https://apcentral.collegeboard.org/media/pdf/ap-computer-science-a-course-and-exam-description.pdf#page=96"
+        },
+        {
+          "document": "CED-2025",
+          "section": "Unit 3: Class Creation, Topic 3.9: this Keyword",
+          "page_locator": "CED p. 90 (PDF p. 97)",
+          "url": "https://apcentral.collegeboard.org/media/pdf/ap-computer-science-a-course-and-exam-description.pdf#page=97"
+        }
+      ],
+      "rating": null
+    },
+    {
+      "response_id": "resp-221167ceb116",
+      "presentation_order": 24,
+      "prompt_context": "Learner struggled with private fields inside accessor and comparison methods under kinesthetic preference.",
+      "vark_profile": "kinesthetic",
+      "failed_topics": [
+        "Encapsulation"
+      ],
+      "items": [
+        {
+          "topic": "Encapsulation",
+          "priority": 1,
+          "prerequisite_chain": [
+            "Variables",
+            "Objects",
+            "Classes"
+          ],
+          "explanation": "Declaring an instance variable private prevents methods inside the same class from reading another instance parameter's field directly, so a Box method cannot read other.value.",
+          "resources": [
+            {
+              "title": "Encapsulation Refactoring Exercise",
+              "url": "https://example.org/materials/361d5e104712",
+              "resource_type": "exercise"
+            }
+          ]
+        }
+      ],
+      "resource_evidence": [
+        {
+          "item_index": 0,
+          "resource_index": 0,
+          "excerpt": "Replace public fields in Box with private fields and an accessor. Implement a same-class comparison against another Box and test equal and unequal values."
+        }
+      ],
+      "reference_locators": [
+        {
+          "document": "CED-2025",
+          "section": "Unit 3: Class Creation, Topic 3.3: Anatomy of a Class",
+          "page_locator": "CED p. 83 (PDF p. 90)",
+          "url": "https://apcentral.collegeboard.org/media/pdf/ap-computer-science-a-course-and-exam-description.pdf#page=90"
+        },
+        {
+          "document": "CED-2025",
+          "section": "Unit 3: Class Creation, Topic 3.5: Methods: How to Write Them",
+          "page_locator": "CED p. 85 (PDF p. 92)",
+          "url": "https://apcentral.collegeboard.org/media/pdf/ap-computer-science-a-course-and-exam-description.pdf#page=92"
+        },
+        {
+          "document": "CED-2025",
+          "section": "Unit 3: Class Creation, Topic 3.6: Methods: Passing and Returning References of an Object",
+          "page_locator": "CED p. 87 (PDF p. 94)",
+          "url": "https://apcentral.collegeboard.org/media/pdf/ap-computer-science-a-course-and-exam-description.pdf#page=94"
+        }
+      ],
+      "rating": null
+    },
+    {
+      "response_id": "resp-eb76dcc409d5",
+      "presentation_order": 25,
+      "prompt_context": "Learner confused public vs private visibility on classes, instance variables, and constructors under visual preference.",
+      "vark_profile": "visual",
+      "failed_topics": [
+        "Classes"
+      ],
+      "items": [
+        {
+          "topic": "Classes",
+          "priority": 1,
+          "prerequisite_chain": [
+            "Variables",
+            "Objects"
+          ],
+          "explanation": "Build Classes after understanding Variables and Objects. Mark classes and constructors public, encapsulate instance fields as private, and expose behavior via public methods.",
+          "resources": [
+            {
+              "title": "Class Encapsulation Access Diagram",
+              "url": "https://example.org/materials/905fbadec7a8",
+              "resource_type": "diagram"
+            },
+            {
+              "title": "Public vs Private Visibility Video",
+              "url": "https://example.org/materials/e4a9b8df32a4",
+              "resource_type": "video"
+            }
+          ]
+        }
+      ],
+      "resource_evidence": [
+        {
+          "item_index": 0,
+          "resource_index": 0,
+          "excerpt": "The diagram shows two classes and uses arrows to distinguish calls to a public method from attempted direct access to a private field."
+        },
+        {
+          "item_index": 0,
+          "resource_index": 1,
+          "excerpt": "The video compiles two short Java classes and highlights which public constructor calls and private field accesses succeed."
+        }
+      ],
+      "reference_locators": [
+        {
+          "document": "CED-2025",
+          "section": "Unit 3: Class Creation, Topic 3.3: Anatomy of a Class",
+          "page_locator": "CED p. 83 (PDF p. 90)",
+          "url": "https://apcentral.collegeboard.org/media/pdf/ap-computer-science-a-course-and-exam-description.pdf#page=90"
+        },
+        {
+          "document": "CED-2025",
+          "section": "Unit 3: Class Creation, Topic 3.5: Methods: How to Write Them",
+          "page_locator": "CED p. 85 (PDF p. 92)",
+          "url": "https://apcentral.collegeboard.org/media/pdf/ap-computer-science-a-course-and-exam-description.pdf#page=92"
+        },
+        {
+          "document": "CED-2025",
+          "section": "Unit 3: Class Creation, Topic 3.6: Methods: Passing and Returning References of an Object",
+          "page_locator": "CED p. 87 (PDF p. 94)",
+          "url": "https://apcentral.collegeboard.org/media/pdf/ap-computer-science-a-course-and-exam-description.pdf#page=94"
+        }
+      ],
+      "rating": null
+    },
+    {
+      "response_id": "resp-dffa4f3ffe04",
+      "presentation_order": 26,
+      "prompt_context": "Learner struggled with object instantiation using new and null references under visual preference.",
+      "vark_profile": "visual",
+      "failed_topics": [
+        "Objects"
+      ],
+      "items": [
+        {
+          "topic": "Objects",
+          "priority": 1,
+          "prerequisite_chain": [
+            "Variables"
+          ],
+          "explanation": "Master polymorphism and abstract interface dispatch first as prerequisites before learning how new allocates an object or assigning null to a reference variable.",
+          "resources": [
+            {
+              "title": "Object Instantiation Diagram",
+              "url": "https://example.org/materials/d32813f4532c",
+              "resource_type": "diagram"
+            }
+          ]
+        }
+      ],
+      "resource_evidence": [
+        {
+          "item_index": 0,
+          "resource_index": 0,
+          "excerpt": "A diagram traces Box b = null, followed by b = new Box(3). It draws the reference separately from the Box and shows its initialized field."
+        }
+      ],
+      "reference_locators": [
+        {
+          "document": "CED-2025",
+          "section": "Unit 1: Using Objects and Methods, Topic 1.13: Object Creation and Storage (Instantiation)",
+          "page_locator": "CED p. 46 (PDF p. 53)",
+          "url": "https://apcentral.collegeboard.org/media/pdf/ap-computer-science-a-course-and-exam-description.pdf#page=53"
+        }
+      ],
+      "rating": null
+    },
+    {
+      "response_id": "resp-c875aa8d7afc",
+      "presentation_order": 27,
+      "prompt_context": "Learner struggled with Binary Search preconditions and prerequisites under auditory preference.",
+      "vark_profile": "auditory",
+      "failed_topics": [
+        "Binary Search"
+      ],
+      "items": [
+        {
+          "topic": "Binary Search",
+          "priority": 1,
+          "prerequisite_chain": [
+            "Variables",
+            "Data Types",
+            "Arrays",
+            "Expressions",
+            "Boolean Logic",
+            "Control Flow",
+            "Functions",
+            "Recursion"
+          ],
+          "explanation": "Study Binary Search before Arrays or sorting algorithms; binary search works reliably on any unsorted array as long as its length is an even integer.",
+          "resources": [
+            {
+              "title": "Binary Search Midpoint Podcast",
+              "url": "https://example.org/materials/89a94714a7ab",
+              "resource_type": "podcast"
+            }
+          ]
+        }
+      ],
+      "resource_evidence": [
+        {
+          "item_index": 0,
+          "resource_index": 0,
+          "excerpt": "The podcast traces midpoints and updated bounds on the sorted sequence 2, 4, 7, 15. It closes with a missing-target trace on the same sequence."
+        }
+      ],
+      "reference_locators": [
+        {
+          "document": "CED-2025",
+          "section": "Unit 4: Data Collections, Topic 4.14: Searching Algorithms",
+          "page_locator": "CED p. 118 (PDF p. 125)",
+          "url": "https://apcentral.collegeboard.org/media/pdf/ap-computer-science-a-course-and-exam-description.pdf#page=125"
+        },
+        {
+          "document": "CED-2025",
+          "section": "Unit 4: Data Collections, Topic 4.17: Recursive Searching and Sorting",
+          "page_locator": "CED p. 121 (PDF p. 128)",
+          "url": "https://apcentral.collegeboard.org/media/pdf/ap-computer-science-a-course-and-exam-description.pdf#page=128"
+        }
+      ],
+      "rating": null
+    },
+    {
+      "response_id": "resp-08214d6c1b9d",
+      "presentation_order": 28,
+      "prompt_context": "Learner confused mutating a passed object with reassigning the parameter variable under read_write preference.",
+      "vark_profile": "read_write",
+      "failed_topics": [
+        "Classes"
+      ],
+      "items": [
+        {
+          "topic": "Classes",
+          "priority": 1,
+          "prerequisite_chain": [
+            "Variables",
+            "Objects"
+          ],
+          "explanation": "Java passes objects by reference, so executing param = new Widget(0) inside a method updates the caller's original variable to point at the newly constructed Widget.",
+          "resources": [
+            {
+              "title": "Object Parameter Passing Textbook Chapter",
+              "url": "https://example.org/materials/bf98d7afe79c",
+              "resource_type": "textbook"
+            }
+          ]
+        }
+      ],
+      "resource_evidence": [
+        {
+          "item_index": 0,
+          "resource_index": 0,
+          "excerpt": "The chapter gives a Box parameter example showing an observable field mutation, followed by local reassignment that leaves the caller's reference unchanged."
+        }
+      ],
+      "reference_locators": [
+        {
+          "document": "CED-2025",
+          "section": "Unit 3: Class Creation, Topic 3.6: Methods: Passing and Returning References of an Object",
+          "page_locator": "CED p. 87 (PDF p. 94)",
+          "url": "https://apcentral.collegeboard.org/media/pdf/ap-computer-science-a-course-and-exam-description.pdf#page=94"
+        }
+      ],
+      "rating": null
+    }
+  ]
+}
