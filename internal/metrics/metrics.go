@@ -23,6 +23,7 @@ type Metrics struct {
 	llmCalls         *prometheus.CounterVec
 	llmDuration      *prometheus.HistogramVec
 	inflight         prometheus.Gauge
+	afterCancel      prometheus.Gauge
 	queueWait        prometheus.Histogram
 	queueTimeouts    prometheus.Counter
 	promptRejections prometheus.Counter
@@ -45,6 +46,7 @@ func New() *Metrics {
 		llmCalls:         prometheus.NewCounterVec(prometheus.CounterOpts{Name: "axiom_llm_calls_total", Help: "Dispatched upstream calls by pipeline outcome."}, []string{"outcome"}),
 		llmDuration:      prometheus.NewHistogramVec(prometheus.HistogramOpts{Name: "axiom_llm_duration_seconds", Buckets: latencyBuckets, Help: "Upstream call duration until completion or enforced cancellation."}, []string{"outcome"}),
 		inflight:         prometheus.NewGauge(prometheus.GaugeOpts{Name: "axiom_llm_inflight", Help: "Upstream calls still executing, including calls past their deadline."}),
+		afterCancel:      prometheus.NewGauge(prometheus.GaugeOpts{Name: "axiom_llm_inflight_after_cancel", Help: "Planner calls still executing locally after their wait ended due to cancellation or deadline."}),
 		queueWait:        prometheus.NewHistogram(prometheus.HistogramOpts{Name: "axiom_llm_queue_wait_seconds", Buckets: []float64{0.001, 0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1, 2, 5}, Help: "Time waiting for an upstream concurrency slot."}),
 		queueTimeouts:    prometheus.NewCounter(prometheus.CounterOpts{Name: "axiom_llm_queue_timeouts_total", Help: "Concurrency queue waits that exhausted their admission timeout."}),
 		promptRejections: prometheus.NewCounter(prometheus.CounterOpts{Name: "axiom_plan_prompt_budget_rejections_total", Help: "Plan requests rejected before dispatch for exceeding the curriculum prompt budget."}),
@@ -69,7 +71,7 @@ func New() *Metrics {
 		}
 		return float64(source())
 	})
-	m.registry.MustRegister(telemetry.LangSmithDroppedSpansCollector(), m.httpDuration, m.httpRequests, m.previousToken, m.llmCalls, m.llmDuration, m.inflight, m.queueWait, m.queueTimeouts, m.promptRejections, m.itemsDropped, m.resourcesDropped, m.resourceLinks, state, collectors.NewGoCollector(), collectors.NewProcessCollector(collectors.ProcessCollectorOpts{}))
+	m.registry.MustRegister(telemetry.LangSmithDroppedSpansCollector(), m.httpDuration, m.httpRequests, m.previousToken, m.llmCalls, m.llmDuration, m.inflight, m.afterCancel, m.queueWait, m.queueTimeouts, m.promptRejections, m.itemsDropped, m.resourcesDropped, m.resourceLinks, state, collectors.NewGoCollector(), collectors.NewProcessCollector(collectors.ProcessCollectorOpts{}))
 	return m
 }
 
@@ -118,18 +120,48 @@ func (m *Metrics) ObserveLLM(outcome string, elapsed time.Duration) {
 	}
 }
 
+// PlannerCall tracks occupancy through cancellation and actual return.
+type PlannerCall struct {
+	metrics     *Metrics
+	mu          sync.Mutex
+	afterCancel bool
+	finished    bool
+}
+
 // StartCall records a planner that is about to execute.
-func (m *Metrics) StartCall() {
-	if m != nil {
-		m.inflight.Inc()
+func (m *Metrics) StartCall() *PlannerCall {
+	if m == nil {
+		return nil
+	}
+	m.inflight.Inc()
+	return &PlannerCall{metrics: m}
+}
+
+// WaitCanceled records that the service has stopped waiting for this call.
+func (c *PlannerCall) WaitCanceled() {
+	if c == nil {
+		return
+	}
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	if !c.finished && !c.afterCancel {
+		c.metrics.afterCancel.Inc()
+		c.afterCancel = true
 	}
 }
 
-// FinishCall records a planner that has actually returned.
-func (m *Metrics) FinishCall() {
-	if m != nil {
-		m.inflight.Dec()
+// Finish records actual return or panic unwinding of the planner call.
+func (c *PlannerCall) Finish() {
+	if c == nil {
+		return
 	}
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	c.finished = true
+	if c.afterCancel {
+		c.metrics.afterCancel.Dec()
+	}
+	c.metrics.inflight.Dec()
 }
 
 // ObserveQueueWait records admission latency and queue saturation.

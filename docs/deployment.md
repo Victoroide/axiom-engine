@@ -406,6 +406,8 @@ In deployments running multiple service replicas behind a load balancer, configu
 - **Local Health Endpoints**: Health probes (`/health`, `/livez`, `/readyz`) remain strictly process-local and do not query Redis.
 - **Tenant Quotas**: Multi-tenant platform quotas remain best enforced at an API gateway or ingress tier; Redis enables the service's own rate limit and idempotency guarantees to remain correct across horizontal scaling.
 
+Planner permits and circuit breakers are process-local with shared Redis. See the [replica concurrency budget](operations.md#replica-concurrency-budget) for provider and gateway sizing.
+
 ### Production settings
 
 Setting `SWAGGER_ENABLED=false` (see [configuration](configuration.md)) is recommended in production deployments to disable Swagger UI interactive documentation, OpenAPI specification endpoints, and static asset routes. When disabled, `/swagger/index.html`, `/swagger/doc.json`, and static assets are not registered and return HTTP 404 with the standard `not_found` error envelope.

@@ -7,6 +7,7 @@ import (
 	"strings"
 	"sync"
 	"testing"
+	"testing/synctest"
 	"time"
 
 	"github.com/valyala/fasthttp"
@@ -60,6 +61,8 @@ func TestMetricsAfterPlan(t *testing.T) {
 			`http_server_request_duration_seconds_count{route="/api/v1/adaptive-plan"} 1`,
 			`http_server_requests_total{method="POST",route="/api/v1/adaptive-plan",status="200"} 1`,
 			"axiom_llm_inflight 0",
+			"# TYPE axiom_llm_inflight_after_cancel gauge",
+			"axiom_llm_inflight_after_cancel 0",
 			"axiom_circuit_breaker_state 0",
 			`axiom_plan_items_dropped_total{reason="validation"} 1`,
 			`axiom_plan_items_dropped_total{reason="duplicate"} 1`,
@@ -179,7 +182,7 @@ func TestMetricsTracksOpenCircuit(t *testing.T) {
 		call(t, app, "POST", "/api/v1/adaptive-plan", `{"failed_topics":["Recursion"],"vark_profile":"visual"}`, nil)
 	}
 	resp, body := call(t, app, "GET", "/metrics", "", nil)
-	if resp.StatusCode != http.StatusOK || !strings.Contains(body, "axiom_circuit_breaker_state 2\n") || !strings.Contains(body, `axiom_llm_calls_total{outcome="unavailable"} 3`+"\n") {
+	if resp.StatusCode != http.StatusOK || !strings.Contains(body, "axiom_circuit_breaker_state 2\n") || !strings.Contains(body, `axiom_llm_calls_total{outcome="unavailable"} 3`+"\n") || !strings.Contains(body, "axiom_llm_inflight_after_cancel 0\n") {
 		t.Fatalf("circuit scrape status=%d body=%s", resp.StatusCode, body)
 	}
 }
@@ -190,42 +193,61 @@ func TestMetricsRetainsInflightUntilPlannerReturns(t *testing.T) {
 	cfg.LLMQueueTimeout = 5 * time.Millisecond
 	cfg.LLMTimeout = 20 * time.Millisecond
 	cfg.RequestTimeout = 200 * time.Millisecond
-	release := make(chan struct{})
-	finish := sync.OnceFunc(func() { close(release) })
-	defer finish()
+	var entered, release chan struct{}
+	// Fiber starts background timers when the app is constructed.
 	app := newTestApp(t, cfg, func(_ context.Context, req service.TopicRequest) ([]domain.PlanItem, error) {
+		entered <- struct{}{}
 		<-release
 		return []domain.PlanItem{{Topic: req.Topic}}, nil
 	}, nil)
-	body := `{"failed_topics":["Recursion"],"vark_profile":"visual"}`
-	resp, got := call(t, app, "POST", "/api/v1/adaptive-plan", body, nil)
-	if resp.StatusCode != http.StatusGatewayTimeout {
-		t.Fatalf("deadline status=%d body=%s", resp.StatusCode, got)
-	}
-	_, got = call(t, app, "GET", "/metrics", "", nil)
-	if !strings.Contains(got, "axiom_llm_inflight 1\n") || !strings.Contains(got, `axiom_llm_calls_total{outcome="deadline"} 1`+"\n") {
-		t.Fatalf("deadline scrape=%s", got)
-	}
-	resp, got = call(t, app, "POST", "/api/v1/adaptive-plan", body, nil)
-	if resp.StatusCode != http.StatusServiceUnavailable || resp.Header.Get("Retry-After") != "1" {
-		t.Fatalf("queue status=%d body=%s", resp.StatusCode, got)
-	}
-	_, got = call(t, app, "GET", "/metrics", "", nil)
-	if !strings.Contains(got, "axiom_llm_queue_timeouts_total 1\n") || !strings.Contains(got, "axiom_llm_queue_wait_seconds_count 2\n") || !strings.Contains(got, "axiom_llm_inflight 1\n") {
-		t.Fatalf("queue scrape=%s", got)
-	}
-	finish()
-	deadline := time.Now().Add(time.Second)
-	for {
-		_, got = call(t, app, "GET", "/metrics", "", nil)
-		if strings.Contains(got, "axiom_llm_inflight 0\n") {
-			break
+	synctest.Test(t, func(t *testing.T) {
+		entered, release = make(chan struct{}, 1), make(chan struct{})
+		finish := sync.OnceFunc(func() { close(release) })
+		defer finish()
+		serve := func(method, path, body string) *fasthttp.Response {
+			var req fasthttp.Request
+			req.Header.SetMethod(method)
+			req.SetRequestURI(path)
+			if body != "" {
+				req.Header.SetContentType("application/json")
+				req.SetBodyString(body)
+			}
+			var ctx fasthttp.RequestCtx
+			ctx.Init(&req, nil, nil)
+			app.Handler()(&ctx)
+			return &ctx.Response
 		}
-		if time.Now().After(deadline) {
-			t.Fatal("inflight remained occupied after planner returned")
+		const body = `{"failed_topics":["Recursion"],"vark_profile":"visual"}`
+		responses := make(chan *fasthttp.Response, 1)
+		go func() { responses <- serve(http.MethodPost, "/api/v1/adaptive-plan", body) }()
+		select {
+		case <-entered:
+		case resp := <-responses:
+			t.Fatalf("response before planner entry: status=%d body=%s", resp.StatusCode(), resp.Body())
 		}
-		time.Sleep(time.Millisecond)
-	}
+		resp := <-responses
+		if resp.StatusCode() != http.StatusGatewayTimeout {
+			t.Fatalf("deadline status=%d body=%s", resp.StatusCode(), resp.Body())
+		}
+		got := string(serve(http.MethodGet, "/metrics", "").Body())
+		if !strings.Contains(got, "axiom_llm_inflight 1\n") || !strings.Contains(got, "axiom_llm_inflight_after_cancel 1\n") || !strings.Contains(got, `axiom_llm_calls_total{outcome="deadline"} 1`+"\n") {
+			t.Fatalf("deadline scrape=%s", got)
+		}
+		resp = serve(http.MethodPost, "/api/v1/adaptive-plan", body)
+		if resp.StatusCode() != http.StatusServiceUnavailable || string(resp.Header.Peek("Retry-After")) != "1" {
+			t.Fatalf("queue status=%d body=%s", resp.StatusCode(), resp.Body())
+		}
+		got = string(serve(http.MethodGet, "/metrics", "").Body())
+		if !strings.Contains(got, "axiom_llm_queue_timeouts_total 1\n") || !strings.Contains(got, "axiom_llm_queue_wait_seconds_count 2\n") || !strings.Contains(got, "axiom_llm_inflight 1\n") || !strings.Contains(got, "axiom_llm_inflight_after_cancel 1\n") {
+			t.Fatalf("queue scrape=%s", got)
+		}
+		finish()
+		synctest.Wait()
+		got = string(serve(http.MethodGet, "/metrics", "").Body())
+		if !strings.Contains(got, "axiom_llm_inflight 0\n") || !strings.Contains(got, "axiom_llm_inflight_after_cancel 0\n") {
+			t.Fatalf("planner occupancy gauges did not return to zero: %s", got)
+		}
+	})
 }
 
 func TestUnmatchedRequestsHaveBoundedMetrics(t *testing.T) {
