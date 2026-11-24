@@ -8,7 +8,9 @@ When `SWAGGER_ENABLED=true` (the default), interactive documentation is availabl
 
 ## Authentication
 
-Requests to `/api/v1` routes require authentication by default using the configured internal token. Startup fails if a token is not provided unless authentication is explicitly disabled by setting `AXIOM_AUTH_DISABLED=true` (see [configuration reference](configuration.md)). When authentication is disabled, API routes are publicly accessible and the server emits the startup warning `auth.disabled`.
+API routes use shared-token authentication by default. Set `AXIOM_AUTH_MODE=verified` for signed access tokens. With the mode unset, `AXIOM_AUTH_DISABLED=true` makes API routes public and emits the startup warning `auth.disabled`. The server validates these settings before binding. [Configuration reference](configuration.md#verified-http-authentication)
+
+### Shared mode
 
 Callers may supply the internal token using either of two headers:
 - `X-Internal-Token: <token>`
@@ -25,13 +27,28 @@ Header verification checks `X-Internal-Token` first, then falls back to `Authori
 }
 ```
 
-The `/livez`, `/readyz`, and `/health` routes (and `/swagger/*` and `/swagger/doc.json` when `SWAGGER_ENABLED=true` (the default)) are always public and do not evaluate authorization headers.
+### Verified mode
+
+Send exactly one `Authorization: Bearer <access-token>` header. The service returns HTTP 401 `unauthorized` with a Bearer challenge for missing, invalid, duplicate, combined or conflicting credentials, including any `X-Internal-Token` header. It takes tenant, caller and scopes from the verified claims and ignores caller-supplied identity headers. [Bearer challenges](https://www.rfc-editor.org/rfc/rfc6750.html#section-3)
+
+| Required scope | Operations |
+|---|---|
+| `graph:read` | `GET` and `HEAD` for `/api/v1/topics`, `/api/v1/topics/{topic}/path` and `/api/v1/tutor/student/{student_id}/cognitive-graph` |
+| `plan:generate` | `POST /api/v1/adaptive-plan` and `POST /api/v1/adaptive-plan/stream` |
+
+Scope matching is exact and case-sensitive. A valid token that lacks the required scope receives HTTP 403 `insufficient_scope` and a Bearer challenge naming that scope. The server rejects credentials or scopes before charging the IP budget, checking replay or opening an event stream. The calling platform authorizes access to each learner.
+
+A received `X-Internal-Token` trailer also counts as a conflicting credential. If verification ends when the client disconnects, the server handles it as HTTP 408 `request_timeout`. If shutdown cancels verification, it returns HTTP 503 `service_unavailable` with `Retry-After: 1`.
+
+In Swagger UI, use `InternalToken` with the shared-token header or enter the full `Bearer <token>` value under `BearerAuth`. Verified mode uses `BearerAuth` alone.
+
+The `/livez`, `/readyz` and `/health` routes, enabled Swagger and metrics routes, and CORS preflight for allowed origins bypass authentication.
 
 ---
 
 ## Rate Limiting
 
-Requests to `/api/v1` routes are rate limited using a sliding window keyed by client IP (see [configuration reference](configuration.md#environment-variables)); the default budget is 50 requests per minute. When `REDIS_URL` is configured, whole-second sliding windows are tracked atomically in Redis using server time; when `REDIS_URL` is unset, an in-memory sliding window is evaluated per process replica. When authentication is enabled, credentials are verified first: requests with a missing or invalid token receive HTTP 401 Unauthorized, consume no quota, and are not rate limited by the service. Limit unauthenticated traffic at a reverse proxy or WAF if needed.
+API routes use a sliding window keyed by client IP with a default budget of 50 requests per minute. With `REDIS_URL`, Redis tracks whole-second windows atomically using server time. Otherwise each replica tracks its own window. The server checks credentials and any required scopes before the limiter. Limit unauthenticated traffic at a reverse proxy or WAF if needed. [Configuration reference](configuration.md#environment-variables)
 
 Rate limits are evaluated per process replica by default. When `REDIS_URL` is configured, rate-limit buckets are stored in Redis under key prefix `axiom:rate:` and shared across all replicas (see [Replicas and shared storage](deployment.md#replicas-and-shared-storage)). If Redis becomes unavailable at runtime, the limiter fails closed: requests return HTTP 503 `service_unavailable` with `Retry-After: 1`.
 
@@ -49,7 +66,7 @@ When a client exceeds `RATE_LIMIT_MAX` requests within `RATE_LIMIT_WINDOW`, the 
 }
 ```
 
-Responses that pass the limiter carry `X-RateLimit-Limit`, `X-RateLimit-Remaining` and `X-RateLimit-Reset`. HTTP 429 responses carry `Retry-After` (seconds) instead. HTTP 401 responses are produced before the limiter and carry none of these headers.
+Responses that pass the limiter carry `X-RateLimit-Limit`, `X-RateLimit-Remaining` and `X-RateLimit-Reset`. HTTP 429 responses carry `Retry-After` in seconds. The server returns HTTP 401 and 403 before the limiter, so these responses carry no rate-limit headers.
 
 Health (`/health`), liveness (`/livez`), readiness (`/readyz`), Swagger documentation (`/swagger/*`, `/swagger/doc.json`), and enabled Prometheus metrics (`/metrics`) endpoints are public and operate outside this limiter.
 
@@ -85,7 +102,8 @@ The `details` field provides context when available and is omitted when empty. U
 | `400 Bad Request` | `invalid_idempotency_key` | Invalid `Idempotency-Key` header | Key contains non-visible characters, whitespace, or is outside 1–255 characters |
 | `400 Bad Request` | `validation_error` | Request payload fails schema validation | Missing required fields, invalid VARK profile, too many topics, or contradictory topic history |
 | `400 Bad Request` | `bad_request` | Generic client error | Malformed HTTP request, query parameters, or path encoding |
-| `401 Unauthorized` | `unauthorized` | Token authentication failure | Missing or incorrect `X-Internal-Token` or `Authorization: Bearer` |
+| `401 Unauthorized` | `unauthorized` | Token authentication failure | Missing or invalid credentials for the configured mode. Verified mode also rejects duplicate, combined or conflicting headers. |
+| `403 Forbidden` | `insufficient_scope` | The verified caller lacks the required scope | A valid access token omits the required `graph:read` or `plan:generate` scope. |
 | `404 Not Found` | `not_found` | Resource does not exist | Unmatched route path |
 | `405 Method Not Allowed` | `method_not_allowed` | HTTP method not supported | Unsupported HTTP verb on an existing path |
 | `408 Request Timeout` | `request_timeout` | Request read deadline exceeded | Request not read within the 10 s read timeout |
@@ -241,8 +259,10 @@ Generates a personalized, prerequisite-ordered study plan for a student based on
 - **Path**: `/api/v1/adaptive-plan`
 - **Headers**:
   - `Content-Type: application/json` (optional parameters such as `charset=utf-8` allowed)
-  - `X-Internal-Token: <token>` (if authentication is enabled)
-  - `Idempotency-Key: <key>`: Optional. 1 to 255 visible ASCII characters (`0x21`–`0x7E`). When supplied, successful responses (HTTP 200) are cached for `IDEMPOTENCY_TTL` (default `24h`) and scoped to the presented credential digest (or a single anonymous scope when authentication is disabled; either `X-Internal-Token` or `Authorization: Bearer` shares the same scope for the same credential). Repeat requests with the same key and identical request body replay the cached status, body, and `Content-Type` with header `Idempotent-Replayed: true` without invoking the reasoning model, receiving fresh `X-Request-ID` and rate-limit headers. Reusing the key with a different request body returns HTTP 422 `idempotency_key_mismatch`. Submitting a duplicate key while the first request is still running returns HTTP 409 `idempotency_key_in_progress` with `Retry-After: 1`. Invalid keys return HTTP 400 `invalid_idempotency_key`. Non-200 responses are not cached, allowing failed requests to be retried. When CORS is enabled, `Idempotency-Key` is allowed and `Idempotent-Replayed` is exposed. Response TTL starts on successful completion and does not expire running reservations.
+  - [Credential for the configured authentication mode](#authentication)
+  - `Idempotency-Key: <key>` optionally enables replay of successful responses for `IDEMPOTENCY_TTL` (default `24h`). With verified tokens, the server checks `plan:generate` on every request and uses a versioned digest of the issuer, tenant and caller. A replacement token for the same principal can replay an existing response if it has the current scope. Shared mode uses the presented credential digest in either supported header. Disabled authentication uses one anonymous namespace. Each mode uses its own entries in memory or Redis.
+  - Repeat requests in the same namespace with the same key and exact body bytes replay the original status, body and `Content-Type` with `Idempotent-Replayed: true`, fresh `X-Request-ID` and fresh rate-limit headers. A body mismatch returns HTTP 422 `idempotency_key_mismatch`. A matching request in progress returns HTTP 409 `idempotency_key_in_progress` with `Retry-After: 1`. Only HTTP 200 responses are cached. Response TTL starts on completion. CORS allows `Idempotency-Key` and exposes `Idempotent-Replayed`.
+  - New replay records store the plan items and metadata. The server restores `student_id` and `course_id` from the authorized retry after matching its body fingerprint. Earlier Redis records retain their original response fields until their existing TTL expires.
 - **Validation Rules**:
   - Strict JSON: Request body must be a single JSON object matching the schema. Missing or invalid JSON syntax (`request body must be valid JSON`), non-object bodies (`request body must be a JSON object`), trailing data (`request body must contain exactly one JSON value`), schema type mismatches and out-of-range numbers (`request body must match the JSON schema`), unknown fields (`unknown field "KEY"`), duplicate keys at any depth (`duplicate field "KEY"`), and case mismatches return HTTP 400 `invalid_request_body`. Field names in error details are bounded to 64 runes plus an ellipsis. If a `charset` parameter is present on `Content-Type`, only case-insensitive `utf-8` is accepted; other or empty charsets return HTTP 415.
   - `Idempotency-Key`: Optional. When provided, must contain between 1 and 255 visible ASCII characters (`0x21`–`0x7E`) without surrounding or embedded whitespace. Invalid keys return HTTP 400 `invalid_idempotency_key` with details `Idempotency-Key must contain 1 to 255 visible ASCII characters`.
@@ -258,6 +278,7 @@ Generates a personalized, prerequisite-ordered study plan for a student based on
 - **200 OK**: Successfully generated adaptive plan. Every requested canonical topic is guaranteed to retain a study item. Response metadata (`_meta`) reports execution statistics: `items_after_validation` counts study items retained within the requested topics and their prerequisite closure, while `items_dropped` counts distinct items outside this closure, absent from the graph, or matching mastered topics removed during validation (also emitted in `stage.validation` warning logs). `items_skipped_mastered` counts distinct mastered prerequisites across the requested topics' prerequisite closures omitted from study; it is omitted when zero. Duplicate items removed during merging are not counted.
 - **400 Bad Request**: Malformed body, missing required fields, contradictory topic history, identifier syntax error, or invalid `Idempotency-Key` header (`invalid_idempotency_key`).
 - **401 Unauthorized**: Missing or invalid authentication token.
+- **403 Forbidden**. A verified token lacks `plan:generate`.
 - **408 Request Timeout**: Request not read within the 10 s read timeout.
 - **409 Conflict**: A request with this `Idempotency-Key` is currently in progress (`idempotency_key_in_progress`, `Retry-After: 1`).
 - **413 Payload Too Large**: Payload exceeds 64 KiB.
@@ -382,10 +403,10 @@ Streams real-time adaptive study plan generation progress using Server-Sent Even
 - **Path**: `/api/v1/adaptive-plan/stream`
 - **Headers**:
   - `Content-Type: application/json` (optional parameters such as `charset=utf-8` allowed)
-  - `X-Internal-Token: <token>` (if authentication is enabled)
+  - [Credential for the configured authentication mode](#authentication)
 - **Validation Rules**:
   - Accepts the identical JSON payload and schema as `POST /api/v1/adaptive-plan`.
-  - Request body syntax, schema, media type, authentication, topic validation and curriculum budget checks run before streaming begins. The route returns the standard JSON error envelope for these failures. Oversized curriculum context returns HTTP 422 `curriculum_context_too_large` before any event or keepalive. If the request deadline expires during preparation, the route returns HTTP 504 as JSON.
+  - Authentication, scope, request body syntax, schema, media type, topic validation and curriculum budget checks run before streaming begins. The route returns a JSON error envelope for these failures, including HTTP 401 for invalid credentials and HTTP 403 for a verified token that lacks `plan:generate`. Oversized curriculum context returns HTTP 422 `curriculum_context_too_large` before any event or keepalive. A deadline during preparation returns HTTP 504 as JSON.
   - The endpoint operates under the same client IP rate limit budget as other `/api/v1` routes.
   - This endpoint does not support `Idempotency-Key` response replay.
 
@@ -484,9 +505,9 @@ Computes a depth-1 concept neighborhood around failed topics for a learner, clas
 - **Method**: `GET`
 - **Path**: `/api/v1/tutor/student/:student_id/cognitive-graph`
 - **Headers**:
-  - `X-Internal-Token: <token>` (if authentication is enabled)
+  - [Credential for the configured authentication mode](#authentication)
 - **Path Parameters**:
-  - `student_id`: Required string. Must match regex `^[A-Za-z0-9._:-]{1,128}$`. Validated and otherwise unused; the service stores and looks up no per-student data.
+  - `student_id`: Required string. Must match regex `^[A-Za-z0-9._:-]{1,128}$`. This operation validates the path parameter and computes the graph from the supplied topics and curriculum alone.
 - **Query Parameters**:
   - `topics`: Required string. Comma-separated list of failed topic names; may also be supplied across repeated query parameters (for example, `topics=Recursion&topics=Polymorphism`), and comma-separated lists and repeated parameters may be mixed. All supplied values form a unified topic collection. Canonical resolution and deduplication occur before validating that the union contains between 1 and `MAX_FAILED_TOPICS` unique topics; every topic in the union must exist in the knowledge graph.
   - `mastered`: Optional string. Comma-separated list of mastered topic names; may also be supplied across repeated query parameters (for example, `mastered=Functions&mastered=Variables`), and comma-separated lists and repeated parameters may be mixed. Canonical resolution and deduplication occur before validating that the union contains at most `MAX_MASTERED_TOPICS` unique topics. Every topic in the union must exist in the knowledge graph; unknown topics return HTTP 422 `validation_error` naming `mastered`. A topic present in both `topics` and `mastered` returns HTTP 400 `validation_error` (`a topic must not be both failed and mastered: "TOPIC"`). Exceeding `MAX_MASTERED_TOPICS` returns HTTP 400 `validation_error` naming `mastered`. An explicit empty `mastered=` or `mastered=,` parameter supplies empty history. When `mastered` is supplied, concept states follow precedence `failed` > `mastered` > `learning` > `unassessed`; without `mastered`, legacy states (`failed`, `learning`, `mastered`) are returned unchanged.
@@ -497,6 +518,7 @@ Computes a depth-1 concept neighborhood around failed topics for a learner, clas
 - **200 OK**: Cognitive shadow graph calculated and pruned of orphan nodes.
 - **400 Bad Request**: Invalid `student_id` (does not match identifier format); no non-empty topics supplied; more than `MAX_FAILED_TOPICS` unique topics across all `topics` values; more than `MAX_MASTERED_TOPICS` unique topics across `mastered` values; topic present in both `topics` and `mastered`; repeated `target_topic` query parameter; or known `target_topic` outside the resolved `topics` union (`target_topic must be one of topics`).
 - **401 Unauthorized**: Missing or invalid authentication token.
+- **403 Forbidden**. A verified token lacks `graph:read`.
 - **408 Request Timeout**: Request not read within the 10 s read timeout.
 - **413 Payload Too Large**: Request body exceeds 64 KiB.
 - **422 Unprocessable Entity**: Unrecognized topic in `topics`, `mastered`, or `target_topic`.
@@ -574,7 +596,7 @@ Lists curriculum topics sorted by concept name, with direct prerequisites and di
 - **Method**: `GET`
 - **Path**: `/api/v1/topics`
 - **Headers**:
-  - `X-Internal-Token: <token>` (if authentication is enabled)
+  - [Credential for the configured authentication mode](#authentication)
 - **Query Parameters**:
   - `q`: Optional string. Canonical substring filter. When provided, filters topics whose canonical concept name contains the canonical filter string. When omitted or empty, all curriculum topics are returned. If no topics match the filter, an empty array is returned.
 - **Request Body**: None
@@ -583,6 +605,7 @@ Lists curriculum topics sorted by concept name, with direct prerequisites and di
 
 - **200 OK**: Topics retrieved successfully. Direct prerequisites and dependents are distinct and sorted, including both `depends_on` and `is_a` relations.
 - **401 Unauthorized**: Missing or invalid authentication token.
+- **403 Forbidden**. A verified token lacks `graph:read`.
 - **408 Request Timeout**: Request not read within the 10 s read timeout.
 - **413 Payload Too Large**: Request body exceeds 64 KiB.
 - **429 Too Many Requests**: Rate limit exceeded.
@@ -629,7 +652,7 @@ Returns the full prerequisite chain in topological study order and direct depend
 - **Method**: `GET`
 - **Path**: `/api/v1/topics/{topic}/path`
 - **Headers**:
-  - `X-Internal-Token: <token>` (if authentication is enabled)
+  - [Credential for the configured authentication mode](#authentication)
 - **Path Parameters**:
   - `topic`: Required string. Topic name to inspect. Resolves canonically across case, whitespace, and Unicode composition differences (see [Node Naming](knowledge-graph.md#node-naming)). Path-escaped characters are unescaped before canonical resolution.
 - **Query Parameters**: None
@@ -639,6 +662,7 @@ Returns the full prerequisite chain in topological study order and direct depend
 
 - **200 OK**: Prerequisite path and dependents retrieved successfully. `prerequisite_chain` contains all transitive prerequisites in topological study order, excluding the target topic itself. `dependents` lists direct dependents in alphabetical order.
 - **401 Unauthorized**: Missing or invalid authentication token.
+- **403 Forbidden**. A verified token lacks `graph:read`.
 - **408 Request Timeout**: Request not read within the 10 s read timeout.
 - **413 Payload Too Large**: Request body exceeds 64 KiB.
 - **422 Unprocessable Entity**: Topic is not found in the knowledge graph. Returns error code `validation_error` with quoted topic name details.

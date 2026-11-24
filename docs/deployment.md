@@ -56,7 +56,7 @@ The repository includes [docker-compose.yml](../docker-compose.yml) for managing
 docker compose up -d
 ```
 
-Compose requires a valid `AXIOM_INTERNAL_TOKEN` in `.env` unless authentication is explicitly disabled (see [configuration](configuration.md)). The service port binds exclusively to loopback (`127.0.0.1:8080:8080`), making it unreachable from other network hosts without modifying `ports` (see [Quick Start](../README.md#quick-start)). Compose reads configuration from an optional `.env` file in the repository root.
+For shared mode, set `AXIOM_INTERNAL_TOKEN` in `.env`. For verified mode, set the [issuer, API audience and key set URL](#verified-access-tokens). The service port binds exclusively to loopback (`127.0.0.1:8080:8080`), making it unreachable from other network hosts without modifying `ports` (see [Quick Start](../README.md#quick-start)). Compose reads configuration from an optional `.env` file in the repository root.
 
 ## Local and OpenAI-compatible providers
 
@@ -302,7 +302,7 @@ When the service starts successfully, it emits `server.started` and `server.list
 
 1. `server.started`: reports operational settings and graph metadata while omitting sensitive tokens and secret material. Fields include:
    - `port`: HTTP listener port string.
-   - `auth`: authentication configuration (`token`, `token+previous`, or `disabled`).
+   - `auth`: authentication configuration (`token`, `token+previous`, `verified` or `disabled`).
    - `llm_provider`: configured reasoning model provider (`aws-bedrock`, `openai`, `anthropic`, `google-ai`, `ollama`, or `openai-generic`).
    - `llm_model`: configured model identifier string.
    - `swagger_enabled`: boolean indicating whether Swagger documentation routes are active.
@@ -344,7 +344,7 @@ The `instance_metadata` field reports `disabled` when `AWS_EC2_METADATA_DISABLED
 Requests that reach the application produce an `http.access` log record with these fields.
 - `request_id`: the client's `X-Request-ID` when it matches `^[A-Za-z0-9._:-]{1,128}$`, otherwise a generated 43-character URL-safe token. A fallback UUID is generated only for errors raised before the request-ID middleware runs.
 - `method`: HTTP method (`GET`, `POST`, `HEAD`, `OPTIONS`).
-- `path`: request route path.
+- `path`: the matched route template or `unmatched` when no route was resolved. This applies in every authentication mode and keeps learner identifiers from request paths out of access logs.
 - `status`: HTTP response status code.
 - `duration_ms`: processing duration in milliseconds (for streaming routes, measures the full connection duration until stream close).
 - `ip`: client IP address resolved according to proxy configuration.
@@ -402,12 +402,27 @@ Docker Compose sets `stop_grace_period: 30s`. With `docker run` or `docker stop`
 
 ### Token rotation
 
-To rotate internal service credentials without downtime:
+To rotate shared-mode credentials without downtime:
 
 1. Generate a new token meeting complexity requirements (`openssl rand -hex 32`).
 2. Deploy the service with the new token configured as `AXIOM_INTERNAL_TOKEN` and the existing token configured as `AXIOM_INTERNAL_TOKEN_PREVIOUS` (see [configuration](configuration.md)).
 3. After every replica runs the new configuration, update callers to send the new token. During rotation, requests bearing either token authenticate successfully via `X-Internal-Token` or `Authorization: Bearer` (an explicit `X-Internal-Token` header takes precedence). Requests with missing or invalid credentials return HTTP 401 `unauthorized`.
 4. Before removing the previous token, check that no caller still sends it. Each replica logs `auth.previous_token_used` at WARN (with the request's `request_id`, at most once per minute per process) while requests authenticate with the previous token. With `METRICS_ENABLED=true`, every such request also increments `axiom_auth_previous_token_total`. When the counter has stopped increasing and no warning has appeared for more than a minute on every replica, remove `AXIOM_INTERNAL_TOKEN_PREVIOUS` and redeploy.
+
+### Verified access tokens
+
+Configure each HTTP replica with the same trusted issuer, resource audience, HTTPS key set URL, signing algorithms and claim mappings. Leave the shared secrets unset and keep authentication enabled.
+
+```sh
+export AXIOM_AUTH_MODE=verified
+export AXIOM_AUTH_ISSUER=https://identity.example/issuer
+export AXIOM_AUTH_AUDIENCE=https://api.example/axiom
+export AXIOM_AUTH_JWKS_URL=https://identity.example/keys
+```
+
+Configure the issuer to issue signed access tokens for the API audience with stable tenant and caller claims and the scopes required by each client. Allow the server to reach the configured key set URL over HTTPS. The server loads keys on demand, starts refresh attempts at least 30 seconds apart, waits at most two seconds per refresh and expires a cached set after ten minutes. Verified HTTP mode uses zero clock skew. Publish the new key with a distinct key ID before issuing tokens with it. Keep the existing public key available while clients still use tokens signed with that key.
+
+Replay survives token rotation for the same issuer, tenant and caller when the new token retains `plan:generate`. The server checks the scopes in the token presented with each request. Previously issued tokens remain usable until expiration while their signing keys are accepted. Each authentication mode uses a separate replay namespace, including on deployments with shared Redis. [Configuration](configuration.md#verified-http-authentication) · [Route scopes](api.md#verified-mode)
 
 ### Metrics
 
@@ -429,6 +444,8 @@ In deployments running multiple service replicas behind a load balancer, configu
 
 - **Shared Quotas**: Replicas share the sliding-window IP rate limit budget (`RATE_LIMIT_MAX` per `RATE_LIMIT_WINDOW`) using an atomic Redis Lua script under key prefix `axiom:rate:`. Quota evaluation uses Redis server time for consistent whole-second window rotation.
 - **Shared Idempotency Records**: Replicas share plan reservations and responses under key prefix `axiom:idempotency:`. A pending reservation is leased for `REQUEST_TIMEOUT + 3s`, ensuring active reasoning executions are not timed out by response TTL while abandoned reservations expire automatically after replica failure. Successful responses are cached for `IDEMPOTENCY_TTL`.
+- Upgrade Redis-backed replicas together so every replica serving traffic can read the new replay record format. Upgraded replicas can replay earlier records for the remainder of their original TTL.
+- Do not roll a replica back to 0.1.1 or earlier while shared or anonymous plan records written by this version remain in Redis. The earlier reader sends the stored body unchanged, so a retry would receive only `items` and `_meta`, without `student_id` and `course_id`. Before an earlier release serves retries, let those records expire after `IDEMPOTENCY_TTL`, give the earlier release a different Redis database, or delete the keys under `axiom:idempotency:` after new keyed requests stop and pending reservations expire. Draining or isolating the records ends replay for them. A retry with the same `Idempotency-Key` then runs a new model inference.
 - **Fail-Closed Availability**: If Redis is unreachable at startup, the initial 3-second ping fails and the process exits 1 immediately. At runtime, storage errors fail closed: requests return HTTP 503 `service_unavailable` with header `Retry-After: 1` and log a structured error (`storage.failed` with operation `rate_limit.consume`, `idempotency.begin`, `idempotency.complete`, or `idempotency.abort`). Downstream model reasoning calls are never admitted without a working rate decision. When Redis recovers, later requests resume automatically.
 - **Local Health Endpoints**: Health probes (`/health`, `/livez`, `/readyz`) remain strictly process-local and do not query Redis.
 - **Tenant Quotas**: Multi-tenant platform quotas remain best enforced at an API gateway or ingress tier; Redis enables the service's own rate limit and idempotency guarantees to remain correct across horizontal scaling.

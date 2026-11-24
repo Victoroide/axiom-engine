@@ -52,7 +52,7 @@ AxiomEngine is a Go microservice that generates personalized, prerequisite-order
 - **Model Context Protocol (MCP)**: Runs as an MCP server over standard input and output (`axiom-server mcp`), exposing reasoning and curriculum tools to MCP-compatible clients.
 - **Distributed tracing**: Exports OpenTelemetry traces over OTLP/HTTP to generic collectors or LangSmith, supporting span hierarchy correlation and optional prompt and completion content capture.
 - **Hallucination validation**: Verifies model outputs against known graph nodes, dropping unrecognized concepts and concepts outside the requested topics and their prerequisites before assigning priorities.
-- **Configurable token authentication**: Restricts API access using constant-time verification of internal shared tokens, supporting zero-downtime secret rotation.
+- **HTTP token authentication**. Choose a shared token with rotation support or signed access tokens with route scopes and caller-isolated replay.
 - **Optional resource link validation**: Verifies recommended resource URLs with outbound HEAD and GET checks and SSRF protections when enabled (`RESOURCE_LINK_CHECK=true`), dropping unreachable links.
 
 ## Request Path
@@ -154,7 +154,7 @@ export BAML_LIBRARY_PATH="$PWD/$library"
 export BAML_LIBRARY_DISABLE_DOWNLOAD=true
 ```
 
-For HTTP, set `AXIOM_INTERNAL_TOKEN` to a secret of at least 32 visible ASCII characters and configure credentials and settings for your provider. Then start the server.
+For shared-mode HTTP, set `AXIOM_INTERNAL_TOKEN` to a secret of at least 32 visible ASCII characters. For verified HTTP, configure the issuer and resource audience. Configure your provider and start the server. [Verified HTTP authentication](docs/configuration.md#verified-http-authentication)
 
 ```sh
 ./axiom-server-launch
@@ -244,9 +244,10 @@ The service is configured using environment variables. The table below lists the
 | Variable | Default | Description |
 |---|---|---|
 | `PORT` | `8080` | TCP port on which the HTTP server listens. |
-| `AXIOM_INTERNAL_TOKEN` | `""` (unset) | Shared secret required in `X-Internal-Token` or `Authorization: Bearer` on `/api/v1/*` routes. Required in HTTP mode unless `AXIOM_AUTH_DISABLED=true`. |
+| `AXIOM_AUTH_MODE` | `""` (unset) | Use `shared` for internal tokens or `verified` for [issuer-signed access tokens](docs/configuration.md#verified-http-authentication). An unset mode defaults to shared token authentication. |
+| `AXIOM_INTERNAL_TOKEN` | `""` (unset) | Required in shared mode. Send it in `X-Internal-Token` or `Authorization: Bearer` on API routes. |
 | `AXIOM_INTERNAL_TOKEN_PREVIOUS` | `""` (unset) | Previous secret accepted during zero-downtime token rotation. |
-| `AXIOM_AUTH_DISABLED` | `false` | When `true`, disables token authentication on `/api/v1/*` routes. |
+| `AXIOM_AUTH_DISABLED` | `false` | Set `true` to disable API authentication. Leave `AXIOM_AUTH_MODE` and both shared tokens unset. |
 | `LLM_PROVIDER` | `aws-bedrock` | Model provider: `aws-bedrock`, `openai`, `anthropic`, `google-ai`, `ollama`, or `openai-generic`. |
 | `LLM_MODEL` | `amazon.nova-micro-v1:0` (`aws-bedrock`) | Model identifier passed to the provider. Required for providers other than `aws-bedrock`. |
 | `LLM_BASE_URL` | `""` (`http://localhost:11434/v1` for `ollama`) | Custom API base URL for `openai`, `ollama`, or `openai-generic`. Required for `openai-generic`. |
@@ -472,7 +473,7 @@ For client configuration examples, tool schemas, and container execution details
 
 - **In-Memory Rate Limiting**: When `REDIS_URL` is unset, rate limiting operates per replica in memory, keyed by client IP (masked to `/64` for IPv6). Setting `REDIS_URL` shares rate-limit budgets and plan idempotency records across all replicas. For multi-tenant platform limits and per-tenant quotas, gateway enforcement remains recommended.
 - **Client disconnects**. With the default Fiber listener, JSON reasoning continues after a peer closes the connection until work finishes or a deadline expires. SSE detects failed writes with two-second keepalives. Set `HTTP_LISTENER=net-http` to cancel reasoning on HTTP/1 connection close or HTTP/2 stream reset. On Linux and macOS, HTTP/1 cancellation also works with pipelined requests waiting. A client that closes only its write side may still receive the canceled request's HTTP 408 response. See the [listener configuration](docs/configuration.md#http-listener).
-- **Single Shared Secret**: Authentication relies on a single shared secret without caller identity or per-tenant authorization. Fine-grained authorization, per-caller rate limiting, and multi-tenant isolation belong at the platform or gateway tier.
+- **HTTP authorization**. Shared tokens grant the same access to every holder. Verified tokens authorize route scopes and isolate replay by issuer, tenant and caller. The calling platform authorizes access to individual learners. The HTTP rate limit remains IP-based.
 - **Native Library Initialization**: The BAML CFFI dynamic library is loaded during package initialization before `main` executes; missing or mismatched libraries panic directly to `stderr` in plain text prior to structured JSON logger initialization.
 - **Bedrock region resolution**. Set `BEDROCK_REQUIRE_EXPLICIT_REGION=true` to validate `AWS_REGION` at startup and use it for every Bedrock call until the process restarts. In default mode, each Bedrock call resolves the region from the environment, the selected AWS profile or EC2 instance metadata, so a changed source can change the region for later calls. See [Region Resolution](docs/configuration.md#region-resolution).
 - **Resource Link Reachability**: Recommended resource URLs are not checked for network reachability by default. Setting `RESOURCE_LINK_CHECK=true` enables outbound HTTP reachability checks that verify URLs and drop non-resolving or refused resources before returning plans.
@@ -484,7 +485,6 @@ For diagnostic procedures and operational troubleshooting, refer to the [Operati
 
 ## Roadmap
 
-- Per-tenant authentication and caller identity verification.
 - Authenticated remote access to the Model Context Protocol server over Streamable HTTP.
 - Fine-grained per-tenant rate limit quotas in shared storage.
 
