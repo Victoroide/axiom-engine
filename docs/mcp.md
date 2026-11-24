@@ -70,7 +70,7 @@ For the default `aws-bedrock` provider, credentials resolve through the standard
 
 ## Planner Provider
 
-MCP uses the same startup `LLM_PROVIDER`, `LLM_MODEL`, `LLM_BASE_URL` and provider API key settings as HTTP. A single configured client registry serves all plan tool calls. Provider validation runs before the transport starts; AWS retry validation and region inspection apply only to `aws-bedrock`. Startup logs on stderr include `llm_provider` and `llm_model`.
+MCP uses the same startup `LLM_PROVIDER`, `LLM_MODEL`, `LLM_BASE_URL` and provider API key settings as HTTP. A single configured client registry serves all plan tool calls. For Bedrock, set `BEDROCK_REQUIRE_EXPLICIT_REGION=true` to require a valid `AWS_REGION` before the stdio transport starts. Startup logs on stderr include `llm_provider`, `llm_model` and `aws_region_source`. See [Region Resolution](configuration.md#region-resolution).
 
 ## Tool Tracing
 

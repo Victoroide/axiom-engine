@@ -13,6 +13,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - Add `BAML_DIAGNOSTIC=1` to bundle `axiom-baml-check` in custom release archives and images for offline verification before startup.
+### Added
+
+- Add `BEDROCK_REQUIRE_EXPLICIT_REGION=true` to require a valid `AWS_REGION` at HTTP and MCP startup and use it for every Bedrock request.
 
 ## [0.1.1] - 2026-11-24
 
