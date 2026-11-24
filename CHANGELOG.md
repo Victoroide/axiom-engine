@@ -22,6 +22,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Allow `PRESERVE_DISPLAY_JOINS=true` to keep contextual Persian, Indic and emoji joins and truncate titles and explanations at grapheme boundaries in HTTP and MCP responses.
 - Skip provider dispatch when the call context has already ended, including during adapter setup. Treat malformed completion envelopes and Anthropic responses without text as invalid output so they leave the circuit breaker state unchanged.
 
 ### Security

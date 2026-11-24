@@ -21,6 +21,7 @@ func FuzzLoad(f *testing.F) {
 		{"TRUSTED_PROXIES", "127.0.0.1,::1"}, {"CORS_ALLOWED_ORIGINS", "https://example.com"},
 		{"METRICS_ENABLED", "false"}, {"SWAGGER_ENABLED", "true"},
 		{"LOG_LEVEL", "debug"}, {"GRAPH_FILE", "curriculum.json"},
+		{"PRESERVE_DISPLAY_JOINS", "true"}, {"PRESERVE_DISPLAY_JOINS", "TRUE"},
 	} {
 		f.Add(pair[0], pair[1])
 	}
@@ -29,6 +30,9 @@ func FuzzLoad(f *testing.F) {
 		c, err := Load(func(name string) string { return env[name] })
 		if err != nil {
 			return
+		}
+		if setting := env["PRESERVE_DISPLAY_JOINS"]; (setting != "" && setting != "true" && setting != "false") || c.PreserveDisplayJoins != (setting == "true") {
+			t.Fatalf("invalid display policy %q loaded as %t", setting, c.PreserveDisplayJoins)
 		}
 		if c.LLMQueueTimeout <= 0 || c.LLMQueueTimeout >= c.LLMTimeout || c.LLMTimeout > c.RequestTimeout {
 			t.Fatalf("invalid timeout ordering: queue=%s llm=%s request=%s", c.LLMQueueTimeout, c.LLMTimeout, c.RequestTimeout)

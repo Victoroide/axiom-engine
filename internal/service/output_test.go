@@ -28,7 +28,7 @@ func TestOutputPolicy(t *testing.T) {
 		{"http", "http://example.com/x", true}, {"https", "https://example.com/x", true}, {"uppercase scheme", "HTTPS://example.com/x", true},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			items, dropped := sanitizeOutput([]domain.PlanItem{{Topic: "Recursion", Resources: []domain.Resource{{URL: tc.url, ResourceType: "video"}}}}, "visual")
+			items, dropped := sanitizeOutput([]domain.PlanItem{{Topic: "Recursion", Resources: []domain.Resource{{URL: tc.url, ResourceType: "video"}}}}, "visual", false)
 			want := 0
 			if tc.keep {
 				want = 1
@@ -39,7 +39,7 @@ func TestOutputPolicy(t *testing.T) {
 		})
 	}
 	t.Run("text", func(t *testing.T) {
-		items, dropped := sanitizeOutput([]domain.PlanItem{{Explanation: "\x00\n\t\u202e\u200b" + strings.Repeat("é", 1001), Resources: []domain.Resource{{URL: "https://example.com", ResourceType: "Video", Title: "\x7f\u202e\u200d" + strings.Repeat("界", 201)}}}}, "visual")
+		items, dropped := sanitizeOutput([]domain.PlanItem{{Explanation: "\x00\n\t\u202e\u200b" + strings.Repeat("é", 1001), Resources: []domain.Resource{{URL: "https://example.com", ResourceType: "Video", Title: "\x7f\u202e\u200d" + strings.Repeat("界", 201)}}}}, "visual", false)
 		if dropped != 0 || items[0].Explanation != strings.Repeat("é", 1000) || items[0].Resources[0].Title != strings.Repeat("界", 200) || items[0].Resources[0].ResourceType != "video" {
 			t.Fatalf("text was not bounded or normalized: %+v", items)
 		}
@@ -57,7 +57,7 @@ func TestOutputPolicy(t *testing.T) {
 				resources = append(resources, domain.Resource{URL: "https://example.com", ResourceType: strings.ToUpper(kind)})
 			}
 			resources = append(resources, domain.Resource{URL: "https://example.com", ResourceType: tc.allowed[0]}, domain.Resource{URL: "https://example.com", ResourceType: tc.allowed[1]})
-			items, dropped := sanitizeOutput([]domain.PlanItem{{Resources: resources}}, tc.profile)
+			items, dropped := sanitizeOutput([]domain.PlanItem{{Resources: resources}}, tc.profile, false)
 			kinds := make([]string, 0, len(items[0].Resources))
 			for _, resource := range items[0].Resources {
 				kinds = append(kinds, resource.ResourceType)
@@ -68,7 +68,7 @@ func TestOutputPolicy(t *testing.T) {
 		})
 	}
 	t.Run("mismatched type", func(t *testing.T) {
-		items, dropped := sanitizeOutput([]domain.PlanItem{{Resources: []domain.Resource{{URL: "https://example.com", ResourceType: "podcast"}}}}, "visual")
+		items, dropped := sanitizeOutput([]domain.PlanItem{{Resources: []domain.Resource{{URL: "https://example.com", ResourceType: "podcast"}}}}, "visual", false)
 		if len(items[0].Resources) != 0 || dropped != 1 {
 			t.Fatalf("resources=%+v dropped=%d", items[0].Resources, dropped)
 		}
@@ -85,7 +85,7 @@ func TestOutputTextKeepsWordBoundaries(t *testing.T) {
 		{"می\u200cخواهم 👩\u200d💻", "میخواهم 👩💻"},
 	} {
 		t.Run(tc.input, func(t *testing.T) {
-			items, _ := sanitizeOutput([]domain.PlanItem{{Explanation: tc.input, Resources: []domain.Resource{{URL: "https://example.com", ResourceType: "video", Title: tc.input}}}}, "visual")
+			items, _ := sanitizeOutput([]domain.PlanItem{{Explanation: tc.input, Resources: []domain.Resource{{URL: "https://example.com", ResourceType: "video", Title: tc.input}}}}, "visual", false)
 			if items[0].Explanation != tc.want || items[0].Resources[0].Title != tc.want {
 				t.Fatalf("text=%q title=%q want=%q", items[0].Explanation, items[0].Resources[0].Title, tc.want)
 			}
@@ -130,7 +130,7 @@ func TestOutputURLIsNormalized(t *testing.T) {
 		{"https://example.com/?q=%x%2%", "https://example.com/?q=%25x%252%25"},
 	} {
 		t.Run(tc.input, func(t *testing.T) {
-			items, dropped := sanitizeOutput([]domain.PlanItem{{Resources: []domain.Resource{{URL: tc.input, ResourceType: "video"}}}}, "visual")
+			items, dropped := sanitizeOutput([]domain.PlanItem{{Resources: []domain.Resource{{URL: tc.input, ResourceType: "video"}}}}, "visual", false)
 			if dropped != 0 || len(items[0].Resources) != 1 || items[0].Resources[0].URL != tc.want {
 				t.Fatalf("resources=%+v dropped=%d want=%q", items[0].Resources, dropped, tc.want)
 			}

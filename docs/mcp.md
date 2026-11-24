@@ -106,6 +106,8 @@ Generates a personalized, prerequisite-ordered study plan for a student based on
 
 The tool checks the [curriculum prompt budget](configuration.md#curriculum-prompt-budget) for all topics before dispatch.
 
+Set `PRESERVE_DISPLAY_JOINS=true` in the server environment to preserve contextual joiners and apply grapheme-safe truncation to resource titles and explanations in the tool result. See the [HTTP response contract](api.md#response-contract) for the shared rules.
+
 ### `get_cognitive_graph`
 
 Computes a depth-1 concept neighborhood around failed topics, classifying concepts into `failed`, `learning`, `mastered`, or `unassessed` states.
