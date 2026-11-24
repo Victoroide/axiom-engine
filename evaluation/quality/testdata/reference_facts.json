@@ -1,0 +1,745 @@
+{
+  "schema_version": "1.0",
+  "provisional_notice": "PROVISIONAL: Reference facts are authored from the Fall 2025 AP Computer Science A CED and January 2026 Clarifications for benchmark fixture testing and remain provisional until verified by a qualified AP Computer Science A educator.",
+  "facts": [
+    {
+      "id": "FACT-U1-01",
+      "status": "provisional_educator_review_pending",
+      "unit": 1,
+      "objective_ids": [
+        "1.2.A",
+        "1.2.B"
+      ],
+      "statement": "In AP Computer Science A, primitive types are limited to int, double, and boolean; reference variables store references to objects rather than primitive numeric or boolean values.",
+      "common_misconception": "Confusing String with a primitive type or assuming long, float, and char are in the AP CS A primitive subset.",
+      "java_assertion": {
+        "snippet": "int count = 4; double ratio = 2.5; boolean ready = true;",
+        "expected_outcome": "Compiles cleanly with the three AP CS A primitive types."
+      },
+      "references": [
+        {
+          "document": "CED-2025",
+          "section": "Unit 1: Using Objects and Methods, Topic 1.2: Variables and Data Types",
+          "page_locator": "CED p. 32 (PDF p. 39)",
+          "url": "https://apcentral.collegeboard.org/media/pdf/ap-computer-science-a-course-and-exam-description.pdf#page=39"
+        },
+        {
+          "document": "CED-2025",
+          "section": "Unit 1: Using Objects and Methods, Topic 1.2: Variables and Data Types",
+          "page_locator": "CED p. 32 (PDF p. 39)",
+          "url": "https://apcentral.collegeboard.org/media/pdf/ap-computer-science-a-course-and-exam-description.pdf#page=39"
+        }
+      ]
+    },
+    {
+      "id": "FACT-U1-02",
+      "status": "provisional_educator_review_pending",
+      "unit": 1,
+      "objective_ids": [
+        "1.3.C"
+      ],
+      "statement": "Dividing two int values in Java yields an int quotient with any fractional part truncated; operators of equal precedence (*, /, %) evaluate left to right.",
+      "common_misconception": "Assuming 1 / 2 * 4.0 produces 2.0 when 1 / 2 evaluates first to int 0, yielding 0.0.",
+      "java_assertion": {
+        "snippet": "double x = 1 / 2 * 4.0;",
+        "expected_outcome": "x == 0.0 because 1 / 2 is integer division (0) before multiplying by 4.0."
+      },
+      "references": [
+        {
+          "document": "CED-2025",
+          "section": "Unit 1: Using Objects and Methods, Topic 1.3: Expressions and Output",
+          "page_locator": "CED p. 33 (PDF p. 40)",
+          "url": "https://apcentral.collegeboard.org/media/pdf/ap-computer-science-a-course-and-exam-description.pdf#page=40"
+        }
+      ]
+    },
+    {
+      "id": "FACT-U1-03",
+      "status": "provisional_educator_review_pending",
+      "unit": 1,
+      "objective_ids": [
+        "1.5.A",
+        "1.5.B",
+        "1.5.C"
+      ],
+      "statement": "Java int values are stored in 4 bytes from Integer.MIN_VALUE to Integer.MAX_VALUE inclusive; exceeding this range causes integer overflow, while double expressions can experience round-off error.",
+      "common_misconception": "Assuming int arithmetic raises an overflow exception at runtime or that double represents all decimal fractions exactly.",
+      "java_assertion": {
+        "snippet": "int wrap = Integer.MAX_VALUE + 1;",
+        "expected_outcome": "wrap == Integer.MIN_VALUE due to 32-bit signed integer overflow without throwing an exception."
+      },
+      "references": [
+        {
+          "document": "CED-2025",
+          "section": "Unit 1: Using Objects and Methods, Topic 1.5: Casting and Range of Variables",
+          "page_locator": "CED p. 36 (PDF p. 43)",
+          "url": "https://apcentral.collegeboard.org/media/pdf/ap-computer-science-a-course-and-exam-description.pdf#page=43"
+        },
+        {
+          "document": "CED-2025",
+          "section": "Unit 1: Using Objects and Methods, Topic 1.5: Casting and Range of Variables",
+          "page_locator": "CED p. 36 (PDF p. 43)",
+          "url": "https://apcentral.collegeboard.org/media/pdf/ap-computer-science-a-course-and-exam-description.pdf#page=43"
+        },
+        {
+          "document": "CED-2025",
+          "section": "Unit 1: Using Objects and Methods, Topic 1.5: Casting and Range of Variables",
+          "page_locator": "CED p. 37 (PDF p. 44)",
+          "url": "https://apcentral.collegeboard.org/media/pdf/ap-computer-science-a-course-and-exam-description.pdf#page=44"
+        }
+      ]
+    },
+    {
+      "id": "FACT-U1-04",
+      "status": "provisional_educator_review_pending",
+      "unit": 1,
+      "objective_ids": [
+        "1.11.A"
+      ],
+      "statement": "Math.random() is a static method in java.lang.Math returning a double d with 0.0 <= d < 1.0. For positive int n and int min with min + n - 1 representable as an int, (int)(Math.random() * n) + min gives a result from min through min + n - 1, inclusive.",
+      "common_misconception": "Assuming Math.random() can return 1.0 or forgetting parentheses so (int) Math.random() * 6 always produces 0.",
+      "java_assertion": {
+        "snippet": "int roll = (int)(Math.random() * 6) + 1;",
+        "expected_outcome": "1 <= roll && roll <= 6 for every evaluation."
+      },
+      "references": [
+        {
+          "document": "CED-2025",
+          "section": "Topic 1.11: Math Class, 1.11.A.1–3 (random range, arithmetic and casting)",
+          "page_locator": "CED p. 44 (PDF p. 51)",
+          "url": "https://apcentral.collegeboard.org/media/pdf/ap-computer-science-a-course-and-exam-description.pdf#page=51"
+        },
+        {
+          "document": "CED-2025",
+          "section": "Topic 1.5: Casting and Range of Variables, 1.5.B.1–3 (int range and overflow)",
+          "page_locator": "CED pp. 36–37 (PDF pp. 43–44)",
+          "url": "https://apcentral.collegeboard.org/media/pdf/ap-computer-science-a-course-and-exam-description.pdf#page=43"
+        }
+      ]
+    },
+    {
+      "id": "FACT-U1-05",
+      "status": "provisional_educator_review_pending",
+      "unit": 1,
+      "objective_ids": [
+        "1.13.B",
+        "1.13.C"
+      ],
+      "statement": "Object instantiation with new invokes a constructor and assigns an object reference (or null when absent) to a variable; polymorphism is outside the Fall 2025 four-unit AP CS A framework.",
+      "common_misconception": "Requiring inheritance or polymorphism concepts prior to basic object instantiation.",
+      "java_assertion": {
+        "snippet": "String msg = null; msg = new String(\"ok\");",
+        "expected_outcome": "msg initially holds null and then holds a reference to a String object."
+      },
+      "references": [
+        {
+          "document": "CED-2025",
+          "section": "Unit 1: Using Objects and Methods, Topic 1.13: Object Creation and Storage (Instantiation)",
+          "page_locator": "CED p. 46 (PDF p. 53)",
+          "url": "https://apcentral.collegeboard.org/media/pdf/ap-computer-science-a-course-and-exam-description.pdf#page=53"
+        },
+        {
+          "document": "CED-2025",
+          "section": "Unit 1: Using Objects and Methods, Topic 1.13: Object Creation and Storage (Instantiation)",
+          "page_locator": "CED p. 46 (PDF p. 53)",
+          "url": "https://apcentral.collegeboard.org/media/pdf/ap-computer-science-a-course-and-exam-description.pdf#page=53"
+        }
+      ]
+    },
+    {
+      "id": "FACT-U1-06",
+      "status": "provisional_educator_review_pending",
+      "unit": 1,
+      "objective_ids": [
+        "1.15.A",
+        "1.15.B"
+      ],
+      "statement": "String objects are immutable; valid indices span 0 to length() - 1, and substring(from, to) returns characters from index from through to - 1 inclusive.",
+      "common_misconception": "Expecting substring(from, to) to include index to or expecting String methods to mutate the receiver in place.",
+      "java_assertion": {
+        "snippet": "String s = \"axiom\"; String sub = s.substring(1, 4);",
+        "expected_outcome": "sub.equals(\"xio\") and s remains \"axiom\"."
+      },
+      "references": [
+        {
+          "document": "CED-2025",
+          "section": "Unit 1: Using Objects and Methods, Topic 1.15: String Manipulation",
+          "page_locator": "CED p. 49 (PDF p. 56)",
+          "url": "https://apcentral.collegeboard.org/media/pdf/ap-computer-science-a-course-and-exam-description.pdf#page=56"
+        },
+        {
+          "document": "CED-2025",
+          "section": "Unit 1: Using Objects and Methods, Topic 1.15: String Manipulation",
+          "page_locator": "CED p. 50 (PDF p. 57)",
+          "url": "https://apcentral.collegeboard.org/media/pdf/ap-computer-science-a-course-and-exam-description.pdf#page=57"
+        }
+      ]
+    },
+    {
+      "id": "FACT-U1-07",
+      "status": "provisional_educator_review_pending",
+      "unit": 1,
+      "objective_ids": [
+        "1.4.A",
+        "1.4.B",
+        "1.8.A"
+      ],
+      "statement": "Variables must be initialized with a compatible value before use in expressions, and documented preconditions state conditions required before calling a method without guaranteeing runtime checks.",
+      "common_misconception": "Assuming Java automatically enforces Javadoc preconditions or allows reading uninitialized local variables.",
+      "java_assertion": {
+        "snippet": "int total = 0; total = total + 5;",
+        "expected_outcome": "Local variable total is initialized before evaluation."
+      },
+      "references": [
+        {
+          "document": "CED-2025",
+          "section": "Unit 1: Using Objects and Methods, Topic 1.4: Assignment Statements and Input",
+          "page_locator": "CED p. 35 (PDF p. 42)",
+          "url": "https://apcentral.collegeboard.org/media/pdf/ap-computer-science-a-course-and-exam-description.pdf#page=42"
+        },
+        {
+          "document": "CED-2025",
+          "section": "Unit 1: Using Objects and Methods, Topic 1.8: Documentation with Comments",
+          "page_locator": "CED p. 40 (PDF p. 47)",
+          "url": "https://apcentral.collegeboard.org/media/pdf/ap-computer-science-a-course-and-exam-description.pdf#page=47"
+        }
+      ]
+    },
+    {
+      "id": "FACT-U2-01",
+      "status": "provisional_educator_review_pending",
+      "unit": 2,
+      "objective_ids": [
+        "2.2.A",
+        "2.6.B"
+      ],
+      "statement": "Relational operators == and != compare primitive values for value equality, whereas on reference types they compare object references; String content equality requires equals.",
+      "common_misconception": "Using == to compare distinct String objects created via new String(...) and expecting true because their characters match.",
+      "java_assertion": {
+        "snippet": "boolean refEq = new String(\"abc\") == new String(\"abc\"); boolean valEq = new String(\"abc\").equals(new String(\"abc\"));",
+        "expected_outcome": "refEq == false && valEq == true."
+      },
+      "references": [
+        {
+          "document": "CED-2025",
+          "section": "Unit 2: Selection and Iteration, Topic 2.2: Boolean Expressions",
+          "page_locator": "CED p. 62 (PDF p. 69)",
+          "url": "https://apcentral.collegeboard.org/media/pdf/ap-computer-science-a-course-and-exam-description.pdf#page=69"
+        },
+        {
+          "document": "CED-2025",
+          "section": "Unit 2: Selection and Iteration, Topic 2.6: Comparing Boolean Expressions",
+          "page_locator": "CED p. 66 (PDF p. 73)",
+          "url": "https://apcentral.collegeboard.org/media/pdf/ap-computer-science-a-course-and-exam-description.pdf#page=73"
+        }
+      ]
+    },
+    {
+      "id": "FACT-U2-02",
+      "status": "provisional_educator_review_pending",
+      "unit": 2,
+      "objective_ids": [
+        "2.5.A"
+      ],
+      "statement": "Logical operator precedence is ! then && then ||; && and || perform short-circuit evaluation when the left operand alone determines the result.",
+      "common_misconception": "Evaluating || before && or assuming the right-hand operand always executes.",
+      "java_assertion": {
+        "snippet": "int x = 0; boolean safe = (x != 0) && (10 / x > 1);",
+        "expected_outcome": "safe == false without throwing ArithmeticException due to short-circuit evaluation."
+      },
+      "references": [
+        {
+          "document": "CED-2025",
+          "section": "Unit 2: Selection and Iteration, Topic 2.5: Compound Boolean Expressions",
+          "page_locator": "CED p. 65 (PDF p. 72)",
+          "url": "https://apcentral.collegeboard.org/media/pdf/ap-computer-science-a-course-and-exam-description.pdf#page=72"
+        }
+      ]
+    },
+    {
+      "id": "FACT-U2-03",
+      "status": "provisional_educator_review_pending",
+      "unit": 2,
+      "objective_ids": [
+        "2.6.A"
+      ],
+      "statement": "Under De Morgan's law, !(a && b) is equivalent to !a || !b and !(a || b) is equivalent to !a && !b across all truth-table assignments.",
+      "common_misconception": "Distributing ! without flipping && and ||, claiming !(a && b) equals !a && !b.",
+      "java_assertion": {
+        "snippet": "boolean a = true, b = false; boolean eq = (!(a && b)) == (!a || !b);",
+        "expected_outcome": "eq == true for all boolean pairs (a, b)."
+      },
+      "references": [
+        {
+          "document": "CED-2025",
+          "section": "Unit 2: Selection and Iteration, Topic 2.6: Comparing Boolean Expressions",
+          "page_locator": "CED p. 66 (PDF p. 73)",
+          "url": "https://apcentral.collegeboard.org/media/pdf/ap-computer-science-a-course-and-exam-description.pdf#page=73"
+        }
+      ]
+    },
+    {
+      "id": "FACT-U2-04",
+      "status": "provisional_educator_review_pending",
+      "unit": 2,
+      "objective_ids": [
+        "2.3.A",
+        "2.4.A"
+      ],
+      "statement": "Selection statements (if, if-else, nested if, if-else-if) precede iteration constructs in Unit 2; in if-else-if chains at most one branch executes, matching the first true condition.",
+      "common_misconception": "Treating for/while iteration as a prerequisite for conditional if-else branching.",
+      "java_assertion": {
+        "snippet": "int n = 10; int r = 0; if (n > 5) { r = 1; } else if (n > 0) { r = 2; }",
+        "expected_outcome": "r == 1 because only the first matching branch executes."
+      },
+      "references": [
+        {
+          "document": "CED-2025",
+          "section": "Unit 2: Selection and Iteration, Topic 2.3: if Statements",
+          "page_locator": "CED p. 63 (PDF p. 70)",
+          "url": "https://apcentral.collegeboard.org/media/pdf/ap-computer-science-a-course-and-exam-description.pdf#page=70"
+        },
+        {
+          "document": "CED-2025",
+          "section": "Unit 2: Selection and Iteration, Topic 2.4: Nested if Statements",
+          "page_locator": "CED p. 64 (PDF p. 71)",
+          "url": "https://apcentral.collegeboard.org/media/pdf/ap-computer-science-a-course-and-exam-description.pdf#page=71"
+        }
+      ]
+    },
+    {
+      "id": "FACT-U2-05",
+      "status": "provisional_educator_review_pending",
+      "unit": 2,
+      "objective_ids": [
+        "2.7.A",
+        "2.7.B"
+      ],
+      "statement": "A while loop checks its boolean condition before every iteration including the first; if initially false, the body executes zero times.",
+      "common_misconception": "Assuming a while loop always executes at least once or ignoring off-by-one boundary comparisons.",
+      "java_assertion": {
+        "snippet": "int i = 5; int count = 0; while (i < 5) { count++; i++; }",
+        "expected_outcome": "count == 0 because the loop condition is initially false."
+      },
+      "references": [
+        {
+          "document": "CED-2025",
+          "section": "Unit 2: Selection and Iteration, Topic 2.7: while Loops",
+          "page_locator": "CED p. 67 (PDF p. 74)",
+          "url": "https://apcentral.collegeboard.org/media/pdf/ap-computer-science-a-course-and-exam-description.pdf#page=74"
+        },
+        {
+          "document": "CED-2025",
+          "section": "Unit 2: Selection and Iteration, Topic 2.7: while Loops",
+          "page_locator": "CED p. 67 (PDF p. 74)",
+          "url": "https://apcentral.collegeboard.org/media/pdf/ap-computer-science-a-course-and-exam-description.pdf#page=74"
+        }
+      ]
+    },
+    {
+      "id": "FACT-U2-06",
+      "status": "provisional_educator_review_pending",
+      "unit": 2,
+      "objective_ids": [
+        "2.8.A",
+        "2.9.A"
+      ],
+      "statement": "A for loop executes initialization once, checks the boolean condition before each body execution, and runs the update after each body execution; evaluating an unprovided external snippet requires abstention when code is absent.",
+      "common_misconception": "Guessing trace outputs for external lab methods whose source code is missing from the prompt.",
+      "references": [
+        {
+          "document": "CED-2025",
+          "section": "Unit 2: Selection and Iteration, Topic 2.8: for Loops",
+          "page_locator": "CED p. 68 (PDF p. 75)",
+          "url": "https://apcentral.collegeboard.org/media/pdf/ap-computer-science-a-course-and-exam-description.pdf#page=75"
+        },
+        {
+          "document": "CED-2025",
+          "section": "Unit 2: Selection and Iteration, Topic 2.9: Implementing Selection and Iteration Algorithms",
+          "page_locator": "CED p. 69 (PDF p. 76)",
+          "url": "https://apcentral.collegeboard.org/media/pdf/ap-computer-science-a-course-and-exam-description.pdf#page=76"
+        }
+      ]
+    },
+    {
+      "id": "FACT-U2-07",
+      "status": "provisional_educator_review_pending",
+      "unit": 2,
+      "objective_ids": [
+        "2.10.A",
+        "2.11.A",
+        "2.12.A"
+      ],
+      "statement": "Standard string algorithms traverse indices with loops, nested loops finish all inner iterations per outer iteration, and informal runtime analysis counts statement executions.",
+      "common_misconception": "Confusing single-loop linear statement counts with nested-loop quadratic counts without clarifying the algorithm structure.",
+      "java_assertion": {
+        "snippet": "int ops = 0; for (int i = 0; i < 3; i++) { for (int j = 0; j < 4; j++) { ops++; } }",
+        "expected_outcome": "ops == 12 (3 * 4 inner-body executions)."
+      },
+      "references": [
+        {
+          "document": "CED-2025",
+          "section": "Unit 2: Selection and Iteration, Topic 2.10: Implementing String Algorithms",
+          "page_locator": "CED p. 70 (PDF p. 77)",
+          "url": "https://apcentral.collegeboard.org/media/pdf/ap-computer-science-a-course-and-exam-description.pdf#page=77"
+        },
+        {
+          "document": "CED-2025",
+          "section": "Unit 2: Selection and Iteration, Topic 2.11: Nested Iteration",
+          "page_locator": "CED p. 71 (PDF p. 78)",
+          "url": "https://apcentral.collegeboard.org/media/pdf/ap-computer-science-a-course-and-exam-description.pdf#page=78"
+        },
+        {
+          "document": "CED-2025",
+          "section": "Unit 2: Selection and Iteration, Topic 2.12: Informal Run-Time Analysis",
+          "page_locator": "CED p. 72 (PDF p. 79)",
+          "url": "https://apcentral.collegeboard.org/media/pdf/ap-computer-science-a-course-and-exam-description.pdf#page=79"
+        }
+      ]
+    },
+    {
+      "id": "FACT-U3-01",
+      "status": "provisional_educator_review_pending",
+      "unit": 3,
+      "objective_ids": [
+        "3.3.A",
+        "3.5.A"
+      ],
+      "statement": "Encapsulation hides object state by declaring instance variables private while exposing public constructors and accessor/mutator methods; private restricts direct external access, not access within the declaring class.",
+      "common_misconception": "Believing private blocks methods of the same class (or a parameter of the same enclosing class) from accessing private fields.",
+      "java_assertion": {
+        "snippet": "public class Box { private int v; public Box(int x) { v = x; } public boolean same(Box o) { return v == o.v; } }",
+        "expected_outcome": "Compiles and accesses o.v inside the enclosing Box class."
+      },
+      "references": [
+        {
+          "document": "CED-2025",
+          "section": "Unit 3: Class Creation, Topic 3.3: Anatomy of a Class",
+          "page_locator": "CED p. 83 (PDF p. 90)",
+          "url": "https://apcentral.collegeboard.org/media/pdf/ap-computer-science-a-course-and-exam-description.pdf#page=90"
+        },
+        {
+          "document": "CED-2025",
+          "section": "Unit 3: Class Creation, Topic 3.5: Methods: How to Write Them",
+          "page_locator": "CED p. 85 (PDF p. 92)",
+          "url": "https://apcentral.collegeboard.org/media/pdf/ap-computer-science-a-course-and-exam-description.pdf#page=92"
+        },
+        {
+          "document": "CED-2025",
+          "section": "Unit 3: Class Creation, Topic 3.6: Methods: Passing and Returning References of an Object",
+          "page_locator": "CED p. 87 (PDF p. 94)",
+          "url": "https://apcentral.collegeboard.org/media/pdf/ap-computer-science-a-course-and-exam-description.pdf#page=94"
+        }
+      ]
+    },
+    {
+      "id": "FACT-U3-02",
+      "status": "provisional_educator_review_pending",
+      "unit": 3,
+      "objective_ids": [
+        "3.4.A"
+      ],
+      "statement": "Java supplies a default no-parameter constructor only when a class defines no explicit constructors, initializing fields to 0 (int), 0.0 (double), false (boolean), or null (reference).",
+      "common_misconception": "Expecting Java to keep providing a zero-argument constructor after a parameterized constructor is added.",
+      "java_assertion": {
+        "snippet": "public class Pair { private int x; public Pair(int v) { x = v; } }",
+        "expected_outcome": "new Pair() fails to compile once Pair(int) is declared."
+      },
+      "references": [
+        {
+          "document": "CED-2025",
+          "section": "Unit 3: Class Creation, Topic 3.4: Constructors",
+          "page_locator": "CED p. 84 (PDF p. 91)",
+          "url": "https://apcentral.collegeboard.org/media/pdf/ap-computer-science-a-course-and-exam-description.pdf#page=91"
+        }
+      ]
+    },
+    {
+      "id": "FACT-U3-03",
+      "status": "provisional_educator_review_pending",
+      "unit": 3,
+      "objective_ids": [
+        "3.6.A"
+      ],
+      "statement": "Object arguments pass a copy of the object reference by value: a method can mutate state through a mutable object reference, whereas reassigning the parameter variable does not rebind the caller's variable.",
+      "common_misconception": "Claiming Java passes objects by reference so assigning param = new Foo() changes the caller's variable reference.",
+      "java_assertion": {
+        "snippet": "void reset(StringBuilder b, int[] a) { a[0] = 9; a = new int[]{0}; }",
+        "expected_outcome": "Caller sees a[0] == 9, not the reassigned local array."
+      },
+      "references": [
+        {
+          "document": "CED-2025",
+          "section": "Unit 3: Class Creation, Topic 3.6: Methods: Passing and Returning References of an Object",
+          "page_locator": "CED p. 87 (PDF p. 94)",
+          "url": "https://apcentral.collegeboard.org/media/pdf/ap-computer-science-a-course-and-exam-description.pdf#page=94"
+        }
+      ]
+    },
+    {
+      "id": "FACT-U3-04",
+      "status": "provisional_educator_review_pending",
+      "unit": 3,
+      "objective_ids": [
+        "3.7.A",
+        "3.7.B",
+        "3.9.A"
+      ],
+      "statement": "Static class variables and methods belong to the class rather than any instance; class methods lack a this reference and cannot directly access instance fields or instance methods without an explicit object parameter.",
+      "common_misconception": "Using this inside a static method or placing static subclass overriding as a prerequisite for instance methods.",
+      "java_assertion": {
+        "snippet": "public class Counter { private static int total = 0; public static int getTotal() { return total; } }",
+        "expected_outcome": "Counter.getTotal() compiles without referencing this or instance fields."
+      },
+      "references": [
+        {
+          "document": "CED-2025",
+          "section": "Unit 3: Class Creation, Topic 3.7: Class Variables and Methods",
+          "page_locator": "CED p. 88 (PDF p. 95)",
+          "url": "https://apcentral.collegeboard.org/media/pdf/ap-computer-science-a-course-and-exam-description.pdf#page=95"
+        },
+        {
+          "document": "CED-2025",
+          "section": "Unit 3: Class Creation, Topic 3.7: Class Variables and Methods",
+          "page_locator": "CED p. 88 (PDF p. 95)",
+          "url": "https://apcentral.collegeboard.org/media/pdf/ap-computer-science-a-course-and-exam-description.pdf#page=95"
+        },
+        {
+          "document": "CED-2025",
+          "section": "Unit 3: Class Creation, Topic 3.9: this Keyword",
+          "page_locator": "CED p. 90 (PDF p. 97)",
+          "url": "https://apcentral.collegeboard.org/media/pdf/ap-computer-science-a-course-and-exam-description.pdf#page=97"
+        }
+      ]
+    },
+    {
+      "id": "FACT-U3-05",
+      "status": "provisional_educator_review_pending",
+      "unit": 3,
+      "objective_ids": [
+        "3.8.A",
+        "3.9.A"
+      ],
+      "statement": "Local variables and method/constructor parameters are scoped to their enclosing block; when a parameter shares a name with an instance variable, the bare identifier resolves to the parameter while this.<field> refers to the current object's field.",
+      "common_misconception": "Assuming x = x inside a constructor sets the instance variable rather than assigning the parameter to itself.",
+      "java_assertion": {
+        "snippet": "public class Item { private int id; public Item(int id) { this.id = id; } }",
+        "expected_outcome": "this.id receives the parameter id instead of self-assigning id = id."
+      },
+      "references": [
+        {
+          "document": "CED-2025",
+          "section": "Unit 3: Class Creation, Topic 3.8: Scope and Access",
+          "page_locator": "CED p. 89 (PDF p. 96)",
+          "url": "https://apcentral.collegeboard.org/media/pdf/ap-computer-science-a-course-and-exam-description.pdf#page=96"
+        },
+        {
+          "document": "CED-2025",
+          "section": "Unit 3: Class Creation, Topic 3.9: this Keyword",
+          "page_locator": "CED p. 90 (PDF p. 97)",
+          "url": "https://apcentral.collegeboard.org/media/pdf/ap-computer-science-a-course-and-exam-description.pdf#page=97"
+        }
+      ]
+    },
+    {
+      "id": "FACT-U4-01",
+      "status": "provisional_educator_review_pending",
+      "unit": 4,
+      "objective_ids": [
+        "4.3.A",
+        "4.4.A"
+      ],
+      "statement": "A 1D array has fixed length accessed via arr.length, zero-based indices 0 through arr.length - 1, and throws ArrayIndexOutOfBoundsException for out-of-range indices.",
+      "common_misconception": "Calling arr.length() as a method on arrays or indexing arr[arr.length].",
+      "java_assertion": {
+        "snippet": "int[] nums = new int[4]; int len = nums.length; int last = nums[len - 1];",
+        "expected_outcome": "len == 4 and last == 0 (default int element value)."
+      },
+      "references": [
+        {
+          "document": "CED-2025",
+          "section": "Unit 4: Data Collections, Topic 4.3: Array Creation and Access",
+          "page_locator": "CED p. 102 (PDF p. 109)",
+          "url": "https://apcentral.collegeboard.org/media/pdf/ap-computer-science-a-course-and-exam-description.pdf#page=109"
+        },
+        {
+          "document": "CED-2025",
+          "section": "Unit 4: Data Collections, Topic 4.4: Array Traversals",
+          "page_locator": "CED p. 103 (PDF p. 110)",
+          "url": "https://apcentral.collegeboard.org/media/pdf/ap-computer-science-a-course-and-exam-description.pdf#page=110"
+        }
+      ]
+    },
+    {
+      "id": "FACT-U4-02",
+      "status": "provisional_educator_review_pending",
+      "unit": 4,
+      "objective_ids": [
+        "4.7.A",
+        "4.8.A",
+        "4.9.A"
+      ],
+      "statement": "ArrayList.remove(int index) shifts subsequent elements left by 1 and reduces size() by 1, so forward index loops skip adjacent elements unless index is adjusted; adding or removing inside an enhanced for loop can throw ConcurrentModificationException.",
+      "common_misconception": "Claiming a forward i++ loop with list.remove(i) visits every item or that enhanced for loops safely support list.remove(...).",
+      "java_assertion": {
+        "snippet": "ArrayList<Integer> list = new ArrayList<>(); list.add(2); list.add(2); for (int i = list.size() - 1; i >= 0; i--) { if (list.get(i) == 2) list.remove(i); }",
+        "expected_outcome": "list.size() == 0 when traversing backward (whereas forward i++ leaves one 2)."
+      },
+      "references": [
+        {
+          "document": "CED-2025",
+          "section": "Unit 4: Data Collections, Topic 4.7: Wrapper Classes",
+          "page_locator": "CED p. 108 (PDF p. 115)",
+          "url": "https://apcentral.collegeboard.org/media/pdf/ap-computer-science-a-course-and-exam-description.pdf#page=115"
+        },
+        {
+          "document": "CED-2025",
+          "section": "Unit 4: Data Collections, Topic 4.8: ArrayList Methods",
+          "page_locator": "CED p. 110 (PDF p. 117)",
+          "url": "https://apcentral.collegeboard.org/media/pdf/ap-computer-science-a-course-and-exam-description.pdf#page=117"
+        },
+        {
+          "document": "CED-2025",
+          "section": "Unit 4: Data Collections, Topic 4.9: ArrayList Traversals",
+          "page_locator": "CED p. 112 (PDF p. 119)",
+          "url": "https://apcentral.collegeboard.org/media/pdf/ap-computer-science-a-course-and-exam-description.pdf#page=119"
+        }
+      ]
+    },
+    {
+      "id": "FACT-U4-03",
+      "status": "provisional_educator_review_pending",
+      "unit": 4,
+      "objective_ids": [
+        "4.11.A",
+        "4.12.A"
+      ],
+      "statement": "In AP CS A rectangular 2D arrays, arr[row][col] accesses rows 0..arr.length-1 and columns 0..arr[0].length-1; outer enhanced for loops bind 1D row arrays and assigning the inner loop variable does not modify array elements.",
+      "common_misconception": "Swapping row and column lengths or assuming an enhanced for loop variable updates elements in the 2D array.",
+      "java_assertion": {
+        "snippet": "int[][] grid = {{1,2,3},{4,5,6}}; int rows = grid.length; int cols = grid[0].length;",
+        "expected_outcome": "rows == 2 && cols == 3 and grid[1][0] == 4."
+      },
+      "references": [
+        {
+          "document": "CED-2025",
+          "section": "Unit 4: Data Collections, Topic 4.11: 2D Array Creation and Access",
+          "page_locator": "CED p. 114 (PDF p. 121)",
+          "url": "https://apcentral.collegeboard.org/media/pdf/ap-computer-science-a-course-and-exam-description.pdf#page=121"
+        },
+        {
+          "document": "CED-2025",
+          "section": "Unit 4: Data Collections, Topic 4.12: 2D Array Traversals",
+          "page_locator": "CED p. 116 (PDF p. 123)",
+          "url": "https://apcentral.collegeboard.org/media/pdf/ap-computer-science-a-course-and-exam-description.pdf#page=123"
+        }
+      ]
+    },
+    {
+      "id": "FACT-U4-04",
+      "status": "provisional_educator_review_pending",
+      "unit": 4,
+      "objective_ids": [
+        "4.14.A",
+        "4.17.B"
+      ],
+      "statement": "Binary search requires the collection to be sorted and repeatedly inspects the middle element, halving the search interval; arrays and linear traversal precede binary search.",
+      "common_misconception": "Claiming binary search works on unsorted arrays or teaching binary search as a prerequisite to arrays.",
+      "java_assertion": {
+        "snippet": "int[] sorted = {2, 5, 8, 12, 16};",
+        "expected_outcome": "Sorted precondition holds before executing binary search."
+      },
+      "references": [
+        {
+          "document": "CED-2025",
+          "section": "Unit 4: Data Collections, Topic 4.14: Searching Algorithms",
+          "page_locator": "CED p. 118 (PDF p. 125)",
+          "url": "https://apcentral.collegeboard.org/media/pdf/ap-computer-science-a-course-and-exam-description.pdf#page=125"
+        },
+        {
+          "document": "CED-2025",
+          "section": "Unit 4: Data Collections, Topic 4.17: Recursive Searching and Sorting",
+          "page_locator": "CED p. 121 (PDF p. 128)",
+          "url": "https://apcentral.collegeboard.org/media/pdf/ap-computer-science-a-course-and-exam-description.pdf#page=128"
+        }
+      ]
+    },
+    {
+      "id": "FACT-U4-05",
+      "status": "provisional_educator_review_pending",
+      "unit": 4,
+      "objective_ids": [
+        "4.15.A",
+        "4.17.C"
+      ],
+      "statement": "Selection sort and insertion sort are iterative sorting algorithms in AP CS A, whereas merge sort recursively divides subarrays down to length one and merges sorted halves.",
+      "common_misconception": "Confusing selection sort swaps with insertion sort shifting, or omitting merge sort's recursive split-and-merge structure.",
+      "references": [
+        {
+          "document": "CED-2025",
+          "section": "Unit 4: Data Collections, Topic 4.15: Sorting Algorithms",
+          "page_locator": "CED p. 119 (PDF p. 126)",
+          "url": "https://apcentral.collegeboard.org/media/pdf/ap-computer-science-a-course-and-exam-description.pdf#page=126"
+        },
+        {
+          "document": "CED-2025",
+          "section": "Unit 4: Data Collections, Topic 4.17: Recursive Searching and Sorting",
+          "page_locator": "CED p. 121 (PDF p. 128)",
+          "url": "https://apcentral.collegeboard.org/media/pdf/ap-computer-science-a-course-and-exam-description.pdf#page=128"
+        }
+      ]
+    },
+    {
+      "id": "FACT-U4-06",
+      "status": "provisional_educator_review_pending",
+      "unit": 4,
+      "objective_ids": [
+        "4.16.A"
+      ],
+      "statement": "A recursive method calls itself and needs at least one base case to halt plus recursive calls progressing toward it; each call frame holds its own local variables and parameters (AP CS A assesses tracing recursion, excluding writing recursive code).",
+      "common_misconception": "Claiming recursive calls share one copy of local variables or omitting the base case condition.",
+      "java_assertion": {
+        "snippet": "int fact(int n) { if (n <= 1) return 1; return n * fact(n - 1); }",
+        "expected_outcome": "fact(4) == 24 with four distinct activation frames."
+      },
+      "references": [
+        {
+          "document": "CED-2025",
+          "section": "Unit 4: Data Collections, Topic 4.16: Recursion",
+          "page_locator": "CED p. 120 (PDF p. 127)",
+          "url": "https://apcentral.collegeboard.org/media/pdf/ap-computer-science-a-course-and-exam-description.pdf#page=127"
+        }
+      ]
+    },
+    {
+      "id": "FACT-U4-07",
+      "status": "provisional_educator_review_pending",
+      "unit": 4,
+      "objective_ids": [
+        "4.6.A"
+      ],
+      "statement": "Create a File from a pathname and use Scanner(File) to read it. Handle failure to open the file, for example with a catch for FileNotFoundException or by declaring throws IOException. File and IOException are in java.io, and Scanner is in java.util. The course covers Scanner methods hasNext, next, nextInt, nextDouble, nextBoolean, nextLine, and close. Writing or analyzing code that combines nextLine with other Scanner reads on the same input is outside the AP CS A scope.",
+      "common_misconception": "Assuming that Scanner(new File(path)) needs no handling for failure to open the input, or that throws IOException is the only way to handle it.",
+      "references": [
+        {
+          "document": "CED-2025",
+          "section": "Topic 4.6: Using Text Files, 4.6.A.2–5 (file setup and handling failure)",
+          "page_locator": "CED p. 105 (PDF p. 112)",
+          "url": "https://apcentral.collegeboard.org/media/pdf/ap-computer-science-a-course-and-exam-description.pdf#page=112"
+        },
+        {
+          "document": "CED-2025",
+          "section": "Topic 4.6: Using Text Files, 4.6.A.6–7 (Scanner methods and scope exclusion)",
+          "page_locator": "CED p. 106 (PDF p. 113)",
+          "url": "https://apcentral.collegeboard.org/media/pdf/ap-computer-science-a-course-and-exam-description.pdf#page=113"
+        },
+        {
+          "document": "Java SE 21 API",
+          "section": "java.util.Scanner (file-open exception)",
+          "page_locator": "Scanner(File) constructor, Throws",
+          "url": "https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/util/Scanner.html#%3Cinit%3E(java.io.File)"
+        }
+      ]
+    }
+  ]
+}

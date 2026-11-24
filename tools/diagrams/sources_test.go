@@ -185,10 +185,10 @@ func packageImports(root string) (map[string]bool, map[dependency]bool, error) {
 // Support imports are represented by the baml_client card.
 func excludedPackage(pkg string) bool {
 	switch pkg {
-	case "docs", "baml_client/types", "baml_client/stream_types", "baml_client/type_builder":
+	case "docs", "baml_client/types", "baml_client/stream_types", "baml_client/type_builder", "evaluation":
 		return true
 	}
-	return strings.HasPrefix(pkg, "test/")
+	return strings.HasPrefix(pkg, "test/") || strings.HasPrefix(pkg, "evaluation/")
 }
 func sharedPackage(pkg string) bool {
 	return pkg == "internal/config" || pkg == "internal/telemetry" || pkg == "internal/domain"
