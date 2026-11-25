@@ -199,7 +199,7 @@ func TestPlanToolUsesResourceLinkPolicy(t *testing.T) {
 			if tc.defaultPolicy {
 				s = New(cfg, g, planner, logger, "test-version")
 			} else {
-				s = newServer(cfg, g, planner, logger, "test-version", mcp.ServerOptions{}, fixture)
+				s = newServer(cfg, graph.StaticCurriculum(g), planner, logger, "test-version", mcp.ServerOptions{}, fixture)
 			}
 			client := connectTestClient(t, s)
 			result, err := client.CallTool(t.Context(), &mcp.CallToolParams{Name: "generate_study_plan", Arguments: PlanInput{FailedTopics: []string{"Recursion"}, VARKProfile: "visual"}})

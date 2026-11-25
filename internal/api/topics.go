@@ -33,7 +33,7 @@ import (
 // @Header 429 {integer} Retry-After "Seconds to wait before retrying"
 // @Router /api/v1/topics [get]
 func (h *Handler) handleTopics(c fiber.Ctx) error {
-	return c.JSON(domain.TopicsResponse{Topics: h.graph.Topics(c.Query("q"))})
+	return c.JSON(domain.TopicsResponse{Topics: h.curriculum.Current().Graph().Topics(c.Query("q"))})
 }
 
 // handleTopicPath returns the prerequisite study order for one concept.
@@ -64,7 +64,7 @@ func (h *Handler) handleTopicPath(c fiber.Ctx) error {
 	if decoded, err := url.PathUnescape(topic); err == nil {
 		topic = decoded
 	}
-	path, err := service.TopicPath(topic, h.graph)
+	path, err := service.TopicPath(topic, h.curriculum.Current().Graph())
 	if err != nil {
 		var validation *service.ValidationError
 		errors.As(err, &validation)

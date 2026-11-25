@@ -80,6 +80,20 @@ func (m *Metrics) Handler() http.Handler {
 	return promhttp.HandlerFor(m.registry, promhttp.HandlerOpts{})
 }
 
+// RegisterGraphReload exposes the process's reload counts when reload is enabled.
+func (m *Metrics) RegisterGraphReload(counts func() (published, failed uint64)) {
+	m.registry.MustRegister(
+		prometheus.NewCounterFunc(prometheus.CounterOpts{Name: "axiom_graph_reload_success_total", Help: "Published curriculum replacements."}, func() float64 {
+			published, _ := counts()
+			return float64(published)
+		}),
+		prometheus.NewCounterFunc(prometheus.CounterOpts{Name: "axiom_graph_reload_failure_total", Help: "Curriculum replacements that failed to load."}, func() float64 {
+			_, failed := counts()
+			return float64(failed)
+		}),
+	)
+}
+
 // ObservePreviousToken records successful authentication with a rotating token.
 func (m *Metrics) ObservePreviousToken() {
 	if m != nil {

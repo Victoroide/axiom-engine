@@ -80,13 +80,23 @@ func runHTTP(args []string, stdout io.Writer) (err error) {
 	if err != nil {
 		return err
 	}
-	defer traces.flush()
-	g, err := graph.Load(cfg.GraphFile)
+	var reload *graphReload
+	defer func() {
+		if shutdownErr := finishServing(reload, traces); err == nil {
+			err = shutdownErr
+		}
+	}()
+	curriculum, err := loadServingCurriculum(cfg)
 	if err != nil {
 		return err
 	}
-	logStartup(logger, cfg, g, os.Getenv, os.ReadFile)
-	app, err := server.NewWithError(cfg, server.Dependencies{Graph: g, Planner: llm.New(cfg.LLM), Logger: logger})
+	reload = startGraphReload(cfg, curriculum, logger)
+	logStartup(logger, cfg, curriculum.Current().Graph(), os.Getenv, os.ReadFile)
+	deps := server.Dependencies{Curriculum: curriculum, Planner: llm.New(cfg.LLM), Logger: logger}
+	if reload != nil {
+		deps.GraphReloadCounts = reload.counts
+	}
+	app, err := server.NewWithError(cfg, deps)
 	if err != nil {
 		return err
 	}
@@ -109,6 +119,7 @@ func runHTTP(args []string, stdout io.Writer) (err error) {
 			default:
 			}
 			traces.setDeadline(time.Now().Add(cfg.ShutdownDrainDelay).Add(cfg.ShutdownTimeout))
+			reload.stop()
 			logger.Info("server.shutdown_started", "signal", sig.String(), "timeout", cfg.ShutdownTimeout.String())
 			cancel()
 		case <-ctx.Done():

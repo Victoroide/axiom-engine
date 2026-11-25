@@ -13,7 +13,6 @@ import (
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 
 	"github.com/Victoroide/axiom-engine/internal/config"
-	"github.com/Victoroide/axiom-engine/internal/graph"
 	"github.com/Victoroide/axiom-engine/internal/llm"
 	"github.com/Victoroide/axiom-engine/internal/mcpserver"
 	"github.com/Victoroide/axiom-engine/internal/telemetry"
@@ -48,17 +47,27 @@ func runMCP(args []string) (err error) {
 	if err != nil {
 		return err
 	}
-	defer traces.flush()
-	g, err := graph.Load(cfg.GraphFile)
+	var reload *graphReload
+	var gracefulShutdown bool
+	defer func() {
+		if shutdownErr := finishServing(reload, traces); err == nil {
+			err = shutdownErr
+		}
+		if gracefulShutdown && err == nil {
+			logger.Info("server.shutdown_completed")
+		}
+	}()
+	curriculum, err := loadServingCurriculum(cfg)
 	if err != nil {
 		return err
 	}
-	logStartup(logger, cfg, g, os.Getenv, os.ReadFile)
+	reload = startGraphReload(cfg, curriculum, logger)
+	logStartup(logger, cfg, curriculum.Current().Graph(), os.Getenv, os.ReadFile)
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	lifecycle := mcpserver.NewLifecycle(ctx)
 	defer lifecycle.Cancel()
-	s := mcpserver.New(cfg, g, llm.New(cfg.LLM), logger, buildVersion())
+	s := mcpserver.NewWithCurriculum(cfg, curriculum, llm.New(cfg.LLM), logger, buildVersion())
 	s.AddReceivingMiddleware(lifecycle.Middleware)
 	signals := make(chan os.Signal, 2)
 	signal.Notify(signals, syscall.SIGINT, syscall.SIGTERM)
@@ -83,6 +92,7 @@ func runMCP(args []string) (err error) {
 		default:
 		}
 		deadline := time.Now().Add(cfg.ShutdownTimeout)
+		reload.stop()
 		traces.setDeadline(deadline)
 		timer := time.NewTimer(time.Until(deadline))
 		defer timer.Stop()
@@ -99,7 +109,7 @@ func runMCP(args []string) (err error) {
 					if err != nil {
 						return err
 					}
-					logger.Info("server.shutdown_completed")
+					gracefulShutdown = true
 					return nil
 				}
 			case <-timer.C:

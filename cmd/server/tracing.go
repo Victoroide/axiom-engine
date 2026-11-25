@@ -27,13 +27,15 @@ func prepareTracing(cfg config.Config, logger *slog.Logger) (*traceLifecycle, er
 
 func (t *traceLifecycle) setDeadline(deadline time.Time) { t.deadline.Store(deadline.UnixNano()) }
 
-func (t *traceLifecycle) flush() {
+func (t *traceLifecycle) shutdownContext() (context.Context, context.CancelFunc) {
 	deadline := time.Now().Add(t.timeout)
 	if ns := t.deadline.Load(); ns != 0 {
 		deadline = time.Unix(0, ns)
 	}
-	ctx, cancel := context.WithDeadline(context.Background(), deadline)
-	defer cancel()
+	return context.WithDeadline(context.Background(), deadline)
+}
+
+func (t *traceLifecycle) flush(ctx context.Context) {
 	failed := false
 	defer func() {
 		if recover() != nil || failed {

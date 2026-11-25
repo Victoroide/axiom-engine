@@ -61,7 +61,7 @@ type ReasoningService struct {
 	preserveDisplayJoins bool
 	metrics              *metrics.Metrics
 	logger               *slog.Logger
-	graph                *graph.InMemoryGraph
+	curriculum           *graph.Curriculum
 	planner              Planner
 	llmTimeout           time.Duration
 	maxFailedTopics      int
@@ -73,6 +73,11 @@ type ReasoningService struct {
 
 // NewReasoningService constructs a pipeline with a shared backend circuit breaker.
 func NewReasoningService(g *graph.InMemoryGraph, planner Planner, opts Options) *ReasoningService {
+	return NewReasoningServiceWithCurriculum(graph.StaticCurriculum(g), planner, opts)
+}
+
+// NewReasoningServiceWithCurriculum pins each plan against the current curriculum.
+func NewReasoningServiceWithCurriculum(curriculum *graph.Curriculum, planner Planner, opts Options) *ReasoningService {
 	logger := opts.Logger
 	if logger == nil {
 		logger = slog.Default()
@@ -91,7 +96,7 @@ func NewReasoningService(g *graph.InMemoryGraph, planner Planner, opts Options) 
 	}
 	cb := gobreaker.NewCircuitBreaker[[]domain.PlanItem](breakerSettings(logger))
 	opts.Metrics.SetBreakerStateSource(func() int { return int(cb.State()) })
-	return &ReasoningService{resourceLinks: opts.ResourceLinks, promptBudget: opts.PromptBudget, preserveDisplayJoins: opts.PreserveDisplayJoins, metrics: opts.Metrics, logger: logger, graph: g, planner: planner, llmTimeout: opts.LLMTimeout, maxFailedTopics: opts.MaxFailedTopics, maxMasteredTopics: opts.MaxMasteredTopics, breaker: cb, queueTimeout: opts.QueueTimeout, slots: semaphore.NewWeighted(int64(opts.MaxConcurrency))}
+	return &ReasoningService{resourceLinks: opts.ResourceLinks, promptBudget: opts.PromptBudget, preserveDisplayJoins: opts.PreserveDisplayJoins, metrics: opts.Metrics, logger: logger, curriculum: curriculum, planner: planner, llmTimeout: opts.LLMTimeout, maxFailedTopics: opts.MaxFailedTopics, maxMasteredTopics: opts.MaxMasteredTopics, breaker: cb, queueTimeout: opts.QueueTimeout, slots: semaphore.NewWeighted(int64(opts.MaxConcurrency))}
 }
 
 func breakerSettings(logger *slog.Logger) gobreaker.Settings {
@@ -216,7 +221,7 @@ func (p *PreparedPlan) Generate(ctx context.Context, options ...PlanOption) (dom
 			return domain.PlanResponse{}, err
 		}
 	}
-	validated, dropped := validateAgainstGraph(merged, s.graph, req.FailedTopics, req.MasteredTopics)
+	validated, dropped := validateAgainstGraph(merged, p.snapshot.Graph(), req.FailedTopics, req.MasteredTopics)
 	s.metrics.ObserveDroppedItems(duplicates, dropped)
 	if dropped > 0 {
 		s.logger.WarnContext(ctx, "stage.validation", "request_id", requestIDFromContext(ctx), "items_dropped", dropped)

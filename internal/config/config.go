@@ -6,6 +6,7 @@ import (
 	"log/slog"
 	"net/netip"
 	"net/url"
+	"runtime"
 	"strconv"
 	"strings"
 	"time"
@@ -52,6 +53,7 @@ type Config struct {
 	MetricsEnabled        bool
 	SwaggerEnabled        bool
 	GraphFile             string
+	GraphReloadEnabled    bool
 	LogLevel              slog.Level
 	ShutdownDrainDelay    time.Duration
 	ShutdownTimeout       time.Duration
@@ -95,6 +97,7 @@ func Load(getenv func(string) string) (Config, error) {
 		{"METRICS_ENABLED", &c.MetricsEnabled},
 		{"SWAGGER_ENABLED", &c.SwaggerEnabled},
 		{"PRESERVE_DISPLAY_JOINS", &c.PreserveDisplayJoins},
+		{"GRAPH_RELOAD_ENABLED", &c.GraphReloadEnabled},
 	} {
 		if v := getenv(item.key); v != "" {
 			switch v {
@@ -105,6 +108,14 @@ func Load(getenv func(string) string) (Config, error) {
 			default:
 				return Config{}, fmt.Errorf("%s must be true or false", item.key)
 			}
+		}
+	}
+	if c.GraphReloadEnabled {
+		if c.GraphFile == "" {
+			return Config{}, fmt.Errorf("GRAPH_FILE is required when GRAPH_RELOAD_ENABLED=true")
+		}
+		if runtime.GOOS != "linux" && runtime.GOOS != "darwin" {
+			return Config{}, fmt.Errorf("GRAPH_RELOAD_ENABLED is supported only on Linux and macOS")
 		}
 	}
 	if c.InternalToken == "" && !c.AuthDisabled {

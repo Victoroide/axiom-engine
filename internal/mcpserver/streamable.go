@@ -34,7 +34,12 @@ const (
 // With a configured write timeout, response writer wrappers must expose
 // SetWriteDeadline or Unwrap. The handler rejects requests if setup fails.
 func NewStreamableHTTPHandler(cfg config.Config, g *graph.InMemoryGraph, planner service.Planner, logger *slog.Logger, version string, jsonResponse bool) http.Handler {
-	s := newServer(cfg, g, planner, logger, version, mcp.ServerOptions{
+	return NewStreamableHTTPHandlerWithCurriculum(cfg, graph.StaticCurriculum(g), planner, logger, version, jsonResponse)
+}
+
+// NewStreamableHTTPHandlerWithCurriculum serves tools on the current snapshot.
+func NewStreamableHTTPHandlerWithCurriculum(cfg config.Config, curriculum *graph.Curriculum, planner service.Planner, logger *slog.Logger, version string, jsonResponse bool) http.Handler {
+	s := newServer(cfg, curriculum, planner, logger, version, mcp.ServerOptions{
 		SupportedProtocolVersions: []string{streamableProtocolVersion},
 		Capabilities:              &mcp.ServerCapabilities{Tools: &mcp.ToolCapabilities{}},
 	}, nil)
