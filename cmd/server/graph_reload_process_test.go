@@ -4,6 +4,8 @@ package main
 
 import (
 	"context"
+	"crypto/tls"
+	"crypto/x509"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -22,22 +24,29 @@ import (
 	"time"
 
 	"github.com/modelcontextprotocol/go-sdk/mcp"
+	"golang.org/x/oauth2"
 
 	"github.com/Victoroide/axiom-engine/test/fakebedrock"
+	"github.com/Victoroide/axiom-engine/test/mcpfixture"
 )
 
 const graphReloadTestProcess = "AXIOM_GRAPH_RELOAD_TEST_PROCESS"
+const graphReloadTestIssuerCA = "AXIOM_GRAPH_RELOAD_TEST_ISSUER_CA"
 
 func TestGraphReloadProcessEntry(t *testing.T) {
 	switch mode := os.Getenv(graphReloadTestProcess); mode {
-	case "http-default-hup", "http-ignore-hup":
+	case "http-default-hup", "http-ignore-hup", "mcp-http-default-hup":
 		if mode == "http-ignore-hup" {
 			signal.Ignore(syscall.SIGHUP)
 		} else {
 			// Exec resets a caught signal to the default even if this process inherited SIG_IGN.
 			signal.Notify(make(chan os.Signal, 1), syscall.SIGHUP)
 		}
-		t.Setenv(graphReloadTestProcess, "http")
+		target := "http"
+		if mode == "mcp-http-default-hup" {
+			target = "mcp-http"
+		}
+		t.Setenv(graphReloadTestProcess, target)
 		t.Fatal(syscall.Exec(os.Args[0], os.Args, os.Environ())) //nolint:gosec // Re-execute this test binary with a controlled signal disposition.
 	case "http":
 		if run(nil, os.Stdout) != nil {
@@ -46,6 +55,14 @@ func TestGraphReloadProcessEntry(t *testing.T) {
 		os.Exit(0)
 	case "mcp":
 		if run([]string{"mcp"}, os.Stdout) != nil {
+			os.Exit(1)
+		}
+		os.Exit(0)
+	case "mcp-http":
+		// Use the local issuer CA for the verifier in this test process.
+		pool := graphReloadCertPool(t, os.Getenv(graphReloadTestIssuerCA))
+		http.DefaultTransport = &http.Transport{TLSClientConfig: &tls.Config{RootCAs: pool}}
+		if run([]string{"mcp-http"}, os.Stdout) != nil {
 			os.Exit(1)
 		}
 		os.Exit(0)
@@ -112,8 +129,13 @@ func startGraphHTTPReplica(t *testing.T, mode, path, enabled, listener string) *
 		t.Fatal(err)
 	}
 	cmd := reloadCommand(t, mode, path, enabled, fmt.Sprintf("PORT=%d", addr.Port), "HTTP_LISTENER="+listener)
+	return startGraphProcess(t, cmd, "http://"+addr.String())
+}
+
+func startGraphProcess(t *testing.T, cmd *exec.Cmd, url string) *graphHTTPReplica {
+	t.Helper()
 	logs := &processRecords{messages: make(chan map[string]any, 64), shutdown: make(chan struct{})}
-	r := &graphHTTPReplica{cmd: cmd, logs: logs, url: "http://" + addr.String(), exited: make(chan struct{})}
+	r := &graphHTTPReplica{cmd: cmd, logs: logs, url: url, exited: make(chan struct{})}
 	cmd.Stdout, cmd.Stderr = logs, logs
 	if err := cmd.Start(); err != nil {
 		t.Fatal(err)
@@ -268,32 +290,112 @@ func TestGraphReloadStdioTools(t *testing.T) {
 		}
 	}()
 	assertGraphReloadLog(t, logs, "loaded", old, 0, 0)
-	assertTools := func(root, other string) {
-		t.Helper()
-		for _, tc := range []struct {
-			tool string
-			args map[string]any
-		}{
-			{"list_topics", map[string]any{"q": "Recursion"}},
-			{"get_topic_path", map[string]any{"topic": "Recursion"}},
-			{"get_cognitive_graph", map[string]any{"topics": []string{"Recursion"}}},
-			{"generate_study_plan", map[string]any{"failed_topics": []string{"Recursion"}, "vark_profile": "visual"}},
-		} {
-			result, err := cs.CallTool(ctx, &mcp.CallToolParams{Name: tc.tool, Arguments: tc.args})
-			if err != nil {
-				t.Fatalf("%s: %v", tc.tool, err)
-			}
-			data, err := json.Marshal(result.StructuredContent)
-			if err != nil || result.IsError || !strings.Contains(string(data), root) || strings.Contains(string(data), other) {
-				t.Fatalf("%s: data=%s error=%v result=%+v", tc.tool, data, err, result)
-			}
-		}
-	}
-	assertTools("Old Root", "New Root")
+	assertGraphReloadMCPTools(t, ctx, cs, "Old Root", "New Root")
 	newRevision := replaceCurriculum(t, path, curriculumJSON("New Root"))
 	if err := cmd.Process.Signal(syscall.SIGHUP); err != nil {
 		t.Fatal(err)
 	}
 	assertGraphReloadLog(t, logs, "published", newRevision, 1, 0)
-	assertTools("New Root", "Old Root")
+	assertGraphReloadMCPTools(t, ctx, cs, "New Root", "Old Root")
+}
+
+func TestGraphReloadRemoteMCPTools(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "graph.json")
+	replaceCurriculum(t, path, curriculumJSON("Old Root"))
+	issuer, err := mcpfixture.New(t.Context(), mcpfixture.Options{
+		Dir: dir, IssuerHosts: []string{"127.0.0.1"}, MCPHost: "mcp.example.test", ListenHost: "127.0.0.1",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = issuer.Close() })
+	backend := httptest.NewServer(fakebedrock.NewHandler("ok"))
+	t.Cleanup(backend.Close)
+	port := freePort(t)
+	addr := "127.0.0.1:" + port
+	resource := "https://mcp.example.test:" + port + "/mcp"
+	ca := filepath.Join(dir, "ca.pem")
+	files := mcpHTTPFiles{cert: filepath.Join(dir, "tls.crt"), key: filepath.Join(dir, "tls.key")}
+	settings := mcpHTTPSettings("127.0.0.1:"+issuer.RedisPort, addr, files)
+	settings["GRAPH_FILE"], settings["MCP_PUBLIC_URL"] = path, resource
+	settings["AXIOM_AUTH_DISABLED"], settings["AXIOM_AUTH_ALGORITHMS"] = "false", "ES256"
+	settings["AXIOM_AUTH_ISSUER"], settings["AXIOM_AUTH_JWKS_URL"] = issuer.Issuer(), issuer.KeysURL()
+	env := make([]string, 0, len(settings)+6)
+	env = append(env, graphReloadTestIssuerCA+"="+ca, "AWS_ACCESS_KEY_ID=dummy", "AWS_SECRET_ACCESS_KEY=dummy",
+		"AWS_EC2_METADATA_DISABLED=true", "AWS_ENDPOINT_URL_BEDROCK_RUNTIME="+backend.URL, "AWS_IGNORE_CONFIGURED_ENDPOINT_URLS=false")
+	for key, value := range settings {
+		env = append(env, key+"="+value)
+	}
+	proc := startGraphProcess(t, reloadCommand(t, "mcp-http-default-hup", path, "true", env...), resource)
+	awaitGraphProcessLog(t, proc.logs, "mcp.listening")
+
+	token, err := issuer.Token(resource, "reload-tenant", "reload-client", "graph:read plan:generate")
+	if err != nil {
+		t.Fatal(err)
+	}
+	transport := &http.Transport{
+		TLSClientConfig: &tls.Config{RootCAs: graphReloadCertPool(t, ca)},
+		DialContext: func(ctx context.Context, _, _ string) (net.Conn, error) {
+			return (&net.Dialer{}).DialContext(ctx, "tcp", addr)
+		},
+	}
+	t.Cleanup(transport.CloseIdleConnections)
+	client := mcp.NewClient(&mcp.Implementation{Name: "reload-test", Version: "1"}, nil)
+	cs, err := client.Connect(t.Context(), &mcp.StreamableClientTransport{
+		Endpoint: proc.url, MaxRetries: -1,
+		HTTPClient: &http.Client{Timeout: 5 * time.Second, Transport: &oauth2.Transport{
+			Base: transport, Source: oauth2.StaticTokenSource(&oauth2.Token{AccessToken: token, TokenType: "Bearer"}),
+		}},
+	}, &mcp.ClientSessionOptions{ProtocolVersion: "2026-07-28"})
+	if err != nil {
+		t.Fatalf("connect remote MCP: %v logs=%s", err, proc.logs.text())
+	}
+	defer func() { _ = cs.Close() }()
+
+	assertGraphReloadMCPTools(t, t.Context(), cs, "Old Root", "New Root")
+	revision := replaceCurriculum(t, path, curriculumJSON("New Root"))
+	proc.signal(t, syscall.SIGHUP)
+	assertGraphReloadLog(t, proc.logs, "published", revision, 1, 0)
+	assertGraphReloadMCPTools(t, t.Context(), cs, "New Root", "Old Root")
+	transport.CloseIdleConnections()
+	proc.signal(t, syscall.SIGTERM)
+	if err := proc.wait(t); err != nil {
+		t.Fatalf("SIGTERM after publishing: %v", err)
+	}
+}
+
+func graphReloadCertPool(t *testing.T, path string) *x509.CertPool {
+	t.Helper()
+	pem, err := os.ReadFile(path) //nolint:gosec // The parent test supplies the fixture CA.
+	if err != nil {
+		t.Fatal(err)
+	}
+	pool := x509.NewCertPool()
+	if !pool.AppendCertsFromPEM(pem) {
+		t.Fatal("fixture CA contained no certificate")
+	}
+	return pool
+}
+
+func assertGraphReloadMCPTools(t *testing.T, ctx context.Context, cs *mcp.ClientSession, root, other string) {
+	t.Helper()
+	for _, tc := range []struct {
+		tool string
+		args map[string]any
+	}{
+		{"list_topics", map[string]any{"q": "Recursion"}},
+		{"get_topic_path", map[string]any{"topic": "Recursion"}},
+		{"get_cognitive_graph", map[string]any{"topics": []string{"Recursion"}}},
+		{"generate_study_plan", map[string]any{"failed_topics": []string{"Recursion"}, "vark_profile": "visual"}},
+	} {
+		result, err := cs.CallTool(ctx, &mcp.CallToolParams{Name: tc.tool, Arguments: tc.args})
+		if err != nil {
+			t.Fatalf("%s: %v", tc.tool, err)
+		}
+		data, err := json.Marshal(result.StructuredContent)
+		if err != nil || result.IsError || !strings.Contains(string(data), root) || strings.Contains(string(data), other) {
+			t.Fatalf("%s: data=%s error=%v result=%+v", tc.tool, data, err, result)
+		}
+	}
 }

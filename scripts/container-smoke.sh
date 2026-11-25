@@ -6,7 +6,9 @@ include_diagnostic=${2:-0}
 prefix="axiom-smoke-$$"
 token=ci-internal-token-0123456789abcdef
 backend_pid=
+fixture_pid=
 name=
+network="$prefix-net"
 
 fail() {
   printf 'container smoke: %s\n' "$*" >&2
@@ -27,7 +29,16 @@ cleanup() {
     docker logs "$name" >&2 || true
     cat "$smoke_dir/backend-errors" >&2 || true
   fi
+  if (( result != 0 )); then
+    docker logs "$prefix-mcp" >&2 || true
+    cat "$smoke_dir/fixture-errors" >&2 || true
+  fi
   docker rm -f "$prefix-ok" "$prefix-throttle" "$prefix-example" "$prefix-mcp" "$prefix-diagnostic" >/dev/null 2>&1 || true
+  docker network rm "$network" >/dev/null 2>&1 || true
+  if [[ -n "$fixture_pid" ]]; then
+    kill "$fixture_pid" 2>/dev/null || true
+    wait "$fixture_pid" 2>/dev/null || true
+  fi
   stop_backend
   rm -rf "$smoke_dir"
   exit "$result"
@@ -279,3 +290,170 @@ PYTHON
 request_plan 200
 stop_image
 printf 'Bundled computer science curriculum starts and serves topics and plans\n'
+
+# The default image opens only the HTTP API. Remote MCP needs its own command.
+exposed=$(docker image inspect --format '{{json .Config.ExposedPorts}}' "$image")
+[[ "$exposed" == '{"8080/tcp":{}}' ]] || fail "exposed ports are $exposed"
+
+# Remote MCP: a local HTTPS issuer, Redis and synthetic tokens on the host.
+python3_free_port() {
+  python3 -c 'import socket; s = socket.socket(); s.bind(("127.0.0.1", 0)); print(s.getsockname()[1])'
+}
+
+create_network() {
+  local subnet
+  for _ in 1 2 3 4 5 6; do
+    subnet="10.$((100 + RANDOM % 100)).$((RANDOM % 250)).0/24"
+    if docker network create --subnet "$subnet" "$network" >/dev/null 2>&1; then
+      mcp_ip="${subnet%.0/24}.10"
+      return
+    fi
+  done
+  fail 'could not create a container network'
+}
+
+fixture_value() {
+  python3 - "$smoke_dir/fixture.json" "$@" <<'PY'
+import json
+import sys
+value = json.load(open(sys.argv[1]))
+for key in sys.argv[2:]:
+    value = value[key]
+print(value)
+PY
+}
+
+mcp_curl() {
+  curl --silent --show-error --max-time 30 --cacert "$fixture_dir/ca.pem" \
+    --resolve "mcp.example.test:$host_port:127.0.0.1" "$@"
+}
+
+mcp_call() {
+  local token=$1 method=$2 tool=$3 params=$4
+  shift 4
+  local meta='"_meta":{"io.modelcontextprotocol/protocolVersion":"2026-07-28","io.modelcontextprotocol/clientInfo":{"name":"smoke","version":"1"},"io.modelcontextprotocol/clientCapabilities":{}}'
+  local body="{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"$method\",\"params\":{${params:+$params,}$meta}}"
+  local -a args=(--request POST --header 'Content-Type: application/json'
+    --header 'Accept: application/json, text/event-stream'
+    --header 'Mcp-Protocol-Version: 2026-07-28' --header "Mcp-Method: $method")
+  if [[ -n "$tool" ]]; then args+=(--header "Mcp-Name: $tool"); fi
+  if [[ -n "$token" ]]; then args+=(--header "Authorization: Bearer $token"); fi
+  mcp_status=$(mcp_curl "${args[@]}" "$@" --data-binary "$body" \
+    --output "$smoke_dir/mcp-body.json" --dump-header "$smoke_dir/mcp-headers" \
+    --write-out '%{http_code}' "$mcp_url")
+}
+
+expect_mcp() {
+  [[ "$mcp_status" == "$1" ]] || {
+    printf 'Expected remote MCP status %s, got %s: ' "$1" "$mcp_status" >&2
+    cat "$smoke_dir/mcp-body.json" >&2
+    exit 1
+  }
+}
+
+host_port=$(python3_free_port)
+mcp_url="https://mcp.example.test:$host_port/mcp"
+fixture_dir="$smoke_dir/mcp-fixture"
+mkdir -m 755 "$fixture_dir"
+go build -o "$smoke_dir/mcpfixture" ./test/mcpfixture/cmd/mcpfixture
+"$smoke_dir/mcpfixture" -dir "$fixture_dir" -mcp-audience "$mcp_url" \
+  > "$smoke_dir/fixture.json" 2> "$smoke_dir/fixture-errors" &
+fixture_pid=$!
+for _ in {1..50}; do
+  if [[ -s "$smoke_dir/fixture.json" ]]; then break; fi
+  kill -0 "$fixture_pid"
+  sleep 0.1
+done
+[[ -s "$smoke_dir/fixture.json" ]] || fail 'the issuer fixture did not start'
+create_network
+start_backend ok
+name="$prefix-mcp"
+docker run -d --name "$name" --network "$network" --ip "$mcp_ip" --no-healthcheck \
+  --read-only --tmpfs /tmp --add-host host.docker.internal:host-gateway \
+  -p "127.0.0.1:$host_port:8443" -v "$fixture_dir:/fixture:ro" -e SSL_CERT_FILE=/fixture/ca.pem \
+  -e AWS_REGION=us-east-1 -e AWS_ACCESS_KEY_ID=dummy -e AWS_SECRET_ACCESS_KEY=dummy \
+  -e AWS_EC2_METADATA_DISABLED=true -e AWS_MAX_ATTEMPTS=1 -e AWS_RETRY_MODE=standard \
+  -e "AWS_ENDPOINT_URL=http://host.docker.internal:$backend_port" \
+  -e AXIOM_AUTH_MODE=verified -e "AXIOM_AUTH_ISSUER=$(fixture_value issuer)" \
+  -e AXIOM_AUTH_AUDIENCE=https://api.example.test/axiom -e "AXIOM_AUTH_JWKS_URL=$(fixture_value keys_url)" \
+  -e AXIOM_AUTH_ALGORITHMS=ES256 -e AXIOM_TENANT_QUOTA_ENABLED=true -e AXIOM_TENANT_QUOTA_MAX=3 \
+  -e "REDIS_URL=redis://host.docker.internal:$(fixture_value redis_port)" -e RATE_LIMIT_MAX=100 \
+  -e "MCP_PUBLIC_URL=$mcp_url" -e "MCP_BIND_ADDR=$mcp_ip:8443" \
+  -e MCP_TLS_CERT_FILE=/fixture/tls.crt -e MCP_TLS_KEY_FILE=/fixture/tls.key \
+  "$image" mcp-http >/dev/null
+for _ in {1..60}; do
+  status=$(mcp_curl --output "$smoke_dir/metadata.json" --write-out '%{http_code}' \
+    "https://mcp.example.test:$host_port/.well-known/oauth-protected-resource/mcp" 2>/dev/null || true)
+  if [[ "$status" == 200 ]]; then break; fi
+  [[ "$(docker inspect --format '{{.State.Running}}' "$name")" == true ]] || fail 'remote MCP container stopped'
+  sleep 0.5
+done
+[[ "$status" == 200 ]] || fail "metadata status is $status"
+python3 - "$smoke_dir/metadata.json" "$mcp_url" "$(fixture_value issuer)" <<'PY'
+import json
+import sys
+metadata = json.load(open(sys.argv[1]))
+assert metadata['resource'] == sys.argv[2], metadata
+assert metadata['authorization_servers'] == [sys.argv[3]], metadata
+assert metadata['scopes_supported'] == ['graph:read', 'plan:generate'], metadata
+assert metadata['bearer_methods_supported'] == ['header'], metadata
+PY
+user=$(docker inspect --format '{{.Config.User}}' "$name")
+[[ "$user" == 65532:65532 ]] || fail "remote MCP user is $user"
+
+full=$(fixture_value tokens full)
+graph_only=$(fixture_value tokens graph)
+api_only=$(fixture_value tokens api)
+mcp_call '' tools/list '' ''
+expect_mcp 401
+grep -qi "^www-authenticate: Bearer resource_metadata=\"https://mcp.example.test:$host_port/.well-known/oauth-protected-resource/mcp\"" "$smoke_dir/mcp-headers" ||
+  fail 'the challenge does not name the resource metadata'
+mcp_call "$api_only" tools/list '' ''
+expect_mcp 401
+mcp_call "$full" tools/list '' ''
+expect_mcp 200
+python3 - "$smoke_dir/mcp-body.json" <<'PY'
+import json
+import sys
+tools = {tool['name'] for tool in json.load(open(sys.argv[1]))['result']['tools']}
+assert tools == {'generate_study_plan', 'get_cognitive_graph', 'list_topics', 'get_topic_path'}, tools
+PY
+mcp_call "$full" tools/list '' '' --header 'Origin: https://evil.example'
+expect_mcp 403
+mcp_call "$graph_only" tools/call generate_study_plan \
+  '"name":"generate_study_plan","arguments":{"failed_topics":["Recursion"],"vark_profile":"visual"}'
+expect_mcp 403
+grep -qi 'insufficient_scope' "$smoke_dir/mcp-headers" || fail 'the denial names no missing scope'
+mcp_call "$full" tools/call generate_study_plan \
+  '"name":"generate_study_plan","arguments":{"failed_topics":["Recursion"],"vark_profile":"visual"}'
+expect_mcp 200
+python3 - "$smoke_dir/mcp-body.json" <<'PY'
+import json
+import sys
+result = json.load(open(sys.argv[1]))['result']
+assert not result.get('isError'), result
+assert result['structuredContent']['items'][0]['topic'] == 'Recursion', result
+PY
+mcp_call "$full" tools/call list_topics '"name":"list_topics","arguments":{}'
+expect_mcp 200
+mcp_call "$graph_only" tools/call get_topic_path '"name":"get_topic_path","arguments":{"topic":"Recursion"}'
+expect_mcp 200
+mcp_call "$full" tools/call list_topics '"name":"list_topics","arguments":{}'
+expect_mcp 429
+grep -qi '^retry-after: ' "$smoke_dir/mcp-headers" || fail 'the quota denial has no Retry-After'
+mcp_call "$full" tools/list '' ''
+expect_mcp 200
+
+stop_image
+docker logs "$name" > "$smoke_dir/mcp-logs" 2>&1
+python3 - "$smoke_dir/mcp-logs" "$full" "$graph_only" "$api_only" <<'PY'
+import json
+import sys
+text = open(sys.argv[1]).read()
+assert text.strip(), 'No application logs'
+for secret in ['smoke-tenant', 'smoke-caller', 'Authorization'] + sys.argv[2:]:
+    assert secret not in text, 'Identity or credential in logs'
+for line in text.splitlines():
+    assert isinstance(json.loads(line), dict), line
+PY
+printf 'Remote MCP serves discovery, scopes, origin and quota checks over TLS with private logs and a clean stop\n'
