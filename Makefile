@@ -139,6 +139,7 @@ lint: ## Vet build variants and check Go code and workflow files
 	@command -v shellcheck >/dev/null || { echo "shellcheck is required for workflow linting; install it and add it to PATH" >&2; exit 1; }
 	shellcheck scripts/axiom-server-launch scripts/release-archive.sh scripts/release-archive-smoke.sh scripts/test-release-archive.sh
 	shellcheck scripts/release-provenance.sh scripts/test-release-provenance.sh
+	shellcheck scripts/ci-go-cache.sh
 	./scripts/test-release-provenance.sh
 	go vet ./...
 	go vet -tags e2e ./...

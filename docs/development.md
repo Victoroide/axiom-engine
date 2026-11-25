@@ -49,7 +49,7 @@ Go marks the four provider requirements as indirect, so each named allow rule re
 
 `tools/go.mod` explicitly requires `golang.org/x/net v0.62.0` to fix GO-2026-6860 and GO-2026-6866. Swag reaches this module through `go-openapi/spec`, `go-openapi/jsonreference`, and `purell`. The tools Dependabot allowlist selects only the four tool-provider modules, so this transitive security update needs an explicit requirement. After updating the parent tools, check the selected version with `go -C tools list -m golang.org/x/net` and repeat the tools vulnerability scan before changing the override.
 
-`golangci-lint` (`v2.15.0`) intentionally remains executed via `go run github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v2.15.0` in accordance with upstream guidance. `baml-cli` is installed into `bin/` via `make tools-baml` at the version declared in `baml_src/generators.baml`. CI caches modules by both `go.sum` and `tools/go.sum`.
+`golangci-lint` (`v2.15.0`) intentionally remains executed via `go run github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v2.15.0` in accordance with upstream guidance. `baml-cli` is installed into `bin/` via `make tools-baml` at the version declared in `baml_src/generators.baml`. CI restores Go caches keyed by both manifests, as described under [Go caches](#go-caches).
 
 ## Make targets
 
@@ -543,12 +543,30 @@ GitHub Actions workflows are defined in `.github/workflows/`.
 ### `ci.yml`
 
 Runs on push to `main` and on pull requests:
-- **`lint`**: runs `make lint`.
-- **`test`**: runs `make cover` with data race detection and uploads `coverage.out` as a workflow artifact.
+- **`lint`**: runs `make lint` and `make diagrams-check`.
+- **`test`**: runs `make cover` with data race detection and `-count=1`, so no earlier test result is reused, and uploads `coverage.out` as a workflow artifact.
 - **`generated`**: runs `make tools-baml generate-check tidy-check toolchain-check` to enforce that generated code matches definitions and verify Go version consistency across modules, the container image, and documentation.
 - **`vulnerabilities`**: runs `make vuln` to verify zero reachable vulnerability findings.
-- **`image`**: builds and loads runtime image `axiom-ci` through pinned `docker/setup-buildx-action` and `docker/build-push-action`, then executes `make container-smoke container-smoke-test IMAGE=axiom-ci`. Layer caching uses GitHub Actions cache with scope `ci-runtime`: pull requests read the cache, while pushes to `main` export cache layers with `mode=max`. Provenance and SBOM generation are disabled for this temporary image. Root Markdown files, `scripts`, and `tools` are excluded from the Docker build context in `.dockerignore`, enabling layer reuse for changes outside the image context. Code changes still compile cold because BuildKit cache mounts are not exported to GitHub Actions cache. Native library downloads remain uncached as their measured preparation overhead is 1 s.
+- **`image`**: builds and loads runtime image `axiom-ci` through pinned `docker/setup-buildx-action` and `docker/build-push-action`, then executes `make container-smoke container-smoke-test IMAGE=axiom-ci`. The job does not build the service on the host first: Docker compiles `./cmd/server` for the image, and the required `Analyze Go` job runs `make build` on every pull request and push to `main`. Go stays set up because the smoke script builds its Bedrock fixture with the host toolchain. Layer caching uses GitHub Actions cache with scope `ci-runtime`: pull requests read the cache, while pushes to `main` export cache layers with `mode=max`. Provenance and SBOM generation are disabled for this temporary image. Root Markdown files, `scripts`, and `tools` are excluded from the Docker build context in `.dockerignore`, enabling layer reuse for changes outside the image context. Code changes still compile cold because BuildKit cache mounts are not exported to GitHub Actions cache. Native library downloads remain uncached as their measured preparation overhead is 1 s.
 - **`browser`**: verifies preinstalled `google-chrome`, exports its path through `ROD_BROWSER_BIN`, and runs `make test-e2e` with `E2E_ARTIFACTS_DIR=${{ runner.temp }}/browser-artifacts`. On test failure, uploads `browser-failure` from `${{ runner.temp }}/browser-artifacts`, warns if no files exist, and retains artifacts for 14 days. This job backs the required check named "Test API docs in browser".
+
+#### Go caches
+
+The jobs turn off the automatic `actions/setup-go` cache and restore and save caches in explicit steps. `scripts/ci-go-cache.sh` derives the keys; run it from the repository root after Go is set up to print them. Every key names the runner operating system, architecture and image (`ImageOS`), the resolved Go version and a digest of `go.mod`, `go.sum`, `tools/go.mod` and `tools/go.sum`. The build caches also name the C compiler version and the BAML native library version and checksums pinned in the `Dockerfile`, because CGO packages compile against them.
+
+| Cache | Key starts with | Restored by | Saved by | Holds |
+| --- | --- | --- | --- | --- |
+| Modules | `go-modules-v1-` | all six jobs | `lint` | the Go module cache |
+| Race and coverage build | `go-build-v1-test-` | `test` | `test` | the Go build cache |
+| Vet and lint build | `go-build-v1-lint-` | `lint` | `lint` | the Go build cache and the golangci-lint analysis cache, kept in `$RUNNER_TEMP/golangci-lint` through `GOLANGCI_LINT_CACHE` |
+
+- **Who writes.** Every run restores. Only a push to `refs/heads/main` whose job succeeded saves, and only when the exact key was not found. Pull requests, including those from forks, never write these caches, and a job that fails saves nothing. GitHub caches are immutable, so a new key means a new entry. A pull request can read entries saved on `main` ([cache scope rules](https://docs.github.com/en/actions/reference/workflows-and-actions/dependency-caching)).
+- **Cold and evicted caches.** A miss only makes the job slower. No step depends on a cache hit, every check runs, and the cached data is limited to public module sources, compiled Go packages and lint analysis results. Nothing from the workspace, `bin/` or any credential is cached.
+- **Modules.** The six jobs share one entry, and `lint` writes it because it downloads the most modules. It restores its exact key only. Go never prunes the module cache, so falling back to an older entry would carry every outdated version into the next one. A dependency update therefore downloads once and saves a fresh entry from `main`. The key also names the `golangci-lint` version in the `Makefile`, which `lint` downloads through `go run`.
+- **Build caches.** The race and coverage build, the vet build and the lint build are different compiler inputs, so `test` and `lint` keep separate entries and their prefixes never match each other. The key ends with the ISO week, so the first push to `main` in a new week saves a fresh entry that picks up changes since the last one. Until then a restore falls back first to the same manifests and then to any manifests with the same toolchain and job variant: runner, Go version, compiler, native library pins and, for `lint`, the `golangci-lint` version and `.golangci.yml`. Go drops build entries it has not used for five days, so a restored entry does not grow without bound.
+- **Resetting.** Raise `generation` in `scripts/ci-go-cache.sh` to start every cache over, for example after a corrupt save.
+
+`go test ./test/ci` checks this policy and the key script: the guard on saves, separate keys per input, the job commands and required check names, and the removed host build. It runs in `make test`.
 
 ### `codeql.yml`
 

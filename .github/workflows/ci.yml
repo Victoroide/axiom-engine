@@ -29,11 +29,39 @@ jobs:
       - uses: actions/setup-go@d8cbb8045d7f43706b9177cceb36c1f91a6644d5 # v7.1.0
         with:
           go-version-file: go.mod
-          cache-dependency-path: |
-            go.sum
-            tools/go.sum
+          cache: false
+      - name: Keep the golangci-lint analysis cache in one known directory
+        run: echo "GOLANGCI_LINT_CACHE=$RUNNER_TEMP/golangci-lint" >> "$GITHUB_ENV"
+      - name: Derive Go cache keys
+        id: go-cache
+        run: ./scripts/ci-go-cache.sh lint >> "$GITHUB_OUTPUT"
+      - name: Restore Go module cache
+        id: go-modules
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ${{ steps.go-cache.outputs.modules-path }}
+          key: ${{ steps.go-cache.outputs.modules-key }}
+      - name: Restore Go build cache
+        id: go-build
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ${{ steps.go-cache.outputs.build-paths }}
+          key: ${{ steps.go-cache.outputs.build-key }}
+          restore-keys: ${{ steps.go-cache.outputs.build-restore-keys }}
       - run: make lint
       - run: make diagrams-check
+      - name: Save Go module cache
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main' && steps.go-modules.outputs.cache-hit != 'true'
+        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ${{ steps.go-cache.outputs.modules-path }}
+          key: ${{ steps.go-cache.outputs.modules-key }}
+      - name: Save Go build cache
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main' && steps.go-build.outputs.cache-hit != 'true'
+        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ${{ steps.go-cache.outputs.build-paths }}
+          key: ${{ steps.go-cache.outputs.build-key }}
   test:
     name: Test with race detection
     runs-on: ubuntu-latest
@@ -45,9 +73,23 @@ jobs:
       - uses: actions/setup-go@d8cbb8045d7f43706b9177cceb36c1f91a6644d5 # v7.1.0
         with:
           go-version-file: go.mod
-          cache-dependency-path: |
-            go.sum
-            tools/go.sum
+          cache: false
+      - name: Derive Go cache keys
+        id: go-cache
+        run: ./scripts/ci-go-cache.sh test >> "$GITHUB_OUTPUT"
+      - name: Restore Go module cache
+        id: go-modules
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ${{ steps.go-cache.outputs.modules-path }}
+          key: ${{ steps.go-cache.outputs.modules-key }}
+      - name: Restore Go build cache
+        id: go-build
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ${{ steps.go-cache.outputs.build-paths }}
+          key: ${{ steps.go-cache.outputs.build-key }}
+          restore-keys: ${{ steps.go-cache.outputs.build-restore-keys }}
       - name: Prepare verified BAML native library
         run: make native-baml
       - run: make cover
@@ -58,6 +100,12 @@ jobs:
           path: coverage.out
           if-no-files-found: error
           retention-days: 14
+      - name: Save Go build cache
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main' && steps.go-build.outputs.cache-hit != 'true'
+        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ${{ steps.go-cache.outputs.build-paths }}
+          key: ${{ steps.go-cache.outputs.build-key }}
   generated:
     name: Check generated code
     runs-on: ubuntu-latest
@@ -69,9 +117,16 @@ jobs:
       - uses: actions/setup-go@d8cbb8045d7f43706b9177cceb36c1f91a6644d5 # v7.1.0
         with:
           go-version-file: go.mod
-          cache-dependency-path: |
-            go.sum
-            tools/go.sum
+          cache: false
+      - name: Derive Go cache keys
+        id: go-cache
+        run: ./scripts/ci-go-cache.sh modules >> "$GITHUB_OUTPUT"
+      - name: Restore Go module cache
+        id: go-modules
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ${{ steps.go-cache.outputs.modules-path }}
+          key: ${{ steps.go-cache.outputs.modules-key }}
       - name: Prepare verified BAML native library
         run: make native-baml
       - run: make tools-baml generate-check tidy-check toolchain-check
@@ -86,9 +141,16 @@ jobs:
       - uses: actions/setup-go@d8cbb8045d7f43706b9177cceb36c1f91a6644d5 # v7.1.0
         with:
           go-version-file: go.mod
-          cache-dependency-path: |
-            go.sum
-            tools/go.sum
+          cache: false
+      - name: Derive Go cache keys
+        id: go-cache
+        run: ./scripts/ci-go-cache.sh modules >> "$GITHUB_OUTPUT"
+      - name: Restore Go module cache
+        id: go-modules
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ${{ steps.go-cache.outputs.modules-path }}
+          key: ${{ steps.go-cache.outputs.modules-key }}
       - run: make vuln
   image:
     name: Build service and runtime image
@@ -101,10 +163,16 @@ jobs:
       - uses: actions/setup-go@d8cbb8045d7f43706b9177cceb36c1f91a6644d5 # v7.1.0
         with:
           go-version-file: go.mod
-          cache-dependency-path: |
-            go.sum
-            tools/go.sum
-      - run: make build
+          cache: false
+      - name: Derive Go cache keys
+        id: go-cache
+        run: ./scripts/ci-go-cache.sh modules >> "$GITHUB_OUTPUT"
+      - name: Restore Go module cache
+        id: go-modules
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ${{ steps.go-cache.outputs.modules-path }}
+          key: ${{ steps.go-cache.outputs.modules-key }}
       - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
       - name: Read BAML version
         id: baml
@@ -137,9 +205,16 @@ jobs:
       - uses: actions/setup-go@d8cbb8045d7f43706b9177cceb36c1f91a6644d5 # v7.1.0
         with:
           go-version-file: go.mod
-          cache-dependency-path: |
-            go.sum
-            tools/go.sum
+          cache: false
+      - name: Derive Go cache keys
+        id: go-cache
+        run: ./scripts/ci-go-cache.sh modules >> "$GITHUB_OUTPUT"
+      - name: Restore Go module cache
+        id: go-modules
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ${{ steps.go-cache.outputs.modules-path }}
+          key: ${{ steps.go-cache.outputs.modules-key }}
       - name: Verify preinstalled Chrome
         shell: bash
         run: |
