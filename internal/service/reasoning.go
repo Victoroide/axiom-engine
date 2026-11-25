@@ -135,7 +135,11 @@ func (p *PreparedPlan) Generate(ctx context.Context, options ...PlanOption) (dom
 	for i, prepared := range p.topics {
 		topic, requestIndex := prepared.request.Topic, prepared.index
 		eg.Go(func() (topicErr error) {
-			topicCtx, topicSpan := telemetry.Start(egCtx, "plan.topic", attribute.String("axiom.topic", topic), attribute.Int("axiom.topic.index", requestIndex))
+			topicAttrs := []attribute.KeyValue{attribute.Int("axiom.topic.index", requestIndex)}
+			if telemetry.CaptureContent(egCtx) {
+				topicAttrs = append(topicAttrs, attribute.String("axiom.topic", topic))
+			}
+			topicCtx, topicSpan := telemetry.Start(egCtx, "plan.topic", topicAttrs...)
 			defer func() {
 				if topicErr != nil {
 					telemetry.Fail(topicSpan, LLMOutcome(topicErr))

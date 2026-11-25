@@ -82,7 +82,7 @@ func TestPlannerPanicPrivacyOverMCP(t *testing.T) {
 	logger := slog.New(telemetry.LogHandler(slog.NewJSONHandler(&logs, nil)))
 	cfg := config.Config{RequestTimeout: time.Second, LLMTimeout: time.Second, MaxFailedTopics: 1}
 	cfg.Tracing.Enabled = true
-	cfg.Tracing.CaptureContent = true
+	cfg.Tracing.Content.OTLP = true
 	planner := plannerFunc(func(context.Context, service.TopicRequest) ([]domain.PlanItem, error) { panic(errors.New(marker)) })
 	cs := connectTestClient(t, New(cfg, graph.NewInMemoryGraph(), planner, logger, "test-version"))
 	result, err := cs.CallTool(t.Context(), &mcp.CallToolParams{Name: "generate_study_plan", Arguments: PlanInput{FailedTopics: []string{"Recursion"}, VARKProfile: "visual"}})

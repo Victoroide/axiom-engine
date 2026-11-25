@@ -68,7 +68,7 @@ func TestHTTPPanicPrivacy(t *testing.T) {
 
 			cfg := defaultConfig(t)
 			cfg.Tracing.Enabled = true
-			cfg.Tracing.CaptureContent = true
+			cfg.Tracing.Content.OTLP = true
 			logs := make(chan []byte, 8)
 			planner := fakePlanner(func(context.Context, service.TopicRequest) ([]domain.PlanItem, error) {
 				if errors.Is(tc.value, service.ErrPlannerPanic) {

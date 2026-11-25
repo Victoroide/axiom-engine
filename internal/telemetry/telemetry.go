@@ -22,7 +22,9 @@ import (
 	"github.com/Victoroide/axiom-engine/internal/config"
 )
 
-// Setup installs the enabled exporter and returns its bounded shutdown hook.
+// Setup installs the enabled exporters and returns their shutdown hook. The hook
+// stops every exporter at once with the caller's context, so no exporter waits
+// behind another's use of the deadline.
 func Setup(ctx context.Context, cfg config.Config) (func(context.Context) error, error) {
 	if !cfg.Tracing.Enabled && !cfg.LangSmith.Enabled {
 		return func(context.Context) error { return nil }, nil
@@ -44,8 +46,6 @@ func Setup(ctx context.Context, cfg config.Config) (func(context.Context) error,
 			_ = processor.Shutdown(cleanupCtx)
 		}
 	}()
-	// A span can end during unwinding before the recovery boundary classifies the failure.
-	opts := []sdktrace.TracerProviderOption{sdktrace.WithResource(res), sdktrace.WithoutPanicRecording()}
 	if cfg.Tracing.Enabled {
 		var options []otlptracehttp.Option
 		if os.Getenv("OTEL_EXPORTER_OTLP_ENDPOINT") == "" && os.Getenv("OTEL_EXPORTER_OTLP_TRACES_ENDPOINT") == "" {
@@ -55,23 +55,28 @@ func Setup(ctx context.Context, cfg config.Config) (func(context.Context) error,
 		if err != nil {
 			return nil, fmt.Errorf("configure OTLP exporter: %w", err)
 		}
-		processors = append(processors, sdktrace.NewBatchSpanProcessor(exporter))
+		processors = append(processors, newViewProcessor(sdktrace.NewBatchSpanProcessor(exporter), cfg.Tracing.Content.OTLP))
 	}
 	if cfg.LangSmith.Enabled {
 		processor, err := newLangSmithProcessor(ctx, cfg.LangSmith)
 		if err != nil {
 			return nil, err
 		}
-		processors = append(processors, processor)
+		processors = append(processors, newViewProcessor(processor, cfg.Tracing.Content.LangSmith))
 	}
-	for _, processor := range processors {
-		opts = append(opts, sdktrace.WithSpanProcessor(processor))
-	}
-	provider := sdktrace.NewTracerProvider(opts...)
+	fanout := newFanoutProcessor(processors...)
+	// A span can end during unwinding before the recovery boundary classifies the failure.
+	provider := sdktrace.NewTracerProvider(sdktrace.WithResource(res), sdktrace.WithoutPanicRecording(), sdktrace.WithSpanProcessor(fanout))
 	installed = true
 	otel.SetTracerProvider(provider)
 	otel.SetTextMapPropagator(propagation.NewCompositeTextMapPropagator(propagation.TraceContext{}, propagation.Baggage{}))
-	return provider.Shutdown, nil
+	return func(ctx context.Context) error {
+		// The provider skips its processors once the context has expired, so
+		// stopping them is done here, then the provider stops handing out spans.
+		err := fanout.Shutdown(ctx)
+		_ = provider.Shutdown(ctx)
+		return err
+	}, nil
 }
 
 type requestIDKey struct{}

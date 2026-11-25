@@ -26,7 +26,7 @@ func TestVerifiedIdentityPrivacy(t *testing.T) {
 	const tenant, caller, learner = "private-tenant-marker", "private-subject-marker", "private-learner-marker"
 	const suppliedTenant, suppliedCaller = "ignored-tenant-marker", "ignored-subject-marker"
 	cfg, fixture := newVerifiedFixture(t, false)
-	cfg.Tracing.Enabled, cfg.Tracing.CaptureContent, cfg.MetricsEnabled = true, true, true
+	cfg.Tracing.Enabled, cfg.Tracing.Content.OTLP, cfg.MetricsEnabled = true, true, true
 	token := fixture.token(t, fixture.signer, tenant, caller, "graph:read plan:generate")
 	markers := []string{tenant, caller, learner, suppliedTenant, suppliedCaller, token}
 	assertPrivate := func(surface, data string) {

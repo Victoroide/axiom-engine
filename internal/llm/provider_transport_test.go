@@ -196,7 +196,7 @@ func publicProviderCaller(t *testing.T, transport string, planner service.Planne
 	if err != nil {
 		t.Fatal(err)
 	}
-	cfg.Tracing.Enabled, cfg.Tracing.CaptureContent = true, true
+	cfg.Tracing.Enabled, cfg.Tracing.Content.OTLP = true, true
 	g := graph.NewInMemoryGraph()
 	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
 	if transport == "HTTP" {
