@@ -365,13 +365,13 @@ paths:
               description: True when replaying a stored response
               type: boolean
             X-RateLimit-Limit:
-              description: Maximum requests per rate-limit window
+              description: Maximum requests per IP window
               type: integer
             X-RateLimit-Remaining:
-              description: Requests remaining in the rate-limit window
+              description: Requests remaining in the IP window
               type: integer
             X-RateLimit-Reset:
-              description: Seconds until the rate-limit window resets
+              description: Seconds until the IP window resets
               type: integer
             X-Request-ID:
               description: Resolved request correlation identifier
@@ -382,13 +382,13 @@ paths:
           description: Bad Request
           headers:
             X-RateLimit-Limit:
-              description: Maximum requests per rate-limit window
+              description: Maximum requests per IP window
               type: integer
             X-RateLimit-Remaining:
-              description: Requests remaining in the rate-limit window
+              description: Requests remaining in the IP window
               type: integer
             X-RateLimit-Reset:
-              description: Seconds until the rate-limit window resets
+              description: Seconds until the IP window resets
               type: integer
             X-Request-ID:
               description: Resolved request correlation identifier
@@ -432,13 +432,13 @@ paths:
               description: Seconds to wait before retrying
               type: integer
             X-RateLimit-Limit:
-              description: Maximum requests per rate-limit window
+              description: Maximum requests per IP window
               type: integer
             X-RateLimit-Remaining:
-              description: Requests remaining in the rate-limit window
+              description: Requests remaining in the IP window
               type: integer
             X-RateLimit-Reset:
-              description: Seconds until the rate-limit window resets
+              description: Seconds until the IP window resets
               type: integer
             X-Request-ID:
               description: Resolved request correlation identifier
@@ -449,13 +449,13 @@ paths:
           description: Request Entity Too Large
           headers:
             X-RateLimit-Limit:
-              description: Maximum requests per rate-limit window
+              description: Maximum requests per IP window
               type: integer
             X-RateLimit-Remaining:
-              description: Requests remaining in the rate-limit window
+              description: Requests remaining in the IP window
               type: integer
             X-RateLimit-Reset:
-              description: Seconds until the rate-limit window resets
+              description: Seconds until the IP window resets
               type: integer
             X-Request-ID:
               description: Resolved request correlation identifier
@@ -466,13 +466,13 @@ paths:
           description: Unsupported Media Type
           headers:
             X-RateLimit-Limit:
-              description: Maximum requests per rate-limit window
+              description: Maximum requests per IP window
               type: integer
             X-RateLimit-Remaining:
-              description: Requests remaining in the rate-limit window
+              description: Requests remaining in the IP window
               type: integer
             X-RateLimit-Reset:
-              description: Seconds until the rate-limit window resets
+              description: Seconds until the IP window resets
               type: integer
             X-Request-ID:
               description: Resolved request correlation identifier
@@ -484,13 +484,13 @@ paths:
             key mismatch
           headers:
             X-RateLimit-Limit:
-              description: Maximum requests per rate-limit window
+              description: Maximum requests per IP window
               type: integer
             X-RateLimit-Remaining:
-              description: Requests remaining in the rate-limit window
+              description: Requests remaining in the IP window
               type: integer
             X-RateLimit-Reset:
-              description: Seconds until the rate-limit window resets
+              description: Seconds until the IP window resets
               type: integer
             X-Request-ID:
               description: Resolved request correlation identifier
@@ -498,10 +498,19 @@ paths:
           schema:
             $ref: '#/definitions/domain.ErrorResponse'
         "429":
-          description: Too Many Requests
+          description: IP or tenant rate limit exceeded
           headers:
             Retry-After:
               description: Seconds to wait before retrying
+              type: integer
+            X-RateLimit-Limit:
+              description: Maximum requests per IP window
+              type: integer
+            X-RateLimit-Remaining:
+              description: Requests remaining in the IP window
+              type: integer
+            X-RateLimit-Reset:
+              description: Seconds until the IP window resets
               type: integer
             X-Request-ID:
               description: Resolved request correlation identifier
@@ -528,13 +537,13 @@ paths:
           description: Upstream failure or no usable item for a requested topic
           headers:
             X-RateLimit-Limit:
-              description: Maximum requests per rate-limit window
+              description: Maximum requests per IP window
               type: integer
             X-RateLimit-Remaining:
-              description: Requests remaining in the rate-limit window
+              description: Requests remaining in the IP window
               type: integer
             X-RateLimit-Reset:
-              description: Seconds until the rate-limit window resets
+              description: Seconds until the IP window resets
               type: integer
             X-Request-ID:
               description: Resolved request correlation identifier
@@ -549,13 +558,13 @@ paths:
               description: Seconds to wait before retrying
               type: integer
             X-RateLimit-Limit:
-              description: Maximum requests per rate-limit window
+              description: Maximum requests per IP window
               type: integer
             X-RateLimit-Remaining:
-              description: Requests remaining in the rate-limit window
+              description: Requests remaining in the IP window
               type: integer
             X-RateLimit-Reset:
-              description: Seconds until the rate-limit window resets
+              description: Seconds until the IP window resets
               type: integer
             X-Request-ID:
               description: Resolved request correlation identifier
@@ -566,13 +575,13 @@ paths:
           description: Gateway Timeout
           headers:
             X-RateLimit-Limit:
-              description: Maximum requests per rate-limit window
+              description: Maximum requests per IP window
               type: integer
             X-RateLimit-Remaining:
-              description: Requests remaining in the rate-limit window
+              description: Requests remaining in the IP window
               type: integer
             X-RateLimit-Reset:
-              description: Seconds until the rate-limit window resets
+              description: Seconds until the IP window resets
               type: integer
             X-Request-ID:
               description: Resolved request correlation identifier
@@ -608,13 +617,13 @@ paths:
           description: 'Server-sent events: topic, then plan or error'
           headers:
             X-RateLimit-Limit:
-              description: Maximum requests per rate-limit window
+              description: Maximum requests per IP window
               type: integer
             X-RateLimit-Remaining:
-              description: Requests remaining in the rate-limit window
+              description: Requests remaining in the IP window
               type: integer
             X-RateLimit-Reset:
-              description: Seconds until the rate-limit window resets
+              description: Seconds until the IP window resets
               type: integer
             X-Request-ID:
               description: Resolved request correlation identifier
@@ -625,13 +634,13 @@ paths:
           description: Bad Request
           headers:
             X-RateLimit-Limit:
-              description: Maximum requests per rate-limit window
+              description: Maximum requests per IP window
               type: integer
             X-RateLimit-Remaining:
-              description: Requests remaining in the rate-limit window
+              description: Requests remaining in the IP window
               type: integer
             X-RateLimit-Reset:
-              description: Seconds until the rate-limit window resets
+              description: Seconds until the IP window resets
               type: integer
             X-Request-ID:
               description: Resolved request correlation identifier
@@ -672,13 +681,13 @@ paths:
           description: Request Entity Too Large
           headers:
             X-RateLimit-Limit:
-              description: Maximum requests per rate-limit window
+              description: Maximum requests per IP window
               type: integer
             X-RateLimit-Remaining:
-              description: Requests remaining in the rate-limit window
+              description: Requests remaining in the IP window
               type: integer
             X-RateLimit-Reset:
-              description: Seconds until the rate-limit window resets
+              description: Seconds until the IP window resets
               type: integer
             X-Request-ID:
               description: Resolved request correlation identifier
@@ -689,13 +698,13 @@ paths:
           description: Unsupported Media Type
           headers:
             X-RateLimit-Limit:
-              description: Maximum requests per rate-limit window
+              description: Maximum requests per IP window
               type: integer
             X-RateLimit-Remaining:
-              description: Requests remaining in the rate-limit window
+              description: Requests remaining in the IP window
               type: integer
             X-RateLimit-Reset:
-              description: Seconds until the rate-limit window resets
+              description: Seconds until the IP window resets
               type: integer
             X-Request-ID:
               description: Resolved request correlation identifier
@@ -707,13 +716,13 @@ paths:
             streaming
           headers:
             X-RateLimit-Limit:
-              description: Maximum requests per rate-limit window
+              description: Maximum requests per IP window
               type: integer
             X-RateLimit-Remaining:
-              description: Requests remaining in the rate-limit window
+              description: Requests remaining in the IP window
               type: integer
             X-RateLimit-Reset:
-              description: Seconds until the rate-limit window resets
+              description: Seconds until the IP window resets
               type: integer
             X-Request-ID:
               description: Resolved request correlation identifier
@@ -721,10 +730,19 @@ paths:
           schema:
             $ref: '#/definitions/domain.ErrorResponse'
         "429":
-          description: Too Many Requests
+          description: IP or tenant rate limit exceeded
           headers:
             Retry-After:
               description: Seconds to wait before retrying
+              type: integer
+            X-RateLimit-Limit:
+              description: Maximum requests per IP window
+              type: integer
+            X-RateLimit-Remaining:
+              description: Requests remaining in the IP window
+              type: integer
+            X-RateLimit-Reset:
+              description: Seconds until the IP window resets
               type: integer
             X-Request-ID:
               description: Resolved request correlation identifier
@@ -753,6 +771,15 @@ paths:
             Retry-After:
               description: Seconds to wait before retrying
               type: integer
+            X-RateLimit-Limit:
+              description: Maximum requests per IP window
+              type: integer
+            X-RateLimit-Remaining:
+              description: Requests remaining in the IP window
+              type: integer
+            X-RateLimit-Reset:
+              description: Seconds until the IP window resets
+              type: integer
             X-Request-ID:
               description: Resolved request correlation identifier
               type: string
@@ -762,13 +789,13 @@ paths:
           description: Deadline exceeded before streaming
           headers:
             X-RateLimit-Limit:
-              description: Maximum requests per rate-limit window
+              description: Maximum requests per IP window
               type: integer
             X-RateLimit-Remaining:
-              description: Requests remaining in the rate-limit window
+              description: Requests remaining in the IP window
               type: integer
             X-RateLimit-Reset:
-              description: Seconds until the rate-limit window resets
+              description: Seconds until the IP window resets
               type: integer
             X-Request-ID:
               description: Resolved request correlation identifier
@@ -813,13 +840,13 @@ paths:
           description: OK
           headers:
             X-RateLimit-Limit:
-              description: Maximum requests per rate-limit window
+              description: Maximum requests per IP window
               type: integer
             X-RateLimit-Remaining:
-              description: Requests remaining in the rate-limit window
+              description: Requests remaining in the IP window
               type: integer
             X-RateLimit-Reset:
-              description: Seconds until the rate-limit window resets
+              description: Seconds until the IP window resets
               type: integer
             X-Request-ID:
               description: Resolved request correlation identifier
@@ -860,13 +887,13 @@ paths:
           description: Request Entity Too Large
           headers:
             X-RateLimit-Limit:
-              description: Maximum requests per rate-limit window
+              description: Maximum requests per IP window
               type: integer
             X-RateLimit-Remaining:
-              description: Requests remaining in the rate-limit window
+              description: Requests remaining in the IP window
               type: integer
             X-RateLimit-Reset:
-              description: Seconds until the rate-limit window resets
+              description: Seconds until the IP window resets
               type: integer
             X-Request-ID:
               description: Resolved request correlation identifier
@@ -874,10 +901,19 @@ paths:
           schema:
             $ref: '#/definitions/domain.ErrorResponse'
         "429":
-          description: Too Many Requests
+          description: IP or tenant rate limit exceeded
           headers:
             Retry-After:
               description: Seconds to wait before retrying
+              type: integer
+            X-RateLimit-Limit:
+              description: Maximum requests per IP window
+              type: integer
+            X-RateLimit-Remaining:
+              description: Requests remaining in the IP window
+              type: integer
+            X-RateLimit-Reset:
+              description: Seconds until the IP window resets
               type: integer
             X-Request-ID:
               description: Resolved request correlation identifier
@@ -905,6 +941,15 @@ paths:
           headers:
             Retry-After:
               description: Seconds to wait before retrying
+              type: integer
+            X-RateLimit-Limit:
+              description: Maximum requests per IP window
+              type: integer
+            X-RateLimit-Remaining:
+              description: Requests remaining in the IP window
+              type: integer
+            X-RateLimit-Reset:
+              description: Seconds until the IP window resets
               type: integer
             X-Request-ID:
               description: Resolved request correlation identifier
@@ -934,13 +979,13 @@ paths:
           description: OK
           headers:
             X-RateLimit-Limit:
-              description: Maximum requests per rate-limit window
+              description: Maximum requests per IP window
               type: integer
             X-RateLimit-Remaining:
-              description: Requests remaining in the rate-limit window
+              description: Requests remaining in the IP window
               type: integer
             X-RateLimit-Reset:
-              description: Seconds until the rate-limit window resets
+              description: Seconds until the IP window resets
               type: integer
             X-Request-ID:
               description: Resolved request correlation identifier
@@ -981,13 +1026,13 @@ paths:
           description: Request Entity Too Large
           headers:
             X-RateLimit-Limit:
-              description: Maximum requests per rate-limit window
+              description: Maximum requests per IP window
               type: integer
             X-RateLimit-Remaining:
-              description: Requests remaining in the rate-limit window
+              description: Requests remaining in the IP window
               type: integer
             X-RateLimit-Reset:
-              description: Seconds until the rate-limit window resets
+              description: Seconds until the IP window resets
               type: integer
             X-Request-ID:
               description: Resolved request correlation identifier
@@ -998,13 +1043,13 @@ paths:
           description: Unprocessable Entity
           headers:
             X-RateLimit-Limit:
-              description: Maximum requests per rate-limit window
+              description: Maximum requests per IP window
               type: integer
             X-RateLimit-Remaining:
-              description: Requests remaining in the rate-limit window
+              description: Requests remaining in the IP window
               type: integer
             X-RateLimit-Reset:
-              description: Seconds until the rate-limit window resets
+              description: Seconds until the IP window resets
               type: integer
             X-Request-ID:
               description: Resolved request correlation identifier
@@ -1012,10 +1057,19 @@ paths:
           schema:
             $ref: '#/definitions/domain.ErrorResponse'
         "429":
-          description: Too Many Requests
+          description: IP or tenant rate limit exceeded
           headers:
             Retry-After:
               description: Seconds to wait before retrying
+              type: integer
+            X-RateLimit-Limit:
+              description: Maximum requests per IP window
+              type: integer
+            X-RateLimit-Remaining:
+              description: Requests remaining in the IP window
+              type: integer
+            X-RateLimit-Reset:
+              description: Seconds until the IP window resets
               type: integer
             X-Request-ID:
               description: Resolved request correlation identifier
@@ -1043,6 +1097,15 @@ paths:
           headers:
             Retry-After:
               description: Seconds to wait before retrying
+              type: integer
+            X-RateLimit-Limit:
+              description: Maximum requests per IP window
+              type: integer
+            X-RateLimit-Remaining:
+              description: Requests remaining in the IP window
+              type: integer
+            X-RateLimit-Reset:
+              description: Seconds until the IP window resets
               type: integer
             X-Request-ID:
               description: Resolved request correlation identifier
@@ -1093,13 +1156,13 @@ paths:
           description: OK
           headers:
             X-RateLimit-Limit:
-              description: Maximum requests per rate-limit window
+              description: Maximum requests per IP window
               type: integer
             X-RateLimit-Remaining:
-              description: Requests remaining in the rate-limit window
+              description: Requests remaining in the IP window
               type: integer
             X-RateLimit-Reset:
-              description: Seconds until the rate-limit window resets
+              description: Seconds until the IP window resets
               type: integer
             X-Request-ID:
               description: Resolved request correlation identifier
@@ -1110,13 +1173,13 @@ paths:
           description: Bad Request
           headers:
             X-RateLimit-Limit:
-              description: Maximum requests per rate-limit window
+              description: Maximum requests per IP window
               type: integer
             X-RateLimit-Remaining:
-              description: Requests remaining in the rate-limit window
+              description: Requests remaining in the IP window
               type: integer
             X-RateLimit-Reset:
-              description: Seconds until the rate-limit window resets
+              description: Seconds until the IP window resets
               type: integer
             X-Request-ID:
               description: Resolved request correlation identifier
@@ -1157,13 +1220,13 @@ paths:
           description: Request body exceeds 64 KiB
           headers:
             X-RateLimit-Limit:
-              description: Maximum requests per rate-limit window
+              description: Maximum requests per IP window
               type: integer
             X-RateLimit-Remaining:
-              description: Requests remaining in the rate-limit window
+              description: Requests remaining in the IP window
               type: integer
             X-RateLimit-Reset:
-              description: Seconds until the rate-limit window resets
+              description: Seconds until the IP window resets
               type: integer
             X-Request-ID:
               description: Resolved request correlation identifier
@@ -1174,13 +1237,13 @@ paths:
           description: Unprocessable Entity
           headers:
             X-RateLimit-Limit:
-              description: Maximum requests per rate-limit window
+              description: Maximum requests per IP window
               type: integer
             X-RateLimit-Remaining:
-              description: Requests remaining in the rate-limit window
+              description: Requests remaining in the IP window
               type: integer
             X-RateLimit-Reset:
-              description: Seconds until the rate-limit window resets
+              description: Seconds until the IP window resets
               type: integer
             X-Request-ID:
               description: Resolved request correlation identifier
@@ -1188,10 +1251,19 @@ paths:
           schema:
             $ref: '#/definitions/domain.ErrorResponse'
         "429":
-          description: Too Many Requests
+          description: IP or tenant rate limit exceeded
           headers:
             Retry-After:
               description: Seconds to wait before retrying
+              type: integer
+            X-RateLimit-Limit:
+              description: Maximum requests per IP window
+              type: integer
+            X-RateLimit-Remaining:
+              description: Requests remaining in the IP window
+              type: integer
+            X-RateLimit-Reset:
+              description: Seconds until the IP window resets
               type: integer
             X-Request-ID:
               description: Resolved request correlation identifier
@@ -1219,6 +1291,15 @@ paths:
           headers:
             Retry-After:
               description: Seconds to wait before retrying
+              type: integer
+            X-RateLimit-Limit:
+              description: Maximum requests per IP window
+              type: integer
+            X-RateLimit-Remaining:
+              description: Requests remaining in the IP window
+              type: integer
+            X-RateLimit-Reset:
+              description: Seconds until the IP window resets
               type: integer
             X-Request-ID:
               description: Resolved request correlation identifier

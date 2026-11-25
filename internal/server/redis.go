@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
+	"net/http"
 	"strconv"
 	"time"
 
@@ -44,49 +45,121 @@ type redisWindow struct {
 	logger  *slog.Logger
 }
 
-// Keep the entire sliding-window decision atomic across replicas.
+const ipRatePrefix = "axiom:rate:"
+
+type rateBucket struct {
+	key     string
+	window  int64
+	maximum int
+}
+
+func ipRateBucket(ipKey string, maximum int, window time.Duration) rateBucket {
+	return rateBucket{key: ipRatePrefix + ipKey, window: max(1, int64(window/time.Second)), maximum: maximum}
+}
+
+// Apply IP and tenant decisions in order within one Redis operation.
 var rateScript = redis.NewScript(`
 local now = tonumber(redis.call('TIME')[1])
-local window = tonumber(ARGV[1])
-local maximum = tonumber(ARGV[2])
-local values = redis.call('HMGET', KEYS[1], 'current', 'previous', 'expires')
-local current = tonumber(values[1]) or 0
-local previous = tonumber(values[2]) or 0
-local expires = tonumber(values[3]) or (now + window)
-if now >= expires then
- if now - expires >= window then
-  previous = 0
-  expires = now + window
- else
-  previous = current
-  expires = expires + window
+local function consume(key, window, maximum, admittedOnly)
+ local values = redis.call('HMGET', key, 'current', 'previous', 'expires', 'window')
+ local current = tonumber(values[1]) or 0
+ local previous = tonumber(values[2]) or 0
+ local expires = tonumber(values[3]) or (now + window)
+ -- Reset tenant counts when their stored duration differs or is missing.
+ if admittedOnly and tonumber(values[4]) ~= window then
+  current, previous, expires = 0, 0, now + window
  end
- current = 0
+ if now >= expires then
+  if now - expires >= window then
+   previous = 0
+   expires = now + window
+  else
+   previous = current
+   expires = expires + window
+  end
+  current = 0
+ end
+ local reset = expires - now
+ local next = current + 1
+ local remaining = maximum - next - math.ceil(previous * reset / window)
+ -- Tenant buckets count only admissions, so their counters stay bounded and
+ -- repeated denials cannot extend their expiry.
+ if remaining >= 0 or not admittedOnly then
+  if admittedOnly then
+   redis.call('HSET', key, 'current', next, 'previous', previous, 'expires', expires, 'window', window)
+  else
+   redis.call('HSET', key, 'current', next, 'previous', previous, 'expires', expires)
+  end
+  redis.call('EXPIRE', key, reset + window)
+ end
+ return remaining, reset
 end
-current = current + 1
-local reset = expires - now
-local remaining = maximum - current - math.ceil(previous * reset / window)
-redis.call('HSET', KEYS[1], 'current', current, 'previous', previous, 'expires', expires)
-redis.call('EXPIRE', KEYS[1], reset + window)
-return {remaining, reset}
+
+local remaining, reset = consume(KEYS[1], tonumber(ARGV[1]), tonumber(ARGV[2]), false)
+if remaining < 0 or #KEYS == 1 then
+ return {remaining, reset}
+end
+local ok, tenantRemaining, tenantReset = pcall(consume, KEYS[2], tonumber(ARGV[3]), tonumber(ARGV[4]), true)
+if not ok then
+ -- A zero reset signals a tenant storage failure after IP admission.
+ return {remaining, reset, 0, 0}
+end
+return {remaining, reset, tenantRemaining, tenantReset}
 `)
 
 func (r redisWindow) New(cfg *limiter.Config) fiber.Handler {
 	return func(c fiber.Ctx) error {
-		window := max(int64(1), int64(cfg.Expiration/time.Second))
-		values, err := rateScript.Run(c.Context(), r.storage.Conn(), []string{"axiom:rate:" + cfg.KeyGenerator(c)}, window, cfg.Max).Int64Slice()
-		if err != nil || len(values) != 2 {
-			r.logger.ErrorContext(c.Context(), "storage.failed", "operation", "rate_limit.consume")
-			c.Set("Retry-After", "1")
-			return c.Status(fiber.StatusServiceUnavailable).JSON(domain.ErrorResponse{Error: "service_unavailable", Details: "rate limit storage temporarily unavailable"})
-		}
-		if values[0] < 0 {
-			c.Set("Retry-After", strconv.FormatInt(values[1], 10))
+		decision := r.admit(c.Context(), ipRateBucket(cfg.KeyGenerator(c), cfg.Max, cfg.Expiration), rateBucket{})
+		decision.writeHeaders(c)
+		switch decision.Status {
+		case http.StatusTooManyRequests:
 			return cfg.LimitReached(c)
+		case http.StatusServiceUnavailable:
+			return unavailableAdmission(c)
+		default:
+			return c.Next()
 		}
-		c.Set("X-RateLimit-Limit", strconv.Itoa(cfg.Max))
-		c.Set("X-RateLimit-Remaining", strconv.FormatInt(values[0], 10))
-		c.Set("X-RateLimit-Reset", strconv.FormatInt(values[1], 10))
-		return c.Next()
+	}
+}
+
+func (r redisWindow) admit(ctx context.Context, ip, tenant rateBucket) AdmissionDecision {
+	keys, args := []string{ip.key}, []any{ip.window, ip.maximum}
+	if tenant.key != "" {
+		keys = append(keys, tenant.key)
+		args = append(args, tenant.window, tenant.maximum)
+	}
+	values, err := rateScript.Run(ctx, r.storage.Conn(), keys, args...).Int64Slice()
+	if err != nil || (len(values) != 2 && len(values) != 4) {
+		r.logger.ErrorContext(ctx, "storage.failed", "operation", "rate_limit.consume")
+		return AdmissionDecision{Status: http.StatusServiceUnavailable, RetryAfter: 1}
+	}
+	if values[0] < 0 {
+		return AdmissionDecision{Status: http.StatusTooManyRequests, RetryAfter: values[1]}
+	}
+	decision := AdmissionDecision{Status: http.StatusOK, IPLimit: ip.maximum, IPRemaining: values[0], IPReset: values[1]}
+	if tenant.key != "" {
+		switch {
+		case len(values) != 4 || values[3] <= 0:
+			r.logger.ErrorContext(ctx, "storage.failed", "operation", "tenant_quota.consume")
+			decision.Status, decision.RetryAfter = http.StatusServiceUnavailable, 1
+		case values[2] < 0:
+			decision.Status, decision.RetryAfter = http.StatusTooManyRequests, values[3]
+		}
+	}
+	return decision
+}
+
+func unavailableAdmission(c fiber.Ctx) error {
+	return c.Status(fiber.StatusServiceUnavailable).JSON(domain.ErrorResponse{Error: "service_unavailable", Details: "rate limit storage temporarily unavailable"})
+}
+
+func (d AdmissionDecision) writeHeaders(c fiber.Ctx) {
+	if d.IPLimit > 0 {
+		c.Set("X-RateLimit-Limit", strconv.Itoa(d.IPLimit))
+		c.Set("X-RateLimit-Remaining", strconv.FormatInt(d.IPRemaining, 10))
+		c.Set("X-RateLimit-Reset", strconv.FormatInt(d.IPReset, 10))
+	}
+	if d.RetryAfter > 0 {
+		c.Set("Retry-After", strconv.FormatInt(d.RetryAfter, 10))
 	}
 }

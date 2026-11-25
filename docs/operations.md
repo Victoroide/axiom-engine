@@ -100,9 +100,9 @@ To enforce a lower fleet-wide ceiling, use a shared outbound gateway that limits
 
 ## HTTP Rate-Limit Storage
 
-The `/api/v1` routes apply a sliding-window budget per client IP after authentication when enabled. Each HTTP replica keeps its counters in memory by default. Replicas that configure `REDIS_URL` to use the same Redis database share counters under `axiom:rate:`. Stdio MCP bypasses HTTP rate limiting.
+The `/api/v1` routes apply a sliding-window budget per client IP after authentication. With verified authentication and tenant quotas enabled, the IP layer admits the request before the issuer-and-tenant layer charges it. Redis shares both budgets across replicas. Stdio MCP bypasses HTTP rate limiting.
 
-If the configured Redis store cannot make a rate-limit decision, the API returns HTTP 503 `service_unavailable` with `Retry-After: 1` before dispatch. Look for `storage.failed` with `operation=rate_limit.consume`. Local health probes can still succeed during the outage. See [Replicas and shared storage](deployment.md#replicas-and-shared-storage).
+If Redis cannot make a rate-limit decision, the API returns HTTP 503 `service_unavailable` with `Retry-After: 1` before dispatch. Look for `storage.failed` with `operation=rate_limit.consume` or `operation=tenant_quota.consume`. Local health probes can still succeed during the outage. [Replicas and shared storage](deployment.md#replicas-and-shared-storage)
 
 ---
 

@@ -66,9 +66,11 @@ When a client exceeds `RATE_LIMIT_MAX` requests within `RATE_LIMIT_WINDOW`, the 
 }
 ```
 
-Responses that pass the limiter carry `X-RateLimit-Limit`, `X-RateLimit-Remaining` and `X-RateLimit-Reset`. HTTP 429 responses carry `Retry-After` in seconds. The server returns HTTP 401 and 403 before the limiter, so these responses carry no rate-limit headers.
+Responses that pass IP admission carry `X-RateLimit-Limit`, `X-RateLimit-Remaining` and `X-RateLimit-Reset`. Both kinds of HTTP 429 response carry `Retry-After` in seconds. The server returns HTTP 401 and 403 before admission.
 
-Health (`/health`), liveness (`/livez`), readiness (`/readyz`), Swagger documentation (`/swagger/*`, `/swagger/doc.json`), and enabled Prometheus metrics (`/metrics`) endpoints are public and operate outside this limiter.
+With [shared tenant quotas](configuration.md#shared-tenant-quotas) enabled, each admitted graph read, JSON plan attempt (including replay), or SSE plan request consumes one tenant unit. Each stream or multi-topic plan consumes a single unit. An IP rejection consumes zero tenant units. A tenant rejection retains the IP charge and IP headers. Once admitted, client errors, cancellation and provider failures retain their charges. Tenant exhaustion returns the same HTTP 429 envelope. Its positive `Retry-After` is the time to the next whole-second window boundary, where the previous window can still contribute to the budget. A tenant storage failure returns HTTP 503 with `Retry-After: 1` and the admitted IP headers.
+
+Public health probes, Swagger documentation, enabled Prometheus metrics and CORS preflight bypass both budgets.
 
 ---
 
@@ -113,7 +115,7 @@ The `details` field provides context when available and is omitted when empty. U
 | `422 Unprocessable Entity` | `validation_error` | Concept not found in knowledge graph | One or more topics in `failed_topics`, `mastered_topics`, `topics`, `mastered`, or `target_topic` do not exist, or unresolvable topic in `GET /api/v1/topics/{topic}/path` |
 | `422 Unprocessable Entity` | `curriculum_context_too_large` | Curriculum context exceeds the prompt budget | The complete neighborhood or prerequisite order exceeds an edge, entry, per-topic byte or request byte limit |
 | `422 Unprocessable Entity` | `idempotency_key_mismatch` | Idempotency key reused with different payload | The same `Idempotency-Key` was submitted with a different request body fingerprint |
-| `429 Too Many Requests` | `rate_limit_exceeded` | Client rate limit exceeded | Inbound requests exceed `RATE_LIMIT_MAX` within `RATE_LIMIT_WINDOW` |
+| `429 Too Many Requests` | `rate_limit_exceeded` | Request rate limit exceeded | The IP budget or the enabled tenant budget is exhausted |
 | `431 Request Header Fields Too Large` | `request_header_fields_too_large` | Request header fields exceed limit | Inbound request headers exceed the server header limit |
 | `500 Internal Server Error` | `internal_error` | Unhandled server error | Unexpected internal failure or recovered panic |
 | `501 Not Implemented` | `not_implemented` | HTTP method not implemented | Method outside the router's configured method set, such as `PROPFIND` |

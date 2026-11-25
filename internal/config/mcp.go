@@ -15,6 +15,8 @@ func LoadMCP(getenv func(string) string) (Config, error) {
 		switch key {
 		case "AXIOM_AUTH_DISABLED":
 			return "true"
+		case tenantQuotaEnabled, tenantQuotaMax, tenantQuotaWindow, tenantQuotaOverrides:
+			return ""
 		case "REDIS_URL", "IDEMPOTENCY_TTL", "IDEMPOTENCY_MAX_ENTRIES", "AXIOM_AUTH_MODE", "AXIOM_INTERNAL_TOKEN", "AXIOM_INTERNAL_TOKEN_PREVIOUS", "PORT", "HTTP_LISTENER", "CORS_ALLOWED_ORIGINS", "TRUSTED_PROXIES", "RATE_LIMIT_MAX", "RATE_LIMIT_WINDOW", "SWAGGER_ENABLED", "METRICS_ENABLED", "SHUTDOWN_DRAIN_DELAY", "SHUTDOWN_TIMEOUT":
 			return ""
 		default:
