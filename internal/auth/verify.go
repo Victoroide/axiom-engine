@@ -33,6 +33,7 @@ var (
 // Keep these values within the authorization boundary.
 type Principal struct {
 	issuer, tenant, caller string
+	scopes                 string // The token's validated, space-delimited scope list.
 }
 
 // Issuer returns the configured issuer that authenticated the caller.
@@ -43,6 +44,19 @@ func (p Principal) Tenant() string { return p.tenant }
 
 // Caller returns the verified subject or registered client identifier.
 func (p Principal) Caller() string { return p.caller }
+
+// HasScope reports whether the verified token carries the exact scope.
+func (p Principal) HasScope(scope string) bool {
+	if scope == "" {
+		return false
+	}
+	for granted := range strings.SplitSeq(p.scopes, " ") {
+		if granted == scope {
+			return true
+		}
+	}
+	return false
+}
 
 // String redacts a principal formatted directly with %v or %+v.
 func (Principal) String() string { return "[verified principal]" }
@@ -128,6 +142,7 @@ func (v *Verifier) verifyClaims(payload []byte, requiredScopes []string) (Princi
 	if !ValidTenant(tenant) || !identifier(caller, maxIdentityBytes) {
 		return Principal{}, ErrInvalidToken
 	}
+	scopeList := stringValue(claims[v.claims.scope])
 	scopes := tokenScopes(claims[v.claims.scope])
 	if scopes == nil {
 		return Principal{}, ErrInvalidToken
@@ -137,7 +152,7 @@ func (v *Verifier) verifyClaims(payload []byte, requiredScopes []string) (Princi
 			return Principal{}, ErrInsufficientScope
 		}
 	}
-	return Principal{issuer: v.issuer, tenant: tenant, caller: caller}, nil
+	return Principal{issuer: v.issuer, tenant: tenant, caller: caller, scopes: scopeList}, nil
 }
 
 func (mapping claimMapping) caller(claims map[string]jsontext.Value) string {

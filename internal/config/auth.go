@@ -109,7 +109,7 @@ func loadVerifiedAuth(getenv func(string) string, c *Config) error {
 	if err != nil {
 		return fmt.Errorf("AXIOM_AUTH_MODE=verified: %w", err)
 	}
-	c.VerifiedAuth = verifier
+	c.VerifiedAuth, c.verifiedSettings = verifier, settings
 	return nil
 }
 

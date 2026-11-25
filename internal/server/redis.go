@@ -154,12 +154,16 @@ func unavailableAdmission(c fiber.Ctx) error {
 }
 
 func (d AdmissionDecision) writeHeaders(c fiber.Ctx) {
+	d.setHeaders(c.Set)
+}
+
+func (d AdmissionDecision) setHeaders(set func(key, value string)) {
 	if d.IPLimit > 0 {
-		c.Set("X-RateLimit-Limit", strconv.Itoa(d.IPLimit))
-		c.Set("X-RateLimit-Remaining", strconv.FormatInt(d.IPRemaining, 10))
-		c.Set("X-RateLimit-Reset", strconv.FormatInt(d.IPReset, 10))
+		set("X-RateLimit-Limit", strconv.Itoa(d.IPLimit))
+		set("X-RateLimit-Remaining", strconv.FormatInt(d.IPRemaining, 10))
+		set("X-RateLimit-Reset", strconv.FormatInt(d.IPReset, 10))
 	}
 	if d.RetryAfter > 0 {
-		c.Set("Retry-After", strconv.FormatInt(d.RetryAfter, 10))
+		set("Retry-After", strconv.FormatInt(d.RetryAfter, 10))
 	}
 }

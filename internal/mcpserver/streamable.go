@@ -2,11 +2,13 @@ package mcpserver
 
 import (
 	"bytes"
+	"context"
 	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"io"
 	"log/slog"
+	"net"
 	"net/http"
 	"strconv"
 	"strings"
@@ -47,14 +49,34 @@ func NewStreamableHTTPHandlerWithCurriculum(cfg config.Config, curriculum *graph
 }
 
 func streamableHTTPHandler(s *mcp.Server, logger *slog.Logger, writeTimeout time.Duration, jsonResponse bool) http.Handler {
-	sdk := mcp.NewStreamableHTTPHandler(func(*http.Request) *mcp.Server { return s }, &mcp.StreamableHTTPOptions{
-		Stateless:                    true,
-		JSONResponse:                 jsonResponse,
-		Logger:                       logger,
-		PropagateRequestCancellation: true,
-	})
+	return newStreamableHandler(s, logger, streamableOptions{writeTimeout: writeTimeout, jsonResponse: jsonResponse})
+}
+
+// streamableOptions selects the unexposed same-origin handler by default. With
+// an origin policy and a gate it serves a protected remote endpoint.
+type streamableOptions struct {
+	writeTimeout   time.Duration
+	readTimeout    time.Duration
+	requestTimeout time.Duration
+	jsonResponse   bool
+	// negotiate answers with an event stream if the client ranks it above JSON.
+	negotiate bool
+	origins   *OriginPolicy
+	gate      Gate
+}
+
+func newStreamableHandler(s *mcp.Server, logger *slog.Logger, opts streamableOptions) http.Handler {
+	sdk := sdkHandler(s, logger, opts, opts.jsonResponse || opts.negotiate)
+	eventStream := sdk
+	if opts.negotiate {
+		eventStream = sdkHandler(s, logger, opts, false)
+	}
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if !validStreamableOrigin(r) {
+		originAllowed := validStreamableOrigin(r)
+		if opts.origins != nil {
+			originAllowed = opts.origins.Allows(r.Header)
+		}
+		if !originAllowed {
 			http.Error(w, "Forbidden: invalid Origin", http.StatusForbidden)
 			return
 		}
@@ -63,9 +85,22 @@ func streamableHTTPHandler(s *mcp.Server, logger *slog.Logger, writeTimeout time
 			http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
 			return
 		}
-		if writeTimeout > 0 {
-			if err := http.NewResponseController(w).SetWriteDeadline(time.Now().Add(writeTimeout)); err != nil {
+		if opts.gate != nil {
+			var ok bool
+			if r, ok = opts.gate.Authenticate(w, r); !ok {
+				return
+			}
+		}
+		controller := http.NewResponseController(w)
+		if opts.writeTimeout > 0 {
+			if err := controller.SetWriteDeadline(time.Now().Add(opts.writeTimeout)); err != nil {
 				http.Error(w, "Unable to set MCP response write deadline", http.StatusInternalServerError)
+				return
+			}
+		}
+		if opts.readTimeout > 0 {
+			if err := controller.SetReadDeadline(time.Now().Add(opts.readTimeout)); err != nil {
+				http.Error(w, "Unable to set MCP request read deadline", http.StatusInternalServerError)
 				return
 			}
 		}
@@ -88,6 +123,21 @@ func streamableHTTPHandler(s *mcp.Server, logger *slog.Logger, writeTimeout time
 			writeStreamableError(w, request.ID, failure)
 			return
 		}
+		if opts.gate != nil {
+			operation, failure := classify(request.Method, name)
+			if failure != nil {
+				writeStreamableError(w, request.ID, failure)
+				return
+			}
+			if !opts.gate.Authorize(w, r, operation) {
+				return
+			}
+		}
+		if opts.requestTimeout > 0 {
+			ctx, cancel := context.WithTimeout(r.Context(), opts.requestTimeout)
+			defer cancel()
+			r = r.WithContext(ctx)
+		}
 		r = r.Clone(r.Context())
 		// The July transport ignores resume cursors. Older bindings reject this
 		// header on POST, which the SDK also does on its July path.
@@ -107,8 +157,35 @@ func streamableHTTPHandler(s *mcp.Server, logger *slog.Logger, writeTimeout time
 		}
 		r.ContentLength = int64(len(body))
 		r.Body = io.NopCloser(bytes.NewReader(body))
+		if opts.negotiate && prefersEventStream(r.Header) {
+			eventStream.ServeHTTP(w, r)
+			return
+		}
 		sdk.ServeHTTP(w, r)
 	})
+}
+
+// sdkHandler builds the SDK handler. A configured origin policy is also given
+// to the SDK, which then trusts exactly those origins, and the host check
+// moves to the caller, which knows the public authority.
+func sdkHandler(s *mcp.Server, logger *slog.Logger, opts streamableOptions, jsonResponse bool) http.Handler {
+	var handler http.Handler = mcp.NewStreamableHTTPHandler(func(*http.Request) *mcp.Server { return s }, &mcp.StreamableHTTPOptions{
+		Stateless:                    true,
+		JSONResponse:                 jsonResponse,
+		Logger:                       logger,
+		PropagateRequestCancellation: true,
+		DisableLocalhostProtection:   opts.origins != nil,
+	})
+	if opts.origins != nil {
+		protection := http.NewCrossOriginProtection()
+		for _, origin := range opts.origins.allowed {
+			if err := protection.AddTrustedOrigin(origin); err != nil {
+				logger.Error("mcp.origin_invalid", "error_class", "invalid_origin")
+			}
+		}
+		handler = protection.Handler(handler)
+	}
+	return handler
 }
 
 func validStreamableOrigin(r *http.Request) bool {
@@ -134,6 +211,11 @@ func readStreamableBody(w http.ResponseWriter, r *http.Request) []byte {
 		var sizeErr *http.MaxBytesError
 		if errors.As(err, &sizeErr) {
 			http.Error(w, "request body exceeds the MCP size limit", http.StatusRequestEntityTooLarge)
+			return nil
+		}
+		var timeout net.Error
+		if errors.As(err, &timeout) && timeout.Timeout() {
+			http.Error(w, "request body was not received in time", http.StatusRequestTimeout)
 			return nil
 		}
 		http.Error(w, "failed to read body", http.StatusBadRequest)

@@ -62,6 +62,13 @@ func (a *RedisAdmission) Close() error {
 	return errors.Join(a.storage.Close(), a.storage.Conn().Close())
 }
 
+// AdmitIP checks only the IP budget, for protocol traffic that runs no tool.
+// It shares the IP bucket that Admit uses. The caller must authenticate the
+// request and resolve the trusted client IP first.
+func (a *RedisAdmission) AdmitIP(ctx context.Context, ip string) AdmissionDecision {
+	return a.admit(ctx, ipRateBucket(normalizeRateLimitIP(ip), a.ipMaximum, a.ipWindow), rateBucket{})
+}
+
 // Admit checks the IP and then the optional tenant budget for one action.
 // The caller must authenticate, check scope and resolve the trusted client IP
 // before calling Admit. Use it once before replay or dispatch.
