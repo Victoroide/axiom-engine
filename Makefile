@@ -12,6 +12,7 @@ export BAML_LIBRARY_PATH := $(BIN_DIR)/libbaml_cffi.$(BAML_LIB_EXT)
 export BAML_LIBRARY_DISABLE_DOWNLOAD := true
 export BAML_LOG ?= off
 IMAGE ?= axiom-engine:local
+DOCKER_BUILD_COMMAND := docker build
 BAML_DIAGNOSTIC ?= 0
 VULN_FLAGS ?=
 FUZZTIME ?= 30s
@@ -31,7 +32,7 @@ $(error BAML_DIAGNOSTIC must be 0 or 1)
 endif
 
 .PHONY: diagrams diagrams-check help generate swagger build run test cover test-e2e fuzz lint vuln fmt tidy-check generate-check toolchain-check docker-build container-smoke container-smoke-test clean tools-baml baml-check native-baml
-.PHONY: build-baml-check release-archive release-archive-smoke release-archive-test release-archive-runtime-test
+.PHONY: build-baml-check docker-build-release release-archive release-archive-smoke release-archive-test release-archive-runtime-test
 
 help: ## List available targets
 	@awk 'BEGIN {FS = ":.*## "} /^[a-zA-Z0-9_-]+:.*## / {printf "  %-18s %s\n", $$1, $$2}' $(MAKEFILE_LIST)
@@ -174,8 +175,14 @@ generate-check: generate swagger ## Fail if committed generated code is stale
 	git diff --exit-code
 	@test -z "$$(git ls-files --others --exclude-standard -- baml_client docs)"
 
+docker-build-release: DOCKER_BUILD_COMMAND := docker buildx build --platform linux/amd64 --load \
+	--output "type=oci,dest=$$RUNNER_TEMP/runtime-amd64.tar" \
+	--build-arg "VERSION=$$VERSION" --build-arg "VCS_REF=$$VCS_REF" --build-arg "BUILD_DATE=$$BUILD_DATE" \
+	--provenance=mode=max --sbom=true
+docker-build-release: docker-build
+
 docker-build: ## Build the non-root runtime image
-	docker build --target $(RUNTIME_TARGET) --build-arg BAML_VERSION=$(BAML_VERSION) -t $(IMAGE) .
+	$(DOCKER_BUILD_COMMAND) --target $(RUNTIME_TARGET) --build-arg BAML_VERSION=$(BAML_VERSION) -t $(IMAGE) .
 
 container-smoke: ## Check runtime responses, log privacy and shutdown
 	./scripts/container-smoke.sh "$(IMAGE)" "$(BAML_DIAGNOSTIC)"

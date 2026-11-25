@@ -1,6 +1,4 @@
-// Package ci_test checks the pull-request and main-branch workflow policy: which
-// jobs restore and save Go caches, when a cache may be written, and which
-// required checks and commands stay in place.
+// Package ci_test checks required checks, Go cache policy, and release build selection.
 package ci_test
 
 import (

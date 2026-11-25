@@ -92,7 +92,10 @@ jobs:
           cache-dependency-path: |
             go.sum
             tools/go.sum
-      - run: make lint test docker-build container-smoke
+      - run: make lint test
+      - name: Smoke the default runtime image before native builds
+        if: steps.release.outputs.publish != 'false' || steps.release.outputs.native-inventory != 'false'
+        run: make docker-build container-smoke
 
   archives:
     name: Build and verify archive (${{ matrix.os }}/${{ matrix.arch }})
@@ -240,7 +243,15 @@ jobs:
           daemon-config: |
             {"features":{"containerd-snapshotter":true}}
       - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
+      - name: Build the default amd64 runtime with Make
+        if: matrix.arch == 'amd64' && needs.verify.outputs.native-inventory == 'false'
+        env:
+          VERSION: ${{ github.ref_name }}
+          VCS_REF: ${{ github.sha }}
+          BUILD_DATE: ${{ needs.verify.outputs.created }}
+        run: make docker-build-release
       - name: Build without publishing
+        if: matrix.arch != 'amd64' || needs.verify.outputs.native-inventory != 'false'
         id: build
         uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
         with:
@@ -259,6 +270,8 @@ jobs:
           provenance: mode=max
           sbom: true
       - name: Exercise native runtime image
+        env:
+          RELEASE_NATIVE_INVENTORY: ${{ needs.verify.outputs.native-inventory }}
         run: make container-smoke
       - name: Check the default image contents
         if: needs.verify.outputs.native-inventory == 'false'
@@ -341,6 +354,8 @@ jobs:
           provenance: mode=max
           sbom: true
       - name: Exercise native runtime image
+        env:
+          RELEASE_NATIVE_INVENTORY: ${{ needs.verify.outputs.native-inventory }}
         run: make container-smoke IMAGE=${{ env.REGISTRY_IMAGE }}:${{ github.sha }}-${{ matrix.arch }}
       - uses: docker/login-action@8aa5831fb8d48d8f76594c7ddde61ae58019f550 # v4.8.0
         with:
