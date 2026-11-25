@@ -497,6 +497,8 @@ Fuzz targets include:
 - `FuzzStrictJSON` (`internal/api/decode_fuzz_test.go`): tests strict JSON decoding against arbitrary request bodies. Asserts that decoding never panics, error messages remain bounded within 1024 bytes, and accepted request payloads round-trip through JSON marshaling and decoding unchanged.
 - `FuzzOutputPolicy` (`internal/service/output_fuzz_test.go`) checks resource URLs, types, and counts in both display policies. It verifies valid UTF-8, the 200- and 1,000-code-point bounds, whitespace, and control removal. The opt-in policy also checks joiner contexts and whole-grapheme truncation.
 
+The scheduled security workflow runs each target in its own job; see [`security-scan.yml`](#security-scanyml).
+
 Seed corpus files in package `testdata/fuzz/` directories run as standard unit tests during `go test`. When a crasher is discovered, its reproduction corpus entry is preserved under the matching package `testdata/fuzz/<TargetName>/` directory alongside the fix.
 
 Run `./scripts/check-display-text-bench.sh` to compare both policies on 64 KiB and 128 KiB inputs. The fixtures cover a combining run, repeated joined emoji, and a stream of filtered controls. The check requires stable allocations across both input sizes, at most 16 KiB allocated per call, and at most 2.5× the median runtime when input doubles. Run it on an otherwise idle machine.
@@ -618,7 +620,17 @@ Runs on push to `main`, weekly schedule (`43 7 * * 1` / Monday 07:43 UTC), and m
 ### `security-scan.yml`
 
 Triggers daily on a schedule (`17 6 * * *` / 06:17 UTC) and on manual dispatch (`workflow_dispatch`) with top-level `contents: read` permissions. Vulnerability scanning jobs request `security-events: write` to upload SARIF results:
-- **`fuzz`**: runs `make fuzz FUZZTIME=4m` across all five targets sequentially under a 30-minute timeout with `contents: read` permissions. On failure, any crasher inputs under `internal/**/testdata/fuzz/**` are uploaded as `fuzz-crashers` using `actions/upload-artifact` and retained for 30 days. This job runs only on scheduled and manual workflow dispatches and is not a required pull-request check.
+- **`fuzz`** runs one matrix job per fuzz target (`fail-fast: false`), each on its own runner with `contents: read` permissions and a 30-minute timeout. Each job runs `go test <package> -run='^$' -fuzz='^<target>$' -fuzztime=4m`. Go's four-minute fuzz budget includes worker startup, seed corpus replay and mutation. The five jobs run in parallel.
+
+  | Package | Target | Crasher artifact |
+  | --- | --- | --- |
+  | `./internal/graph` | `FuzzDecode` | `fuzz-crashers-FuzzDecode` |
+  | `./internal/graph` | `FuzzCanonical` | `fuzz-crashers-FuzzCanonical` |
+  | `./internal/config` | `FuzzLoad` | `fuzz-crashers-FuzzLoad` |
+  | `./internal/api` | `FuzzStrictJSON` | `fuzz-crashers-FuzzStrictJSON` |
+  | `./internal/service` | `FuzzOutputPolicy` | `fuzz-crashers-FuzzOutputPolicy` |
+
+  A failing target does not cancel the others, and the workflow fails when any target does. On failure, the job uploads `<package>/testdata/fuzz/<target>/` as the artifact named above and keeps it for 30 days. The artifact holds the corpus entries of that one target, including any checked-in seeds in the directory; copy a reproducer back into the same directory to rerun it with `go test`. The matrix must list the same commands as `make -n fuzz`; `go test ./test/workflows` fails when it drifts, and also checks the job's permissions, checkout and action pins, and that a failing fuzz command leaves its reproducer under the uploaded path. The local `make fuzz` target still runs the five targets in sequence. This job runs only on scheduled and manual workflow dispatches and is not a required pull-request check.
 - **`dependencies`**: sets up Go and runs `make vuln VULN_FLAGS="-show verbose"`, which lists module advisories and fails on reachable vulnerabilities. It then generates SARIF with `make --silent vuln VULN_FLAGS="-format sarif"` (this step always exits 0) and uploads it under the `go-dependencies` category, also when the text scan fails.
 - **`tools`**: sets up Go from `tools/go.mod` and runs `go -C tools tool govulncheck -scan package -show verbose tool`, which fails when a pinned tool imports a vulnerable package and lists module advisories. It then uploads SARIF under the `go-tools` category with findings attributed to `tools/go.mod`, also after a failure.
 - **`image`**: builds the `runtime` container target, scans it for fixable high and critical vulnerabilities with Anchore Grype (`anchore/scan-action`), and uploads SARIF under the `runtime-image` category even when the severity threshold fails.
