@@ -42,6 +42,8 @@ func runWireSubprocess(t *testing.T) bool {
 	if os.Getenv(child) == "1" {
 		return true
 	}
+	// Schedule the launcher alongside other isolated scenarios.
+	t.Parallel()
 	binary, err := os.Executable()
 	if err != nil {
 		t.Fatal(err)
