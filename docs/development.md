@@ -70,6 +70,7 @@ Run `make help` to inspect available Makefile targets:
 | `release-archive` | Package the service and verified native library for this host. |
 | `release-archive-smoke` | Check an extracted archive's liveness and clean shutdown. |
 | `release-archive-test` | Check archive contents, repeatability and runtime behavior. |
+| `release-archive-runtime-test` | Check standard archive packaging and runtime behavior without downloading CycloneDX schemas. |
 | `run` | Run the service using the current environment. |
 | `test` | Run unit tests with race detection. |
 | `cover` | Run race tests and print total statement coverage. |
@@ -449,7 +450,7 @@ Release archive targets build, package, and test standalone distribution archive
 
 - `make release-archive` builds the service, verifies the native library, and creates a deterministic `.tar.gz` archive. GNU tar is required (`brew install gnu-tar` on macOS).
 - `make release-archive-smoke` clears inherited internal tokens and `BAML_LOG`, starts the launcher, checks `/livez` with `./axiom-server-launch healthcheck`, and verifies exit status 0 on `SIGTERM`.
-- `make release-archive-test` checks the default members and modes, repeatable packaging, and the bundled offline setup. It builds the opt-in archive and verifies that it adds the diagnostic with mode `0755`. The diagnostic verifies the bundled library and reports a digest mismatch for a one-byte change. The suite exercises launch from an installation path with spaces, native log privacy on successful and failed calls, rejected logging levels, stdio framing, and argument and signal forwarding. It also checks invalid versions, non-numeric timestamps, and missing native libraries.
+- `make release-archive-test` checks the default members and modes, repeatable packaging, and the bundled offline setup. It builds the opt-in archive and verifies that it adds the diagnostic with mode `0755`. The diagnostic verifies the bundled library and reports a digest mismatch for a one-byte change. It verifies the optional native inventory against the archive digest, shipped library, and pinned CycloneDX schema. The suite exercises launch from an installation path with spaces, native log privacy on successful and failed calls, rejected logging levels, stdio framing, and argument and signal forwarding. It also checks invalid versions, non-numeric timestamps, and missing native libraries.
 - `CGO_ENABLED=0 go test ./cmd/axiom-baml-check` runs the diagnostic unit suite with fixtures for each release platform.
 
 Packaging settings:
@@ -457,6 +458,7 @@ Packaging settings:
 - `RELEASE_VERSION`: archive version string (default: `dev`).
 - `RELEASE_DIR`: destination directory for archives (default: `$(BIN_DIR)/release`).
 - `SOURCE_DATE_EPOCH`: archive entry timestamp (defaults to HEAD commit timestamp via `git log -1 --format=%ct`).
+- `RELEASE_NATIVE_INVENTORY=true` adds the native library inventory to the archive. Omit the setting to build the standard five-file archive.
 
 These variables control packaging only and introduce no new service runtime configuration.
 
@@ -464,7 +466,7 @@ Optional test settings:
 - `RELEASE_TEST_DIR`: scratch directory for archive tests (defaults to `TMPDIR` or `/tmp`).
 - `RELEASE_SMOKE_PORT`: local port for smoke probe (default: `8080`).
 
-In CI, manual dispatch (`workflow_dispatch`) can execute a dry run against any non-tag ref. Dry runs name archives as `dev-<12-character commit>`, build and smoke-test all three platforms, and produce checksums without signing or publishing release assets. Workflow artifacts are retained for one day.
+In CI, manual dispatch (`workflow_dispatch`) can execute a dry run against any non-tag ref. Dry runs name archives as `dev-<12-character commit>`, build and smoke-test all three platforms, and produce checksums without signing or publishing release assets. Select `native_inventory` to build and verify inventories in the three archives and both exported OCI images. Workflow artifacts are retained for one day.
 
 ### Fuzz and property tests
 
@@ -597,13 +599,14 @@ This workflow uses `pull_request_target`, so GitHub reads its definition from ma
 
 ### `release.yml`
 
-Runs on a pushed `v*` tag and on manual dispatch (`workflow_dispatch`, input `dry_run`, default `true`):
+Runs on a pushed `v*` tag and on manual dispatch (`workflow_dispatch`, input `dry_run`, default `true`). Enable `native_inventory` on a manual run or set the repository variable `RELEASE_NATIVE_INVENTORY` to `true` for pushed tags. With the option enabled, the workflow verifies the CycloneDX inventory and pinned native bytes in each checksummed archive and selects the `runtime-inventory` image target. Dry runs verify the image directly from the OCI export. Publishing jobs fetch the image from the registry by its pushed digest. The merge job waits for every archive to pass verification. It then checks the staged index digest and its platform manifests before moving the release tags and passes that digest to the signing and attestation jobs.
+
 - **`verify`**: runs `make lint test docker-build container-smoke`; publishing runs also require a `v*` tag whose commit is on `main`.
-- **`archives`**: builds and smoke-tests native release archives on `ubuntu-24.04` (`linux/amd64`), `ubuntu-24.04-arm` (`linux/arm64`), and `macos-15` (`darwin/arm64`) using `make release-archive-test release-archive release-archive-smoke`.
+- **`archives`**: builds and smoke-tests native release archives on `ubuntu-24.04` (`linux/amd64`), `ubuntu-24.04-arm` (`linux/arm64`), and `macos-15` (`darwin/arm64`). It runs `release-archive-runtime-test` by default and `release-archive-test` when the inventory is enabled.
 - **`checksums`**: verifies and hashes all three archives into `checksums.txt` and validates SHA-256 digests.
 - **`dry-run`** (when not publishing): explicitly installs Docker CE `v29.9.2`, builds the runtime image natively on `ubuntu-latest` (amd64) and `ubuntu-24.04-arm` (arm64) into a containerd image store, runs `make container-smoke` against it, and exports an OCI archive with SBOM and provenance. Archive artifacts and checksums are retained for one day. Nothing is pushed or signed.
 - **`build`** (publishing): explicitly installs Docker CE `v29.9.2`, builds and loads each native image, runs `make container-smoke`, logs in, pushes it as `ghcr.io/victoroide/axiom-engine:<commit SHA>-<arch>`, checks that the pushed digest equals the built one, and uploads the digest as an artifact.
-- **`merge`**, **`attest`**, **`sign`**, **`release`**: combine both digests into one index tagged `<tag>`, `<version>`, `<major>.<minor>` and `latest`, attest and keylessly sign that index digest, then create the GitHub release. Publishing jobs run in the `release` environment.
+- **`merge`**, **`attest`**, **`sign`**, **`release`**: once `checksums` has passed, combine both digests into one index tagged `<tag>`, `<version>`, `<major>.<minor>` and `latest`, attest and keylessly sign that index digest, then create the GitHub release. Publishing jobs run in the `release` environment.
 - **`publish-archives`** (publishing): signs `checksums.txt` keylessly with Cosign (`checksums.txt.sigstore.json`) and uploads archives, checksums, and signature bundle to the release.
 - **`provenance`** (publishing): generates SLSA build provenance for the archives using `actions/attest-build-provenance` from `checksums.txt`, and attaches the Sigstore bundle (`axiom-engine_<version>.sigstore.json`) and extracted DSSE envelope (`axiom-engine_<version>.intoto.jsonl`).
 

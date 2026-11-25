@@ -146,6 +146,8 @@ lint: ## Vet build variants and check Go code and workflow files
 	shellcheck scripts/release-provenance.sh scripts/test-release-provenance.sh
 	shellcheck scripts/ci-go-cache.sh
 	shellcheck scripts/native-inventory-schema.sh scripts/verify-release-image-inventory.sh
+	shellcheck scripts/test-release-inventory-workflow.sh
+	./scripts/test-release-inventory-workflow.sh
 	./scripts/test-release-provenance.sh
 	go vet ./...
 	go vet -tags e2e ./...

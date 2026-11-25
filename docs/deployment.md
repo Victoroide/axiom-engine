@@ -105,7 +105,7 @@ Tagging a commit with `v*` or manually dispatching `.github/workflows/release.ym
 The release workflow performs the following steps:
 1. **Verification**: executes `make lint test docker-build container-smoke` and confirms that the release commit is an ancestor of `origin/main` (`git merge-base --is-ancestor "$GITHUB_SHA" origin/main`).
 2. **Native platform builds**: builds each image natively on `ubuntu-latest` (`linux/amd64`) and `ubuntu-24.04-arm` (`linux/arm64`) using explicitly installed Docker CE `v29.9.2` without QEMU, loads it into a containerd image store and runs the container smoke test against it. A dry run (`dry_run: true`) then exports an OCI archive and publishes nothing. A release pushes the tested image as `ghcr.io/victoroide/axiom-engine:<commit SHA>-<arch>`, checks that the pushed digest equals the built one, and uploads the digest as an artifact. The two candidate tags stay in the registry.
-3. **Platform merge**: downloads the platform digests and creates the multi-architecture manifest list using `docker buildx imagetools create` with semantic version tags (`:<tag>`, `:<version>`, `:<major>.<minor>` and `:latest`).
+3. **Platform merge**: waits for all three release archives to pass verification, downloads the platform digests and creates the multi-architecture manifest list using `docker buildx imagetools create` with semantic version tags (`:<tag>`, `:<version>`, `:<major>.<minor>` and `:latest`).
 4. **Provenance attestation**: generates and signs SLSA build provenance attestations for the merged index digest using `actions/attest-build-provenance`.
 5. **Cosign signing**: signs the merged index digest using keyless signing with Sigstore Cosign and GitHub Actions OIDC identity.
 6. **Release**: creates the GitHub release corresponding to the tag and generates release notes.
@@ -136,7 +136,30 @@ cosign verify ghcr.io/victoroide/axiom-engine:<tag> \
 
 ### Supply chain
 
-Release builds attach SLSA build provenance and an SPDX Software Bill of Materials (SBOM) to published container images. The precompiled BAML CFFI native library (`libbaml_cffi.so`) is verified at container build time using the SHA256 checksums pinned in the [Dockerfile](../Dockerfile) rather than upstream cryptographic signatures, and is not listed in the generated Go SBOM. Its version parity is verified using `make baml-check`.
+Release builds attach SLSA build provenance and an SPDX Software Bill of Materials (SBOM) to published container images. Archive and image builds check the precompiled BAML CFFI library against the SHA-256 pins in the [Dockerfile](../Dockerfile). `make baml-check` checks that the BAML generator and Go module use the pinned native library version.
+
+Releases can include a supplemental `baml-native.cdx.json` alongside the native library in each archive and at `/app/baml-native.cdx.json` in each image. The inventory records the BAML version, upstream asset name and download URL, `axiom-engine:target` in `os/arch` form, and the SHA-256 of the shipped library. Images also carry their existing SPDX SBOM. [CycloneDX 1.7 schema](https://github.com/CycloneDX/specification/blob/1.7.2/schema/bom-1.7.schema.json).
+
+The signed archive checksums cover the embedded inventory and library bytes. For images, the signed index digest covers the platform manifests and their layers, including both files. AxiomEngine's signatures establish the identity of the AxiomEngine release workflow. The upstream URL and pinned digest identify the bytes AxiomEngine used. Establishing upstream publisher identity requires a verifiable upstream signature or attestation for that exact BAML asset.
+
+To inspect an image inventory, verify the release and use the verified index digest to select the platform. The following commands copy the inventory and library from a stopped container, then compare the library with the reported hash.
+
+```sh
+(
+  set -eu
+  image="ghcr.io/victoroide/axiom-engine@${digest:?Set digest to the verified index digest}"
+  scratch=$(mktemp -d)
+  container=
+  trap 'if [ -n "$container" ]; then docker rm "$container" >/dev/null || true; fi; rm -rf "$scratch"' EXIT
+  cd "$scratch"
+  docker pull --platform linux/arm64 "$image"
+  container=$(docker create --platform linux/arm64 "$image")
+  docker cp "$container:/app/baml-native.cdx.json" ./baml-native.cdx.json
+  docker cp "$container:/app/libbaml_cffi.so" ./libbaml_cffi.so
+  jq -er '.components[0] | select(any(.properties[]; .name == "axiom-engine:target" and .value == "linux/arm64")) | .hashes[] | select(.alg == "SHA-256") | .content + "  libbaml_cffi.so"' baml-native.cdx.json > native.sha256
+  sha256sum -c native.sha256
+)
+```
 
 ## Release archives
 
@@ -197,6 +220,15 @@ cosign verify-blob-attestation \
 ```
 
 Verify signatures, checksums, and provenance before extracting or running any release archive.
+
+For an archive that contains `baml-native.cdx.json`, check that the target matches the archive platform and compare the listed SHA-256 with the native file after extraction. For example, in the extracted Linux amd64 archive run the following.
+
+```sh
+jq -er '.components[0] | select(any(.properties[]; .name == "axiom-engine:target" and .value == "linux/amd64")) | .name as $asset | .hashes[] | select(.alg == "SHA-256") | .content + "  " + $asset' baml-native.cdx.json |
+  sha256sum -c -
+```
+
+On macOS use the `darwin/arm64` target and `shasum -a 256 -c -`.
 
 ### Run an archive
 
