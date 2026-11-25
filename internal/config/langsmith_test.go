@@ -26,7 +26,7 @@ func TestLangSmithConfiguration(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			if !c.LangSmith.Enabled || !c.Tracing.CaptureContent || c.Tracing.Enabled || c.LangSmith.Project != "test-project" || c.LangSmith.APIKey != "test-key" {
+			if !c.LangSmith.Enabled || c.Tracing.CaptureContent() || c.Tracing.Enabled || c.LangSmith.Project != "test-project" || c.LangSmith.APIKey != "test-key" {
 				t.Fatalf("configuration=%+v", c)
 			}
 			want := strings.TrimRight(endpoint, "/")
@@ -48,7 +48,7 @@ func TestLangSmithConfiguration(t *testing.T) {
 			}
 			return ""
 		})
-		if err != nil || c.Tracing.CaptureContent != (capture == "true") {
+		if err != nil || c.Tracing.CaptureContent() {
 			t.Fatalf("capture=%s configuration=%+v err=%v", capture, c.Tracing, err)
 		}
 	}
@@ -73,7 +73,7 @@ func TestLangSmithRejectsInvalidConfiguration(t *testing.T) {
 		}
 		return ""
 	})
-	if err != nil || c.LangSmith.Enabled || c.Tracing.CaptureContent {
+	if err != nil || c.LangSmith.Enabled || c.Tracing.CaptureContent() {
 		t.Fatalf("defaults=%+v error=%v", c, err)
 	}
 }

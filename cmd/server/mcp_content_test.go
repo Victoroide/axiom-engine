@@ -15,7 +15,11 @@ func TestMCPLangSmithContentProcess(t *testing.T) {
 			backend, _ := localPlanner(t)
 			receiver := newMCPTraceReceiver(t)
 			generic := newMCPTraceReceiver(t)
-			p := startConfiguredMCP(t, map[string]string{"LLM_PROVIDER": "openai-generic", "LLM_MODEL": "local-planner", "LLM_BASE_URL": backend.URL + "/v1", "LANGSMITH_TRACING": "true", "LANGSMITH_API_KEY": "private-tracing-key", "LANGSMITH_PROJECT": "mcp-plans", "LANGSMITH_ENDPOINT": receiver.server.URL, "TRACING_CAPTURE_CONTENT": strconv.FormatBool(capture), "OTEL_EXPORTER_OTLP_TRACES_ENDPOINT": generic.server.URL + "/v1/traces"})
+			destinations := ""
+			if capture {
+				destinations = "langsmith"
+			}
+			p := startConfiguredMCP(t, map[string]string{"LLM_PROVIDER": "openai-generic", "LLM_MODEL": "local-planner", "LLM_BASE_URL": backend.URL + "/v1", "LANGSMITH_TRACING": "true", "LANGSMITH_API_KEY": "private-tracing-key", "LANGSMITH_PROJECT": "mcp-plans", "LANGSMITH_ENDPOINT": receiver.server.URL, "TRACING_CONTENT_DESTINATIONS": destinations, "OTEL_EXPORTER_OTLP_TRACES_ENDPOINT": generic.server.URL + "/v1/traces"})
 			if result := p.exchange(t, mcpPlanCall, 2); result["isError"] == true {
 				t.Fatal(result)
 			}

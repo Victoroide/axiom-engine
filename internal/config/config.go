@@ -265,5 +265,8 @@ func Load(getenv func(string) string) (Config, error) {
 	if err := loadLangSmith(getenv, &c); err != nil {
 		return Config{}, err
 	}
+	if err := loadTraceContent(getenv, &c); err != nil {
+		return Config{}, err
+	}
 	return c, nil
 }

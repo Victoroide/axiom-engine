@@ -22,6 +22,8 @@ func FuzzLoad(f *testing.F) {
 		{"METRICS_ENABLED", "false"}, {"SWAGGER_ENABLED", "true"},
 		{"LOG_LEVEL", "debug"}, {"GRAPH_FILE", "curriculum.json"},
 		{"PRESERVE_DISPLAY_JOINS", "true"}, {"PRESERVE_DISPLAY_JOINS", "TRUE"},
+		{"TRACING_CONTENT_DESTINATIONS", "langsmith,otlp"}, {"TRACING_CONTENT_DESTINATIONS", "otlp,,langsmith"},
+		{"TRACING_CAPTURE_CONTENT", "false"}, {"LANGSMITH_TRACING", "true"}, {"TRACING_ENABLED", "true"},
 	} {
 		f.Add(pair[0], pair[1])
 	}
@@ -33,6 +35,9 @@ func FuzzLoad(f *testing.F) {
 		}
 		if setting := env["PRESERVE_DISPLAY_JOINS"]; (setting != "" && setting != "true" && setting != "false") || c.PreserveDisplayJoins != (setting == "true") {
 			t.Fatalf("invalid display policy %q loaded as %t", setting, c.PreserveDisplayJoins)
+		}
+		if grant := c.Tracing.Content; (grant.LangSmith && !c.LangSmith.Enabled) || (grant.OTLP && !c.Tracing.Enabled) || (c.Tracing.CaptureContent() && env["TRACING_CAPTURE_CONTENT"] == "false") {
+			t.Fatalf("trace content granted without an enabled receiver or despite the veto: %+v", c.Tracing)
 		}
 		if c.LLMQueueTimeout <= 0 || c.LLMQueueTimeout >= c.LLMTimeout || c.LLMTimeout > c.RequestTimeout {
 			t.Fatalf("invalid timeout ordering: queue=%s llm=%s request=%s", c.LLMQueueTimeout, c.LLMTimeout, c.RequestTimeout)

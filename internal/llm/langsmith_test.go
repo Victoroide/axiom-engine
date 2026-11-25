@@ -50,7 +50,10 @@ func TestLangSmithExportsPlanContent(t *testing.T) {
 				w.Header().Set("Content-Type", "application/x-protobuf")
 			}))
 			defer receiver.Close()
-			env := map[string]string{"AXIOM_AUTH_DISABLED": "true", "LANGSMITH_TRACING": "true", "LANGSMITH_API_KEY": "test-secret", "LANGSMITH_PROJECT": "study-plans", "LANGSMITH_ENDPOINT": receiver.URL + "/api/v1/", "TRACING_CAPTURE_CONTENT": strconv.FormatBool(capture)}
+			env := map[string]string{"AXIOM_AUTH_DISABLED": "true", "LANGSMITH_TRACING": "true", "LANGSMITH_API_KEY": "test-secret", "LANGSMITH_PROJECT": "study-plans", "LANGSMITH_ENDPOINT": receiver.URL + "/api/v1/"}
+			if capture {
+				env["TRACING_CONTENT_DESTINATIONS"] = "langsmith"
+			}
 			cfg, err := config.Load(func(k string) string { return env[k] })
 			if err != nil {
 				t.Fatal(err)
