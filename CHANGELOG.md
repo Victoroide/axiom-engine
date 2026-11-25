@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 
 - Share eight outbound resource checks across concurrent plan requests. Check each sanitized URL once per request, include queue time in the link timeout, and count every removed occurrence in `_meta.resources_unreachable`.
+- Smoke-test inventory-enabled release images with the expected native inventory file in dry runs and before publication.
 
 ### Added
 
@@ -35,6 +36,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Update `github.com/klauspost/compress` to v1.20.2 in the developer tools module to fix GO-2026-6865.
 - Add the opt-in `axiom-server mcp-http` command, which serves the four MCP tools over TLS with verified tokens for its own resource audience (`MCP_PUBLIC_URL`), protected resource metadata, exact allowed origins, per-tool scopes, and the shared IP and tenant quotas. The ordinary HTTP server and `axiom-server mcp` open no remote listener and behave as before.
+
+### Changed
+
+- Build and smoke-test the default amd64 image once in release dry runs with native inventories disabled.
 
 ## [0.1.1] - 2026-11-24
 

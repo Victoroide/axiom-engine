@@ -2,6 +2,7 @@ import json
 import os
 import signal
 import subprocess
+import tarfile
 import tempfile
 import unittest
 from pathlib import Path
@@ -9,7 +10,15 @@ from pathlib import Path
 
 DOCKER = """#!/bin/bash
 case "$1" in
-  image) [[ "$2" == inspect ]] && printf 'linux/arm64\\n' ;;
+  image)
+    if [[ "$5" == '{{json .Config}}' ]]; then
+      printf '{"Entrypoint":["/app/axiom-server"],"WorkingDir":"/app","Healthcheck":{"Test":["CMD","/app/axiom-server","healthcheck"]}}\\n'
+    else
+      [[ "$2" == inspect ]] && printf 'linux/arm64\\n'
+    fi
+    ;;
+  top) printf 'PID COMMAND\\n42 axiom-server\\n' ;;
+  cp) cat "$SMOKE_FIXTURE_DIR/app.tar" ;;
   create|run)
     if [[ "${!#}" == mcp ]]; then
       IFS= read -r request
@@ -21,7 +30,9 @@ case "$1" in
     fi
     ;;
   inspect)
-    if [[ -z "${SMOKE_FIXTURE_FORCE_HEALTHCHECK:-}" ]] &&
+    if [[ "$3" == '{{.State.Pid}} {{.Path}} {{len .Args}}' ]]; then
+      printf '42 /app/axiom-server 0\\n'
+    elif [[ -z "${SMOKE_FIXTURE_FORCE_HEALTHCHECK:-}" ]] &&
        grep -Fxq -- --no-healthcheck "$SMOKE_FIXTURE_DIR/docker-args"; then
       printf '["NONE"]\\n'
     else
@@ -103,6 +114,45 @@ class SmokeVerifierTests(unittest.TestCase):
         result = self.run_verifier("check_stdio")
         self.assertNotEqual(result.returncode, 0, result.stderr)
         self.assertIn("MCP stdout closed before the response", result.stderr)
+
+    def check_image_contract(self, inventory: bool, diagnostic: bool,
+                             *extra_files: tuple[str, bytes, int]) -> subprocess.CompletedProcess[str]:
+        with tarfile.open(self.scratch / "app.tar", "w") as archive:
+            for name, kind, mode in (
+                (".", tarfile.DIRTYPE, 0o755),
+                ("axiom-server", tarfile.REGTYPE, 0o755),
+                ("libbaml_cffi.so", tarfile.REGTYPE, 0o644),
+                *extra_files,
+            ):
+                entry = tarfile.TarInfo(name)
+                entry.type = kind
+                entry.mode = mode
+                archive.addfile(entry)
+        return self.run_verifier(
+            f"name=fixture\ninclude_diagnostic={int(diagnostic)}\ncheck_image_contract",
+            RELEASE_NATIVE_INVENTORY=str(inventory).lower(),
+        )
+
+    def test_inventory_image_requires_exact_regular_inventory(self) -> None:
+        filename = "baml-native.cdx.json"
+        result = self.check_image_contract(True, False, (filename, tarfile.REGTYPE, 0o644))
+        self.assertEqual(result.returncode, 0, result.stderr)
+        for files in ((), ((filename, tarfile.REGTYPE, 0o755),), ((filename, tarfile.SYMTYPE, 0o644),),
+                      ((filename, tarfile.REGTYPE, 0o644), ("extra", tarfile.REGTYPE, 0o644))):
+            with self.subTest(files=files):
+                result = self.check_image_contract(True, False, *files)
+                self.assertNotEqual(result.returncode, 0, result.stderr)
+                self.assertIn("AssertionError", result.stderr)
+
+    def test_default_and_diagnostic_images_reject_inventory(self) -> None:
+        inventory_file = ("baml-native.cdx.json", tarfile.REGTYPE, 0o644)
+        for diagnostic, files in ((False, ()), (True, (("axiom-baml-check", tarfile.REGTYPE, 0o755),))):
+            with self.subTest(diagnostic=diagnostic):
+                result = self.check_image_contract(False, diagnostic, *files)
+                self.assertEqual(result.returncode, 0, result.stderr)
+                result = self.check_image_contract(False, diagnostic, *files, inventory_file)
+                self.assertNotEqual(result.returncode, 0, result.stderr)
+                self.assertIn("AssertionError", result.stderr)
 
 
 if __name__ == "__main__":

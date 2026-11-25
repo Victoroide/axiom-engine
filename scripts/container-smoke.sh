@@ -3,6 +3,7 @@ set -euo pipefail
 
 image=${1:-axiom-engine:local}
 include_diagnostic=${2:-0}
+include_inventory=${RELEASE_NATIVE_INVENTORY:-false}
 prefix="axiom-smoke-$$"
 token=ci-internal-token-0123456789abcdef
 backend_pid=
@@ -163,8 +164,10 @@ expected = {
 }
 if sys.argv[1] == "1":
     expected["axiom-baml-check"] = (tarfile.REGTYPE, 0o755)
+if sys.argv[2] == "true":
+    expected["baml-native.cdx.json"] = (tarfile.REGTYPE, 0o644)
 assert members == expected, members
-' "$include_diagnostic"
+' "$include_diagnostic" "$include_inventory"
 }
 
 check_stdio() {
