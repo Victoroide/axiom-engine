@@ -50,7 +50,7 @@ AxiomEngine is a Go microservice that generates personalized, prerequisite-order
 - **Learner mastery filtering**: Incorporates known mastered concepts into requests to omit mastered prerequisites from recommendations while preserving complete prerequisite chains.
 - **Cognitive shadow graphs**: Computes graph neighborhoods classifying concepts into failed, learning, mastered, and unassessed states for frontend visualization.
 - **Model Context Protocol (MCP)**: Runs as an MCP server over standard input and output (`axiom-server mcp`), exposing reasoning and curriculum tools to MCP-compatible clients.
-- **Distributed tracing**: Exports OpenTelemetry traces over OTLP/HTTP to generic collectors or LangSmith, supporting span hierarchy correlation and optional prompt and completion content capture.
+- **Distributed tracing**: Exports OpenTelemetry traces over OTLP/HTTP to generic collectors or LangSmith, supporting span hierarchy correlation. Prompt and completion content is sent only to receivers named in `TRACING_CONTENT_DESTINATIONS`.
 - **Hallucination validation**: Verifies model outputs against known graph nodes, dropping unrecognized concepts and concepts outside the requested topics and their prerequisites before assigning priorities.
 - **HTTP token authentication**. Choose a shared token with rotation support or signed access tokens with route scopes and caller-isolated replay.
 - **Optional resource link validation**: Verifies recommended resource URLs with outbound HEAD and GET checks and SSRF protections when enabled (`RESOURCE_LINK_CHECK=true`), dropping unreachable links.
@@ -265,6 +265,8 @@ The service is configured using environment variables. The table below lists the
 | `PRESERVE_DISPLAY_JOINS` | `false` | When `true`, preserves contextual joiners and truncates study text at whole grapheme clusters in HTTP and MCP responses. |
 | `TRACING_ENABLED` | `false` | When `true`, exports OpenTelemetry traces over OTLP/HTTP to an external collector. |
 | `LANGSMITH_TRACING` | `false` | When `true`, exports model traces to LangSmith (requires `LANGSMITH_API_KEY`). |
+| `TRACING_CONTENT_DESTINATIONS` | `""` (none) | Enabled receivers allowed to receive prompt, completion and input/output content: `langsmith`, `otlp` or `langsmith,otlp`. Unset sends structure only. |
+| `TRACING_CAPTURE_CONTENT` | unset | `false` removes content from every receiver. Unset or `true` grants nothing without `TRACING_CONTENT_DESTINATIONS`. |
 | `METRICS_ENABLED` | `false` | When `true`, serves Prometheus metrics at `GET /metrics` without authentication. |
 | `SWAGGER_ENABLED` | `true` | When `true`, serves Swagger UI and OpenAPI documentation at `/swagger/*`. |
 | `LOG_LEVEL` | `info` | Minimum log level for structured JSON logging (`debug`, `info`, `warn`, `error`). |
@@ -466,7 +468,15 @@ export LANGSMITH_API_KEY="your-langsmith-key"
 export LANGSMITH_PROJECT="your-project" # optional
 ```
 
-Prompt and completion content capture on trace spans is controlled by `TRACING_CAPTURE_CONTENT` (defaults to `true` when LangSmith is enabled, `false` otherwise).
+Both exporters send structure only by default. Name the receivers that may receive prompt, completion and input/output content with `TRACING_CONTENT_DESTINATIONS` (`langsmith`, `otlp` or `langsmith,otlp`); `TRACING_CAPTURE_CONTENT=false` removes content from every receiver. To keep content in LangSmith while the generic collector keeps structure only:
+
+```sh
+export TRACING_ENABLED=true
+export LANGSMITH_TRACING=true
+export TRACING_CONTENT_DESTINATIONS=langsmith
+```
+
+Earlier releases captured content whenever LangSmith was enabled; add the setting before upgrading to keep it. See [docs/configuration.md](docs/configuration.md#content-capture).
 
 For client configuration examples, tool schemas, and container execution details, see [docs/mcp.md](docs/mcp.md), [docs/configuration.md](docs/configuration.md), and [docs/operations.md](docs/operations.md).
 
