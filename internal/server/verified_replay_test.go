@@ -87,7 +87,7 @@ func testVerifiedReplay(t *testing.T, redisURL string) {
 	done := make(chan result, 1)
 	go func() {
 		// The planner gate controls completion. The result wait bounds hangs.
-		resp, body, err := callWithError(first, http.MethodPost, wirePlan, wireTopicBody, replayHeaders(initial, key), fiber.TestConfig{})
+		resp, body, err := callWithError(context.Background(), first, http.MethodPost, wirePlan, wireTopicBody, replayHeaders(initial, key), fiber.TestConfig{})
 		done <- result{resp, body, err}
 	}()
 	receiveWire(t, started, "first reservation's planner")

@@ -11,7 +11,9 @@ import (
 	"strings"
 	"sync"
 	"testing"
+	"time"
 
+	"github.com/gofiber/fiber/v3"
 	"go.opentelemetry.io/otel"
 	collector "go.opentelemetry.io/proto/otlp/collector/trace/v1"
 	commonpb "go.opentelemetry.io/proto/otlp/common/v1"
@@ -67,9 +69,10 @@ func TestLangSmithExportsPlanContent(t *testing.T) {
 			req.Header.Set("traceparent", "00-0123456789abcdef0123456789abcdef-0123456789abcdef-01")
 			req.Header.Set("Content-Type", "application/json")
 			req.Header.Set("X-Request-ID", "capture-test")
+			fixtureIO := fiber.TestConfig{Timeout: 30 * time.Second, FailOnTimeout: true}
 			for range 1000 {
 				probe := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/livez", nil)
-				response, err := app.Test(probe)
+				response, err := app.Test(probe, fixtureIO)
 				if err != nil {
 					t.Fatal(err)
 				}
@@ -77,7 +80,7 @@ func TestLangSmithExportsPlanContent(t *testing.T) {
 					t.Fatal(err)
 				}
 			}
-			resp, err := app.Test(req)
+			resp, err := app.Test(req, fixtureIO)
 			if err != nil {
 				t.Fatal(err)
 			}

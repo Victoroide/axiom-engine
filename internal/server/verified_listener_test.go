@@ -80,7 +80,7 @@ func TestVerifiedCancellationDuringKeyLookup(t *testing.T) {
 				}
 				done := make(chan outcome, 1)
 				go func() {
-					resp, body, err := callWithError(app, http.MethodPost, wirePlan, wireTopicBody, headers)
+					resp, body, err := callWithError(context.Background(), app, http.MethodPost, wirePlan, wireTopicBody, headers)
 					done <- outcome{resp, body, err}
 				}()
 				receiveWire(t, started, "key lookup")

@@ -8,6 +8,8 @@ import (
 	"net/http"
 	"time"
 
+	redisstorage "github.com/gofiber/storage/redis/v3"
+
 	"github.com/Victoroide/axiom-engine/internal/auth"
 	"github.com/Victoroide/axiom-engine/internal/config"
 )
@@ -45,10 +47,14 @@ func NewRedisAdmission(cfg config.Config, logger *slog.Logger) (*RedisAdmission,
 	if logger == nil {
 		logger = slog.Default()
 	}
+	return newRedisAdmission(cfg, logger, storage), nil
+}
+
+func newRedisAdmission(cfg config.Config, logger *slog.Logger, storage *redisstorage.Storage) *RedisAdmission {
 	return &RedisAdmission{
 		redisWindow: redisWindow{storage: storage, logger: logger},
 		ipMaximum:   cfg.RateLimitMax, ipWindow: cfg.RateLimitWindow, tenant: cfg.TenantQuota,
-	}, nil
+	}
 }
 
 // Close releases the shared storage connection.

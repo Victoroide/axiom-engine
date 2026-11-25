@@ -89,6 +89,10 @@ func NewWithError(cfg config.Config, deps Dependencies) (*fiber.App, error) {
 	if err != nil {
 		return nil, err
 	}
+	return newWithRedisAdmission(cfg, deps, logger, admission), nil
+}
+
+func newWithRedisAdmission(cfg config.Config, deps Dependencies, logger *slog.Logger, admission *RedisAdmission) *fiber.App {
 	var recorder *metrics.Metrics
 	if cfg.MetricsEnabled {
 		recorder = metrics.New()
@@ -111,7 +115,7 @@ func NewWithError(cfg config.Config, deps Dependencies) (*fiber.App, error) {
 	if admission != nil {
 		app.Hooks().OnPostShutdown(func(_ error) error { return admission.Close() })
 	}
-	return app, nil
+	return app
 }
 
 func wrapHTTPHandler(app *fiber.App, logger *slog.Logger, errorHandler fiber.ErrorHandler, recorder *metrics.Metrics, tracing, verifiedMode bool) {
