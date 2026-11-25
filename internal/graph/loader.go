@@ -45,9 +45,14 @@ func Load(path string) (*InMemoryGraph, error) {
 
 // Decode validates a JSON tuple array within the curriculum limits and constructs an immutable graph.
 func Decode(r io.Reader) (*InMemoryGraph, error) {
+	return decode(r, nil)
+}
+
+func decode(r io.Reader, checkCanceled func() error) (*InMemoryGraph, error) {
 	input := &graphReader{
 		LimitedReader:     io.LimitedReader{R: r, N: maxGraphBytes},
 		leadingWhitespace: true,
+		checkCanceled:     checkCanceled,
 	}
 	dec := json.NewDecoder(input)
 	dec.DisallowUnknownFields()
@@ -67,6 +72,11 @@ func Decode(r io.Reader) (*InMemoryGraph, error) {
 	seen := make(map[domain.GraphTuple]bool)
 	var tuple domain.GraphTuple
 	for i := 0; dec.More(); i++ {
+		if checkCanceled != nil {
+			if err := checkCanceled(); err != nil {
+				return nil, err
+			}
+		}
 		if i == maxGraphTuples {
 			return nil, fmt.Errorf("graph exceeds %d input tuples", maxGraphTuples)
 		}
@@ -101,7 +111,11 @@ func Decode(r io.Reader) (*InMemoryGraph, error) {
 	if len(g.all) == 0 {
 		return nil, fmt.Errorf("graph must contain at least one tuple")
 	}
-	if cycle := g.prerequisiteCycle(); len(cycle) > 0 {
+	cycle, err := g.prerequisiteCycle(checkCanceled)
+	if err != nil {
+		return nil, err
+	}
+	if len(cycle) > 0 {
 		return nil, fmt.Errorf("graph contains a prerequisite cycle: %s", cycleSummary(cycle))
 	}
 	return g, nil
@@ -133,12 +147,19 @@ func stableJSONError(err error) error {
 type graphReader struct {
 	io.LimitedReader
 	leadingWhitespace bool
+	checkCanceled     func() error
 	err               error
 }
 
 func (r *graphReader) Read(p []byte) (int, error) {
 	if r.err != nil {
 		return 0, r.err
+	}
+	if r.checkCanceled != nil {
+		if err := r.checkCanceled(); err != nil {
+			r.err = err
+			return 0, err
+		}
 	}
 	if r.N > 0 {
 		// Only the prefix before the first non-whitespace byte is a known gap.
@@ -223,14 +244,14 @@ func validNodeName(name string) error {
 	return nil
 }
 
-func (g *InMemoryGraph) prerequisiteCycle() []string {
+func (g *InMemoryGraph) prerequisiteCycle(checkCanceled func() error) ([]string, error) {
 	walk := prerequisiteWalk{state: make(map[string]visitState, len(g.nodes))}
 	for _, node := range slices.Sorted(maps.Keys(g.nodes)) {
-		if cycle := walk.visit(g, node, nil); cycle != nil {
-			return cycle
+		if cycle, err := walk.visitWithCancel(g, node, nil, checkCanceled); cycle != nil || err != nil {
+			return cycle, err
 		}
 	}
-	return nil
+	return nil, nil
 }
 
 func cycleSummary(cycle []string) string {
