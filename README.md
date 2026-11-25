@@ -259,6 +259,7 @@ The service is configured using environment variables. The table below lists the
 | `RATE_LIMIT_MAX` | `50` | Maximum requests allowed from a client IP within `RATE_LIMIT_WINDOW`. |
 | `RATE_LIMIT_WINDOW` | `1m` | Sliding window duration for IP rate limiting. |
 | `REDIS_URL` | `""` (unset) | Optional Redis URL for shared rate limiting and plan idempotency across replicas. |
+| `AXIOM_TENANT_QUOTA_ENABLED` | `false` | With verified authentication and Redis, enable a shared tenant admission budget. [Tenant quota settings](docs/configuration.md#shared-tenant-quotas) |
 | `IDEMPOTENCY_TTL` | `24h` | Retention duration for idempotent study plan replay responses (`0s` disables). |
 | `RESOURCE_LINK_CHECK` | `false` | When `true`, verifies recommended resource URLs with outbound HTTP checks before returning plans. |
 | `PRESERVE_DISPLAY_JOINS` | `false` | When `true`, preserves contextual joiners and truncates study text at whole grapheme clusters in HTTP and MCP responses. |
@@ -471,9 +472,9 @@ For client configuration examples, tool schemas, and container execution details
 
 ## Limitations
 
-- **In-Memory Rate Limiting**: When `REDIS_URL` is unset, rate limiting operates per replica in memory, keyed by client IP (masked to `/64` for IPv6). Setting `REDIS_URL` shares rate-limit budgets and plan idempotency records across all replicas. For multi-tenant platform limits and per-tenant quotas, gateway enforcement remains recommended.
+- **Rate limiting**. Without `REDIS_URL`, each replica keeps an IP budget in memory and groups IPv6 addresses by `/64`. Redis shares IP budgets and plan idempotency records across replicas. Verified HTTP deployments can also set a shared budget per tenant. [Shared tenant quotas](docs/configuration.md#shared-tenant-quotas)
 - **Client disconnects**. With the default Fiber listener, JSON reasoning continues after a peer closes the connection until work finishes or a deadline expires. SSE detects failed writes with two-second keepalives. Set `HTTP_LISTENER=net-http` to cancel reasoning on HTTP/1 connection close or HTTP/2 stream reset. On Linux and macOS, HTTP/1 cancellation also works with pipelined requests waiting. A client that closes only its write side may still receive the canceled request's HTTP 408 response. See the [listener configuration](docs/configuration.md#http-listener).
-- **HTTP authorization**. Shared tokens grant the same access to every holder. Verified tokens authorize route scopes and isolate replay by issuer, tenant and caller. The calling platform authorizes access to individual learners. The HTTP rate limit remains IP-based.
+- **HTTP authorization**. Shared tokens grant the same access to every holder. Verified tokens authorize route scopes and isolate replay by issuer, tenant and caller. The calling platform authorizes access to individual learners.
 - **Native Library Initialization**: The BAML CFFI dynamic library is loaded during package initialization before `main` executes; missing or mismatched libraries panic directly to `stderr` in plain text prior to structured JSON logger initialization.
 - **Bedrock region resolution**. Set `BEDROCK_REQUIRE_EXPLICIT_REGION=true` to validate `AWS_REGION` at startup and use it for every Bedrock call until the process restarts. In default mode, each Bedrock call resolves the region from the environment, the selected AWS profile or EC2 instance metadata, so a changed source can change the region for later calls. See [Region Resolution](docs/configuration.md#region-resolution).
 - **Resource Link Reachability**: Recommended resource URLs are not checked for network reachability by default. Setting `RESOURCE_LINK_CHECK=true` enables outbound HTTP reachability checks that verify URLs and drop non-resolving or refused resources before returning plans.
@@ -486,7 +487,6 @@ For diagnostic procedures and operational troubleshooting, refer to the [Operati
 ## Roadmap
 
 - Authenticated remote access to the Model Context Protocol server over Streamable HTTP.
-- Fine-grained per-tenant rate limit quotas in shared storage.
 
 ## Documentation
 

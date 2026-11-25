@@ -44,7 +44,7 @@ Remediation timing depends on severity and operational considerations. Critical 
 
 ### Deployment assumptions
 
-- **Authorization boundary**. Shared credentials grant the same access to all holders. Verified mode uses signed tenant and caller claims to isolate replay and uses exact scopes to authorize operations. The calling platform decides which learners a caller may act for and enforces any tenant quotas.
+- **Authorization boundary**. Shared credentials grant the same access to all holders. Verified mode uses signed tenant and caller claims to isolate replay and uses exact scopes to authorize operations. The calling platform decides which learners a caller may act for.
 - **Network protection**. Requests rejected for credentials or scopes consume no application rate-limit budget. Production deployments must enforce edge firewall filtering, gateway rate limiting or other network-level DDoS mitigation.
 - **Trusted operator inputs**: The knowledge graph specified by `GRAPH_FILE` is trusted operator input. While topic identifiers are constrained to bounded, printable, and addressable strings, graph relation text directly populates LLM prompt context. Operators must verify graph file integrity and control access to configuration assets.
 
@@ -74,6 +74,7 @@ Remediation timing depends on severity and operational considerations. Critical 
 ### Rate limiting and network boundaries
 
 - The HTTP sliding-window limiter restricts `/api/v1` traffic per client IP. `RATE_LIMIT_MAX` defaults to 50 requests and `RATE_LIMIT_WINDOW` defaults to 1 minute. IPv6 clients share a bucket by `/64` and IPv4-mapped IPv6 addresses use the IPv4 bucket. Counters live in memory per replica when `REDIS_URL` is unset. Replicas configured with the same Redis database share those counters. If Redis fails to supply a rate-limit decision, the request receives HTTP 503 `service_unavailable` with `Retry-After: 1` before reaching the handler.
+- Optional tenant quotas run after IP admission and use a verified issuer and tenant to share a Redis bucket across replicas. Tenant keys use a versioned SHA-256 digest of the length-prefixed issuer and tenant. Access tokens, tenant and caller strings, and issuer URLs stay out of quota diagnostics and metric labels. [Quota configuration](docs/configuration.md#shared-tenant-quotas)
 - The server returns HTTP 401 for missing or invalid credentials and HTTP 403 for insufficient verified scopes before the limiter. Public probes, enabled Swagger and metrics, and allowed CORS preflight bypass the limiter. Stdio MCP uses the launching process as its trust boundary.
 - Proxy headers (`X-Forwarded-For`) are trusted only when connections originate from addresses listed in `TRUSTED_PROXIES`. Untrusted clients cannot bypass rate limiting by spoofing proxy headers.
 - Inbound HTTP transport is bounded by server timeouts: ReadTimeout (10s), IdleTimeout (1m), and WriteTimeout (`REQUEST_TIMEOUT + 10s`, default 30s).

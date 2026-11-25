@@ -67,15 +67,15 @@ const docTemplate = `{
                             },
                             "X-RateLimit-Limit": {
                                 "type": "integer",
-                                "description": "Maximum requests per rate-limit window"
+                                "description": "Maximum requests per IP window"
                             },
                             "X-RateLimit-Remaining": {
                                 "type": "integer",
-                                "description": "Requests remaining in the rate-limit window"
+                                "description": "Requests remaining in the IP window"
                             },
                             "X-RateLimit-Reset": {
                                 "type": "integer",
-                                "description": "Seconds until the rate-limit window resets"
+                                "description": "Seconds until the IP window resets"
                             },
                             "X-Request-ID": {
                                 "type": "string",
@@ -91,15 +91,15 @@ const docTemplate = `{
                         "headers": {
                             "X-RateLimit-Limit": {
                                 "type": "integer",
-                                "description": "Maximum requests per rate-limit window"
+                                "description": "Maximum requests per IP window"
                             },
                             "X-RateLimit-Remaining": {
                                 "type": "integer",
-                                "description": "Requests remaining in the rate-limit window"
+                                "description": "Requests remaining in the IP window"
                             },
                             "X-RateLimit-Reset": {
                                 "type": "integer",
-                                "description": "Seconds until the rate-limit window resets"
+                                "description": "Seconds until the IP window resets"
                             },
                             "X-Request-ID": {
                                 "type": "string",
@@ -163,15 +163,15 @@ const docTemplate = `{
                             },
                             "X-RateLimit-Limit": {
                                 "type": "integer",
-                                "description": "Maximum requests per rate-limit window"
+                                "description": "Maximum requests per IP window"
                             },
                             "X-RateLimit-Remaining": {
                                 "type": "integer",
-                                "description": "Requests remaining in the rate-limit window"
+                                "description": "Requests remaining in the IP window"
                             },
                             "X-RateLimit-Reset": {
                                 "type": "integer",
-                                "description": "Seconds until the rate-limit window resets"
+                                "description": "Seconds until the IP window resets"
                             },
                             "X-Request-ID": {
                                 "type": "string",
@@ -187,15 +187,15 @@ const docTemplate = `{
                         "headers": {
                             "X-RateLimit-Limit": {
                                 "type": "integer",
-                                "description": "Maximum requests per rate-limit window"
+                                "description": "Maximum requests per IP window"
                             },
                             "X-RateLimit-Remaining": {
                                 "type": "integer",
-                                "description": "Requests remaining in the rate-limit window"
+                                "description": "Requests remaining in the IP window"
                             },
                             "X-RateLimit-Reset": {
                                 "type": "integer",
-                                "description": "Seconds until the rate-limit window resets"
+                                "description": "Seconds until the IP window resets"
                             },
                             "X-Request-ID": {
                                 "type": "string",
@@ -211,15 +211,15 @@ const docTemplate = `{
                         "headers": {
                             "X-RateLimit-Limit": {
                                 "type": "integer",
-                                "description": "Maximum requests per rate-limit window"
+                                "description": "Maximum requests per IP window"
                             },
                             "X-RateLimit-Remaining": {
                                 "type": "integer",
-                                "description": "Requests remaining in the rate-limit window"
+                                "description": "Requests remaining in the IP window"
                             },
                             "X-RateLimit-Reset": {
                                 "type": "integer",
-                                "description": "Seconds until the rate-limit window resets"
+                                "description": "Seconds until the IP window resets"
                             },
                             "X-Request-ID": {
                                 "type": "string",
@@ -235,15 +235,15 @@ const docTemplate = `{
                         "headers": {
                             "X-RateLimit-Limit": {
                                 "type": "integer",
-                                "description": "Maximum requests per rate-limit window"
+                                "description": "Maximum requests per IP window"
                             },
                             "X-RateLimit-Remaining": {
                                 "type": "integer",
-                                "description": "Requests remaining in the rate-limit window"
+                                "description": "Requests remaining in the IP window"
                             },
                             "X-RateLimit-Reset": {
                                 "type": "integer",
-                                "description": "Seconds until the rate-limit window resets"
+                                "description": "Seconds until the IP window resets"
                             },
                             "X-Request-ID": {
                                 "type": "string",
@@ -252,7 +252,7 @@ const docTemplate = `{
                         }
                     },
                     "429": {
-                        "description": "Too Many Requests",
+                        "description": "IP or tenant rate limit exceeded",
                         "schema": {
                             "$ref": "#/definitions/domain.ErrorResponse"
                         },
@@ -260,6 +260,18 @@ const docTemplate = `{
                             "Retry-After": {
                                 "type": "integer",
                                 "description": "Seconds to wait before retrying"
+                            },
+                            "X-RateLimit-Limit": {
+                                "type": "integer",
+                                "description": "Maximum requests per IP window"
+                            },
+                            "X-RateLimit-Remaining": {
+                                "type": "integer",
+                                "description": "Requests remaining in the IP window"
+                            },
+                            "X-RateLimit-Reset": {
+                                "type": "integer",
+                                "description": "Seconds until the IP window resets"
                             },
                             "X-Request-ID": {
                                 "type": "string",
@@ -299,15 +311,15 @@ const docTemplate = `{
                         "headers": {
                             "X-RateLimit-Limit": {
                                 "type": "integer",
-                                "description": "Maximum requests per rate-limit window"
+                                "description": "Maximum requests per IP window"
                             },
                             "X-RateLimit-Remaining": {
                                 "type": "integer",
-                                "description": "Requests remaining in the rate-limit window"
+                                "description": "Requests remaining in the IP window"
                             },
                             "X-RateLimit-Reset": {
                                 "type": "integer",
-                                "description": "Seconds until the rate-limit window resets"
+                                "description": "Seconds until the IP window resets"
                             },
                             "X-Request-ID": {
                                 "type": "string",
@@ -327,15 +339,15 @@ const docTemplate = `{
                             },
                             "X-RateLimit-Limit": {
                                 "type": "integer",
-                                "description": "Maximum requests per rate-limit window"
+                                "description": "Maximum requests per IP window"
                             },
                             "X-RateLimit-Remaining": {
                                 "type": "integer",
-                                "description": "Requests remaining in the rate-limit window"
+                                "description": "Requests remaining in the IP window"
                             },
                             "X-RateLimit-Reset": {
                                 "type": "integer",
-                                "description": "Seconds until the rate-limit window resets"
+                                "description": "Seconds until the IP window resets"
                             },
                             "X-Request-ID": {
                                 "type": "string",
@@ -351,15 +363,15 @@ const docTemplate = `{
                         "headers": {
                             "X-RateLimit-Limit": {
                                 "type": "integer",
-                                "description": "Maximum requests per rate-limit window"
+                                "description": "Maximum requests per IP window"
                             },
                             "X-RateLimit-Remaining": {
                                 "type": "integer",
-                                "description": "Requests remaining in the rate-limit window"
+                                "description": "Requests remaining in the IP window"
                             },
                             "X-RateLimit-Reset": {
                                 "type": "integer",
-                                "description": "Seconds until the rate-limit window resets"
+                                "description": "Seconds until the IP window resets"
                             },
                             "X-Request-ID": {
                                 "type": "string",
@@ -413,15 +425,15 @@ const docTemplate = `{
                         "headers": {
                             "X-RateLimit-Limit": {
                                 "type": "integer",
-                                "description": "Maximum requests per rate-limit window"
+                                "description": "Maximum requests per IP window"
                             },
                             "X-RateLimit-Remaining": {
                                 "type": "integer",
-                                "description": "Requests remaining in the rate-limit window"
+                                "description": "Requests remaining in the IP window"
                             },
                             "X-RateLimit-Reset": {
                                 "type": "integer",
-                                "description": "Seconds until the rate-limit window resets"
+                                "description": "Seconds until the IP window resets"
                             },
                             "X-Request-ID": {
                                 "type": "string",
@@ -437,15 +449,15 @@ const docTemplate = `{
                         "headers": {
                             "X-RateLimit-Limit": {
                                 "type": "integer",
-                                "description": "Maximum requests per rate-limit window"
+                                "description": "Maximum requests per IP window"
                             },
                             "X-RateLimit-Remaining": {
                                 "type": "integer",
-                                "description": "Requests remaining in the rate-limit window"
+                                "description": "Requests remaining in the IP window"
                             },
                             "X-RateLimit-Reset": {
                                 "type": "integer",
-                                "description": "Seconds until the rate-limit window resets"
+                                "description": "Seconds until the IP window resets"
                             },
                             "X-Request-ID": {
                                 "type": "string",
@@ -505,15 +517,15 @@ const docTemplate = `{
                         "headers": {
                             "X-RateLimit-Limit": {
                                 "type": "integer",
-                                "description": "Maximum requests per rate-limit window"
+                                "description": "Maximum requests per IP window"
                             },
                             "X-RateLimit-Remaining": {
                                 "type": "integer",
-                                "description": "Requests remaining in the rate-limit window"
+                                "description": "Requests remaining in the IP window"
                             },
                             "X-RateLimit-Reset": {
                                 "type": "integer",
-                                "description": "Seconds until the rate-limit window resets"
+                                "description": "Seconds until the IP window resets"
                             },
                             "X-Request-ID": {
                                 "type": "string",
@@ -529,15 +541,15 @@ const docTemplate = `{
                         "headers": {
                             "X-RateLimit-Limit": {
                                 "type": "integer",
-                                "description": "Maximum requests per rate-limit window"
+                                "description": "Maximum requests per IP window"
                             },
                             "X-RateLimit-Remaining": {
                                 "type": "integer",
-                                "description": "Requests remaining in the rate-limit window"
+                                "description": "Requests remaining in the IP window"
                             },
                             "X-RateLimit-Reset": {
                                 "type": "integer",
-                                "description": "Seconds until the rate-limit window resets"
+                                "description": "Seconds until the IP window resets"
                             },
                             "X-Request-ID": {
                                 "type": "string",
@@ -553,15 +565,15 @@ const docTemplate = `{
                         "headers": {
                             "X-RateLimit-Limit": {
                                 "type": "integer",
-                                "description": "Maximum requests per rate-limit window"
+                                "description": "Maximum requests per IP window"
                             },
                             "X-RateLimit-Remaining": {
                                 "type": "integer",
-                                "description": "Requests remaining in the rate-limit window"
+                                "description": "Requests remaining in the IP window"
                             },
                             "X-RateLimit-Reset": {
                                 "type": "integer",
-                                "description": "Seconds until the rate-limit window resets"
+                                "description": "Seconds until the IP window resets"
                             },
                             "X-Request-ID": {
                                 "type": "string",
@@ -570,7 +582,7 @@ const docTemplate = `{
                         }
                     },
                     "429": {
-                        "description": "Too Many Requests",
+                        "description": "IP or tenant rate limit exceeded",
                         "schema": {
                             "$ref": "#/definitions/domain.ErrorResponse"
                         },
@@ -578,6 +590,18 @@ const docTemplate = `{
                             "Retry-After": {
                                 "type": "integer",
                                 "description": "Seconds to wait before retrying"
+                            },
+                            "X-RateLimit-Limit": {
+                                "type": "integer",
+                                "description": "Maximum requests per IP window"
+                            },
+                            "X-RateLimit-Remaining": {
+                                "type": "integer",
+                                "description": "Requests remaining in the IP window"
+                            },
+                            "X-RateLimit-Reset": {
+                                "type": "integer",
+                                "description": "Seconds until the IP window resets"
                             },
                             "X-Request-ID": {
                                 "type": "string",
@@ -619,6 +643,18 @@ const docTemplate = `{
                                 "type": "integer",
                                 "description": "Seconds to wait before retrying"
                             },
+                            "X-RateLimit-Limit": {
+                                "type": "integer",
+                                "description": "Maximum requests per IP window"
+                            },
+                            "X-RateLimit-Remaining": {
+                                "type": "integer",
+                                "description": "Requests remaining in the IP window"
+                            },
+                            "X-RateLimit-Reset": {
+                                "type": "integer",
+                                "description": "Seconds until the IP window resets"
+                            },
                             "X-Request-ID": {
                                 "type": "string",
                                 "description": "Resolved request correlation identifier"
@@ -633,15 +669,15 @@ const docTemplate = `{
                         "headers": {
                             "X-RateLimit-Limit": {
                                 "type": "integer",
-                                "description": "Maximum requests per rate-limit window"
+                                "description": "Maximum requests per IP window"
                             },
                             "X-RateLimit-Remaining": {
                                 "type": "integer",
-                                "description": "Requests remaining in the rate-limit window"
+                                "description": "Requests remaining in the IP window"
                             },
                             "X-RateLimit-Reset": {
                                 "type": "integer",
-                                "description": "Seconds until the rate-limit window resets"
+                                "description": "Seconds until the IP window resets"
                             },
                             "X-Request-ID": {
                                 "type": "string",
@@ -711,15 +747,15 @@ const docTemplate = `{
                         "headers": {
                             "X-RateLimit-Limit": {
                                 "type": "integer",
-                                "description": "Maximum requests per rate-limit window"
+                                "description": "Maximum requests per IP window"
                             },
                             "X-RateLimit-Remaining": {
                                 "type": "integer",
-                                "description": "Requests remaining in the rate-limit window"
+                                "description": "Requests remaining in the IP window"
                             },
                             "X-RateLimit-Reset": {
                                 "type": "integer",
-                                "description": "Seconds until the rate-limit window resets"
+                                "description": "Seconds until the IP window resets"
                             },
                             "X-Request-ID": {
                                 "type": "string",
@@ -779,15 +815,15 @@ const docTemplate = `{
                         "headers": {
                             "X-RateLimit-Limit": {
                                 "type": "integer",
-                                "description": "Maximum requests per rate-limit window"
+                                "description": "Maximum requests per IP window"
                             },
                             "X-RateLimit-Remaining": {
                                 "type": "integer",
-                                "description": "Requests remaining in the rate-limit window"
+                                "description": "Requests remaining in the IP window"
                             },
                             "X-RateLimit-Reset": {
                                 "type": "integer",
-                                "description": "Seconds until the rate-limit window resets"
+                                "description": "Seconds until the IP window resets"
                             },
                             "X-Request-ID": {
                                 "type": "string",
@@ -796,7 +832,7 @@ const docTemplate = `{
                         }
                     },
                     "429": {
-                        "description": "Too Many Requests",
+                        "description": "IP or tenant rate limit exceeded",
                         "schema": {
                             "$ref": "#/definitions/domain.ErrorResponse"
                         },
@@ -804,6 +840,18 @@ const docTemplate = `{
                             "Retry-After": {
                                 "type": "integer",
                                 "description": "Seconds to wait before retrying"
+                            },
+                            "X-RateLimit-Limit": {
+                                "type": "integer",
+                                "description": "Maximum requests per IP window"
+                            },
+                            "X-RateLimit-Remaining": {
+                                "type": "integer",
+                                "description": "Requests remaining in the IP window"
+                            },
+                            "X-RateLimit-Reset": {
+                                "type": "integer",
+                                "description": "Seconds until the IP window resets"
                             },
                             "X-Request-ID": {
                                 "type": "string",
@@ -844,6 +892,18 @@ const docTemplate = `{
                             "Retry-After": {
                                 "type": "integer",
                                 "description": "Seconds to wait before retrying"
+                            },
+                            "X-RateLimit-Limit": {
+                                "type": "integer",
+                                "description": "Maximum requests per IP window"
+                            },
+                            "X-RateLimit-Remaining": {
+                                "type": "integer",
+                                "description": "Requests remaining in the IP window"
+                            },
+                            "X-RateLimit-Reset": {
+                                "type": "integer",
+                                "description": "Seconds until the IP window resets"
                             },
                             "X-Request-ID": {
                                 "type": "string",
@@ -891,15 +951,15 @@ const docTemplate = `{
                         "headers": {
                             "X-RateLimit-Limit": {
                                 "type": "integer",
-                                "description": "Maximum requests per rate-limit window"
+                                "description": "Maximum requests per IP window"
                             },
                             "X-RateLimit-Remaining": {
                                 "type": "integer",
-                                "description": "Requests remaining in the rate-limit window"
+                                "description": "Requests remaining in the IP window"
                             },
                             "X-RateLimit-Reset": {
                                 "type": "integer",
-                                "description": "Seconds until the rate-limit window resets"
+                                "description": "Seconds until the IP window resets"
                             },
                             "X-Request-ID": {
                                 "type": "string",
@@ -959,15 +1019,15 @@ const docTemplate = `{
                         "headers": {
                             "X-RateLimit-Limit": {
                                 "type": "integer",
-                                "description": "Maximum requests per rate-limit window"
+                                "description": "Maximum requests per IP window"
                             },
                             "X-RateLimit-Remaining": {
                                 "type": "integer",
-                                "description": "Requests remaining in the rate-limit window"
+                                "description": "Requests remaining in the IP window"
                             },
                             "X-RateLimit-Reset": {
                                 "type": "integer",
-                                "description": "Seconds until the rate-limit window resets"
+                                "description": "Seconds until the IP window resets"
                             },
                             "X-Request-ID": {
                                 "type": "string",
@@ -983,15 +1043,15 @@ const docTemplate = `{
                         "headers": {
                             "X-RateLimit-Limit": {
                                 "type": "integer",
-                                "description": "Maximum requests per rate-limit window"
+                                "description": "Maximum requests per IP window"
                             },
                             "X-RateLimit-Remaining": {
                                 "type": "integer",
-                                "description": "Requests remaining in the rate-limit window"
+                                "description": "Requests remaining in the IP window"
                             },
                             "X-RateLimit-Reset": {
                                 "type": "integer",
-                                "description": "Seconds until the rate-limit window resets"
+                                "description": "Seconds until the IP window resets"
                             },
                             "X-Request-ID": {
                                 "type": "string",
@@ -1000,7 +1060,7 @@ const docTemplate = `{
                         }
                     },
                     "429": {
-                        "description": "Too Many Requests",
+                        "description": "IP or tenant rate limit exceeded",
                         "schema": {
                             "$ref": "#/definitions/domain.ErrorResponse"
                         },
@@ -1008,6 +1068,18 @@ const docTemplate = `{
                             "Retry-After": {
                                 "type": "integer",
                                 "description": "Seconds to wait before retrying"
+                            },
+                            "X-RateLimit-Limit": {
+                                "type": "integer",
+                                "description": "Maximum requests per IP window"
+                            },
+                            "X-RateLimit-Remaining": {
+                                "type": "integer",
+                                "description": "Requests remaining in the IP window"
+                            },
+                            "X-RateLimit-Reset": {
+                                "type": "integer",
+                                "description": "Seconds until the IP window resets"
                             },
                             "X-Request-ID": {
                                 "type": "string",
@@ -1048,6 +1120,18 @@ const docTemplate = `{
                             "Retry-After": {
                                 "type": "integer",
                                 "description": "Seconds to wait before retrying"
+                            },
+                            "X-RateLimit-Limit": {
+                                "type": "integer",
+                                "description": "Maximum requests per IP window"
+                            },
+                            "X-RateLimit-Remaining": {
+                                "type": "integer",
+                                "description": "Requests remaining in the IP window"
+                            },
+                            "X-RateLimit-Reset": {
+                                "type": "integer",
+                                "description": "Seconds until the IP window resets"
                             },
                             "X-Request-ID": {
                                 "type": "string",
@@ -1121,15 +1205,15 @@ const docTemplate = `{
                         "headers": {
                             "X-RateLimit-Limit": {
                                 "type": "integer",
-                                "description": "Maximum requests per rate-limit window"
+                                "description": "Maximum requests per IP window"
                             },
                             "X-RateLimit-Remaining": {
                                 "type": "integer",
-                                "description": "Requests remaining in the rate-limit window"
+                                "description": "Requests remaining in the IP window"
                             },
                             "X-RateLimit-Reset": {
                                 "type": "integer",
-                                "description": "Seconds until the rate-limit window resets"
+                                "description": "Seconds until the IP window resets"
                             },
                             "X-Request-ID": {
                                 "type": "string",
@@ -1145,15 +1229,15 @@ const docTemplate = `{
                         "headers": {
                             "X-RateLimit-Limit": {
                                 "type": "integer",
-                                "description": "Maximum requests per rate-limit window"
+                                "description": "Maximum requests per IP window"
                             },
                             "X-RateLimit-Remaining": {
                                 "type": "integer",
-                                "description": "Requests remaining in the rate-limit window"
+                                "description": "Requests remaining in the IP window"
                             },
                             "X-RateLimit-Reset": {
                                 "type": "integer",
-                                "description": "Seconds until the rate-limit window resets"
+                                "description": "Seconds until the IP window resets"
                             },
                             "X-Request-ID": {
                                 "type": "string",
@@ -1213,15 +1297,15 @@ const docTemplate = `{
                         "headers": {
                             "X-RateLimit-Limit": {
                                 "type": "integer",
-                                "description": "Maximum requests per rate-limit window"
+                                "description": "Maximum requests per IP window"
                             },
                             "X-RateLimit-Remaining": {
                                 "type": "integer",
-                                "description": "Requests remaining in the rate-limit window"
+                                "description": "Requests remaining in the IP window"
                             },
                             "X-RateLimit-Reset": {
                                 "type": "integer",
-                                "description": "Seconds until the rate-limit window resets"
+                                "description": "Seconds until the IP window resets"
                             },
                             "X-Request-ID": {
                                 "type": "string",
@@ -1237,15 +1321,15 @@ const docTemplate = `{
                         "headers": {
                             "X-RateLimit-Limit": {
                                 "type": "integer",
-                                "description": "Maximum requests per rate-limit window"
+                                "description": "Maximum requests per IP window"
                             },
                             "X-RateLimit-Remaining": {
                                 "type": "integer",
-                                "description": "Requests remaining in the rate-limit window"
+                                "description": "Requests remaining in the IP window"
                             },
                             "X-RateLimit-Reset": {
                                 "type": "integer",
-                                "description": "Seconds until the rate-limit window resets"
+                                "description": "Seconds until the IP window resets"
                             },
                             "X-Request-ID": {
                                 "type": "string",
@@ -1254,7 +1338,7 @@ const docTemplate = `{
                         }
                     },
                     "429": {
-                        "description": "Too Many Requests",
+                        "description": "IP or tenant rate limit exceeded",
                         "schema": {
                             "$ref": "#/definitions/domain.ErrorResponse"
                         },
@@ -1262,6 +1346,18 @@ const docTemplate = `{
                             "Retry-After": {
                                 "type": "integer",
                                 "description": "Seconds to wait before retrying"
+                            },
+                            "X-RateLimit-Limit": {
+                                "type": "integer",
+                                "description": "Maximum requests per IP window"
+                            },
+                            "X-RateLimit-Remaining": {
+                                "type": "integer",
+                                "description": "Requests remaining in the IP window"
+                            },
+                            "X-RateLimit-Reset": {
+                                "type": "integer",
+                                "description": "Seconds until the IP window resets"
                             },
                             "X-Request-ID": {
                                 "type": "string",
@@ -1302,6 +1398,18 @@ const docTemplate = `{
                             "Retry-After": {
                                 "type": "integer",
                                 "description": "Seconds to wait before retrying"
+                            },
+                            "X-RateLimit-Limit": {
+                                "type": "integer",
+                                "description": "Maximum requests per IP window"
+                            },
+                            "X-RateLimit-Remaining": {
+                                "type": "integer",
+                                "description": "Requests remaining in the IP window"
+                            },
+                            "X-RateLimit-Reset": {
+                                "type": "integer",
+                                "description": "Seconds until the IP window resets"
                             },
                             "X-Request-ID": {
                                 "type": "string",

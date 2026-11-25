@@ -125,7 +125,7 @@ func (v *Verifier) verifyClaims(payload []byte, requiredScopes []string) (Princi
 	}
 	tenant := stringValue(claims[v.claims.tenant])
 	caller := v.claims.caller(claims)
-	if !identifier(tenant, maxIdentityBytes) || !identifier(caller, maxIdentityBytes) {
+	if !ValidTenant(tenant) || !identifier(caller, maxIdentityBytes) {
 		return Principal{}, ErrInvalidToken
 	}
 	scopes := tokenScopes(claims[v.claims.scope])
@@ -219,6 +219,9 @@ func stringValue(raw jsontext.Value) string {
 	}
 	return value
 }
+
+// ValidTenant reports whether a value can identify a tenant in a verified claim.
+func ValidTenant(value string) bool { return identifier(value, maxIdentityBytes) }
 
 func identifier(value string, maxBytes int) bool {
 	if len(value) == 0 || len(value) > maxBytes {

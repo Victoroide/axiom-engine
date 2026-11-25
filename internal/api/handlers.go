@@ -73,7 +73,7 @@ func (h *Handler) RegisterRoutes(app *fiber.App, replay fiber.Handler) {
 // @Failure 413 {object} domain.ErrorResponse
 // @Failure 415 {object} domain.ErrorResponse
 // @Failure 422 {object} domain.ErrorResponse "Unknown curriculum topic, curriculum_context_too_large or idempotency key mismatch"
-// @Failure 429 {object} domain.ErrorResponse
+// @Failure 429 {object} domain.ErrorResponse "IP or tenant rate limit exceeded"
 // @Failure 502 {object} domain.ErrorResponse "Upstream failure or no usable item for a requested topic"
 // @Failure 503 {object} domain.ErrorResponse "Temporary unavailability, upstream throttling or server shutdown"
 // @Header 503 {integer} Retry-After "Seconds to wait before retrying"
@@ -83,9 +83,9 @@ func (h *Handler) RegisterRoutes(app *fiber.App, replay fiber.Handler) {
 // @Failure 503 {object} domain.ErrorResponse "Temporary unavailability, shared storage failure, upstream throttling or server shutdown"
 // @Header 503 {integer} Retry-After "Seconds to wait before retrying"
 // @Header all {string} X-Request-ID "Resolved request correlation identifier"
-// @Header 200,400,409,413,415,422,502,503,504 {integer} X-RateLimit-Limit "Maximum requests per rate-limit window"
-// @Header 200,400,409,413,415,422,502,503,504 {integer} X-RateLimit-Remaining "Requests remaining in the rate-limit window"
-// @Header 200,400,409,413,415,422,502,503,504 {integer} X-RateLimit-Reset "Seconds until the rate-limit window resets"
+// @Header 200,400,409,413,415,422,429,502,503,504 {integer} X-RateLimit-Limit "Maximum requests per IP window"
+// @Header 200,400,409,413,415,422,429,502,503,504 {integer} X-RateLimit-Remaining "Requests remaining in the IP window"
+// @Header 200,400,409,413,415,422,429,502,503,504 {integer} X-RateLimit-Reset "Seconds until the IP window resets"
 // @Header 429 {integer} Retry-After "Seconds to wait before retrying"
 // @Router /api/v1/adaptive-plan [post]
 func (h *Handler) handleAdaptivePlan(c fiber.Ctx) error {
@@ -167,15 +167,15 @@ func validationResponse(c fiber.Ctx, err *service.ValidationError) error {
 // @Failure 408 {object} domain.ErrorResponse "Request not read within the 10 s read timeout"
 // @Failure 413 {object} domain.ErrorResponse "Request body exceeds 64 KiB"
 // @Failure 422 {object} domain.ErrorResponse
-// @Failure 429 {object} domain.ErrorResponse
+// @Failure 429 {object} domain.ErrorResponse "IP or tenant rate limit exceeded"
 // @Failure 431 {object} domain.ErrorResponse "Request headers exceed the server limit"
 // @Failure 500 {object} domain.ErrorResponse
 // @Failure 503 {object} domain.ErrorResponse "Shared storage unavailable or server shutdown"
 // @Header 503 {integer} Retry-After "Seconds to wait before retrying"
 // @Header all {string} X-Request-ID "Resolved request correlation identifier"
-// @Header 200,400,413,422 {integer} X-RateLimit-Limit "Maximum requests per rate-limit window"
-// @Header 200,400,413,422 {integer} X-RateLimit-Remaining "Requests remaining in the rate-limit window"
-// @Header 200,400,413,422 {integer} X-RateLimit-Reset "Seconds until the rate-limit window resets"
+// @Header 200,400,413,422,429,503 {integer} X-RateLimit-Limit "Maximum requests per IP window"
+// @Header 200,400,413,422,429,503 {integer} X-RateLimit-Remaining "Requests remaining in the IP window"
+// @Header 200,400,413,422,429,503 {integer} X-RateLimit-Reset "Seconds until the IP window resets"
 // @Header 429 {integer} Retry-After "Seconds to wait before retrying"
 // @Router /api/v1/tutor/student/{student_id}/cognitive-graph [get]
 func (h *Handler) handleCognitiveGraph(c fiber.Ctx) error {

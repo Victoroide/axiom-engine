@@ -17,6 +17,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Add `BEDROCK_REQUIRE_EXPLICIT_REGION=true` to require a valid `AWS_REGION` at HTTP and MCP startup and use it for every Bedrock request.
 - Reload a local curriculum on `SIGHUP` with `GRAPH_RELOAD_ENABLED=true`. In-flight HTTP and MCP calls finish on their pinned revision, and a failed replacement keeps the last valid curriculum serving.
 - Add opt-in `AXIOM_AUTH_MODE=verified` for signed HTTP access tokens, route scopes, and JSON response replay isolated by issuer, tenant and caller.
+- Add opt-in Redis quotas for verified tenants, shared across replicas and applied after the IP limit.
 
 ## [0.1.1] - 2026-11-24
 

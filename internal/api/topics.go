@@ -25,15 +25,15 @@ import (
 // @Header 401,403 {string} WWW-Authenticate "Bearer challenge in verified mode"
 // @Failure 408 {object} domain.ErrorResponse
 // @Failure 413 {object} domain.ErrorResponse
-// @Failure 429 {object} domain.ErrorResponse
+// @Failure 429 {object} domain.ErrorResponse "IP or tenant rate limit exceeded"
 // @Failure 431 {object} domain.ErrorResponse
 // @Failure 500 {object} domain.ErrorResponse
 // @Failure 503 {object} domain.ErrorResponse "Shared storage unavailable or server shutdown"
 // @Header 503 {integer} Retry-After "Seconds to wait before retrying"
 // @Header all {string} X-Request-ID "Resolved request correlation identifier"
-// @Header 200,413 {integer} X-RateLimit-Limit "Maximum requests per rate-limit window"
-// @Header 200,413 {integer} X-RateLimit-Remaining "Requests remaining in the rate-limit window"
-// @Header 200,413 {integer} X-RateLimit-Reset "Seconds until the rate-limit window resets"
+// @Header 200,413,429,503 {integer} X-RateLimit-Limit "Maximum requests per IP window"
+// @Header 200,413,429,503 {integer} X-RateLimit-Remaining "Requests remaining in the IP window"
+// @Header 200,413,429,503 {integer} X-RateLimit-Reset "Seconds until the IP window resets"
 // @Header 429 {integer} Retry-After "Seconds to wait before retrying"
 // @Router /api/v1/topics [get]
 func (h *Handler) handleTopics(c fiber.Ctx) error {
@@ -56,15 +56,15 @@ func (h *Handler) handleTopics(c fiber.Ctx) error {
 // @Failure 408 {object} domain.ErrorResponse
 // @Failure 413 {object} domain.ErrorResponse
 // @Failure 422 {object} domain.ErrorResponse
-// @Failure 429 {object} domain.ErrorResponse
+// @Failure 429 {object} domain.ErrorResponse "IP or tenant rate limit exceeded"
 // @Failure 431 {object} domain.ErrorResponse
 // @Failure 500 {object} domain.ErrorResponse
 // @Failure 503 {object} domain.ErrorResponse "Shared storage unavailable or server shutdown"
 // @Header 503 {integer} Retry-After "Seconds to wait before retrying"
 // @Header all {string} X-Request-ID "Resolved request correlation identifier"
-// @Header 200,413,422 {integer} X-RateLimit-Limit "Maximum requests per rate-limit window"
-// @Header 200,413,422 {integer} X-RateLimit-Remaining "Requests remaining in the rate-limit window"
-// @Header 200,413,422 {integer} X-RateLimit-Reset "Seconds until the rate-limit window resets"
+// @Header 200,413,422,429,503 {integer} X-RateLimit-Limit "Maximum requests per IP window"
+// @Header 200,413,422,429,503 {integer} X-RateLimit-Remaining "Requests remaining in the IP window"
+// @Header 200,413,422,429,503 {integer} X-RateLimit-Reset "Seconds until the IP window resets"
 // @Header 429 {integer} Retry-After "Seconds to wait before retrying"
 // @Router /api/v1/topics/{topic}/path [get]
 func (h *Handler) handleTopicPath(c fiber.Ctx) error {

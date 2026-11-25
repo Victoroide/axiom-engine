@@ -24,7 +24,6 @@ import (
 	"github.com/gofiber/fiber/v3/middleware/limiter"
 	"github.com/gofiber/fiber/v3/middleware/recover"
 	"github.com/gofiber/fiber/v3/middleware/requestid"
-	redisstorage "github.com/gofiber/storage/redis/v3"
 	"github.com/google/uuid"
 	"github.com/valyala/fasthttp"
 
@@ -82,13 +81,13 @@ func New(cfg config.Config, deps Dependencies) *fiber.App {
 
 // NewWithError constructs an application after checking optional shared storage.
 func NewWithError(cfg config.Config, deps Dependencies) (*fiber.App, error) {
-	shared, err := openRedis(cfg.Redis)
-	if err != nil {
-		return nil, err
-	}
 	logger := deps.Logger
 	if logger == nil {
 		logger = slog.Default()
+	}
+	admission, err := NewRedisAdmission(cfg, logger)
+	if err != nil {
+		return nil, err
 	}
 	var recorder *metrics.Metrics
 	if cfg.MetricsEnabled {
@@ -107,10 +106,10 @@ func NewWithError(cfg config.Config, deps Dependencies) (*fiber.App, error) {
 	if recorder != nil {
 		app.Get("/metrics", adaptor.HTTPHandler(recorder.Handler()))
 	}
-	registerAPI(app, cfg, deps, logger, recorder, shared)
+	registerAPI(app, cfg, deps, logger, recorder, admission)
 	wrapHTTPHandler(app, logger, errorHandler, recorder, cfg.Tracing.Enabled || cfg.LangSmith.Enabled, cfg.VerifiedAuth != nil)
-	if shared != nil {
-		app.Hooks().OnPostShutdown(func(_ error) error { _ = shared.Close(); return shared.Conn().Close() })
+	if admission != nil {
+		app.Hooks().OnPostShutdown(func(_ error) error { return admission.Close() })
 	}
 	return app, nil
 }
@@ -323,7 +322,7 @@ func registerPublicRoutes(app *fiber.App, cfg config.Config) {
 	app.Get("/swagger/*", swaggo.New(swaggo.Config{Title: "AxiomEngine API", ValidatorUrl: "none"}))
 }
 
-func registerAPI(app *fiber.App, cfg config.Config, deps Dependencies, logger *slog.Logger, recorder *metrics.Metrics, shared *redisstorage.Storage) {
+func registerAPI(app *fiber.App, cfg config.Config, deps Dependencies, logger *slog.Logger, recorder *metrics.Metrics, admission *RedisAdmission) {
 	if cfg.AuthDisabled {
 		logger.Warn("auth.disabled")
 	} else if cfg.VerifiedAuth == nil {
@@ -332,12 +331,15 @@ func registerAPI(app *fiber.App, cfg config.Config, deps Dependencies, logger *s
 	limitConfig := limiter.Config{Max: cfg.RateLimitMax, Expiration: cfg.RateLimitWindow, LimiterMiddleware: limiter.SlidingWindow{}, KeyGenerator: rateLimitKey, LimitReached: func(c fiber.Ctx) error {
 		return c.Status(fiber.StatusTooManyRequests).JSON(domain.ErrorResponse{Error: "rate_limit_exceeded", Details: "too many requests"})
 	}}
-	if shared != nil {
-		limitConfig.Storage = shared
-		limitConfig.LimiterMiddleware = redisWindow{storage: shared, logger: logger}
+	if admission != nil {
+		limitConfig.Storage = admission.storage
+		limitConfig.LimiterMiddleware = admission.redisWindow
 	}
 	limit := limiter.New(limitConfig)
 	verified := verifiedAccess{verifier: cfg.VerifiedAuth, limit: limit}
+	if cfg.TenantQuota != nil {
+		verified.admission = admission
+	}
 	if cfg.VerifiedAuth == nil {
 		app.Use("/api/v1", limit)
 	} else {
@@ -355,8 +357,8 @@ func registerAPI(app *fiber.App, cfg config.Config, deps Dependencies, logger *s
 	var replay fiber.Handler
 	if cfg.Idempotency.TTL > 0 {
 		var store idempotency.Store = idempotency.NewMemory(cfg.Idempotency.TTL, cfg.Idempotency.MaxEntries)
-		if shared != nil {
-			store = idempotency.NewRedis(shared.Conn(), cfg.Idempotency.TTL, cfg.RequestTimeout+3*time.Second)
+		if admission != nil {
+			store = idempotency.NewRedis(admission.storage.Conn(), cfg.Idempotency.TTL, cfg.RequestTimeout+3*time.Second)
 		}
 		replay = api.Idempotency(store, replayNamespace(cfg), logger)
 	}
@@ -453,7 +455,10 @@ func newErrorHandler(logger *slog.Logger) fiber.ErrorHandler {
 }
 
 func rateLimitKey(c fiber.Ctx) string {
-	ip := c.IP()
+	return normalizeRateLimitIP(c.IP())
+}
+
+func normalizeRateLimitIP(ip string) string {
 	address, err := netip.ParseAddr(ip)
 	if err != nil {
 		return ip

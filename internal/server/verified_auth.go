@@ -35,9 +35,10 @@ func nativeCredentialTrailer(headers *fasthttp.RequestHeader) bool {
 }
 
 type verifiedAccess struct {
-	verifier *auth.Verifier
-	limit    fiber.Handler
-	routes   []fiber.Route
+	verifier  *auth.Verifier
+	limit     fiber.Handler
+	admission *RedisAdmission
+	routes    []fiber.Route
 }
 
 func (a *verifiedAccess) authorize(c fiber.Ctx) error {
@@ -59,7 +60,7 @@ func (a *verifiedAccess) authorize(c fiber.Ctx) error {
 		if err != nil || ctx.Err() != nil {
 			return c.Next()
 		}
-		return a.limit(c)
+		return a.admit(c, principal, true)
 	}
 	switch {
 	case ctx.Err() != nil:
@@ -74,7 +75,28 @@ func (a *verifiedAccess) authorize(c fiber.Ctx) error {
 	if len(c.Request().Header.PeekAll("Idempotency-Key")) != 0 {
 		c.Locals(verifiedReplayKey{}, verifiedNamespace(principal))
 	}
-	return a.limit(c)
+	return a.admit(c, principal, false)
+}
+
+func (a *verifiedAccess) admit(c fiber.Ctx, principal auth.Principal, parserError bool) error {
+	if a.admission == nil {
+		return a.limit(c)
+	}
+	decision := a.admission.Admit(c.Context(), c.IP(), principal)
+	if parserError {
+		decision.RetryAfter = 0
+		decision.writeHeaders(c)
+		return c.Next()
+	}
+	decision.writeHeaders(c)
+	switch decision.Status {
+	case fiber.StatusTooManyRequests:
+		return c.Status(fiber.StatusTooManyRequests).JSON(domain.ErrorResponse{Error: "rate_limit_exceeded", Details: "too many requests"})
+	case fiber.StatusServiceUnavailable:
+		return unavailableAdmission(c)
+	default:
+		return c.Next()
+	}
 }
 
 func (a *verifiedAccess) rejectedOperation(c fiber.Ctx) *fiber.Route {
@@ -105,13 +127,20 @@ func verifiedBearer(c fiber.Ctx) string {
 }
 
 func verifiedNamespace(principal auth.Principal) string {
-	issuer, tenant, caller := principal.Issuer(), principal.Tenant(), principal.Caller()
-	framed := make([]byte, 0, 3*8+len(issuer)+len(tenant)+len(caller))
-	for _, value := range [...]string{issuer, tenant, caller} {
+	return fmt.Sprintf("verified-v1:%x", identityDigest(principal.Issuer(), principal.Tenant(), principal.Caller()))
+}
+
+func identityDigest(values ...string) [sha256.Size]byte {
+	size := 8 * len(values)
+	for _, value := range values {
+		size += len(value)
+	}
+	framed := make([]byte, 0, size)
+	for _, value := range values {
 		framed = binary.BigEndian.AppendUint64(framed, uint64(len(value)))
 		framed = append(framed, value...)
 	}
-	return fmt.Sprintf("verified-v1:%x", sha256.Sum256(framed))
+	return sha256.Sum256(framed)
 }
 
 func replayNamespace(cfg config.Config) func(fiber.Ctx) string {

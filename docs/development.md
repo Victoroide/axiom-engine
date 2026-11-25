@@ -224,6 +224,15 @@ Run the signed-token and key refresh tests with `go test -race ./internal/auth/.
 
 The HTTP replay suite runs with memory and miniredis by default. Set `AXIOM_TEST_REDIS_URL` to a dedicated test Redis instance when running `make test` to exercise the same cases across replicas on Redis.
 
+The tenant quota integration tests require an exclusive disposable Redis instance. They use Redis server time and pause the instance briefly to exercise outage handling. Run the latency benchmark when the host can sustain the target rate. It sends 10 warm-up requests per mode, then runs three repetitions of 100 requests per mode against the same Redis instance. Each mode runs separately at 100 requests/s and finishes before the next mode begins. The starting mode alternates by repetition. The benchmark checks that each mode's achieved request rate is within 5% of the target.
+
+```sh
+export AXIOM_TEST_REDIS_URL=redis://127.0.0.1:6379
+go test -tags=integration -race ./test/contract -run TenantQuota -v
+go test -tags=integration -race ./test/contract -run '^$' \
+  -bench '^BenchmarkTenantQuotaLatency$' -benchtime=1x -v
+```
+
 ## Test layers
 
 ### Unit tests
