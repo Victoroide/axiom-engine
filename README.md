@@ -489,14 +489,10 @@ For client configuration examples, tool schemas, and container execution details
 - **Bedrock region resolution**. Set `BEDROCK_REQUIRE_EXPLICIT_REGION=true` to validate `AWS_REGION` at startup and use it for every Bedrock call until the process restarts. In default mode, each Bedrock call resolves the region from the environment, the selected AWS profile or EC2 instance metadata, so a changed source can change the region for later calls. See [Region Resolution](docs/configuration.md#region-resolution).
 - **Resource Link Reachability**: Recommended resource URLs are not checked for network reachability by default. Setting `RESOURCE_LINK_CHECK=true` enables outbound HTTP reachability checks that verify URLs and drop non-resolving or refused resources before returning plans.
 - **Curriculum updates** follow the process lifecycle by default. For a local `GRAPH_FILE`, operators can opt into `SIGHUP` reloads and activate each replica separately. [Curriculum rollout](docs/operations.md#curriculum-rollout)
-- **MCP transport scope.** `axiom-server mcp` serves local clients over `stdio`. The stateless Streamable HTTP handler is available for in-process use. Network exposure awaits remote authorization and admission controls.
+- **MCP transport scope.** `axiom-server mcp` serves local clients over `stdio`. `axiom-server mcp-http` serves authenticated remote callers over TLS and requires verified tokens, a Redis tenant quota and its own resource audience. The ordinary HTTP server opens no MCP listener. See [Remote endpoint](docs/mcp.md#remote-endpoint).
 - **Scorecard Governance**: Repository OpenSSF Scorecard branch protection scores reflect a single-maintainer project with zero required external approvals.
 
 For diagnostic procedures and operational troubleshooting, refer to the [Operations Runbook](docs/operations.md).
-
-## Roadmap
-
-- Authenticated remote access to the Model Context Protocol server over Streamable HTTP.
 
 ## Documentation
 
@@ -506,7 +502,7 @@ For diagnostic procedures and operational troubleshooting, refer to the [Operati
 | [API Reference](docs/api.md) | Authentication schemes, common headers, error envelopes, and endpoint specifications |
 | [Configuration](docs/configuration.md) | Exhaustive environment variable table and AWS credential resolution mechanics |
 | [Knowledge Graph](docs/knowledge-graph.md) | Subject-Relation-Object data model, relation semantics, seed graph, file schemas, and shadow computation |
-| [Model Context Protocol](docs/mcp.md) | Stdio MCP server setup, client configuration, tool specifications, error handling, and testing |
+| [Model Context Protocol](docs/mcp.md) | Stdio and remote MCP setup, client configuration, tool specifications, error handling, and testing |
 | [Deployment](docs/deployment.md) | Multi-stage Docker build, non-root execution, compose configuration, and operating instructions |
 | [Development](docs/development.md) | Prerequisites, make targets, BAML and Swagger generation, and test suite execution |
 | [Operations Runbook](docs/operations.md) | Diagnostic runbooks for open breakers, throttling, credential errors, native library panics, and production metrics |

@@ -34,6 +34,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Security
 
 - Update `github.com/klauspost/compress` to v1.20.2 in the developer tools module to fix GO-2026-6865.
+- Add the opt-in `axiom-server mcp-http` command, which serves the four MCP tools over TLS with verified tokens for its own resource audience (`MCP_PUBLIC_URL`), protected resource metadata, exact allowed origins, per-tool scopes, and the shared IP and tenant quotas. The ordinary HTTP server and `axiom-server mcp` open no remote listener and behave as before.
 
 ## [0.1.1] - 2026-11-24
 
