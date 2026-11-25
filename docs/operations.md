@@ -100,7 +100,7 @@ To enforce a lower fleet-wide ceiling, use a shared outbound gateway that limits
 
 ## HTTP Rate-Limit Storage
 
-The `/api/v1` routes apply a sliding-window budget per client IP after authentication. With verified authentication and tenant quotas enabled, the IP layer admits the request before the issuer-and-tenant layer charges it. Redis shares both budgets across replicas. Stdio MCP bypasses HTTP rate limiting.
+The `/api/v1` routes apply a sliding-window budget per client IP after authentication. With verified authentication and tenant quotas enabled, the IP layer admits the request before the issuer-and-tenant layer charges it. Redis shares both budgets across replicas. Stdio MCP bypasses HTTP rate limiting. The [remote MCP endpoint](#remote-mcp-endpoint) uses the same IP and tenant budgets.
 
 If Redis cannot make a rate-limit decision, the API returns HTTP 503 `service_unavailable` with `Retry-After: 1` before dispatch. Look for `storage.failed` with `operation=rate_limit.consume` or `operation=tenant_quota.consume`. Local health probes can still succeed during the outage. [Replicas and shared storage](deployment.md#replicas-and-shared-storage)
 
@@ -108,7 +108,7 @@ If Redis cannot make a rate-limit decision, the API returns HTTP 503 `service_un
 
 ## Curriculum Rollout
 
-Set `GRAPH_RELOAD_ENABLED=true` and point `GRAPH_FILE` at a readable local regular file before starting each HTTP or stdio MCP replica. This is supported on Linux and macOS. Set `LOG_LEVEL=info` or `debug` to see the active revision during rollout. HTTP writes logs to stdout and stdio MCP writes them to stderr.
+Set `GRAPH_RELOAD_ENABLED=true` and point `GRAPH_FILE` at a readable local regular file before starting each HTTP or MCP replica. This is supported on Linux and macOS. Set `LOG_LEVEL=info` or `debug` to see the active revision during rollout. HTTP and remote MCP write logs to stdout. Stdio MCP writes them to stderr.
 
 1. Stage the replacement beside `GRAPH_FILE` on the same filesystem and make it readable by the serving process. Run `axiom-server validate-graph <staged-file>` and record the SHA-256 of the staged file. Retain the preceding file for rollback.
 2. Atomically rename the staged file over `GRAPH_FILE`. Distribute the same bytes and send `kill -HUP <pid>` to **each** enabled replica after its file is in place. Operators or the deployment system own both steps.
@@ -177,6 +177,25 @@ Use `axiom-server-launch` for extracted archives. It disables the public and int
 Use the startup record's `auth` field to confirm the HTTP mode. Shared mode reports `token` or `token+previous`. Verified mode reports `verified`. [Shared-token rotation](deployment.md#token-rotation) · [Verified access tokens](deployment.md#verified-access-tokens)
 
 For a verified HTTP 401, check that the client sends one Bearer header, that the issuer and audience match the configured values, and that the key ID, signing algorithm and expiration are valid. Confirm the service can reach the configured key set over HTTPS. A 403 indicates a verified access token that lacks the operation's required scope. [Route scopes](api.md#verified-mode)
+
+---
+
+## Remote MCP endpoint
+
+`axiom-server mcp-http` writes JSON records to standard output. `mcp.listening` confirms the bound address, `mcp.access` records each request and `server.failed` names a setting that stopped startup. An access record holds the request ID, HTTP method, route (`/mcp`, `metadata` or `unmatched`), status, duration, client IP and, once a request is authorized, `rpc_method` and `tool`. It never holds tokens, issuer, tenant or caller values.
+
+| Status | Meaning and first check |
+|---|---|
+| 401 with `Bearer resource_metadata=...` | No usable bearer token. Confirm the client sends one `Authorization: Bearer` header and no `X-Internal-Token`. |
+| 401 with `error="invalid_token"` | The token failed verification. Check that its audience is exactly `MCP_PUBLIC_URL` and not the API audience, then the issuer, key ID, algorithm and expiry. [HTTP authentication](#http-authentication) |
+| 403 `insufficient_scope` | The token lacks the scope named in the challenge. A discovery or listing request needs `graph:read` or `plan:generate`. |
+| 403 `forbidden` | The `Host` is not the public authority, or the `Origin` is repeated or missing from `MCP_ALLOWED_ORIGINS`. |
+| 400 with a JSON-RPC error | A header disagrees with the body, the protocol version is unsupported, or the method or tool is not served. |
+| 413, 408 | The body exceeds 4 MiB or did not arrive within the read timeout. |
+| 429 | The client IP or the issuer and tenant budget is spent. A tenant denial carries `X-RateLimit-*` headers for the IP budget. See [HTTP Rate-Limit Storage](#http-rate-limit-storage). |
+| 503 | Redis could not decide (`storage.failed`), or the process is draining. Retry after `Retry-After`. |
+
+Requests rejected before they are authorized, such as bad credentials, a missing scope or an unknown tool, use no quota. Every authorized operation uses the IP budget and each tool invocation also uses one tenant unit. HTTP API and MCP requests from one tenant share that unit. The listener has no readiness route; use the metadata URL.
 
 ---
 

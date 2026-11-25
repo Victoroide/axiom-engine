@@ -223,7 +223,7 @@ Key fetches use the configured URL directly and discard redirects. The verifier 
 
 Run the signed-token and key refresh tests with `go test -race ./internal/auth/...`. With Go and the dependencies installed, the suite runs offline using local TLS fixtures.
 
-The HTTP replay suite runs with memory and miniredis by default. Set `AXIOM_TEST_REDIS_URL` to a dedicated test Redis instance when running `make test` to exercise the same cases across replicas on Redis.
+The HTTP replay suite runs with memory and Miniredis by default. The concurrent MCP quota test runs with Miniredis by default. Set `AXIOM_TEST_REDIS_URL` to a dedicated test Redis instance when running `make test` to exercise both suites across replicas on Redis.
 
 The tenant quota integration tests require an exclusive disposable Redis instance. They use Redis server time and pause the instance briefly to exercise outage handling. Run the latency benchmark when the host can sustain the target rate. It sends 10 warm-up requests per mode, then runs three repetitions of 100 requests per mode against the same Redis instance. Each mode runs separately at 100 requests/s and finishes before the next mode begins. The starting mode alternates by repetition. The benchmark checks that each mode's achieved request rate is within 5% of the target.
 
@@ -411,6 +411,16 @@ CI requires runner-provided `google-chrome`, prints its version, and exports its
 
 Optional `E2E_ARTIFACTS_DIR` has no default: when unset no files are saved; when set, a failed browser test saves `page.png` and `page.html` there before closing the page and browser. The directory is created with 0750 permissions and files with 0600.
 
+### Remote MCP tests
+
+The remote endpoint has three layers of tests, all offline. `internal/mcpserver` tests the handler with a recording gate: authentication before the body, header checks before authorization, scope and tool allow-lists, the origin policy at the listener and SDK layers, request deadlines, bounded body reads and drain. `internal/server` starts real TLS listeners with a local HTTPS issuer, Miniredis and a synthetic provider, then exercises them with raw requests and the official Go SDK client. The SDK client finds the issuer through the challenge and resource metadata and requests a token for the exact resource. Cases cover wrong audiences, key rotation, scopes, `Origin` and `Host`, unsupported protocol versions, quota shared across two instances and with the HTTP API, graph tools beside a waiting model call, isolated cancellation, stalled output, shutdown and log privacy. `cmd/server` runs the real command to check that bad settings fail before binding and that the ordinary commands open no MCP port.
+
+```sh
+go test -race -count=1 ./internal/mcpserver ./internal/server ./cmd/server ./test/mcpfixture/...
+```
+
+`test/mcpfixture` supplies the issuer, Redis and tokens to `make container-smoke`, which runs `mcp-http` in the image over TLS. The smoke test trusts the fixture certificate through `SSL_CERT_FILE`, which Go honors on Linux.
+
 ### Container smoke test
 
 The container smoke test script `scripts/container-smoke.sh` exercises the runtime container image against a local stubbed Bedrock endpoint:
@@ -440,10 +450,11 @@ For both image variants, the smoke test checks that the server entrypoint is the
 10. Starts the stub in `throttle` mode, launches a fresh container, and sends an authenticated plan request to assert HTTP 503 `service_unavailable` with header `Retry-After: 5`.
 11. Stops the container and verifies clean shutdown and structured JSON log privacy.
 12. Starts the container configured with `GRAPH_FILE=/usr/share/axiom-engine/graphs/computer-science.json`, confirms that it serves 130 topics (including `SQL` and `TCP`), generates a plan, stops the container, and verifies clean shutdown and private JSON logs.
+13. Checks that the image exposes only port 8080. Compiles `test/mcpfixture/cmd/mcpfixture`, which serves a local HTTPS issuer, Miniredis and synthetic tokens. Starts the image as `mcp-http` on a temporary container network with a fixed address, the fixture certificate trusted through `SSL_CERT_FILE`, a tenant quota of three and no health check. Confirms the resource metadata, the 401 challenge, rejection of an API-audience token, tool discovery, rejection of a foreign `Origin` and of a token without the needed scope, a plan and two graph calls, an HTTP 429 with `Retry-After` for the fourth tool call, a clean `docker stop` exit, and logs that hold no token, tenant or caller values.
 
 All temporary files, fixture processes, and test containers are cleaned up on completion or failure.
 
-Every failed check stops the script with `container smoke: <reason>`. `make container-smoke-test IMAGE=<image>` builds two derived images, one running as root and one killed on stop, and checks that the smoke test rejects them with `container smoke: configured user is 0:0` and `container smoke: stop exit code is 137`. The derived images are removed afterwards. Both scripts need Go, Docker with `host-gateway` support, curl and Python 3.
+Every failed check stops the script with `container smoke: <reason>`. `make container-smoke-test IMAGE=<image>` builds two derived images, one running as root and one killed on stop, and checks that the smoke test rejects them with `container smoke: configured user is 0:0` and `container smoke: stop exit code is 137`. The derived images are removed afterwards. Both scripts need Go, Docker with `host-gateway` support and user-defined networks, curl and Python 3.
 
 ### Release archives
 

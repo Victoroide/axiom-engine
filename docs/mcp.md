@@ -1,6 +1,6 @@
 # Model Context Protocol (MCP)
 
-AxiomEngine provides a Model Context Protocol (MCP) server running over standard input and output (`stdio`). This allows MCP-compliant clients and developer tools to inspect curriculum structures and generate adaptive study plans directly without intermediate HTTP requests.
+AxiomEngine provides a Model Context Protocol (MCP) server running over standard input and output (`stdio`). This allows MCP-compliant clients and developer tools to inspect curriculum structures and generate adaptive study plans directly without intermediate HTTP requests. An opt-in command serves the same tools to authenticated remote callers over HTTPS (see [Remote endpoint](#remote-endpoint)).
 
 ---
 
@@ -20,7 +20,7 @@ For a source build, copy `scripts/axiom-server-launch` beside the built `axiom-s
 - **Standard Output (`stdout`)**: Dedicated exclusively to JSON-RPC protocol frames.
 - **Standard Error (`stderr`)**: Dedicated to structured JSON logging via `log/slog`.
 - **Implementation Identification**: Server name `axiom-engine`. Version is determined from runtime build information (`debug.ReadBuildInfo()`), defaulting to `dev` for local unversioned builds.
-- **Trust boundary**. The process launching `axiom-server mcp` serves as the trust boundary. Stdio ignores HTTP authentication settings.
+- **Trust boundary**. The process launching `axiom-server mcp` serves as the trust boundary. Stdio ignores HTTP authentication settings and the [remote endpoint settings](#remote-endpoint).
 - **Backend Services**: Tool calls use the bounded reasoning pipeline and curriculum graph implementation shared with the HTTP API. The MCP process shares its own concurrency limits and circuit breaker across tool calls. With `GRAPH_RELOAD_ENABLED=true`, a `SIGHUP` to that process activates a validated replacement for subsequent tool calls. Reload records go to stderr. [Curriculum rollout](operations.md#curriculum-rollout)
 
 ### Shutdown Lifecycle
@@ -41,6 +41,49 @@ Reuse one handler across requests to share the `LLM_MAX_CONCURRENCY` limit and `
 Hosts that manage a live curriculum can use `NewStreamableHTTPHandlerWithCurriculum` to share its snapshots across the same tool registry.
 
 Response writes use the configured HTTP write timeout (`REQUEST_TIMEOUT + 10s`). Middleware that wraps the response writer must forward `SetWriteDeadline` or provide `Unwrap` so the handler can reach the underlying writer. The handler returns HTTP 500 before dispatch if it cannot set the deadline. [Go `http.ResponseController`](https://pkg.go.dev/net/http#ResponseController)
+
+### Remote endpoint
+
+`axiom-server mcp-http` serves the four tools to remote callers over the stateless Streamable HTTP binding of protocol revision 2026-07-28. The ordinary HTTP server and `axiom-server mcp` never open this listener, and stopping the command withdraws remote access. [MCP Streamable HTTP specification](https://modelcontextprotocol.io/specification/2026-07-28/basic/transports/streamable-http) · [MCP authorization](https://modelcontextprotocol.io/specification/2026-07-28/basic/authorization)
+
+The command checks its settings before it binds. It starts only with verified authentication, an enabled Redis tenant quota, TLS files, a public URL and a successful Redis check. Startup errors for MCP-specific settings name the setting and omit its value. [Remote endpoint settings](configuration.md#remote-mcp-endpoint)
+
+```sh
+export AXIOM_AUTH_MODE=verified AXIOM_AUTH_ISSUER=https://issuer.example/tenant
+export AXIOM_AUTH_AUDIENCE=https://api.example/axiom AXIOM_AUTH_JWKS_URL=https://issuer.example/keys
+export AXIOM_TENANT_QUOTA_ENABLED=true REDIS_URL=redis://redis.internal:6379
+export MCP_PUBLIC_URL=https://mcp.example/mcp MCP_BIND_ADDR=192.0.2.10:8443
+export MCP_TLS_CERT_FILE=/etc/axiom/tls.crt MCP_TLS_KEY_FILE=/etc/axiom/tls.key
+./axiom-server-launch mcp-http
+```
+
+**Resource and audience.** `MCP_PUBLIC_URL` is both the resource identifier and the only accepted token audience. It is an absolute `https` URL with a lowercase host, no credentials, query or fragment, and the fixed path `/mcp`. `AXIOM_AUTH_AUDIENCE` stays the audience of the HTTP API and must differ, so a token issued for one cannot authorize the other. Issuer, key set, algorithms and claim mappings are the HTTP API's.
+
+**Discovery.** `GET /.well-known/oauth-protected-resource/mcp` serves public RFC 9728 metadata with the exact `resource`, the configured issuer in `authorization_servers`, `scopes_supported` (`graph:read`, `plan:generate`) and `bearer_methods_supported` of `header`. A request with no credentials or one unsupported authentication scheme receives HTTP 401 with `WWW-Authenticate: Bearer resource_metadata="<metadata URL>"`. A Bearer token that fails verification receives the same challenge with `error="invalid_token"`. A malformed authorization header receives HTTP 400 with `invalid_request`. A client reads the metadata, requests a token for `resource` from the listed issuer and retries. [RFC 6750 §3.1](https://www.rfc-editor.org/rfc/rfc6750#section-3.1) · [RFC 9728](https://www.rfc-editor.org/rfc/rfc9728)
+
+**Scopes.** Authentication comes first. The server then decodes the request, checks the `Mcp-*` headers against the body and requires a scope for the decoded operation:
+
+| Operation | Required scope |
+|---|---|
+| `server/discover`, `tools/list` | Either `graph:read` or `plan:generate` |
+| `tools/call` for `list_topics`, `get_topic_path`, `get_cognitive_graph` | `graph:read` |
+| `tools/call` for `generate_study_plan` | `plan:generate` |
+
+A caller without a sufficient scope receives HTTP 403 with `WWW-Authenticate: Bearer error="insufficient_scope", scope="<needed scope>", resource_metadata="<metadata URL>"`. Discovery and listing challenges ask for `graph:read`. Any other method or tool name, including `subscriptions/listen`, is refused with a JSON-RPC error before any work or quota use. Only POST is served at `/mcp`. Other methods return HTTP 405.
+
+**Origin and host.** A request without an `Origin` header, as a native client sends, is allowed. A supplied `Origin` must be a single value equal to an entry of `MCP_ALLOWED_ORIGINS` (default: the origin of `MCP_PUBLIC_URL`), or the request receives HTTP 403 before authentication, including requests for metadata. The listener, the protocol handler and the SDK check the same list, and allowed origins receive CORS response headers. A CORS preflight (`OPTIONS` with `Access-Control-Request-Method`) from an allowed origin returns HTTP 204 with the permitted method and headers and cannot invoke a tool. The `Host` header must name the public authority. Forwarded host, scheme and identity headers are ignored. A TLS-terminating proxy can relay to the TLS listener when it sends the expected `Host`.
+
+**Admission.** After the scope check, every operation passes the per-IP budget. Each tool invocation then uses exactly one unit of the issuer-and-tenant budget in the same Redis decision, so HTTP API and MCP requests from one tenant draw on one budget across all replicas. Discovery and listing use only the IP budget. A denial returns HTTP 429 with `Retry-After`; unavailable storage returns HTTP 503 with `Retry-After: 1`. The client IP is the direct peer unless `TRUSTED_PROXIES` lists it. [Shared tenant quotas](configuration.md#shared-tenant-quotas)
+
+**Limits.** Bodies are read after authentication up to 4 MiB under the 10 second read timeout; a stalled body receives HTTP 408. Each authorized request is bounded by `REQUEST_TIMEOUT`, and response writes by `REQUEST_TIMEOUT + 10s`. A client that closes its request cancels only that request's reasoning. The response is JSON unless `Accept` ranks `text/event-stream` above `application/json`. The default Go client sends both with equal preference and receives JSON. Only protocol revision 2026-07-28 is supported; other versions receive an unsupported-version error that lists the supported one.
+
+**Providers.** Model provider credentials stay on the host that runs the command and are never read from the caller.
+
+**Curriculum reload.** With `GRAPH_RELOAD_ENABLED=true`, `SIGHUP` publishes a validated replacement from `GRAPH_FILE` for subsequent tool calls. [Curriculum rollout](operations.md#curriculum-rollout)
+
+**Shutdown.** On the first `SIGINT` or `SIGTERM` the listener stops accepting connections, new tool calls are rejected, and admitted calls drain for `SHUTDOWN_TIMEOUT`. Calls still running one second before that deadline are canceled. A second signal ends the process at once.
+
+**Privacy.** Access logs (`mcp.access`) hold the request ID, HTTP method, route, status, duration, client IP and, for authorized requests, the protocol method and tool name. Logs, errors, Redis keys and prompts never contain tokens or caller, tenant or issuer strings.
 
 ---
 
@@ -175,6 +218,17 @@ docker run --rm -i \
 ```
 
 The container image preconfigures `BAML_LIBRARY_PATH=/app/libbaml_cffi.so`, `BAML_LIBRARY_DISABLE_DOWNLOAD=true`, and `BAML_LOG=off`. Do not pass `-t` (`--tty`), as allocating a TTY corrupts JSON-RPC stream framing.
+
+### Remote endpoint in Docker
+
+The image's default invocation exposes only the HTTP API port. Run the remote endpoint with the `mcp-http` command, mount the certificate and key, bind to the container's address and publish its port. The image's health check probes the HTTP API, so disable it for this command.
+
+```sh
+docker run --rm --no-healthcheck -p 8443:8443 -v /etc/axiom:/etc/axiom:ro \
+  -e MCP_BIND_ADDR=172.20.0.10:8443 -e MCP_PUBLIC_URL=https://mcp.example/mcp \
+  -e MCP_TLS_CERT_FILE=/etc/axiom/tls.crt -e MCP_TLS_KEY_FILE=/etc/axiom/tls.key \
+  --env-file axiom.env --network axiom --ip 172.20.0.10 axiom-engine:local mcp-http
+```
 
 ---
 

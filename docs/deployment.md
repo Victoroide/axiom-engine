@@ -456,6 +456,18 @@ Configure the issuer to issue signed access tokens for the API audience with sta
 
 Replay survives token rotation for the same issuer, tenant and caller when the new token retains `plan:generate`. The server checks the scopes in the token presented with each request. Previously issued tokens remain usable until expiration while their signing keys are accepted. Each authentication mode uses a separate replay namespace, including on deployments with shared Redis. [Configuration](configuration.md#verified-http-authentication) · [Route scopes](api.md#verified-mode)
 
+### Remote MCP endpoint
+
+Run `axiom-server mcp-http` as its own process or container to serve the MCP tools to remote clients. The default invocation, the HTTP server and `axiom-server mcp` open no remote listener, and stopping the command withdraws remote access.
+
+1. Run the HTTP API in verified mode with `AXIOM_TENANT_QUOTA_ENABLED=true` and one Redis database, as in [Verified access tokens](#verified-access-tokens). Give the endpoint the same issuer, key set, algorithms and claim mappings. `AXIOM_AUTH_AUDIENCE` stays the API's audience.
+2. Choose the public URL, for example `https://mcp.example/mcp`, and configure the issuer to issue tokens for that exact resource with `graph:read`, `plan:generate` or both. The URL is the token audience and must differ from the API audience.
+3. Issue a certificate for the public host and mount the certificate and key. Set `MCP_TLS_CERT_FILE`, `MCP_TLS_KEY_FILE` and `MCP_PUBLIC_URL`. Bind a concrete address with `MCP_BIND_ADDR` (default `127.0.0.1:8443`). Wildcard addresses are rejected. A load balancer or reverse proxy must connect to the TLS listener, send the public host in `Host` and add no unlisted `Origin`. Listing the proxy in `TRUSTED_PROXIES` lets quota use the client address it forwards.
+4. Add every browser origin that may call the endpoint to `MCP_ALLOWED_ORIGINS`. Without it only the endpoint's own origin and native clients without an `Origin` header are allowed.
+5. Start the command. It checks Redis and every setting before it binds. Probe readiness with `GET /.well-known/oauth-protected-resource/mcp` over TLS, which needs no credential and does not use Redis. The image's built-in health check probes the HTTP API port, so start this command with `--no-healthcheck`.
+
+Replicas serve the same public URL and share quota through Redis. The key set rotation steps for verified access tokens apply unchanged. Restart the command to rotate the certificate. On `SIGTERM` the listener closes, admitted tool calls drain for `SHUTDOWN_TIMEOUT` and the rest are canceled. To withdraw remote access, stop the command. [Remote endpoint](mcp.md#remote-endpoint) · [Configuration](configuration.md#remote-mcp-endpoint)
+
 ### Metrics
 
 When `METRICS_ENABLED=true` is configured (see [configuration](configuration.md)), the server exposes Prometheus text exposition at `GET /metrics`. The endpoint requires no authentication token and does not consume API rate limit budget. Restrict access to `/metrics` at the network or reverse-proxy level rather than relying on application authentication.
