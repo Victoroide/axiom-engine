@@ -10,6 +10,10 @@ on:
         type: boolean
         required: true
         default: true
+      native_inventory:
+        description: Include and verify native library inventories
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -35,6 +39,7 @@ jobs:
       created: ${{ steps.release.outputs.created }}
       archive-version: ${{ steps.release.outputs.archive-version }}
       source-date-epoch: ${{ steps.release.outputs.source-date-epoch }}
+      native-inventory: ${{ steps.release.outputs.native-inventory }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -47,6 +52,8 @@ jobs:
           EVENT_NAME: ${{ github.event_name }}
           RELEASE_REF: ${{ github.ref }}
           DRY_RUN: ${{ inputs.dry_run }}
+          NATIVE_INVENTORY_INPUT: ${{ inputs.native_inventory }}
+          NATIVE_INVENTORY_ON_TAG: ${{ vars.RELEASE_NATIVE_INVENTORY }}
         run: |
           publish=false
           if [[ "$EVENT_NAME" == push || "$DRY_RUN" == false ]]; then
@@ -60,6 +67,11 @@ jobs:
             }
             publish=true
           fi
+          native_inventory=false
+          if [[ "$EVENT_NAME" == push && "$NATIVE_INVENTORY_ON_TAG" == true ]] ||
+             [[ "$EVENT_NAME" == workflow_dispatch && "$NATIVE_INVENTORY_INPUT" == true ]]; then
+            native_inventory=true
+          fi
           version=$(sed -n 's/^[[:space:]]*version[[:space:]]*"\([^"]*\)".*/\1/p' baml_src/generators.baml)
           test -n "$version"
           archive_version="dev-${GITHUB_SHA:0:12}"
@@ -72,6 +84,7 @@ jobs:
             echo "created=$(date -u +%Y-%m-%dT%H:%M:%SZ)"
             echo "archive-version=$archive_version"
             echo "source-date-epoch=$(git log -1 --format=%ct)"
+            echo "native-inventory=$native_inventory"
           } >> "$GITHUB_OUTPUT"
       - uses: actions/setup-go@d8cbb8045d7f43706b9177cceb36c1f91a6644d5 # v7.1.0
         with:
@@ -123,8 +136,13 @@ jobs:
         env:
           RELEASE_VERSION: ${{ needs.verify.outputs.archive-version }}
           SOURCE_DATE_EPOCH: ${{ needs.verify.outputs.source-date-epoch }}
+          RELEASE_NATIVE_INVENTORY: ${{ needs.verify.outputs.native-inventory }}
         run: |
-          make release-archive-test release-archive release-archive-smoke \
+          archive_test=release-archive-runtime-test
+          if [[ "$RELEASE_NATIVE_INVENTORY" == true ]]; then
+            archive_test=release-archive-test
+          fi
+          make "$archive_test" release-archive release-archive-smoke \
             RELEASE_VERSION="$RELEASE_VERSION" RELEASE_DIR="$RUNNER_TEMP/archives" \
             SOURCE_DATE_EPOCH="$SOURCE_DATE_EPOCH"
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
@@ -136,7 +154,7 @@ jobs:
 
   checksums:
     name: Collect archive checksums
-    needs: archives
+    needs: [verify, archives]
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     steps:
@@ -153,6 +171,30 @@ jobs:
           test "${#archives[@]}" -eq 3
           sha256sum "${archives[@]}" | LC_ALL=C sort -k2 > checksums.txt
           sha256sum --check checksums.txt
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        if: needs.verify.outputs.native-inventory == 'true'
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@d8cbb8045d7f43706b9177cceb36c1f91a6644d5 # v7.1.0
+        if: needs.verify.outputs.native-inventory == 'true'
+        with:
+          go-version-file: tools/go.mod
+          cache-dependency-path: tools/go.sum
+      - name: Verify inventories in the checksummed archives
+        if: needs.verify.outputs.native-inventory == 'true'
+        env:
+          RELEASE_VERSION: ${{ needs.verify.outputs.archive-version }}
+        run: |
+          directory="$RUNNER_TEMP/archives"
+          schema="$RUNNER_TEMP/cyclonedx"
+          ./scripts/native-inventory-schema.sh "$schema"
+          for target in linux/amd64 linux/arm64 darwin/arm64; do
+            name="axiom-engine_${RELEASE_VERSION}_${target/\//_}.tar.gz"
+            digest=$(awk -v name="$name" '$2 == name { print $1 }' "$directory/checksums.txt")
+            go -C tools run ./native-inventory -target "$target" -archive-sha256 "$digest" \
+              -schema-dir "$schema" verify-archive "$directory/$name"
+            echo "Verified native inventory for $target in $name ($digest)"
+          done
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: release-checksums
@@ -199,10 +241,11 @@ jobs:
             {"features":{"containerd-snapshotter":true}}
       - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
       - name: Build without publishing
+        id: build
         uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
         with:
           context: .
-          target: runtime
+          target: ${{ needs.verify.outputs.native-inventory == 'true' && 'runtime-inventory' || 'runtime' }}
           platforms: linux/${{ matrix.arch }}
           push: false
           load: true
@@ -217,6 +260,26 @@ jobs:
           sbom: true
       - name: Exercise native runtime image
         run: make container-smoke
+      - name: Check the default image contents
+        if: needs.verify.outputs.native-inventory == 'false'
+        run: |
+          container=$(docker create axiom-engine:local)
+          trap 'docker rm "$container" >/dev/null' EXIT
+          if docker cp "$container:/app/baml-native.cdx.json" "$RUNNER_TEMP" 2> "$RUNNER_TEMP/inventory-copy.log"; then
+            echo 'The default image contains a native inventory' >&2
+            exit 1
+          fi
+          grep -F 'Could not find the file /app/baml-native.cdx.json' "$RUNNER_TEMP/inventory-copy.log"
+      - name: Verify native inventory in the exported OCI image
+        if: needs.verify.outputs.native-inventory == 'true'
+        env:
+          ARCH: ${{ matrix.arch }}
+          DIGEST: ${{ steps.build.outputs.digest }}
+        run: |
+          schema="$RUNNER_TEMP/cyclonedx"
+          ./scripts/native-inventory-schema.sh "$schema"
+          ./scripts/verify-release-image-inventory.sh axiom-engine:local "linux/$ARCH" "$DIGEST" \
+            "$schema" "$RUNNER_TEMP/runtime-$ARCH.tar"
 
   build:
     name: Publish runtime image (${{ matrix.arch }})
@@ -265,7 +328,7 @@ jobs:
         uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
         with:
           context: .
-          target: runtime
+          target: ${{ needs.verify.outputs.native-inventory == 'true' && 'runtime-inventory' || 'runtime' }}
           platforms: linux/${{ matrix.arch }}
           load: true
           push: false
@@ -292,14 +355,30 @@ jobs:
           docker push "$CANDIDATE"
           docker image inspect "$CANDIDATE" --format '{{range .RepoDigests}}{{println .}}{{end}}' |
             grep -Fx "$REGISTRY_IMAGE@$DIGEST"
+      - name: Verify native inventory from the registry by digest
+        if: needs.verify.outputs.native-inventory == 'true'
+        id: inventory
+        env:
+          ARCH: ${{ matrix.arch }}
+          DIGEST: ${{ steps.build.outputs.digest }}
+        run: |
+          schema="$RUNNER_TEMP/cyclonedx"
+          ./scripts/native-inventory-schema.sh "$schema"
+          manifest=$(./scripts/verify-release-image-inventory.sh "$REGISTRY_IMAGE" "linux/$ARCH" "$DIGEST" "$schema")
+          echo "manifest=$manifest" >> "$GITHUB_OUTPUT"
       - name: Export image digest
         env:
           DIGEST: ${{ steps.build.outputs.digest }}
+          ARCH: ${{ matrix.arch }}
+          MANIFEST: ${{ steps.inventory.outputs.manifest }}
         run: |
           digest=${DIGEST#sha256:}
           [[ "$digest" =~ ^[a-f0-9]{64}$ ]]
           mkdir -p "$RUNNER_TEMP/digests"
           touch "$RUNNER_TEMP/digests/$digest"
+          if [[ -n "$MANIFEST" ]]; then
+            printf 'linux/%s %s\n' "$ARCH" "$MANIFEST" > "$RUNNER_TEMP/digests/$digest"
+          fi
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: digests-${{ matrix.arch }}
@@ -309,7 +388,7 @@ jobs:
 
   merge:
     name: Merge runtime image platforms
-    needs: [verify, build]
+    needs: [verify, build, checksums]
     if: needs.verify.outputs.publish == 'true'
     runs-on: ubuntu-latest
     environment: release
@@ -345,13 +424,15 @@ jobs:
         shell: bash
         env:
           METADATA_JSON: ${{ steps.metadata.outputs.json }}
+          NATIVE_INVENTORY: ${{ needs.verify.outputs.native-inventory }}
         run: |
-          mapfile -t image_tags < <(jq -r '.tags[]' <<< "$METADATA_JSON")
-          test "${#image_tags[@]}" -gt 0
+          tags=$(jq -er '.tags[]' <<< "$METADATA_JSON")
+          image_tags=()
           tag_args=()
-          for tag in "${image_tags[@]}"; do
+          while IFS= read -r tag; do
+            image_tags+=("$tag")
             tag_args+=(--tag "$tag")
-          done
+          done <<< "$tags"
           digest_files=("$RUNNER_TEMP/digests/"*)
           test "${#digest_files[@]}" -eq 2
           sources=()
@@ -360,9 +441,29 @@ jobs:
             [[ "$digest" =~ ^[a-f0-9]{64}$ ]]
             sources+=("$REGISTRY_IMAGE@sha256:$digest")
           done
-          docker buildx imagetools create "${tag_args[@]}" "${sources[@]}"
-          digest=$(docker buildx imagetools inspect "${image_tags[0]}" --format '{{.Manifest.Digest}}')
-          [[ "$digest" =~ ^sha256:[a-f0-9]{64}$ ]]
+          if [[ "$NATIVE_INVENTORY" == true ]]; then
+            expected=$(LC_ALL=C sort "${digest_files[@]}")
+            test "$(awk '{ print $1 }' <<< "$expected")" = $'linux/amd64\nlinux/arm64'
+            staging="$REGISTRY_IMAGE:index-$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT"
+            docker buildx imagetools create --tag "$staging" "${sources[@]}"
+            digest=$(docker buildx imagetools inspect "$staging" --format '{{.Manifest.Digest}}')
+            [[ "$digest" =~ ^sha256:[a-f0-9]{64}$ ]]
+            candidate="$REGISTRY_IMAGE@$digest"
+            index="$RUNNER_TEMP/merged-index.json"
+            docker buildx imagetools inspect --raw "$candidate" > "$index"
+            printf '%s  %s\n' "${digest#sha256:}" "$index" | sha256sum -c -
+            actual=$(jq -er '.manifests[] | select(.platform.os == "linux") |
+              "\(.platform.os)/\(.platform.architecture) \(.digest)"' "$index" | LC_ALL=C sort)
+            test "$actual" = "$expected"
+            docker buildx imagetools create "${tag_args[@]}" "$candidate"
+            for tag in "${image_tags[@]}"; do
+              test "$(docker buildx imagetools inspect "$tag" --format '{{.Manifest.Digest}}')" = "$digest"
+            done
+          else
+            docker buildx imagetools create "${tag_args[@]}" "${sources[@]}"
+            digest=$(docker buildx imagetools inspect "${image_tags[0]}" --format '{{.Manifest.Digest}}')
+            [[ "$digest" =~ ^sha256:[a-f0-9]{64}$ ]]
+          fi
           echo "digest=$digest" >> "$GITHUB_OUTPUT"
 
   attest:
