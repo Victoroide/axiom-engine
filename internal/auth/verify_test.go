@@ -377,3 +377,31 @@ func assertRequests(t *testing.T, count *atomic.Int32, want int32) {
 		t.Errorf("key requests = %d, want %d", got, want)
 	}
 }
+
+func TestPrincipalHasScope(t *testing.T) {
+	key := newSigningKey(t, "scopes", jose.ES256)
+	material := jwks(t, key.jwk)
+	server := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) { _, _ = w.Write(material) }))
+	t.Cleanup(server.Close)
+	verifier, _ := fixtureVerifier(t, fixtureConfig(server))
+	claims := claimsFor(verifier.issuer)
+	claims["scope"] = "graph:read plan:generate-draft"
+	principal, err := verifier.Verify(t.Context(), sign(t, key, claims))
+	if err != nil {
+		t.Fatal(err)
+	}
+	for scope, want := range map[string]bool{
+		"graph:read": true, "plan:generate-draft": true, "plan:generate": false, "graph": false,
+		"read": false, "graph:read plan:generate-draft": false, "": false,
+	} {
+		if got := principal.HasScope(scope); got != want {
+			t.Errorf("HasScope(%q) = %v, want %v", scope, got, want)
+		}
+	}
+	if (Principal{}).HasScope("graph:read") || (Principal{}).HasScope("") {
+		t.Error("the zero principal has a scope")
+	}
+	if text := fmt.Sprintf("%v %+v %#v", principal, principal, principal); strings.Contains(text, "graph:read") {
+		t.Errorf("formatted principal leaks scopes: %s", text)
+	}
+}

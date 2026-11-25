@@ -40,6 +40,7 @@ type Config struct {
 	Port                  string
 	AuthDisabled          bool
 	VerifiedAuth          *auth.Verifier
+	verifiedSettings      auth.Config
 	InternalToken         string
 	InternalTokenPrevious string
 	CORSAllowedOrigins    []string

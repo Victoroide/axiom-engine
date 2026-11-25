@@ -45,6 +45,8 @@ func run(args []string, stdout io.Writer) error {
 			return runValidateGraph(args[1:], stdout)
 		case "mcp":
 			return runMCP(args[1:])
+		case "mcp-http":
+			return runMCPHTTP(args[1:], stdout)
 		case "healthcheck":
 			return runHTTP(args, stdout)
 		}
