@@ -284,6 +284,8 @@ To validate the bundled curriculum file directly using the container binary:
 docker run --rm axiom-engine:local validate-graph /usr/share/axiom-engine/graphs/computer-science.json
 ```
 
+To reload a curriculum in a running container, mount its directory and set `GRAPH_FILE` to the path inside that mount. Stage and rename the replacement on the host, then send `docker kill --signal=HUP <container>` to each replica started with `GRAPH_RELOAD_ENABLED=true`. A directory mount exposes the replacement after the rename. [Curriculum rollout](operations.md#curriculum-rollout)
+
 ### Log format
 
 The service writes structured JSON logs to standard output using the Go standard library `log/slog` package. Log level is configured through `LOG_LEVEL` (`debug`, `info`, `warn`, `error`; default is `info`).
@@ -296,7 +298,8 @@ During initialization, the structured JSON logger is configured before validatin
 
 A missing or mismatched BAML CFFI native library aborts during package initialization before `main` runs, resulting in a plain-text panic rather than a JSON log record.
 
-When the service starts successfully, it emits two `INFO` records in sequence before serving requests (subject to `LOG_LEVEL`):
+When the service starts successfully, it emits `server.started` and `server.listening` in sequence before serving requests (subject to `LOG_LEVEL`). With curriculum reload enabled, a `graph.reload` record reports the initial revision before these records.
+
 1. `server.started`: reports operational settings and graph metadata while omitting sensitive tokens and secret material. Fields include:
    - `port`: HTTP listener port string.
    - `auth`: authentication configuration (`token`, `token+previous`, or `disabled`).

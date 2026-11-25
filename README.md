@@ -267,6 +267,7 @@ The service is configured using environment variables. The table below lists the
 | `SWAGGER_ENABLED` | `true` | When `true`, serves Swagger UI and OpenAPI documentation at `/swagger/*`. |
 | `LOG_LEVEL` | `info` | Minimum log level for structured JSON logging (`debug`, `info`, `warn`, `error`). |
 | `GRAPH_FILE` | `""` (unset) | Path to custom curriculum JSON file; defaults to embedded seed graph. |
+| `GRAPH_RELOAD_ENABLED` | `false` | Enable `SIGHUP` reloads of a local `GRAPH_FILE` on Linux or macOS. |
 
 For the complete list of environment variables, format constraints, and credential resolution details, see [docs/configuration.md](docs/configuration.md).
 
@@ -475,7 +476,7 @@ For client configuration examples, tool schemas, and container execution details
 - **Native Library Initialization**: The BAML CFFI dynamic library is loaded during package initialization before `main` executes; missing or mismatched libraries panic directly to `stderr` in plain text prior to structured JSON logger initialization.
 - **Bedrock region resolution**. Set `BEDROCK_REQUIRE_EXPLICIT_REGION=true` to validate `AWS_REGION` at startup and use it for every Bedrock call until the process restarts. In default mode, each Bedrock call resolves the region from the environment, the selected AWS profile or EC2 instance metadata, so a changed source can change the region for later calls. See [Region Resolution](docs/configuration.md#region-resolution).
 - **Resource Link Reachability**: Recommended resource URLs are not checked for network reachability by default. Setting `RESOURCE_LINK_CHECK=true` enables outbound HTTP reachability checks that verify URLs and drop non-resolving or refused resources before returning plans.
-- **In-Memory Knowledge Graph Immutability**: The curriculum knowledge graph is loaded into memory at startup from embedded data or `GRAPH_FILE` and cannot be modified dynamically at runtime without restarting the service process.
+- **Curriculum updates** follow the process lifecycle by default. For a local `GRAPH_FILE`, operators can opt into `SIGHUP` reloads and activate each replica separately. [Curriculum rollout](docs/operations.md#curriculum-rollout)
 - **MCP transport scope.** `axiom-server mcp` serves local clients over `stdio`. The stateless Streamable HTTP handler is available for in-process use. Network exposure awaits remote authorization and admission controls.
 - **Scorecard Governance**: Repository OpenSSF Scorecard branch protection scores reflect a single-maintainer project with zero required external approvals.
 
@@ -484,7 +485,6 @@ For diagnostic procedures and operational troubleshooting, refer to the [Operati
 ## Roadmap
 
 - Per-tenant authentication and caller identity verification.
-- Dynamic curriculum knowledge graph updates without service restarts.
 - Authenticated remote access to the Model Context Protocol server over Streamable HTTP.
 - Fine-grained per-tenant rate limit quotas in shared storage.
 

@@ -27,7 +27,7 @@ The graph is loaded into `graph.InMemoryGraph` (`internal/graph/memory.go`), whi
 - `canonical: map[string]string`: Canonical representation (`internal/graph/canonical.go`) mapped to authoritative stored node name.
 - `all: []domain.GraphTuple`: Slice containing every unique tuple.
 
-Once loaded during process startup, `InMemoryGraph` is immutable. Read operations (BFS subgraph extraction, iterative DFS prerequisite traversal, and existence checks) run concurrently without mutex contention.
+Each `InMemoryGraph` is immutable. Read operations (BFS subgraph extraction, iterative DFS prerequisite traversal, and existence checks) run concurrently without mutex contention. With reload enabled, publication replaces the graph and its SHA-256 revision together. Each invocation pins one revision before topic validation and uses it through prompt preparation and final output, including queued and streaming plans. [Curriculum rollout](operations.md#curriculum-rollout)
 
 ---
 
@@ -124,7 +124,7 @@ Custom curricula can be loaded by setting the `GRAPH_FILE` environment variable 
 
 ### Validation Rules
 
-HTTP startup, MCP startup, and `validate-graph` share the same loader and validation rules.
+Startup, reload, and `validate-graph` share the same curriculum validation rules.
 
 1. **Strict JSON Array Structure**: The payload must consist of a single top-level JSON array. Non-whitespace data after the closing bracket within the byte limit triggers `graph must contain exactly one JSON array`. If the decoder reaches the byte limit before detecting trailing data, any additional byte triggers `decode graph: graph exceeds 8388608 bytes`.
 2. **Disallowed Unknown Fields**: JSON objects containing keys other than `subject`, `relation`, or `object` are rejected.
@@ -147,7 +147,7 @@ The limits are inclusive. The raw byte count includes leading, embedded, and tra
 | [Embedded seed](../internal/graph/seed.json) | 1,906 | 20 | 23 | 6 |
 | [Computer science example](../examples/graphs/computer-science.json) | 13,308 | 173 | 130 | 12 |
 
-Cycle detection, prerequisite queries, and the longest-chain summary use iterative traversal. A chain may contain every concept in the graph, up to 19,999 prerequisite edges. Startup and `validate-graph` reject files that exceed a limit.
+Cycle detection, prerequisite queries, and the longest-chain summary use iterative traversal. A chain may contain every concept in the graph, up to 19,999 prerequisite edges. Startup, reload, and `validate-graph` reject files that exceed a limit.
 
 Plan generation also checks the [curriculum prompt budget](configuration.md#curriculum-prompt-budget) against the extracted neighborhood and the prerequisite orders for the requested topics. An accepted file can produce a plan request that exceeds those limits.
 

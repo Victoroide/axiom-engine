@@ -21,7 +21,7 @@ For a source build, copy `scripts/axiom-server-launch` beside the built `axiom-s
 - **Standard Error (`stderr`)**: Dedicated to structured JSON logging via `log/slog`.
 - **Implementation Identification**: Server name `axiom-engine`. Version is determined from runtime build information (`debug.ReadBuildInfo()`), defaulting to `dev` for local unversioned builds.
 - **Trust Boundary**: `AXIOM_INTERNAL_TOKEN` is not evaluated in MCP mode. The process launching `axiom-server` serves as the trust boundary.
-- **Backend Services**: Tool calls execute against the same bounded `service.ReasoningService` pipeline and `graph.InMemoryGraph` used by the HTTP API, sharing concurrency limits, circuit breaking, timeouts, and error classification.
+- **Backend Services**: Tool calls use the bounded reasoning pipeline and curriculum graph implementation shared with the HTTP API. The MCP process shares its own concurrency limits and circuit breaker across tool calls. With `GRAPH_RELOAD_ENABLED=true`, a `SIGHUP` to that process activates a validated replacement for subsequent tool calls. Reload records go to stderr. [Curriculum rollout](operations.md#curriculum-rollout)
 
 ### Shutdown Lifecycle
 
@@ -37,6 +37,8 @@ The server implements a bounded shutdown lifecycle over standard I/O:
 `internal/mcpserver.NewStreamableHTTPHandler` constructs an `http.Handler` for in-process use with the four curriculum tools. The handler accepts POST with `Mcp-Protocol-Version: 2026-07-28` and the corresponding JSON-RPC request metadata. It can return JSON or request-scoped SSE. The handler allows an absent `Origin` and checks that a supplied origin matches the request scheme and host. [MCP Streamable HTTP specification](https://modelcontextprotocol.io/specification/2026-07-28/basic/transports/streamable-http)
 
 Reuse one handler across requests to share the `LLM_MAX_CONCURRENCY` limit and `LLM_QUEUE_TIMEOUT`. Requests have a 4 MiB body limit. Closing a response cancels reasoning and graph traversal for that request. The fixed HTTP registry advertises tool discovery and invocation. The hosting `http.Server` owns graceful shutdown and drains active requests.
+
+Hosts that manage a live curriculum can use `NewStreamableHTTPHandlerWithCurriculum` to share its snapshots across the same tool registry.
 
 Response writes use the configured HTTP write timeout (`REQUEST_TIMEOUT + 10s`). Middleware that wraps the response writer must forward `SetWriteDeadline` or provide `Unwrap` so the handler can reach the underlying writer. The handler returns HTTP 500 before dispatch if it cannot set the deadline. [Go `http.ResponseController`](https://pkg.go.dev/net/http#ResponseController)
 
