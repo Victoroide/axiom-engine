@@ -106,6 +106,20 @@ If the configured Redis store cannot make a rate-limit decision, the API returns
 
 ---
 
+## Curriculum Rollout
+
+Set `GRAPH_RELOAD_ENABLED=true` and point `GRAPH_FILE` at a readable local regular file before starting each HTTP or stdio MCP replica. This is supported on Linux and macOS. Set `LOG_LEVEL=info` or `debug` to see the active revision during rollout. HTTP writes logs to stdout and stdio MCP writes them to stderr.
+
+1. Stage the replacement beside `GRAPH_FILE` on the same filesystem and make it readable by the serving process. Run `axiom-server validate-graph <staged-file>` and record the SHA-256 of the staged file. Retain the preceding file for rollback.
+2. Atomically rename the staged file over `GRAPH_FILE`. Distribute the same bytes and send `kill -HUP <pid>` to **each** enabled replica after its file is in place. Operators or the deployment system own both steps.
+3. Within **60 seconds from the start of the fleet rollout**, verify that each serving replica reports the expected `graph_revision` in its `graph.reload` log. If any replica still differs at the deadline, stop the rollout and drain it, or restore the previous file by rename and signal the affected replicas.
+
+The revision is the SHA-256 of the complete file, including whitespace. `graph.reload` reports `loaded` at startup, `published` after a successful swap, `unchanged` for identical bytes, `failed` when the replacement cannot be loaded or validated, and `canceled` when shutdown interrupts a load. Each record includes the active revision and cumulative `published_total` and `failed_total` counts. HTTP also exposes `axiom_graph_reload_success_total` and `axiom_graph_reload_failure_total` when `METRICS_ENABLED=true`. Those counters have no labels. Reload records omit the file path, curriculum contents and raw errors. Run `validate-graph` separately to diagnose validation errors.
+
+Shutdown cancels any active reload as soon as draining starts and waits for the loader to release its file within the existing shutdown deadline.
+
+A missed signal or invalid replacement can leave the previous revision serving indefinitely. Each request keeps the snapshot it started with, and successful JSON responses retained for idempotency can still replay their original bytes until their original TTL expires. To return to startup-only loading, disable `GRAPH_RELOAD_ENABLED` and restart the processes. A rolling restart can also activate a replacement.
+
 ## Region and Credential Resolution
 
 AxiomEngine executes Bedrock calls via BAML's native CFFI engine, which resolves credentials through the AWS SDK for Rust provider chain. It also resolves the region through that chain unless `BEDROCK_REQUIRE_EXPLICIT_REGION=true` supplies one.

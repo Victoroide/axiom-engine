@@ -10,12 +10,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 
 - Share eight outbound resource checks across concurrent plan requests. Check each sanitized URL once per request, include queue time in the link timeout, and count every removed occurrence in `_meta.resources_unreachable`.
+
 ### Added
 
 - Add `BAML_DIAGNOSTIC=1` to bundle `axiom-baml-check` in custom release archives and images for offline verification before startup.
-### Added
-
 - Add `BEDROCK_REQUIRE_EXPLICIT_REGION=true` to require a valid `AWS_REGION` at HTTP and MCP startup and use it for every Bedrock request.
+- Reload a local curriculum on `SIGHUP` with `GRAPH_RELOAD_ENABLED=true`. In-flight HTTP and MCP calls finish on their pinned revision, and a failed replacement keeps the last valid curriculum serving.
 
 ## [0.1.1] - 2026-11-24
 
