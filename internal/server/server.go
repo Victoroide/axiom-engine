@@ -61,9 +61,11 @@ func (g *previousTokenLogGate) allow(now time.Time) bool {
 	return true
 }
 
-// Dependencies supplies the immutable graph, external planner, logger and optional link policy.
+// Dependencies supplies the curriculum, external planner, logger and optional link policy.
 type Dependencies struct {
-	Graph              *graph.InMemoryGraph
+	Graph              *graph.InMemoryGraph // Used for startup-only graphs when Curriculum is nil.
+	Curriculum         *graph.Curriculum
+	GraphReloadCounts  func() (published, failed uint64)
 	Planner            service.Planner
 	Logger             *slog.Logger
 	ResourceLinkPolicy service.ResourceLinkPolicy
@@ -92,6 +94,9 @@ func NewWithError(cfg config.Config, deps Dependencies) (*fiber.App, error) {
 	var recorder *metrics.Metrics
 	if cfg.MetricsEnabled {
 		recorder = metrics.New()
+		if deps.GraphReloadCounts != nil {
+			recorder.RegisterGraphReload(deps.GraphReloadCounts)
+		}
 	}
 	errorHandler := newErrorHandler(logger)
 	app := newApp(cfg, errorHandler)
@@ -338,7 +343,11 @@ func registerAPI(app *fiber.App, cfg config.Config, deps Dependencies, logger *s
 	if cfg.ResourceLinks.Enabled {
 		resourceLinks = service.NewResourceLinkChecker(cfg.ResourceLinks.Timeout, deps.ResourceLinkPolicy, recorder)
 	}
-	reasoning := service.NewReasoningService(deps.Graph, deps.Planner, service.Options{ResourceLinks: resourceLinks, PromptBudget: cfg.PromptBudget, PreserveDisplayJoins: cfg.PreserveDisplayJoins, LLMTimeout: cfg.LLMTimeout, MaxFailedTopics: cfg.MaxFailedTopics, MaxMasteredTopics: cfg.Mastery.MaxTopics, MaxConcurrency: cfg.LLMMaxConcurrency, QueueTimeout: cfg.LLMQueueTimeout, Logger: logger, Metrics: recorder})
+	curriculum := deps.Curriculum
+	if curriculum == nil {
+		curriculum = graph.StaticCurriculum(deps.Graph)
+	}
+	reasoning := service.NewReasoningServiceWithCurriculum(curriculum, deps.Planner, service.Options{ResourceLinks: resourceLinks, PromptBudget: cfg.PromptBudget, PreserveDisplayJoins: cfg.PreserveDisplayJoins, LLMTimeout: cfg.LLMTimeout, MaxFailedTopics: cfg.MaxFailedTopics, MaxMasteredTopics: cfg.Mastery.MaxTopics, MaxConcurrency: cfg.LLMMaxConcurrency, QueueTimeout: cfg.LLMQueueTimeout, Logger: logger, Metrics: recorder})
 	var planMiddleware []fiber.Handler
 	if cfg.Idempotency.TTL > 0 {
 		var store idempotency.Store = idempotency.NewMemory(cfg.Idempotency.TTL, cfg.Idempotency.MaxEntries)
@@ -352,7 +361,7 @@ func registerAPI(app *fiber.App, cfg config.Config, deps Dependencies, logger *s
 			return fmt.Sprintf("%x", sha256.Sum256([]byte(presentedCredential(c))))
 		}, logger))
 	}
-	api.NewHandler(reasoning, deps.Graph, cfg.RequestTimeout, cfg.MaxFailedTopics, cfg.Mastery.MaxTopics, logger).RegisterRoutes(app, planMiddleware...)
+	api.NewHandler(reasoning, curriculum, cfg.RequestTimeout, cfg.MaxFailedTopics, cfg.Mastery.MaxTopics, logger).RegisterRoutes(app, planMiddleware...)
 }
 
 // healthHandler provides the legacy liveness alias.

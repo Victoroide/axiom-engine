@@ -23,7 +23,7 @@ import (
 // Handler contains the dependencies of the versioned HTTP API.
 type Handler struct {
 	reasoning   *service.ReasoningService
-	graph       *graph.InMemoryGraph
+	curriculum  *graph.Curriculum
 	timeout     time.Duration
 	maxTopics   int
 	maxMastered int
@@ -31,8 +31,8 @@ type Handler struct {
 }
 
 // NewHandler constructs the reasoning HTTP boundary.
-func NewHandler(r *service.ReasoningService, g *graph.InMemoryGraph, timeout time.Duration, maxTopics, maxMastered int, logger *slog.Logger) *Handler {
-	return &Handler{reasoning: r, graph: g, timeout: timeout, maxTopics: maxTopics, maxMastered: maxMastered, logger: logger}
+func NewHandler(r *service.ReasoningService, curriculum *graph.Curriculum, timeout time.Duration, maxTopics, maxMastered int, logger *slog.Logger) *Handler {
+	return &Handler{reasoning: r, curriculum: curriculum, timeout: timeout, maxTopics: maxTopics, maxMastered: maxMastered, logger: logger}
 }
 
 // RegisterRoutes attaches the versioned API routes.
@@ -191,7 +191,7 @@ func (h *Handler) handleCognitiveGraph(c fiber.Ctx) error {
 			mastered = append(mastered, strings.Split(string(value), ",")...)
 		}
 	}
-	result, err := service.CognitiveGraph(requested, targets, mastered, h.maxTopics, h.maxMastered, h.graph)
+	result, err := service.CognitiveGraph(requested, targets, mastered, h.maxTopics, h.maxMastered, h.curriculum.Current().Graph())
 	if err != nil {
 		var validation *service.ValidationError
 		errors.As(err, &validation)

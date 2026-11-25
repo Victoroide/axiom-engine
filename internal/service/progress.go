@@ -17,5 +17,5 @@ func WithProgress(callback func(domain.TopicProgress)) PlanOption {
 
 // ValidateRequest resolves topics and validates input before generation starts.
 func (s *ReasoningService) ValidateRequest(req domain.AdaptivePlanRequest) (domain.AdaptivePlanRequest, error) {
-	return validateRequest(req, s.maxFailedTopics, s.maxMasteredTopics, s.graph)
+	return validateRequest(req, s.maxFailedTopics, s.maxMasteredTopics, s.curriculum.Current().Graph())
 }

@@ -8,7 +8,6 @@ import (
 	"log/slog"
 	"strings"
 	"testing"
-	"time"
 )
 
 func TestTraceFlushPanicPrivacy(t *testing.T) {
@@ -16,7 +15,6 @@ func TestTraceFlushPanicPrivacy(t *testing.T) {
 	var logs bytes.Buffer
 	traces := traceLifecycle{
 		shutdown: func(context.Context) error { panic(errors.New(marker)) },
-		timeout:  time.Second,
 		logger:   slog.New(slog.NewJSONHandler(&logs, nil)),
 	}
 	defer func() {
@@ -24,7 +22,7 @@ func TestTraceFlushPanicPrivacy(t *testing.T) {
 			t.Error("panic escaped trace shutdown")
 		}
 	}()
-	traces.flush()
+	traces.flush(t.Context())
 	var record map[string]string
 	if err := json.Unmarshal(logs.Bytes(), &record); err != nil {
 		t.Fatal(err)
@@ -43,7 +41,6 @@ func (panickingLogWriter) Write([]byte) (int, error) {
 func TestTraceFlushDiagnosticPanicDoesNotEscape(t *testing.T) {
 	traces := traceLifecycle{
 		shutdown: func(context.Context) error { return errors.New("flush failed") },
-		timeout:  time.Second,
 		logger:   slog.New(slog.NewJSONHandler(panickingLogWriter{}, nil)),
 	}
 	defer func() {
@@ -51,5 +48,5 @@ func TestTraceFlushDiagnosticPanicDoesNotEscape(t *testing.T) {
 			t.Error("panic escaped trace shutdown diagnostics")
 		}
 	}()
-	traces.flush()
+	traces.flush(t.Context())
 }

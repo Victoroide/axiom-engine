@@ -113,7 +113,7 @@ func TestStreamableHTTPCloseResponseCancelsWork(t *testing.T) {
 		canceled <- ctx.Err()
 		return nil, ctx.Err()
 	})
-	s := newServer(cfg, graph.NewInMemoryGraph(), planner, logger, "test-version", mcp.ServerOptions{SupportedProtocolVersions: []string{julyProtocol}}, nil)
+	s := newServer(cfg, graph.StaticCurriculum(graph.NewInMemoryGraph()), planner, logger, "test-version", mcp.ServerOptions{SupportedProtocolVersions: []string{julyProtocol}}, nil)
 	// Send one progress event so the client can close an open response body.
 	s.AddReceivingMiddleware(func(next mcp.MethodHandler) mcp.MethodHandler {
 		return func(ctx context.Context, method string, req mcp.Request) (mcp.Result, error) {
@@ -247,7 +247,7 @@ func TestStreamableHTTPGraphWorkCancels(t *testing.T) {
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			cfg, logger := streamableConfig(t), streamableLogger()
-			s := newServer(cfg, graph.NewInMemoryGraph(), plannerFunc(successfulPlanner), logger, "test-version", mcp.ServerOptions{SupportedProtocolVersions: []string{julyProtocol}}, nil)
+			s := newServer(cfg, graph.StaticCurriculum(graph.NewInMemoryGraph()), plannerFunc(successfulPlanner), logger, "test-version", mcp.ServerOptions{SupportedProtocolVersions: []string{julyProtocol}}, nil)
 			traversing := make(chan struct{})
 			completed := make(chan *mcp.CallToolResult, 1)
 			s.AddReceivingMiddleware(func(next mcp.MethodHandler) mcp.MethodHandler {

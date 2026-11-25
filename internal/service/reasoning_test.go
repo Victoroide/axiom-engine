@@ -379,7 +379,7 @@ func TestReplaceHallucinatedPrerequisiteChains(t *testing.T) {
 		t.Fatalf("missing items: %+v", got.Items)
 	}
 	for i, item := range got.Items {
-		if item.Topic != want[i] || item.Priority != i+1 || !reflect.DeepEqual(item.PrerequisiteChain, svc.graph.GetPrerequisiteChain(item.Topic)) {
+		if item.Topic != want[i] || item.Priority != i+1 || !reflect.DeepEqual(item.PrerequisiteChain, svc.curriculum.Current().Graph().GetPrerequisiteChain(item.Topic)) {
 			t.Fatalf("untrusted chain or order: %+v", got.Items)
 		}
 	}

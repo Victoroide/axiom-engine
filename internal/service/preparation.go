@@ -20,20 +20,22 @@ type preparedTopic struct {
 
 // PreparedPlan holds the validated inputs for a plan that can be dispatched.
 type PreparedPlan struct {
-	service *ReasoningService
-	start   time.Time
-	request domain.AdaptivePlanRequest
-	topics  []preparedTopic
-	edges   int
-	skipped int
+	service  *ReasoningService
+	snapshot *graph.Snapshot
+	start    time.Time
+	request  domain.AdaptivePlanRequest
+	topics   []preparedTopic
+	edges    int
+	skipped  int
 }
 
 // PreparePlan validates the request and budgets all topic calls before dispatch.
 func (s *ReasoningService) PreparePlan(ctx context.Context, req domain.AdaptivePlanRequest) (*PreparedPlan, error) {
 	start := time.Now()
+	snapshot := s.curriculum.Current()
 	requested := req.FailedTopics
 	_, validationSpan := telemetry.Start(ctx, "plan.validate")
-	req, err := s.ValidateRequest(req)
+	req, err := validateRequest(req, s.maxFailedTopics, s.maxMasteredTopics, snapshot.Graph())
 	if err != nil {
 		telemetry.Fail(validationSpan, "validation_error")
 	}
@@ -41,7 +43,7 @@ func (s *ReasoningService) PreparePlan(ctx context.Context, req domain.AdaptiveP
 	if err != nil {
 		return nil, err
 	}
-	plan := &PreparedPlan{service: s, start: start, request: req}
+	plan := &PreparedPlan{service: s, snapshot: snapshot, start: start, request: req}
 	if err := plan.prepareCurriculum(ctx, requested); err != nil {
 		var budget *PromptBudgetError
 		if errors.As(err, &budget) {
@@ -53,11 +55,11 @@ func (s *ReasoningService) PreparePlan(ctx context.Context, req domain.AdaptiveP
 }
 
 func (p *PreparedPlan) prepareCurriculum(ctx context.Context, requested []string) error {
-	s := p.service
 	req := p.request
-	budget := s.promptBudget
+	budget := p.service.promptBudget
+	g := p.snapshot.Graph()
 	_, subgraphSpan := telemetry.Start(ctx, "plan.subgraph")
-	subgraph, err := s.graph.LocalSubgraphContext(ctx, req.FailedTopics, 2)
+	subgraph, err := g.LocalSubgraphContext(ctx, req.FailedTopics, 2)
 	subgraphSpan.End()
 	if err != nil {
 		return err
@@ -97,7 +99,7 @@ func (p *PreparedPlan) prepareCurriculum(ctx context.Context, requested []string
 		if topicBytes > maxBytes {
 			return &PromptBudgetError{}
 		}
-		chain, err := s.graph.PrerequisiteChainContext(ctx, topic)
+		chain, err := g.PrerequisiteChainContext(ctx, topic)
 		if err != nil {
 			return err
 		}

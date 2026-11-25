@@ -45,17 +45,22 @@ type TopicPathInput struct {
 
 // New constructs tools backed by the same bounded pipeline as the HTTP API.
 func New(cfg config.Config, g *graph.InMemoryGraph, planner service.Planner, logger *slog.Logger, version string) *mcp.Server {
-	return newServer(cfg, g, planner, logger, version, mcp.ServerOptions{}, nil)
+	return NewWithCurriculum(cfg, graph.StaticCurriculum(g), planner, logger, version)
 }
 
-func newServer(cfg config.Config, g *graph.InMemoryGraph, planner service.Planner, logger *slog.Logger, version string, options mcp.ServerOptions, policy service.ResourceLinkPolicy) *mcp.Server {
+// NewWithCurriculum constructs tools that pin the current snapshot on each call.
+func NewWithCurriculum(cfg config.Config, curriculum *graph.Curriculum, planner service.Planner, logger *slog.Logger, version string) *mcp.Server {
+	return newServer(cfg, curriculum, planner, logger, version, mcp.ServerOptions{}, nil)
+}
+
+func newServer(cfg config.Config, curriculum *graph.Curriculum, planner service.Planner, logger *slog.Logger, version string, options mcp.ServerOptions, policy service.ResourceLinkPolicy) *mcp.Server {
 	options.Logger = logger
 	s := mcp.NewServer(&mcp.Implementation{Name: "axiom-engine", Version: version}, &options)
 	var resourceLinks *service.ResourceLinkChecker
 	if cfg.ResourceLinks.Enabled {
 		resourceLinks = service.NewResourceLinkChecker(cfg.ResourceLinks.Timeout, policy, nil)
 	}
-	reasoning := service.NewReasoningService(g, planner, service.Options{ResourceLinks: resourceLinks, PromptBudget: cfg.PromptBudget, PreserveDisplayJoins: cfg.PreserveDisplayJoins, MaxMasteredTopics: cfg.Mastery.MaxTopics, LLMTimeout: cfg.LLMTimeout, MaxFailedTopics: cfg.MaxFailedTopics, MaxConcurrency: cfg.LLMMaxConcurrency, QueueTimeout: cfg.LLMQueueTimeout, Logger: logger})
+	reasoning := service.NewReasoningServiceWithCurriculum(curriculum, planner, service.Options{ResourceLinks: resourceLinks, PromptBudget: cfg.PromptBudget, PreserveDisplayJoins: cfg.PreserveDisplayJoins, MaxMasteredTopics: cfg.Mastery.MaxTopics, LLMTimeout: cfg.LLMTimeout, MaxFailedTopics: cfg.MaxFailedTopics, MaxConcurrency: cfg.LLMMaxConcurrency, QueueTimeout: cfg.LLMQueueTimeout, Logger: logger})
 	mcp.AddTool(s, &mcp.Tool{Name: "generate_study_plan", Description: "Generate a study plan for failed curriculum topics"}, func(ctx context.Context, _ *mcp.CallToolRequest, in PlanInput) (*mcp.CallToolResult, domain.PlanResponse, error) {
 		ctx, cancel := context.WithTimeout(ctx, cfg.RequestTimeout)
 		defer cancel()
@@ -70,15 +75,15 @@ func newServer(cfg config.Config, g *graph.InMemoryGraph, planner service.Planne
 		return nil, out, toolError(err)
 	})
 	mcp.AddTool(s, &mcp.Tool{Name: "get_cognitive_graph", Description: "Explore failed concepts and their prerequisite neighborhood"}, func(ctx context.Context, _ *mcp.CallToolRequest, in CognitiveGraphInput) (*mcp.CallToolResult, domain.CognitiveGraphResponse, error) {
-		out, err := service.CognitiveGraphContext(ctx, in.Topics, []string{in.TargetTopic}, in.Mastered, cfg.MaxFailedTopics, cfg.Mastery.MaxTopics, g)
+		out, err := service.CognitiveGraphContext(ctx, in.Topics, []string{in.TargetTopic}, in.Mastered, cfg.MaxFailedTopics, cfg.Mastery.MaxTopics, curriculum.Current().Graph())
 		return nil, out, toolError(err)
 	})
 	mcp.AddTool(s, &mcp.Tool{Name: "list_topics", Description: "List curriculum topics and direct prerequisites and dependents"}, func(ctx context.Context, _ *mcp.CallToolRequest, in ListTopicsInput) (*mcp.CallToolResult, domain.TopicsResponse, error) {
-		topics, err := g.TopicsContext(ctx, in.Q)
+		topics, err := curriculum.Current().Graph().TopicsContext(ctx, in.Q)
 		return nil, domain.TopicsResponse{Topics: topics}, toolError(err)
 	})
 	mcp.AddTool(s, &mcp.Tool{Name: "get_topic_path", Description: "Get a topic's prerequisite chain in study order"}, func(ctx context.Context, _ *mcp.CallToolRequest, in TopicPathInput) (*mcp.CallToolResult, domain.TopicPathResponse, error) {
-		out, err := service.TopicPathContext(ctx, in.Topic, g)
+		out, err := service.TopicPathContext(ctx, in.Topic, curriculum.Current().Graph())
 		return nil, out, toolError(err)
 	})
 	s.AddReceivingMiddleware(classifyToolErrors)
