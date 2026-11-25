@@ -70,7 +70,7 @@ RUN --mount=type=cache,target=/root/.cache/go-build \
     --mount=type=cache,target=/go/pkg/mod \
     go run ./native-inventory -target "linux/$TARGETARCH" write /out/libbaml_cffi.so > /out/baml-native.cdx.json
 
-FROM gcr.io/distroless/cc-debian13:nonroot@sha256:532c7a94f9e96ba9db75eb9388f4227751131c7cb0a411d1a8521af4096135de AS runtime-base
+FROM gcr.io/distroless/cc-debian13:nonroot@sha256:29ee70762214fe8190cea04ef1c0a84a8365879e047ce8f911ae5a5ab2355fa2 AS runtime-base
 
 ARG VERSION=dev
 ARG VCS_REF=unknown
