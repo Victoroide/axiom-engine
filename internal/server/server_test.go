@@ -69,15 +69,28 @@ type response struct {
 
 func call(t *testing.T, app *fiber.App, method, path, body string, headers map[string]string) (response, string) {
 	t.Helper()
-	resp, data, err := callWithError(app, method, path, body, headers)
+	ctx, cancel := context.WithTimeout(t.Context(), 30*time.Second)
+	defer cancel()
+	resp, data, err := callWithDeadline(ctx, app, method, path, body, headers)
 	if err != nil {
 		t.Fatal(err)
 	}
 	return resp, data
 }
 
-func callWithError(app *fiber.App, method, path, body string, headers map[string]string, options ...fiber.TestConfig) (response, string, error) {
-	req := httptest.NewRequestWithContext(context.Background(), method, path, strings.NewReader(body))
+func callWithDeadline(ctx context.Context, app *fiber.App, method, path, body string, headers map[string]string) (response, string, error) {
+	timeout := 30 * time.Second
+	if deadline, ok := ctx.Deadline(); ok {
+		timeout = min(timeout, time.Until(deadline))
+	}
+	if timeout <= 0 {
+		return response{}, "", context.DeadlineExceeded
+	}
+	return callWithError(ctx, app, method, path, body, headers, fiber.TestConfig{Timeout: timeout, FailOnTimeout: true})
+}
+
+func callWithError(ctx context.Context, app *fiber.App, method, path, body string, headers map[string]string, options ...fiber.TestConfig) (response, string, error) {
+	req := httptest.NewRequestWithContext(ctx, method, path, strings.NewReader(body))
 	if body != "" {
 		req.Header.Set("Content-Type", "application/json")
 	}

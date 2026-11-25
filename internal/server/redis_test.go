@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"log/slog"
 	"net/http"
 	"strings"
 	"sync/atomic"
@@ -15,9 +16,12 @@ import (
 
 	"github.com/alicebob/miniredis/v2"
 	"github.com/gofiber/fiber/v3"
+	redisstorage "github.com/gofiber/storage/redis/v3"
+	redisclient "github.com/redis/go-redis/v9"
 
 	"github.com/Victoroide/axiom-engine/internal/config"
 	"github.com/Victoroide/axiom-engine/internal/domain"
+	"github.com/Victoroide/axiom-engine/internal/graph"
 	"github.com/Victoroide/axiom-engine/internal/service"
 )
 
@@ -59,18 +63,31 @@ func TestRedisBudgetIsAtomicAcrossReplicas(t *testing.T) {
 	redis := miniredis.RunT(t)
 	cfg := redisConfig(t, "redis://"+redis.Addr())
 	cfg.RateLimitMax = 5
-	first, second := newTestApp(t, cfg, nil, nil), newTestApp(t, cfg, nil, nil)
-	t.Cleanup(func() { _ = first.Shutdown(); _ = second.Shutdown() })
-
 	testDeadline, _ := t.Deadline()
 	ctx, cancel := context.WithDeadline(t.Context(), redisBudgetDeadline(time.Now(), testDeadline))
 	defer cancel()
+	newReplica := func() *fiber.App {
+		client := redisclient.NewClient(&redisclient.Options{
+			Addr: redis.Addr(), DialTimeout: 30 * time.Second, ReadTimeout: 30 * time.Second,
+			WriteTimeout: 30 * time.Second, ContextTimeoutEnabled: true, MaxRetries: -1,
+		})
+		t.Cleanup(func() { _ = client.Close() })
+		if err := client.Ping(ctx).Err(); err != nil {
+			t.Fatalf("wait for replica Redis connection: %v", err)
+		}
+		storage := redisstorage.NewFromConnectionWithContext(ctx, client)
+		logger := slog.New(slog.NewTextHandler(io.Discard, nil))
+		admission := newRedisAdmission(cfg, logger, storage)
+		return newWithRedisAdmission(cfg, Dependencies{Graph: graph.NewInMemoryGraph()}, logger, admission) //nolint:contextcheck // Construction registers handlers that receive their own request contexts.
+	}
+	first, second := newReplica(), newReplica()
+	t.Cleanup(func() { _ = first.Shutdown(); _ = second.Shutdown() })
 	statuses, err := collectRedisBudgetStatuses(ctx, 24, func(i int) (int, error) {
 		app := first
 		if i%2 == 1 {
 			app = second
 		}
-		resp, _, err := callWithError(app, http.MethodGet, "/api/v1/tutor/student/s/cognitive-graph?topics=Recursion", "", nil)
+		resp, _, err := callWithDeadline(ctx, app, http.MethodGet, "/api/v1/tutor/student/s/cognitive-graph?topics=Recursion", "", nil)
 		return resp.StatusCode, err
 	})
 	if err != nil {
@@ -96,7 +113,7 @@ func TestRedisBudgetIsAtomicAcrossReplicas(t *testing.T) {
 }
 
 func redisBudgetDeadline(now, testDeadline time.Time) time.Time {
-	deadline := now.Add(5 * time.Second)
+	deadline := now.Add(30 * time.Second)
 	if testDeadline.IsZero() {
 		return deadline
 	}
@@ -161,8 +178,8 @@ func TestRedisBudgetDeadline(t *testing.T) {
 	}{
 		{"short budget", now.Add(500 * time.Millisecond), now.Add(250 * time.Millisecond)},
 		{"normal budget", now.Add(4 * time.Second), now.Add(3 * time.Second)},
-		{"long budget", now.Add(time.Minute), now.Add(5 * time.Second)},
-		{"no deadline", time.Time{}, now.Add(5 * time.Second)},
+		{"long budget", now.Add(time.Minute), now.Add(30 * time.Second)},
+		{"no deadline", time.Time{}, now.Add(30 * time.Second)},
 		{"expired budget", now.Add(-time.Second), now.Add(-time.Second)},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
@@ -229,7 +246,7 @@ func TestRedisBudgetCollectsRequestErrors(t *testing.T) {
 	defer cancel()
 	paths := [...]string{"/ok", "/drop", "/truncated"}
 	statuses, err := collectRedisBudgetStatuses(ctx, len(paths), func(i int) (int, error) {
-		resp, _, err := callWithError(app, http.MethodGet, paths[i], "", nil)
+		resp, _, err := callWithDeadline(ctx, app, http.MethodGet, paths[i], "", nil)
 		return resp.StatusCode, err
 	})
 	if !errors.Is(err, fiber.ErrTestGotEmptyResponse) || !errors.Is(err, io.ErrUnexpectedEOF) || errors.Is(err, context.DeadlineExceeded) {

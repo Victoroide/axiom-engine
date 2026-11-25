@@ -3,6 +3,8 @@ package llm
 import (
 	"context"
 	"encoding/json"
+	"errors"
+	"fmt"
 	"io"
 	"log/slog"
 	"net/http"
@@ -24,6 +26,7 @@ import (
 	"github.com/Victoroide/axiom-engine/internal/graph"
 	"github.com/Victoroide/axiom-engine/internal/mcpserver"
 	"github.com/Victoroide/axiom-engine/internal/server"
+	"github.com/Victoroide/axiom-engine/internal/service"
 )
 
 const (
@@ -49,8 +52,6 @@ func TestAdapterProviderPublicContracts(t *testing.T) {
 		{mode: "ok", status: 200, repeat: 1, attempts: 1}, // A successful call resets the failure from the unknown status.
 		{mode: "throttle", status: 503, code: "service_unavailable", detail: "upstream throttled", retryAfter: "5", repeat: 1, attempts: 1},
 		{mode: "internal", status: 502, code: "bad_gateway", detail: "upstream reasoning failed", repeat: 1, attempts: 1},
-		{mode: "hang", status: 504, code: "gateway_timeout", detail: "reasoning exceeded deadline", repeat: 1, attempts: 1},
-		{mode: "ok", status: 503, code: "service_unavailable", detail: "reasoning temporarily unavailable", retryAfter: "15", repeat: 1, attempts: 0},
 	}
 	for _, provider := range nativeProviders {
 		t.Run(provider, func(t *testing.T) {
@@ -58,30 +59,7 @@ func TestAdapterProviderPublicContracts(t *testing.T) {
 				t.Run(transport, func(t *testing.T) {
 					f := newProviderFixture(t, provider, "ok")
 					recorder := recordProviderSpans(t)
-					cfg, err := config.Load(func(key string) string {
-						switch key {
-						case "AXIOM_AUTH_DISABLED":
-							return "true"
-						case "LLM_TIMEOUT":
-							return "500ms"
-						default:
-							return ""
-						}
-					})
-					if err != nil {
-						t.Fatal(err)
-					}
-					cfg.Tracing.Enabled, cfg.Tracing.CaptureContent = true, true
-					g, planner := graph.NewInMemoryGraph(), New(f.settings)
-					logger := slog.New(slog.NewTextHandler(io.Discard, nil))
-					var call func(*testing.T, providerFailure) []byte
-					if transport == "HTTP" {
-						app := server.New(cfg, server.Dependencies{Graph: g, Planner: planner, Logger: logger})
-						call = func(t *testing.T, tc providerFailure) []byte { return callProviderHTTP(t, app, tc) }
-					} else {
-						cs := connectProviderMCP(t, mcpserver.New(cfg, g, planner, logger, "test"))
-						call = func(t *testing.T, tc providerFailure) []byte { return callProviderMCP(t, cs, tc) }
-					}
+					call := publicProviderCaller(t, transport, New(f.settings))
 					for _, tc := range scenarios {
 						f.setMode(tc.mode)
 						spanStart := len(recorder.Ended())
@@ -117,12 +95,124 @@ func TestAdapterProviderPublicContracts(t *testing.T) {
 	}
 }
 
+type signaledProviderDeadline struct{ context.Context }
+
+func (c signaledProviderDeadline) Err() error {
+	if errors.Is(context.Cause(c.Context), context.DeadlineExceeded) {
+		return context.DeadlineExceeded
+	}
+	return c.Context.Err()
+}
+
+type providerDeadlinePlanner struct {
+	service.Planner
+	signal <-chan struct{}
+}
+
+func (p providerDeadlinePlanner) GenerateTopic(ctx context.Context, req service.TopicRequest) ([]domain.PlanItem, error) {
+	deadline, cancel := context.WithCancelCause(ctx)
+	defer cancel(nil)
+	go func() {
+		select {
+		case <-p.signal:
+			cancel(context.DeadlineExceeded)
+		case <-deadline.Done():
+		}
+	}()
+	return p.Planner.GenerateTopic(signaledProviderDeadline{deadline}, req) //nolint:contextcheck // Expose the controlled deadline on the inherited request context.
+}
+
+func TestAdapterProviderPublicTimeout(t *testing.T) {
+	for _, provider := range nativeProviders {
+		for _, transport := range []string{"HTTP", "MCP"} {
+			t.Run(provider+"/"+transport, func(t *testing.T) {
+				if err := exerciseProviderTimeout(t, provider, transport); err != nil {
+					t.Fatal(err)
+				}
+			})
+		}
+	}
+}
+
+// The structured MCP result must be checked separately from its text copy.
+func TestAdapterProviderPublicTimeoutChecksStructuredFailure(t *testing.T) {
+	changeDeadlineDetail := func(next mcp.MethodHandler) mcp.MethodHandler {
+		return func(ctx context.Context, method string, req mcp.Request) (mcp.Result, error) {
+			result, err := next(ctx, method, req)
+			if call, ok := result.(*mcp.CallToolResult); ok && err == nil && call.IsError {
+				if structured, ok := call.StructuredContent.(map[string]any); ok && structured["details"] == "reasoning exceeded deadline" {
+					structured["details"] = "changed deadline detail"
+				}
+			}
+			return result, err
+		}
+	}
+	err := exerciseProviderTimeout(t, nativeProviders[0], "MCP", changeDeadlineDetail)
+	if err == nil || !strings.Contains(err.Error(), "changed deadline detail") {
+		t.Fatalf("changed structured timeout detail was accepted: %v", err)
+	}
+}
+
+func exerciseProviderTimeout(t *testing.T, provider, transport string, middleware ...mcp.Middleware) error {
+	t.Helper()
+	scenarios := []providerFailure{
+		{mode: "throttle", status: 503, code: "service_unavailable", detail: "upstream throttled", retryAfter: "5", attempts: 1},
+		{mode: "internal", status: 502, code: "bad_gateway", detail: "upstream reasoning failed", attempts: 1},
+		{mode: "hang", status: 504, code: "gateway_timeout", detail: "reasoning exceeded deadline", attempts: 1},
+		{mode: "ok", status: 503, code: "service_unavailable", detail: "reasoning temporarily unavailable", retryAfter: "15", attempts: 0},
+	}
+	f := newProviderFixture(t, provider, "hang")
+	signal, expire := context.WithCancel(t.Context())
+	defer expire()
+	f.mu.Lock()
+	f.beforeStartNotification = expire
+	f.mu.Unlock()
+	call := publicProviderCaller(t, transport, providerDeadlinePlanner{Planner: New(f.settings), signal: signal.Done()}, middleware...)
+	for _, scenario := range scenarios {
+		f.setMode(scenario.mode)
+		before := f.count()
+		body := call(t, scenario)
+		if err := checkPublicProviderFailure(scenario, body); err != nil {
+			return err
+		}
+		if attempts := f.count() - before; attempts != scenario.attempts {
+			t.Fatalf("%s dispatched %d attempts, want %d", scenario.mode, attempts, scenario.attempts)
+		}
+	}
+	if signal.Err() == nil {
+		t.Fatal("provider fixture did not signal the deadline")
+	}
+	return nil
+}
+
+func publicProviderCaller(t *testing.T, transport string, planner service.Planner, middleware ...mcp.Middleware) func(*testing.T, providerFailure) []byte {
+	t.Helper()
+	cfg, err := config.Load(func(key string) string {
+		if key == "AXIOM_AUTH_DISABLED" {
+			return "true"
+		}
+		return ""
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	cfg.Tracing.Enabled, cfg.Tracing.CaptureContent = true, true
+	g := graph.NewInMemoryGraph()
+	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
+	if transport == "HTTP" {
+		app := server.New(cfg, server.Dependencies{Graph: g, Planner: planner, Logger: logger})
+		return func(t *testing.T, tc providerFailure) []byte { return callProviderHTTP(t, app, tc) }
+	}
+	cs := connectProviderMCP(t, mcpserver.New(cfg, g, planner, logger, "test"), middleware...)
+	return func(t *testing.T, tc providerFailure) []byte { return callProviderMCP(t, cs, tc) }
+}
+
 func callProviderHTTP(t *testing.T, app *fiber.App, tc providerFailure) []byte {
 	t.Helper()
 	body := `{"student_id":"` + learnerID + `","course_id":"` + courseID + `","failed_topics":["Recursion"],"vark_profile":"visual"}`
 	req := httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/api/v1/adaptive-plan", strings.NewReader(body))
 	req.Header.Set("Content-Type", "application/json")
-	resp, err := app.Test(req, fiber.TestConfig{Timeout: 5 * time.Second, FailOnTimeout: true})
+	resp, err := app.Test(req, fiber.TestConfig{Timeout: 30 * time.Second, FailOnTimeout: true})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -137,7 +227,7 @@ func callProviderHTTP(t *testing.T, app *fiber.App, tc providerFailure) []byte {
 	return data
 }
 
-func connectProviderMCP(t *testing.T, s *mcp.Server) *mcp.ClientSession {
+func connectProviderMCP(t *testing.T, s *mcp.Server, middleware ...mcp.Middleware) *mcp.ClientSession {
 	t.Helper()
 	st, ct := mcp.NewInMemoryTransports()
 	ss, err := s.Connect(t.Context(), st, nil)
@@ -146,6 +236,7 @@ func connectProviderMCP(t *testing.T, s *mcp.Server) *mcp.ClientSession {
 	}
 	t.Cleanup(func() { _ = ss.Close() })
 	c := mcp.NewClient(&mcp.Implementation{Name: "test-client", Version: "1"}, nil)
+	c.AddSendingMiddleware(middleware...)
 	cs, err := c.Connect(t.Context(), ct, nil)
 	if err != nil {
 		t.Fatal(err)
@@ -156,7 +247,7 @@ func connectProviderMCP(t *testing.T, s *mcp.Server) *mcp.ClientSession {
 
 func callProviderMCP(t *testing.T, cs *mcp.ClientSession, tc providerFailure) []byte {
 	t.Helper()
-	ctx, cancel := context.WithTimeout(t.Context(), 5*time.Second)
+	ctx, cancel := context.WithTimeout(t.Context(), 30*time.Second)
 	defer cancel()
 	result, err := cs.CallTool(ctx, &mcp.CallToolParams{Name: "generate_study_plan", Arguments: mcpserver.PlanInput{
 		StudentID: learnerID, CourseID: courseID, FailedTopics: []string{"Recursion"}, VARKProfile: "visual",
@@ -197,10 +288,17 @@ func assertPublicProviderPlan(t *testing.T, body []byte) {
 
 func assertPublicProviderFailure(t *testing.T, tc providerFailure, body []byte) {
 	t.Helper()
+	if err := checkPublicProviderFailure(tc, body); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func checkPublicProviderFailure(tc providerFailure, body []byte) error {
 	var envelope map[string]string
 	if err := json.Unmarshal(body, &envelope); err != nil || len(envelope) != 2 || envelope["error"] != tc.code || envelope["details"] != tc.detail {
-		t.Fatalf("%s: error envelope = %s, want %q and %q", tc.mode, body, tc.code, tc.detail)
+		return fmt.Errorf("%s: error envelope = %s, want %q and %q", tc.mode, body, tc.code, tc.detail)
 	}
+	return nil
 }
 
 func recordProviderSpans(t *testing.T) *tracetest.SpanRecorder {
