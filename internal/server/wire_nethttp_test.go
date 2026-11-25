@@ -42,6 +42,7 @@ func netHTTPWireConfig(t *testing.T) config.Config {
 }
 
 func TestWireNetHTTPDisconnectReleasesReservation(t *testing.T) {
+	t.Parallel()
 	for _, capacity := range []int{1, 2} {
 		t.Run(fmt.Sprintf("capacity=%d", capacity), func(t *testing.T) {
 			if runWireSubprocess(t) {
@@ -112,6 +113,7 @@ func TestWireNetHTTPPipelinedConnection(t *testing.T) {
 	if !tcpCloseSupported {
 		t.Skip("TCP peer shutdown observation is available on Linux and macOS")
 	}
+	t.Parallel()
 	for _, mode := range []string{"close", "half-close", "keep-alive"} {
 		t.Run(mode, func(t *testing.T) {
 			if !runWireSubprocess(t) {
@@ -187,6 +189,7 @@ func TestWireNetHTTPPipelinedConnection(t *testing.T) {
 }
 
 func TestWireNetHTTPConformance(t *testing.T) {
+	t.Parallel()
 	for _, scenario := range []struct {
 		name string
 		run  func(*testing.T, config.Config)
@@ -232,6 +235,7 @@ func wireStreamAcrossHeartbeats(t *testing.T, cfg config.Config) {
 }
 
 func TestWireListenerParserErrors(t *testing.T) {
+	t.Parallel()
 	for _, listener := range []config.HTTPListener{config.HTTPListenerFiber, config.HTTPListenerNetHTTP} {
 		t.Run(string(listener), func(t *testing.T) {
 			if !runWireSubprocess(t) {
@@ -305,6 +309,7 @@ func TestWireListenerParserErrors(t *testing.T) {
 }
 
 func TestWireBodyReadTimeout(t *testing.T) {
+	t.Parallel()
 	for _, listener := range []config.HTTPListener{config.HTTPListenerFiber, config.HTTPListenerNetHTTP} {
 		t.Run(string(listener), func(t *testing.T) {
 			if !runWireSubprocess(t) {
@@ -338,6 +343,7 @@ func TestWireBodyReadTimeout(t *testing.T) {
 }
 
 func TestWireBodyRejectionPolicies(t *testing.T) {
+	t.Parallel()
 	for _, listener := range []config.HTTPListener{config.HTTPListenerFiber, config.HTTPListenerNetHTTP} {
 		t.Run(string(listener), func(t *testing.T) {
 			if !runWireSubprocess(t) {
@@ -430,6 +436,7 @@ func wireChunkedPlanTrailers(declaration, fields string) string {
 }
 
 func TestWireTrailerFieldNames(t *testing.T) {
+	t.Parallel()
 	for _, listener := range []config.HTTPListener{config.HTTPListenerFiber, config.HTTPListenerNetHTTP} {
 		t.Run(string(listener), func(t *testing.T) {
 			if !runWireSubprocess(t) {
@@ -505,6 +512,7 @@ func assertWireBodyRejectionLog(t *testing.T, logs streamLogWriter, id string, s
 }
 
 func TestWireBodyAtLimit(t *testing.T) {
+	t.Parallel()
 	for _, listener := range []config.HTTPListener{config.HTTPListenerFiber, config.HTTPListenerNetHTTP} {
 		t.Run(string(listener), func(t *testing.T) {
 			if !runWireSubprocess(t) {
@@ -526,6 +534,7 @@ func TestWireBodyAtLimit(t *testing.T) {
 }
 
 func TestWireTrustedPeerQuota(t *testing.T) {
+	t.Parallel()
 	for _, listener := range []config.HTTPListener{config.HTTPListenerFiber, config.HTTPListenerNetHTTP} {
 		t.Run(string(listener), func(t *testing.T) {
 			if !runWireSubprocess(t) {
@@ -567,6 +576,7 @@ func TestWireTrustedPeerQuota(t *testing.T) {
 }
 
 func TestWireReasoningCancellationEnvelopes(t *testing.T) {
+	t.Parallel()
 	for _, listener := range []config.HTTPListener{config.HTTPListenerFiber, config.HTTPListenerNetHTTP} {
 		t.Run(string(listener), func(t *testing.T) {
 			if !runWireSubprocess(t) {

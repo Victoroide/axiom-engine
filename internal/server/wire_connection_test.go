@@ -27,6 +27,7 @@ const wireRecoveryID = "wire-capacity-restored"
 const wireQueueTimeout = 600 * time.Millisecond
 
 func TestWireDisconnectRetainsJSONUntilDeadlineAndCancelsSSEOnWrite(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []wireDisconnectCase{
 		{"JSON close", wirePlan, 1500 * time.Millisecond, 1500 * time.Millisecond, context.DeadlineExceeded, wireQueueTimeout + 100*time.Millisecond},
 		{"JSON shorter topic deadline", wirePlan, 6 * time.Second, time.Second, context.DeadlineExceeded, 0},

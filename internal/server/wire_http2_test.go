@@ -16,6 +16,7 @@ import (
 )
 
 func TestWireHTTP2ResetPreservesSiblingStream(t *testing.T) {
+	t.Parallel()
 	for _, name := range []string{"cleartext", "TLS"} {
 		t.Run(name, func(t *testing.T) {
 			if !runWireSubprocess(t) {

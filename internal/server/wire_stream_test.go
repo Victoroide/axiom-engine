@@ -85,6 +85,7 @@ func assertWireEOF(t *testing.T, reader *bufio.Reader) {
 }
 
 func TestWireStreamFailureAfterFirstByte(t *testing.T) {
+	t.Parallel()
 	wireStreamFailureCases(t, defaultConfig(t))
 }
 

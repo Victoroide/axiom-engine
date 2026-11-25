@@ -228,7 +228,7 @@ The HTTP replay suite runs with memory and miniredis by default. Set `AXIOM_TEST
 
 ### Unit tests
 
-Unit tests execute in-process with race detection enabled:
+Run the unit suite with race detection:
 
 ```sh
 make test
@@ -352,10 +352,12 @@ Transport execution:
 
 ### HTTP connection tests
 
-`make test` also runs the HTTP connection tests in `internal/server`. They use real loopback sockets and a local planner whose completion the tests control. The HTTP/1.1 fixtures run in joined subprocesses so the listener's background workers exit with each fixture. Startup waits for listener readiness, server exit, or cancellation. The subprocess deadline bounds the scenario. Run the tests with verbose output to see cancellation and permit reuse measured separately.
+`make test` also runs the HTTP connection tests in `internal/server`. They use real loopback sockets and a local planner whose completion the tests control. Each scenario runs in a subprocess so the listener's background workers exit with its fixtures. Independent subprocesses run concurrently up to Go's `-parallel` limit. Subtests that share fixtures inside a subprocess run serially.
+
+Startup waits for listener readiness, server exit, or cancellation. The parent joins the subprocess under a 30-second deadline and reports its output and any failure. Run the tests with verbose output to see cancellation and permit reuse measured separately. Use `-parallel=1` to run one subprocess at a time.
 
 ```sh
-go test -race -count=1 -v ./internal/server -run '^TestWire'
+go test -race -count=1 -v ./internal/server -run '^(TestWire.*|TestPromptBudgetRejectsBeforeHTTPDispatch)$'
 ```
 
 The HTTP/1.1 tests check parser errors, request IDs, quota, replay on the same connection, stream flushing through a full-duplex reverse proxy, and graceful drain. Incomplete-header checks use a dedicated listener with a short read deadline. Authorization checks use the normal deadline and include an idle client before the request is sent. The proxy holds a stream data write until a second connection receives its response. The SSE checks accept keepalive frames between data events and require a single terminal error when a required topic returns no items. Successful plans are compared after validating and removing `_meta.llm_latency_ms` and `_meta.total_latency_ms`. The checks validate the format or range of the generated `X-Request-ID`, `Date`, and `X-RateLimit-Reset` values. Replayed response bodies must match the original bytes exactly.
