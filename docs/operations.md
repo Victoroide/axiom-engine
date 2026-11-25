@@ -268,26 +268,51 @@ Exported spans include LangSmith-specific run annotations:
 
 ### Content Capture and Privacy
 
-By default, enabling LangSmith (`LANGSMITH_TRACING=true`) turns on content capture (`TRACING_CAPTURE_CONTENT=true`).
+Both exporters send structure only by default: span names and hierarchy, timing, route templates, registered tool names, model name and token usage, status, counts and bounded error classes. Enabling `TRACING_ENABLED=true` or `LANGSMITH_TRACING=true` does not send prompts, completions, topic text, tool arguments or results, or serialized input/output. Name each receiver that may receive content in `TRACING_CONTENT_DESTINATIONS`:
+
+| `TRACING_CAPTURE_CONTENT` | `TRACING_CONTENT_DESTINATIONS` | Receivers that get content |
+|---|---|---|
+| unset or `true` | unset or empty | none |
+| unset or `true` | `langsmith`, `otlp`, or `langsmith,otlp` | only the listed receivers |
+| `false` | any valid list or empty | none |
+
+Startup fails for an unknown or repeated name, an empty entry, or a receiver whose exporter is disabled (`langsmith` needs `LANGSMITH_TRACING=true`, `otlp` needs `TRACING_ENABLED=true`). `TRACING_CAPTURE_CONTENT=false` always wins, so it works as an emergency switch.
+
+#### Upgrading from earlier releases
+
+Earlier releases captured content whenever `LANGSMITH_TRACING=true`, and an explicit `TRACING_CAPTURE_CONTENT=true` sent the same content to LangSmith and to the generic OTLP collector. Both now send no content unless a receiver is named. Installations that depend on content in LangSmith add one line:
+
+```sh
+export TRACING_ENABLED=true
+export LANGSMITH_TRACING=true
+export LANGSMITH_API_KEY="lsv2_pt_..."
+export TRACING_CONTENT_DESTINATIONS=langsmith
+```
+
+With this configuration LangSmith receives prompts, completions and input/output, while the generic OTLP collector receives the same spans without them. Use `otlp` to send content to the generic collector only, or `langsmith,otlp` for both. Restart the service after any change.
 
 #### Captured Attributes
 
-When content capture is active, spans include:
+When a receiver is allowed, it receives these values, each capped at 32 KiB on a valid UTF-8 boundary:
 - **Downstream model calls (`chat <model>`)**:
   - `gen_ai.prompt.N.role` and `gen_ai.prompt.N.content`: Rendered prompt messages parsed from the underlying model request body across all supported providers (Bedrock, OpenAI, Anthropic, Google AI, Ollama, generic).
   - `gen_ai.completion.0.role` (`assistant`) and `gen_ai.completion.0.content`: Raw model completion payload from the Boundary ML collector.
-- **Plan request spans (`POST /api/v1/adaptive-plan`)**:
+- **Plan request spans (`POST /api/v1/adaptive-plan`, `/api/v1/adaptive-plan/stream`, `tools/call generate_study_plan`)**:
   - `input.value`: JSON payload containing `failed_topics` and `vark_profile`.
   - `output.value`: JSON payload containing the validated study `items`.
+- **Per-topic spans (`plan.topic`)**: `axiom.topic`, the topic name. `axiom.topic.index` is a position, not content, and is always sent.
 
 #### Privacy Controls
 
-- **Learner identification exclusion**: Student identifiers (`student_id`) and course identifiers (`course_id`) are strictly excluded from span attributes, `input.value`, and `output.value`.
+- **Nothing is built without consent**: When no receiver is allowed, prompts, completions, input/output JSON and topic text are never constructed, and the model call collector is not read.
+- **Independent copies**: Each exporter queues its own copy of every span. The copy is detached from the source span and queued without it. The copy for a receiver without consent has all content attributes and GenAI message events removed, including content-named attributes on the resource and instrumentation scope (for example one set through `OTEL_RESOURCE_ATTRIBUTES`), so a receiver cannot see content approved for another. Structural service, scope, parent, timing and status data stay. Spans are not written to disk.
+- **Learner identification exclusion**: Student identifiers (`student_id`) and course identifiers (`course_id`), credentials and principal claims are never added to span attributes, `input.value`, or `output.value`.
 - **Sensitive header isolation**: HTTP authorization headers, internal tokens, and provider API keys are never captured in span attributes or logged.
-- **Attribute truncation**: Each captured prompt, completion, input, or output string is truncated to a maximum of 32 KiB on a valid UTF-8 character boundary.
+- **Attribute truncation**: Each captured prompt, completion, input, output, or topic string is truncated to a maximum of 32 KiB on a valid UTF-8 character boundary. A structured content value (a list, a map or bytes) keeps its shape, and each text, byte and key value inside it is truncated the same way. A list or map nested more than 64 levels deep is replaced by an empty value, and a representation that cannot be bounded is not sent.
 - **Panic privacy**: HTTP JSON errors, errors before an SSE stream opens, and MCP tool errors carry their classification on the request span. When a recovered planner panic determines the error for an open, connected SSE stream, the HTTP request span reports HTTP 200 and the terminal `error` event carries `internal_error` with equivalent status `500`. Spans that end during panic unwinding omit automatic exception events and recovered values.
-- **Disabling content capture**: Set `TRACING_CAPTURE_CONTENT=false` to export span hierarchy, latency, error types, and token usage counts to LangSmith and OTLP receivers without capturing prompt, completion, or input/output text.
-- **Dual-exporter privacy**: Captured content is attached to span attributes in memory; if both the generic OTLP exporter (`TRACING_ENABLED=true`) and LangSmith (`LANGSMITH_TRACING=true`) are active, captured content is delivered to both destinations. Verify collector destination policies when running both exporters.
+- **Revoking content**: Remove `TRACING_CONTENT_DESTINATIONS`, or set `TRACING_CAPTURE_CONTENT=false`, and restart to stop future capture. Content already delivered stays at the receiver, and the service cannot delete it there.
+- **Receiver retention**: Retain approved content at the receiver for seven days by default, enforce that period in the receiver's own retention setting, and restrict reader access to the people who need it. Leave content off for a receiver that cannot meet the chosen retention policy.
+- **Native logging**: `BAML_LOG` is a separate setting and does not change what traces carry.
 
 ### Exporter Error Handling and Shutdown Flushing
 
@@ -297,7 +322,7 @@ During runtime, exporter failures invoke an internal error handler that emits a 
 {"level":"WARN","msg":"tracing.export_failed","error_class":"trace_export_failed"}
 ```
 
-On process termination, the trace provider is shut down within the remaining graceful shutdown budget (signal time + `SHUTDOWN_DRAIN_DELAY` + `SHUTDOWN_TIMEOUT`). Pending spans are flushed after listener shutdown and connection draining. Export workers may report final batch failures through `tracing.export_failed`. If the shutdown callback reports an error or panics, `tracing.flush_failed` carries the fixed classification. Panics in either diagnostic write are contained.
+On process termination, the trace provider is shut down within the remaining graceful shutdown budget (signal time + `SHUTDOWN_DRAIN_DELAY` + `SHUTDOWN_TIMEOUT`). Pending spans are flushed after listener shutdown and connection draining. Both exporters start shutting down at once with the same deadline; LangSmith discards groups that have not finished and cancels its export even when the generic exporter uses the whole window. Export workers may report final batch failures through `tracing.export_failed`. If the shutdown callback reports an error or panics, `tracing.flush_failed` carries the fixed classification. Panics in either diagnostic write are contained.
 
 ```json
 {"level":"ERROR","msg":"tracing.flush_failed","error_class":"trace_export_failed"}

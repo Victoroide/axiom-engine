@@ -86,7 +86,7 @@ The tracing provider is flushed on stdin EOF and signal shutdown. On a signal, t
 
 ### Captured Content
 
-`TRACING_CAPTURE_CONTENT` uses the same default and opt-out as HTTP: true when LangSmith is enabled, false otherwise. Plan tool input captures only `failed_topics` and `vark_profile`, and output captures only validated items. Rendered prompts and raw completions come from the per-call collector. Learner identifiers are excluded, and every captured value is limited to 32 KiB on a UTF-8 boundary. Set `TRACING_CAPTURE_CONTENT=false` to retain structure, latency, usage and error classes without content.
+`TRACING_CONTENT_DESTINATIONS` and `TRACING_CAPTURE_CONTENT` work as they do for HTTP: no receiver gets content unless it is listed, and `TRACING_CAPTURE_CONTENT=false` removes content from every receiver. When a receiver is listed, plan tool input captures only `failed_topics` and `vark_profile`, and output captures only validated items. Rendered prompts and raw completions come from the per-call collector, and the topic name is attached to the per-topic span. Learner identifiers are excluded, and every captured value is limited to 32 KiB on a UTF-8 boundary. Without a listed receiver the traces keep structure, latency, usage and error classes. Trace export never writes to stdout, which carries only protocol frames.
 
 ---
 

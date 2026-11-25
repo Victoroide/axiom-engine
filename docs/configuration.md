@@ -53,7 +53,8 @@ This document is the authoritative reference for all environment variables suppo
 | `LANGSMITH_API_KEY` | String | `""` (unset) | Non-empty string | API key for LangSmith authentication sent in header `x-api-key`. Required when `LANGSMITH_TRACING=true`. Never logged. Configured in `internal/config/langsmith.go`. |
 | `LANGSMITH_ENDPOINT` | String | `https://api.smith.langchain.com` | Absolute HTTPS URL (or HTTP loopback) | Base URL for LangSmith trace export. Trailing slashes are stripped and `/otel/v1/traces` is appended. Must be an absolute HTTPS URL without credentials, query, or fragment (HTTP permitted only for `localhost` or loopback IPs). Configured in `internal/config/langsmith.go`. |
 | `LANGSMITH_PROJECT` | String | `""` (unset) | String | Optional LangSmith project name sent in header `Langsmith-Project`. When unset or empty, the header is omitted. Configured in `internal/config/langsmith.go`. |
-| `TRACING_CAPTURE_CONTENT` | Boolean | `true` if `LANGSMITH_TRACING=true`, else `false` | `true` or `false` | Controls whether rendered model prompts, raw completions, and plan request input/output are captured on trace spans. Defaults to `true` when LangSmith is enabled and `false` otherwise; explicit values override this default. Values are capped at 32 KiB on UTF-8 boundaries. Configured in `internal/config/langsmith.go`. |
+| `TRACING_CAPTURE_CONTENT` | Boolean | unset (same as `true`) | `true` or `false` | Global switch for rendered model prompts, raw completions, plan request input/output and topic text on trace spans. `false` always wins: no receiver gets content, whatever `TRACING_CONTENT_DESTINATIONS` lists. Unset or `true` grants nothing by itself; a receiver gets content only when `TRACING_CONTENT_DESTINATIONS` names it. Invalid values fail startup. Configured in `internal/config/tracing.go`. |
+| `TRACING_CONTENT_DESTINATIONS` | List | `""` (unset or empty: no receiver) | Comma-separated `langsmith`, `otlp`, or both | The enabled trace receivers allowed to receive content. `langsmith` requires `LANGSMITH_TRACING=true` and `otlp` requires `TRACING_ENABLED=true`. Names are lower case and may be padded with spaces. Startup fails for an unknown name, a repeated name, an empty entry (as in `langsmith,,otlp` or a trailing comma) or a receiver whose exporter is disabled, even when `TRACING_CAPTURE_CONTENT=false`. Values are capped at 32 KiB on UTF-8 boundaries. Configured in `internal/config/tracing.go`. |
 | `METRICS_ENABLED` | Boolean | `false` | `true` or `false` | When `true`, serves Prometheus metrics at `GET /metrics` without requiring authentication or consuming rate limit tokens. When `false` (default), `GET /metrics` returns HTTP 404 and collectors are not allocated. Accepts exactly `true` or `false`; empty or unset defaults to `false`, and invalid values fail startup. Restrict access at the network or proxy level. Configured in `internal/config/config.go`. |
 | `GRAPH_FILE` | String | `""` (unset) | Path to readable JSON file within the [curriculum limits](knowledge-graph.md#curriculum-limits) | Custom curriculum knowledge graph file. When unset or empty, the service loads the embedded seed graph from `internal/graph/seed.json`. An optional larger computer science curriculum is available at `examples/graphs/computer-science.json` in source and bundled at `/usr/share/axiom-engine/graphs/computer-science.json` in the runtime container image. Configured in `internal/graph/loader.go`. |
 | `GRAPH_RELOAD_ENABLED` | Boolean | `false` | `true` or `false` | Enables reload of `GRAPH_FILE` on `SIGHUP` for either HTTP listener and stdio MCP. Requires a valid, readable local regular file and Linux or macOS. Empty or unset loads the curriculum at startup only. [Curriculum rollout](operations.md#curriculum-rollout) |
@@ -162,11 +163,32 @@ The generic OTLP exporter and LangSmith exporter operate with strict isolation:
 
 ### Content Capture
 
-Span content recording is controlled by `TRACING_CAPTURE_CONTENT`:
-- When unset, it defaults to `true` if `LANGSMITH_TRACING=true`, and `false` otherwise.
-- Explicitly setting `TRACING_CAPTURE_CONTENT=true` or `false` overrides the default.
-- When enabled, spans capture rendered prompts (`gen_ai.prompt.N`), completions (`gen_ai.completion.0`), and privacy-filtered request inputs (`input.value`) and outputs (`output.value`), each capped at 32 KiB on UTF-8 boundaries.
-- When disabled, trace trees record only structural spans, timing, error types, and token counts.
+By default both exporters send structure only: span names and hierarchy, timing, route templates, registered tool names, model name and token usage, status, counts and bounded error classes. Prompts, completions, topic text, tool arguments and results, and serialized input/output reach no receiver until an operator names that receiver.
+
+`TRACING_CONTENT_DESTINATIONS` lists the enabled receivers that may receive content, and `TRACING_CAPTURE_CONTENT` is a global switch that can only remove that permission:
+
+| `TRACING_CAPTURE_CONTENT` | `TRACING_CONTENT_DESTINATIONS` | Receivers that get content |
+|---|---|---|
+| unset or `true` | unset or empty | none |
+| unset or `true` | `langsmith`, `otlp`, or `langsmith,otlp` | only the listed receivers |
+| `false` | any valid list or empty | none |
+
+- A receiver gets only the content values documented below, each capped at 32 KiB on a UTF-8 boundary: `gen_ai.prompt.N.role` and `.content`, `gen_ai.completion.0.role` and `.content`, `input.value`, `output.value` and `axiom.topic`. A structured value keeps its shape and each text, byte and key value inside it is capped the same way. Each receiver gets its own detached copy of every span, including its resource and instrumentation scope, so content approved for one receiver is removed from the copy sent to the other.
+- When no receiver is allowed, the service does not build prompts, completions, input/output JSON or topic text at all, and does not read the model call collector.
+- Credentials, principal claims and learner identifiers (`student_id`, `course_id`) are never added to spans.
+- The setting is read at startup. Remove the list, or set `TRACING_CAPTURE_CONTENT=false`, and restart to stop future capture. Content already sent stays at the receiver.
+- Native BAML logging (`BAML_LOG`) is configured separately and is not affected.
+
+**Upgrading.** Earlier releases captured content whenever `LANGSMITH_TRACING=true`, and `TRACING_CAPTURE_CONTENT=true` sent it to every enabled exporter. Both now send no content unless a receiver is named. To keep content in LangSmith only:
+
+```sh
+export TRACING_ENABLED=true
+export LANGSMITH_TRACING=true
+export LANGSMITH_API_KEY="your-langsmith-key"
+export TRACING_CONTENT_DESTINATIONS=langsmith   # the generic OTLP collector keeps structure only
+```
+
+The control is the allowlist, so deployments that relied on the old default must add it before upgrading. See [Content Capture and Privacy](operations.md#content-capture-and-privacy) for retention and access guidance.
 
 ---
 
@@ -252,4 +274,4 @@ In MCP mode, runtime settings are loaded via `internal/config/mcp.go`:
 - **Provider selection**: `LLM_PROVIDER`, `LLM_MODEL`, `LLM_BASE_URL` and provider API keys have the same validation and defaults as HTTP; the selected client registry is shared by all plan tools. Startup records on stderr include `llm_provider` and `llm_model`.
 - **Validation**. Bedrock uses the same explicit region setting and AWS retry validation as HTTP. BAML logging (`BAML_LOG`) is always validated.
 - **Tracing**: `TRACING_ENABLED` and standard `OTEL_*` settings apply to MCP tool-call spans. EOF and signal shutdown flush the provider; signal shutdown uses the remaining `SHUTDOWN_TIMEOUT` after tool draining and transport closure.
-- **LangSmith and content**: `LANGSMITH_TRACING`, endpoint, project, key and `TRACING_CAPTURE_CONTENT` settings apply to MCP just as HTTP. Model-bearing tool traces receive run attributes; captured plan input/output omits learner identifiers. No MCP-specific environment variables are introduced.
+- **LangSmith and content**: `LANGSMITH_TRACING`, endpoint, project, key, `TRACING_CAPTURE_CONTENT` and `TRACING_CONTENT_DESTINATIONS` settings apply to MCP just as HTTP. Model-bearing tool traces receive run attributes; captured plan input/output omits learner identifiers. No MCP-specific environment variables are introduced.

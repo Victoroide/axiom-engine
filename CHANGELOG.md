@@ -19,6 +19,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Add opt-in `AXIOM_AUTH_MODE=verified` for signed HTTP access tokens, route scopes, and JSON response replay isolated by issuer, tenant and caller.
 - Add opt-in Redis quotas for verified tenants, shared across replicas and applied after the IP limit.
 - Add an opt-in CycloneDX inventory for the pinned BAML native library in release archives and images.
+**Upgrade considerations:**
+
+- **Trace content is off until a receiver is named:** Prompts, completions, topic names and input/output values are sent to no trace receiver unless `TRACING_CONTENT_DESTINATIONS` lists it. Earlier releases captured content whenever `LANGSMITH_TRACING=true` and sent it to every enabled exporter when `TRACING_CAPTURE_CONTENT=true`. To keep content in LangSmith only, set `TRACING_CONTENT_DESTINATIONS=langsmith`. See [Content Capture](docs/configuration.md#content-capture).
+
+### Added
+
+- Add `TRACING_CONTENT_DESTINATIONS` (`langsmith`, `otlp` or `langsmith,otlp`) to name the enabled trace receivers allowed to receive prompt, completion and input/output content. Startup rejects unknown or repeated names, empty entries and receivers whose exporter is disabled. Each exporter now receives its own copy of every span, so content approved for one receiver is removed from the other's copy. Document seven-day receiver retention for approved content.
+
+### Changed
+
+- Send structure only by default from both trace exporters. An unset or empty list sends no content, `TRACING_CAPTURE_CONTENT=true` alone grants nothing, and `TRACING_CAPTURE_CONTENT=false` removes content from every receiver. Without an allowed receiver the service no longer builds prompts, completions, input/output JSON or topic names for spans, and no longer reads the model call collector.
 
 ### Security
 
