@@ -20,6 +20,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Add opt-in Redis quotas for verified tenants, shared across replicas and applied after the IP limit.
 - Add an opt-in CycloneDX inventory for the pinned BAML native library in release archives and images.
 
+### Security
+
+- Update `github.com/klauspost/compress` to v1.20.2 in the developer tools module to fix GO-2026-6865.
+
 ## [0.1.1] - 2026-11-24
 
 **Upgrade considerations:**
